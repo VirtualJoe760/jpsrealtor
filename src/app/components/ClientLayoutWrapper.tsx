@@ -15,7 +15,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import SpaticalBackground from "./backgrounds/SpaticalBackground";
 import MapBackground from "./backgrounds/MapBackground";
-import { ThemeProvider, type ThemeName, useTheme } from "../contexts/ThemeContext";
+import { ThemeProvider, type ThemeName, type ThemePreference, useTheme } from "../contexts/ThemeContext";
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
@@ -144,6 +144,7 @@ function LayoutContent({ children, navLayout = "sidebar" }: { children: React.Re
 interface ClientLayoutWrapperProps {
   children: React.ReactNode;
   initialTheme?: ThemeName;
+  initialPreference?: ThemePreference;
   navLayout?: "sidebar" | "navbar";
   themeLocked?: boolean;
   forcedTheme?: ThemeName;
@@ -152,6 +153,7 @@ interface ClientLayoutWrapperProps {
 export default function ClientLayoutWrapper({
   children,
   initialTheme,
+  initialPreference,
   navLayout = "sidebar",
   themeLocked = false,
   forcedTheme,
@@ -188,7 +190,7 @@ export default function ClientLayoutWrapper({
   }, []);
 
   return (
-    <ThemeProvider initialTheme={initialTheme} themeLocked={themeLocked} forcedTheme={forcedTheme}>
+    <ThemeProvider initialTheme={initialTheme} initialPreference={initialPreference} themeLocked={themeLocked} forcedTheme={forcedTheme}>
       <PWAProvider>
         <MapStateProvider>
           <Providers>

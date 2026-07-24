@@ -7,7 +7,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { SessionProvider } from "next-auth/react";
 import { ChatProvider } from "@/app/components/chat/ChatProvider";
 import { MLSProvider } from "@/app/components/mls/MLSProvider";
-import { ThemeProvider, useThemeClasses } from "@/app/contexts/ThemeContext";
+import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { FileText } from "lucide-react";
 
 // Chat Components
@@ -1086,15 +1086,16 @@ function TestPageContent() {
 export default function TestPage() {
   return (
     <SessionProvider>
-      <ThemeProvider>
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-          <MLSProvider>
-            <ChatProvider>
-              <TestPageContent />
-            </ChatProvider>
-          </MLSProvider>
-        </Suspense>
-      </ThemeProvider>
+      {/* NOTE: no nested ThemeProvider — a bare one here stomped the root
+          provider's document state (classes/metas) and ignored the visitor's
+          preference. TestPageContent resolves theme via the root provider. */}
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+        <MLSProvider>
+          <ChatProvider>
+            <TestPageContent />
+          </ChatProvider>
+        </MLSProvider>
+      </Suspense>
     </SessionProvider>
   );
 }

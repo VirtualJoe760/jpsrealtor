@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
-import "./styles/theme-transitions.css";
 import "leaflet/dist/leaflet.css";
 import "@fontsource/raleway";
 import "@fontsource/plus-jakarta-sans/400.css";
@@ -26,21 +25,52 @@ import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/se
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
 import { getServerTenantConfig } from "@/lib/nav-layout";
 
-// Theme constants - must match ThemeContext.tsx
-const THEME_COOKIE_NAME = 'site-theme';
-const VALID_THEMES = ['lightgradient', 'blackspace'] as const;
-const DEFAULT_THEME = 'lightgradient';
+// Theme constants — must match ThemeContext.tsx (see docs/theming/README.md).
+//
+// `site-theme-pref` stores the visitor's PREFERENCE: light | dark | system.
+// VERSIONED name on purpose: vercel.json stamps page HTML immutable, so
+// long-cached OLD bundles still run the legacy ThemeContext, which auto-writes
+// 'lightgradient'/'blackspace' into the old `site-theme` cookie on every
+// mount. New code never writes `site-theme`, so stale bundles can't corrupt
+// the preference — the legacy cookie is only a one-time MIGRATION source when
+// `site-theme-pref` is absent: 'blackspace' → dark (only reachable via a real
+// toggle back then), 'lightgradient' → system (auto-written for everyone, so
+// it signals nothing).
+// `site-theme-resolved` is the echo cookie the client writes with the
+// device's resolved scheme, so system-preference visitors get the correct
+// theme SERVER-rendered from their second request onward. First-ever visit
+// has no echo → we render light and the client morphs smoothly post-mount.
+const THEME_PREF_COOKIE_NAME = 'site-theme-pref';
+const LEGACY_THEME_COOKIE_NAME = 'site-theme';
+const RESOLVED_COOKIE_NAME = 'site-theme-resolved';
 
-type ThemeName = typeof VALID_THEMES[number];
+type ThemeName = 'lightgradient' | 'blackspace';
+type ThemePreference = 'system' | 'light' | 'dark';
 
-function getServerTheme(cookieStore: Awaited<ReturnType<typeof cookies>>): ThemeName {
-  const themeCookie = cookieStore.get(THEME_COOKIE_NAME);
-  const theme = themeCookie?.value;
+function getServerThemeState(cookieStore: Awaited<ReturnType<typeof cookies>>): {
+  preference: ThemePreference;
+  resolved: ThemeName;
+} {
+  const pref = cookieStore.get(THEME_PREF_COOKIE_NAME)?.value;
+  const legacy = cookieStore.get(LEGACY_THEME_COOKIE_NAME)?.value;
 
-  if (theme && VALID_THEMES.includes(theme as ThemeName)) {
-    return theme as ThemeName;
+  let preference: ThemePreference;
+  if (pref === 'light' || pref === 'dark' || pref === 'system') {
+    preference = pref; // versioned cookie always wins
+  } else if (legacy === 'blackspace' || legacy === 'dark') {
+    preference = 'dark'; // legacy explicit dark (migration)
+  } else if (legacy === 'light') {
+    preference = 'light'; // brief pre-versioning window wrote these
+  } else {
+    preference = 'system'; // absent, or legacy auto-written 'lightgradient'
   }
-  return DEFAULT_THEME;
+
+  if (preference !== 'system') {
+    return { preference, resolved: preference === 'dark' ? 'blackspace' : 'lightgradient' };
+  }
+
+  const echo = cookieStore.get(RESOLVED_COOKIE_NAME)?.value;
+  return { preference, resolved: echo === 'dark' ? 'blackspace' : 'lightgradient' };
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -61,11 +91,11 @@ export async function generateMetadata(): Promise<Metadata> {
     creator: cfg.siteName,
     publisher: cfg.siteName,
     manifest: "/manifest-v2.json",
-    appleWebApp: {
-      capable: true,
-      statusBarStyle: "default",
-      title: cfg.siteName,
-    },
+    // NOTE: no appleWebApp block — Next would emit its own
+    // apple-mobile-web-app-* metas (including an implicit status-bar-style
+    // "default") that land BEFORE and fight the theme-aware tags rendered
+    // manually in <head>. Safari honors the first match, so dark-theme PWA
+    // users got a light status bar. All three tags exist manually below.
     applicationName: cfg.siteName,
     formatDetection: {
       telephone: true,
@@ -124,24 +154,32 @@ export default async function RootLayout({
   const agentFont = tenant.fontFamily;
 
   // Theme: an agent's themeMode locks the site to light/dark; otherwise the
-  // visitor's `site-theme` cookie wins (and they can toggle).
+  // visitor's preference (site-theme cookie) wins — default is SYSTEM, which
+  // resolves via the client-written echo cookie (see getServerThemeState).
   const cookieStore = await cookies();
-  const cookieTheme = getServerTheme(cookieStore);
+  const { preference: cookiePreference, resolved: cookieResolved } =
+    getServerThemeState(cookieStore);
   const themeLocked = tenant.themeMode === "light" || tenant.themeMode === "dark";
   const serverTheme: ThemeName = tenant.themeMode === "light"
     ? "lightgradient"
     : tenant.themeMode === "dark"
       ? "blackspace"
-      : cookieTheme;
+      : cookieResolved;
+  const serverPreference: ThemePreference = themeLocked
+    ? (serverTheme === "blackspace" ? "dark" : "light")
+    : cookiePreference;
 
-  // Get theme color for Dynamic Island/status bar
+  // Dynamic Island / browser chrome. SSR a single resolved meta; when the
+  // visitor follows the system, ThemeContext swaps in DUAL media-query metas
+  // after mount so Safari tracks OS changes natively.
   const themeColor = serverTheme === 'lightgradient' ? '#ffffff' : '#000000';
   // Light theme: 'default' (light status bar, no black overlay)
   // Dark theme: 'black' (opaque black status bar)
   const statusBarStyle = serverTheme === 'lightgradient' ? 'default' : 'black';
+  const htmlClass = `theme-${serverTheme}${serverTheme === 'blackspace' ? ' dark' : ''}`;
 
   return (
-    <html lang="en" className={`theme-${serverTheme}`} suppressHydrationWarning>
+    <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
         <meta name="theme-color" content={themeColor} />
@@ -165,114 +203,57 @@ export default async function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
 
-        {/* Inline script for theme - syncs cookie/localStorage and applies immediately */}
+        {/* Pre-paint theme script. The SSR classes/metas above are already
+            authoritative (cookie-driven), so this only does bookkeeping:
+            1. one-time migration of the LEGACY site-theme cookie into the
+               versioned site-theme-pref (blackspace → dark was a real choice;
+               lightgradient → system, because the old code auto-wrote it for
+               every visitor) — only when site-theme-pref doesn't exist yet,
+               so stale old bundles churning the legacy cookie can't corrupt
+               a preference that's already been established;
+            2. write the site-theme-resolved echo cookie so the NEXT request
+               server-renders the correct system theme from byte one; and
+            3. clear the legacy localStorage keys old bundles fed on.
+            It deliberately does NOT flip classes: on a first visit with a
+            dark device we render a consistent light page and let
+            ThemeContext morph it smoothly after mount — never a half-themed
+            frame. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  // Check cookie first (matches server), then localStorage
-                  var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
-                  var cookieTheme = cookieMatch ? cookieMatch[2] : null;
-                  var localStorageTheme = localStorage.getItem('site-theme');
-
-                  // When the tenant locks the theme (themeMode light/dark only),
-                  // the server injects it here and it wins over cookie/localStorage.
-                  var lockedTheme = ${themeLocked ? `'${serverTheme}'` : "null"};
-                  var theme = lockedTheme || cookieTheme || localStorageTheme || 'lightgradient';
-
-                  if (theme !== 'lightgradient' && theme !== 'blackspace') {
-                    theme = 'lightgradient';
+                  var suffix = '; path=/; max-age=' + (60 * 60 * 24 * 365) + '; SameSite=Lax';
+                  var hasPref = /(^| )site-theme-pref=(light|dark|system)(;|$)/.test(document.cookie);
+                  if (!hasPref) {
+                    var m = document.cookie.match(/(^| )site-theme=([^;]+)/);
+                    var legacy = m ? m[2] : null;
+                    if (legacy === 'blackspace' || legacy === 'dark') {
+                      document.cookie = 'site-theme-pref=dark' + suffix;
+                    } else if (legacy === 'light') {
+                      document.cookie = 'site-theme-pref=light' + suffix;
+                    } else if (legacy) {
+                      document.cookie = 'site-theme-pref=system' + suffix;
+                    }
                   }
-
-                  // Apply theme class
-                  document.documentElement.className = document.documentElement.className.replace(/theme-\\w+/g, '') + ' theme-' + theme;
-
-                  // Update meta tags IMMEDIATELY to match detected theme
-                  var themeColor = theme === 'lightgradient' ? '#ffffff' : '#000000';
-                  var statusBarStyle = theme === 'lightgradient' ? 'default' : 'black';
-
-                  var metaThemeColor = document.querySelector('meta[name="theme-color"]');
-                  if (metaThemeColor) {
-                    metaThemeColor.setAttribute('content', themeColor);
-                  }
-
-                  var metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-                  if (metaStatusBar) {
-                    metaStatusBar.setAttribute('content', statusBarStyle);
-                  }
-                } catch (e) {
-                  console.error('[Inline Script] Error:', e);
-                }
+                  var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  document.cookie = 'site-theme-resolved=' + (sysDark ? 'dark' : 'light') + suffix;
+                  try {
+                    localStorage.removeItem('site-theme');
+                    localStorage.removeItem('last-theme-animation');
+                  } catch (e2) {}
+                } catch (e) {}
               })();
             `,
           }}
         />
       </head>
       <body
-        className={`theme-${serverTheme}`}
+        className={htmlClass}
         data-nav-layout={navLayout}
         style={{ ["--agent-font" as any]: `'${agentFont}', sans-serif` }}
         suppressHydrationWarning
       >
-        {/* Blocking script: Create solid color overlay IMMEDIATELY if returning from theme toggle */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  // Check if we're returning from a theme toggle
-                  var animationKey = sessionStorage.getItem('theme-transition-pair');
-                  var timestamp = sessionStorage.getItem('theme-transition-timestamp');
-
-                  if (animationKey && timestamp) {
-                    var age = Date.now() - parseInt(timestamp, 10);
-
-                    // Only create overlay if refresh happened within 5 seconds
-                    if (age < 5000) {
-                      // Detect current theme to determine solid color
-                      var cookieMatch = document.cookie.match(/(^| )site-theme=([^;]+)/);
-                      var theme = cookieMatch ? cookieMatch[2] : 'lightgradient';
-                      var solidColor = theme === 'blackspace' ? '#000000' : '#ffffff';
-
-                      // Create overlay DIV IMMEDIATELY
-                      var overlay = document.createElement('div');
-                      overlay.className = 'theme-transition-overlay';
-                      overlay.id = 'instant-transition-overlay';
-                      overlay.style.cssText = 'position: fixed; inset: 0; z-index: 99999; background-color: ' + solidColor + '; pointer-events: none;';
-
-                      // Add to body immediately (before React renders)
-                      document.body.appendChild(overlay);
-
-                      // SAFETY NET: Auto-remove overlay after 5 seconds max
-                      // Prevents permanent black/white screen if React fails to hydrate
-                      setTimeout(function() {
-                        var staleOverlay = document.getElementById('instant-transition-overlay');
-                        if (staleOverlay) {
-                          staleOverlay.style.transition = 'opacity 0.5s ease-out';
-                          staleOverlay.style.opacity = '0';
-                          setTimeout(function() { staleOverlay.remove(); }, 500);
-                          console.warn('[Blocking Script] Safety net: removed stale overlay after 5s');
-                        }
-                        // Also remove any other transition overlays
-                        document.querySelectorAll('.theme-transition-overlay').forEach(function(el) { el.remove(); });
-                        sessionStorage.removeItem('theme-transition-pair');
-                        sessionStorage.removeItem('theme-transition-timestamp');
-                      }, 5000);
-                    } else {
-                      // Clear stale data
-                      sessionStorage.removeItem('theme-transition-pair');
-                      sessionStorage.removeItem('theme-transition-timestamp');
-                    }
-                  }
-                } catch (e) {
-                  console.error('[Blocking Script] Error:', e);
-                }
-              })();
-            `,
-          }}
-        />
-
         {/* JSON-LD Structured Data for SEO */}
         <OrganizationJsonLd />
         <PersonJsonLd />
@@ -296,6 +277,7 @@ export default async function RootLayout({
         )}
         <ClientLayoutWrapper
           initialTheme={serverTheme}
+          initialPreference={serverPreference}
           navLayout={navLayout}
           themeLocked={themeLocked}
           forcedTheme={themeLocked ? serverTheme : undefined}

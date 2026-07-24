@@ -278,6 +278,7 @@ html {
  * Reference: src/app/contexts/ThemeContext.tsx (lines 10-60)
  */
 html.theme-lightgradient {
+  color-scheme: light; /* native scrollbars/form controls follow the theme */
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 20%, #ec4899 40%, #f97316 60%, #eab308 80%, #10b981 100%);
   background-color: #ffffff; /* Fallback solid color if gradient fails - WHITE for browser controls */
   background-size: 400% 400%;
@@ -312,6 +313,7 @@ html.theme-lightgradient body {
 }
 
 html.theme-blackspace {
+  color-scheme: dark; /* native scrollbars/form controls follow the theme */
   background-color: #000000 !important; /* Force black, no transparency */
   background: #000000 !important; /* Ensure solid black background */
   /* Ensure background fills entire viewport including safe areas */

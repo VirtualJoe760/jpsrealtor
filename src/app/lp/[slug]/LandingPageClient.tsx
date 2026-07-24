@@ -14,13 +14,18 @@ interface LandingPageClientProps {
 }
 
 export default function LandingPageClient({ post, mdxContent }: LandingPageClientProps) {
-  const { currentTheme, setTheme } = useTheme();
+  const { currentTheme, applyEphemeralTheme, clearEphemeralTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  // Apply theme override from CMS config on mount
+  // Apply the CMS theme override for THIS page only. Ephemeral by design:
+  // the old setTheme() call silently overwrote the visitor's own theme
+  // preference cookie (and could visually bypass a tenant-locked theme —
+  // applyEphemeralTheme no-ops when locked). The pin (no !== guard — pin even
+  // when equal, so an OS flip can't morph the styled page) is reverted on
+  // unmount, so a soft navigation away can't leak the override site-wide.
   useEffect(() => {
-    if (post.themeOverride && post.themeOverride !== currentTheme) {
-      setTheme(post.themeOverride as "lightgradient" | "blackspace");
+    if (post.themeOverride) {
+      applyEphemeralTheme(post.themeOverride as "lightgradient" | "blackspace");
     }
     // Track landing page view
     trackViewContent({
@@ -28,6 +33,11 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
       address: post.title || "Landing Page",
       city: "landing_page",
     });
+    // Revert the override when leaving the LP (soft navigation keeps the same
+    // ThemeProvider alive — without this, the whole site stays overridden).
+    return () => {
+      if (post.themeOverride) clearEphemeralTheme();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Agent email for form submission

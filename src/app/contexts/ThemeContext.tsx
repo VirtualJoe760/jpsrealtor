@@ -1,973 +1,340 @@
 "use client";
 
 /**
- * ThemeContext - Theme Management System
+ * ThemeContext — theme preference + resolution.
  *
- * This context manages the application's theme state, providing both light gradient
- * and dark (blackspace) theme options. Themes are persisted via cookies (for SSR)
- * and localStorage (for backup/backwards compatibility).
+ * MODEL (2026-07-24 rewrite, see docs/theming/README.md):
+ *   preference: "system" | "light" | "dark"   ← what the user chose (default system)
+ *   currentTheme: "lightgradient" | "blackspace" ← what's on screen (resolved)
  *
- * CRITICAL: BACKGROUND & PADDING BEHAVIOR
- * ========================================
+ * - Default is SYSTEM: the site follows the device's prefers-color-scheme,
+ *   live — flip your OS at sunset and the page (and the iPhone Dynamic
+ *   Island / Safari chrome, via the meta tags below) morphs with it over the
+ *   0.3s background transition in globals.css.
+ * - The Sun/Moon toggles set an EXPLICIT override (light/dark), persisted in
+ *   the `site-theme` cookie. "Auto" in the dashboard returns to system.
+ * - Tenant lock (agentProfile.themeMode = light|dark) beats everything and
+ *   hides/disables the toggles.
+ * - Theme switching is INSTANT everywhere — no page reload. The old
+ *   two-act reload transition existed to mask the reload's re-render cost;
+ *   with every consumer now reactive there is nothing left to mask.
  *
- * Per MDN CSS Box Model: "Background colors extend through the padding area."
+ * PERSISTENCE RULES:
+ * - The cookie is written ONLY on explicit user action (toggle / picker) —
+ *   never automatically on load (the old auto-write froze every visitor on
+ *   their first-ever theme).
+ * - `site-theme-resolved` is an echo cookie (written here and by the layout
+ *   head script) so the SERVER can render the correct system theme from the
+ *   second visit onward. It is never a preference.
+ * - Legacy cookie values migrate on read: "blackspace" → explicit dark (only
+ *   reachable by a real toggle back then), "lightgradient" → system (it was
+ *   auto-persisted for everyone, so it signals nothing).
  *
- * This means that when a container has padding AND a background (like our gradient),
- * the background will be VISIBLE in the padded area, creating unwanted "white space"
- * or gradient bleed on the sides of the page.
- *
- * ⚠️ DO NOT apply padding to containers that sit directly against the body gradient!
- *
- * CORRECT PATTERN - Parent Wrapper with Padding:
- * ```tsx
- * // Main container - NO PADDING
- * <div className="max-w-7xl mx-auto w-full h-full flex flex-col overflow-x-hidden pt-16 md:pt-0">
- *
- *   // Individual sections - WRAP with padding parent
- *   <div className="px-4 sm:px-6 lg:px-8">
- *     <YourComponent />
- *   </div>
- * </div>
- * ```
- *
- * INCORRECT PATTERN - Padding on Main Container:
- * ```tsx
- * // ❌ WRONG - Gradient will show through padding
- * <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
- *   <YourComponent />
- * </div>
- * ```
- *
- * WHY THIS MATTERS:
- * - Body has gradient background (globals.css lines 124-135)
- * - Padding creates space between content and container edge
- * - Background fills that padding space, showing the gradient
- * - Result: Visible "white space" that looks like a layout bug
- *
- * SOLUTION:
- * 1. Remove padding from main containers that touch the body gradient
- * 2. Wrap individual sections (header, toolbar, content) in parent divs
- * 3. Apply padding to those parent wrappers: `px-4 sm:px-6 lg:px-8`
- * 4. This keeps content properly spaced WITHOUT exposing the background
- *
- * REFERENCE IMPLEMENTATION:
- * - See: src/app/agent/contacts/page.tsx (lines 19-87)
- * - See: src/app/components/crm/ContactsTab.tsx (lines 244-306)
- *
- * AFFECTED PAGES:
- * Any page that uses the gradient background and has full-width content containers.
- *
- * Last Updated: 2026-01-23
+ * DYNAMIC ISLAND / BROWSER CHROME (the load-bearing part — keep in sync with
+ * src/app/layout.tsx and globals.css):
+ * - <meta name="theme-color"> + <meta name="apple-mobile-web-app-status-bar-style">
+ *   are re-created (remove + append) on every theme change — Safari reliably
+ *   notices a re-created tag where it may ignore a mutated one.
+ * - In system mode we install DUAL theme-color metas with media attributes so
+ *   Safari flips the chrome color natively the instant the OS theme changes,
+ *   in perfect sync with our matchMedia listener morphing the page.
+ * - The "all one color" effect itself is CSS: viewport-fit=cover plus the
+ *   html/body theme backgrounds with background-attachment: fixed in
+ *   globals.css. Do not touch those.
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { themes, getThemeClasses, type Theme, type ThemeName } from "@/app/themes/themes";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  ReactNode,
+} from "react";
+import { getThemeClasses, isThemeName, type ThemeName } from "@/app/themes/themes";
 
-// Re-export types for convenience
-export type { Theme, ThemeName };
+export type { ThemeName };
+export type ThemePreference = "system" | "light" | "dark";
 
 interface ThemeContextType {
+  /** Resolved theme currently on screen. */
   currentTheme: ThemeName;
-  theme: Theme;
+  /** What the user chose: follow the device, or an explicit override. */
+  preference: ThemePreference;
+  /** Set an explicit light/dark override, or "system" to follow the device. Persists. */
+  setPreference: (pref: ThemePreference) => void;
+  /** Explicit theme set (persists as an override). Kept for existing callers. */
   setTheme: (theme: ThemeName) => void;
+  /** Instant light↔dark flip; persists as an explicit override. */
   toggleTheme: () => void;
-  themeLocked: boolean; // tenant forces light/dark — hide toggles
+  /**
+   * Session-only visual override (landing-page themeOverride). Does NOT
+   * persist and does NOT change the visitor's preference — the old version
+   * silently overwrote the visitor's cookie, which was a bug. While active it
+   * PINS the theme: the system-sync and OS-change listener leave it alone,
+   * and the chrome metas match the pinned theme (not the device). Cleared by
+   * clearEphemeralTheme (LP unmount) or any explicit user action.
+   */
+  applyEphemeralTheme: (theme: ThemeName) => void;
+  /** Revert an ephemeral override — re-resolves from the real preference. */
+  clearEphemeralTheme: () => void;
+  /** Tenant forces light/dark — controls are hidden and every setter no-ops. */
+  themeLocked: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Cookie name for theme persistence
-const THEME_COOKIE_NAME = 'site-theme';
+// VERSIONED preference cookie. Deliberately NOT the legacy 'site-theme':
+// vercel.json stamps page HTML immutable, so long-cached OLD bundles keep
+// running old ThemeContext code that auto-writes legacy values into
+// 'site-theme' on every mount — which would silently corrupt the new
+// preference (e.g. explicit light → explicit dark via the migration). Old
+// code can't touch 'site-theme-pref', so once written it always wins; the
+// legacy cookie is read only as a one-time migration source in layout.tsx.
+const THEME_PREF_COOKIE = "site-theme-pref"; // light | dark | system
+const RESOLVED_COOKIE = "site-theme-resolved"; // device echo for SSR: light | dark
 
-// Helper to set a cookie
-function setThemeCookie(theme: ThemeName) {
-  // Set cookie with 1 year expiry, accessible across the site
-  document.cookie = `${THEME_COOKIE_NAME}=${theme}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+const COOKIE_SUFFIX = `; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+
+function prefToTheme(pref: "light" | "dark"): ThemeName {
+  return pref === "dark" ? "blackspace" : "lightgradient";
+}
+function themeToPref(theme: ThemeName): "light" | "dark" {
+  return theme === "blackspace" ? "dark" : "light";
 }
 
-// Helper to get theme from cookie (client-side)
-function getThemeFromCookie(): ThemeName | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`(^| )${THEME_COOKIE_NAME}=([^;]+)`));
-  const theme = match ? match[2] as ThemeName : null;
-  return theme && themes[theme] ? theme : null;
+function systemTheme(): ThemeName {
+  if (typeof window === "undefined") return "lightgradient";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "blackspace"
+    : "lightgradient";
 }
 
-// Helper function to get initial theme - checks cookie first, then localStorage
-function getInitialTheme(): ThemeName {
-  console.log('=== [getInitialTheme] ===');
-
-  if (typeof window === 'undefined') {
-    console.log('[getInitialTheme] SSR context, returning default');
-    return 'lightgradient';
-  }
-
-  try {
-    // First check cookie (server can read this)
-    console.log('[getInitialTheme] Checking cookie...');
-    const cookieTheme = getThemeFromCookie();
-    console.log('[getInitialTheme] Cookie theme:', cookieTheme);
-
-    if (cookieTheme) {
-      console.log('[getInitialTheme] Returning cookie theme:', cookieTheme);
-      return cookieTheme;
-    }
-
-    // Fallback to localStorage for backwards compatibility
-    console.log('[getInitialTheme] No cookie, checking localStorage...');
-    const savedTheme = localStorage.getItem("site-theme") as ThemeName | null;
-    console.log('[getInitialTheme] localStorage theme:', savedTheme);
-    console.log('[getInitialTheme] Is valid theme:', savedTheme && themes[savedTheme]);
-
-    if (savedTheme && themes[savedTheme]) {
-      // Migrate to cookie
-      console.log('[getInitialTheme] Migrating localStorage theme to cookie:', savedTheme);
-      setThemeCookie(savedTheme);
-      return savedTheme;
-    }
-  } catch (error) {
-    console.error('[getInitialTheme] Error reading theme:', error);
-  }
-
-  console.log('[getInitialTheme] No theme found, returning default: lightgradient');
-  return 'lightgradient';
+function writeCookie(name: string, value: string) {
+  document.cookie = `${name}=${value}${COOKIE_SUFFIX}`;
 }
 
-// Get initial theme from DOM (set by server/middleware)
-function getServerRenderedTheme(): ThemeName | null {
-  if (typeof document === 'undefined') return null;
+// ---------------------------------------------------------------------------
+// Meta management (Dynamic Island / Safari chrome / Android address bar)
+// ---------------------------------------------------------------------------
 
-  const html = document.documentElement;
-  if (html.classList.contains('theme-blackspace')) return 'blackspace';
-  if (html.classList.contains('theme-lightgradient')) return 'lightgradient';
-  return null;
-}
-
-// ===================================
-// THEME TRANSITION ANIMATIONS
-// Two-Act System: Exit → Refresh → Enter
-// ===================================
-
-const ANIMATION_PAIRS = {
-  'french-doors': { exit: 'doors-close', enter: 'doors-open', duration: 500 },
-  'garage': { exit: 'garage-down', enter: 'garage-up', duration: 450 },
-  'sliding-door': { exit: 'slide-close', enter: 'slide-open', duration: 450 },
-  'shutters': { exit: 'shutters-close', enter: 'shutters-open', duration: 500 },
-  'curtains': { exit: 'curtains-close', enter: 'curtains-open', duration: 550 }
-} as const;
-
-type AnimationPairKey = keyof typeof ANIMATION_PAIRS;
+const LIGHT_CHROME = "#ffffff";
+const DARK_CHROME = "#000000";
 
 /**
- * Select a random animation, avoiding repeats
- */
-function selectRandomAnimation(): AnimationPairKey {
-  const keys = Object.keys(ANIMATION_PAIRS) as AnimationPairKey[];
-  const lastAnimation = localStorage.getItem('last-theme-animation') as AnimationPairKey | null;
-
-  // Filter out the last animation to avoid repeats
-  const availableKeys = lastAnimation
-    ? keys.filter(k => k !== lastAnimation)
-    : keys;
-
-  const selectedKey = availableKeys[Math.floor(Math.random() * availableKeys.length)];
-
-  // Save for next time
-  localStorage.setItem('last-theme-animation', selectedKey);
-
-  return selectedKey;
-}
-
-/**
- * Get theme color for overlay
- */
-function getThemeColor(theme: ThemeName): string {
-  return theme === 'blackspace' ? '#000000' : '#ffffff';
-}
-
-/**
- * Listing data interface — drives the theme-transition overlay
- * showcase. agentName is rendered as a "Listed by …" treatment.
- */
-interface FeaturedListing {
-  photoUrl: string;
-  address: string;
-  city: string;
-  price: number;
-  beds: number;
-  baths: number;
-  sqft?: number;
-  agentName?: string;
-  officeName?: string;
-}
-
-/**
- * Featured eXp listings near the user (fetched from API)
- */
-let FEATURED_LISTINGS: FeaturedListing[] = [];
-
-// Auto-expanding radius — start tight (5mi), expand outward until
-// we get at least one usable listing or exhaust the schedule. The
-// jumps are intentionally large because each step is an API round
-// trip; we'd rather do 4 wide buckets than 20 narrow ones. 500mi
-// covers any reasonable continental US fallback when geolocation
-// is denied AND the Palm Desert default has no nearby inventory.
-const RADIUS_SCHEDULE_MILES = [5, 25, 100, 500];
-
-/**
- * Fetch nearby eXp featured listings.
+ * Re-create the chrome meta tags for the given state. Remove + append (not
+ * setAttribute) — Safari reliably re-reads a fresh tag.
  *
- * Resolves a center point via resolveSpawnPoint() (geolocation
- * prompt → user's coords if granted-and-in-CA, else Palm Desert),
- * then queries /api/listings/featured with an auto-expanding
- * radius until we get at least one usable listing.
+ * system mode → dual theme-color metas with media queries (Safari follows the
+ * OS natively); explicit/locked → a single fixed meta.
  */
-async function fetchFeaturedListings(): Promise<void> {
-  try {
-    // Lazy-import to avoid pulling the geolocation helper into the
-    // module-init bundle (it's only needed once on mount).
-    const { resolveSpawnPoint } = await import('@/lib/map/resolve-spawn-point');
-    const center = await resolveSpawnPoint();
+function applyChromeMetas(theme: ThemeName, followSystem: boolean) {
+  document
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((el) => el.remove());
 
-    for (const radius of RADIUS_SCHEDULE_MILES) {
-      const url = `/api/listings/featured?lat=${center.lat}&lng=${center.lng}&radius=${radius}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        console.warn(
-          `[ThemeContext] /api/listings/featured ${response.status} (radius ${radius}mi)`
-        );
-        continue;
-      }
-
-      const data = await response.json();
-      const usable = (data?.listings || []).filter((l: any) => l.photoUrl);
-      if (usable.length > 0) {
-        FEATURED_LISTINGS = usable;
-        console.log(
-          `[ThemeContext] Loaded ${usable.length} eXp listings within ${radius}mi of ` +
-            `(${center.lat.toFixed(3)}, ${center.lng.toFixed(3)})`
-        );
-        return;
-      }
-      // Empty at this radius — expand and retry.
-      console.log(
-        `[ThemeContext] No eXp listings within ${radius}mi, expanding`
-      );
-    }
-
-    console.warn(
-      '[ThemeContext] Exhausted radius schedule with no listings — overlay will fall back to solid-color transition'
-    );
-  } catch (error) {
-    console.error('[ThemeContext] Error fetching featured listings:', error);
-  }
-}
-
-/**
- * Save listings to sessionStorage so they survive page refresh.
- * Called during EXIT animation before window.location.reload().
- */
-function cacheFeaturedListings(): void {
-  if (FEATURED_LISTINGS.length > 0) {
-    try {
-      sessionStorage.setItem('featured-listings-cache', JSON.stringify(FEATURED_LISTINGS));
-    } catch {}
-  }
-}
-
-/**
- * Restore listings from sessionStorage (instant, no API call needed).
- * Called on page load before ENTER animation fires.
- */
-function restoreFeaturedListings(): void {
-  if (FEATURED_LISTINGS.length > 0) return; // Already loaded
-  try {
-    const cached = sessionStorage.getItem('featured-listings-cache');
-    if (cached) {
-      FEATURED_LISTINGS = JSON.parse(cached);
-      console.log(`[ThemeContext] Restored ${FEATURED_LISTINGS.length} cached listings from sessionStorage`);
-    }
-  } catch {}
-}
-
-/**
- * Get a random nearby eXp broker listing for the overlay showcase.
- * Returns null if no listings available — caller falls back to a
- * solid-color transition with no property card.
- */
-function getRandomListing(): FeaturedListing | null {
-  if (FEATURED_LISTINGS.length === 0) restoreFeaturedListings(); // Try cache first
-  if (FEATURED_LISTINGS.length === 0) return null;
-  return FEATURED_LISTINGS[Math.floor(Math.random() * FEATURED_LISTINGS.length)];
-}
-
-// One-listing-per-transition pin. The exit animation picks a listing,
-// the page reloads, the enter animation needs to render the SAME
-// listing (otherwise the user sees property A on exit and property B
-// on enter — two listings flashing past in one transition feels
-// chaotic). sessionStorage survives the reload; we set in exit, read
-// in enter, clear immediately after consumption so the next toggle
-// re-picks fresh.
-const ACTIVE_TRANSITION_LISTING_KEY = 'theme-transition-active-listing';
-
-function pinTransitionListing(listing: FeaturedListing): void {
-  try {
-    sessionStorage.setItem(ACTIVE_TRANSITION_LISTING_KEY, JSON.stringify(listing));
-  } catch {}
-}
-
-// Returns the pinned listing if exit-side stashed one (and clears it),
-// otherwise falls back to a fresh random pick. The fallback covers
-// edge cases — direct page load with the enter flag set but no pinned
-// listing (e.g. dev hot-reload, sessionStorage cleared mid-transition).
-function consumeTransitionListing(): FeaturedListing | null {
-  try {
-    const raw = sessionStorage.getItem(ACTIVE_TRANSITION_LISTING_KEY);
-    if (raw) {
-      sessionStorage.removeItem(ACTIVE_TRANSITION_LISTING_KEY);
-      return JSON.parse(raw) as FeaturedListing;
-    }
-  } catch {}
-  return getRandomListing();
-}
-
-/**
- * Get eXp logo path (always white)
- */
-function getExpLogo(theme: ThemeName): string {
-  return '/images/brand/EXP-white-square.png';
-}
-
-/**
- * Get SVG graphic for animation
- */
-function getAnimationSVG(animationKey: AnimationPairKey, phase: 'exit' | 'enter'): string {
-  const svgs = {
-    'key-turn': `
-      <svg viewBox="0 0 100 100" style="width: 200px; height: 200px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <g id="key" style="transform-origin: 50% 50%;">
-          <!-- Key head (circular) -->
-          <circle cx="30" cy="50" r="15" fill="none" stroke="white" stroke-width="3" opacity="0.9"/>
-          <circle cx="30" cy="50" r="8" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
-          <!-- Key shaft -->
-          <rect x="42" y="47" width="40" height="6" rx="2" fill="white" opacity="0.9"/>
-          <!-- Key teeth -->
-          <rect x="70" y="42" width="4" height="11" fill="white" opacity="0.9"/>
-          <rect x="76" y="45" width="4" height="8" fill="white" opacity="0.9"/>
-          <rect x="82" y="42" width="4" height="11" fill="white" opacity="0.9"/>
-        </g>
-      </svg>
-    `,
-    'french-doors': `
-      <svg viewBox="0 0 100 100" style="width: 60%; height: 80%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Left door -->
-        <rect x="10" y="15" width="35" height="70" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-        <rect x="15" y="20" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <rect x="15" y="50" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <circle cx="38" cy="52" r="2" fill="white" opacity="0.9"/>
-
-        <!-- Right door -->
-        <rect x="55" y="15" width="35" height="70" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-        <rect x="60" y="20" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <rect x="60" y="50" width="25" height="25" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <circle cx="62" cy="52" r="2" fill="white" opacity="0.9"/>
-      </svg>
-    `,
-    'blinds': `
-      <svg viewBox="0 0 100 100" style="width: 70%; height: 70%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        ${Array.from({ length: 12 }, (_, i) => `
-          <rect x="15" y="${15 + i * 6}" width="70" height="4" rx="1" fill="white" opacity="${0.7 - i * 0.02}"/>
-        `).join('')}
-      </svg>
-    `,
-    'garage': `
-      <svg viewBox="0 0 100 100" style="width: 60%; height: 70%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Garage door sections -->
-        ${Array.from({ length: 6 }, (_, i) => `
-          <rect x="20" y="${20 + i * 11}" width="60" height="9" rx="1" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-          <line x1="25" y1="${24 + i * 11}" x2="75" y2="${24 + i * 11}" stroke="white" stroke-width="0.5" opacity="0.5"/>
-        `).join('')}
-        <!-- Handle -->
-        <rect x="48" y="62" width="4" height="8" rx="1" fill="white" opacity="0.9"/>
-      </svg>
-    `,
-    'sliding-door': `
-      <svg viewBox="0 0 100 100" style="width: 65%; height: 80%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Door panel -->
-        <rect x="30" y="15" width="40" height="70" rx="2" fill="none" stroke="white" stroke-width="2.5" opacity="0.85"/>
-        <rect x="35" y="20" width="30" height="60" fill="none" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <!-- Vertical divider -->
-        <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        <!-- Handle -->
-        <rect x="60" y="48" width="6" height="4" rx="2" fill="white" opacity="0.9"/>
-      </svg>
-    `,
-    'property-card': `
-      <svg viewBox="0 0 100 100" style="width: 300px; height: 200px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Card outline -->
-        <rect x="10" y="25" width="80" height="50" rx="4" fill="none" stroke="white" stroke-width="2" opacity="0.9"/>
-        <!-- House icon -->
-        <path d="M 35 45 L 50 35 L 65 45 L 65 60 L 35 60 Z" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-        <rect x="45" y="50" width="10" height="10" fill="white" opacity="0.7"/>
-        <path d="M 32 45 L 50 32 L 68 45" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
-      </svg>
-    `,
-    'shutters': `
-      <svg viewBox="0 0 100 100" style="width: 60%; height: 75%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Left shutter -->
-        <rect x="15" y="20" width="28" height="60" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-        ${Array.from({ length: 8 }, (_, i) => `
-          <line x1="18" y1="${25 + i * 7}" x2="40" y2="${25 + i * 7}" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        `).join('')}
-
-        <!-- Right shutter -->
-        <rect x="57" y="20" width="28" height="60" rx="2" fill="none" stroke="white" stroke-width="2" opacity="0.8"/>
-        ${Array.from({ length: 8 }, (_, i) => `
-          <line x1="60" y1="${25 + i * 7}" x2="82" y2="${25 + i * 7}" stroke="white" stroke-width="1.5" opacity="0.6"/>
-        `).join('')}
-      </svg>
-    `,
-    'curtains': `
-      <svg viewBox="0 0 100 100" style="width: 70%; height: 85%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <!-- Curtain rod -->
-        <line x1="10" y1="12" x2="90" y2="12" stroke="white" stroke-width="2" opacity="0.9"/>
-        <circle cx="10" cy="12" r="3" fill="white" opacity="0.9"/>
-        <circle cx="90" cy="12" r="3" fill="white" opacity="0.9"/>
-
-        <!-- Left curtain -->
-        <path d="M 15 15 Q 18 50, 15 85 L 40 85 Q 38 50, 40 15 Z" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
-        <path d="M 20 15 Q 22 50, 20 85" stroke="white" stroke-width="1" opacity="0.5"/>
-        <path d="M 30 15 Q 32 50, 30 85" stroke="white" stroke-width="1" opacity="0.5"/>
-
-        <!-- Right curtain -->
-        <path d="M 60 15 Q 62 50, 60 85 L 85 85 Q 82 50, 85 15 Z" fill="none" stroke="white" stroke-width="2" opacity="0.7"/>
-        <path d="M 65 15 Q 67 50, 65 85" stroke="white" stroke-width="1" opacity="0.5"/>
-        <path d="M 75 15 Q 77 50, 75 85" stroke="white" stroke-width="1" opacity="0.5"/>
-      </svg>
-    `,
+  const add = (content: string, media?: string) => {
+    const m = document.createElement("meta");
+    m.setAttribute("name", "theme-color");
+    m.setAttribute("content", content);
+    if (media) m.setAttribute("media", media);
+    document.head.appendChild(m);
   };
 
-  return svgs[animationKey] || '';
+  if (followSystem) {
+    add(LIGHT_CHROME, "(prefers-color-scheme: light)");
+    add(DARK_CHROME, "(prefers-color-scheme: dark)");
+  } else {
+    add(theme === "blackspace" ? DARK_CHROME : LIGHT_CHROME);
+  }
+
+  // iOS PWA status bar (no media-query support — always single, resolved).
+  document
+    .querySelectorAll('meta[name="apple-mobile-web-app-status-bar-style"]')
+    .forEach((el) => el.remove());
+  const bar = document.createElement("meta");
+  bar.setAttribute("name", "apple-mobile-web-app-status-bar-style");
+  bar.setAttribute("content", theme === "blackspace" ? "black" : "default");
+  document.head.appendChild(bar);
 }
 
-/**
- * Play EXIT animation (closing the old theme)
- * Sequence: Animation IN → Hold → Cross-dissolve to solid color → Stay for refresh
- */
-function playExitAnimation(
-  animationKey: AnimationPairKey,
-  targetTheme: ThemeName
-): Promise<void> {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'theme-transition-overlay';
-
-    // Solid color will be the underlay (revealed when content fades)
-    const solidColor = targetTheme === 'blackspace' ? '#000000' : '#ffffff';
-
-    console.log(`[ThemeTransition] EXIT animation - Target theme: ${targetTheme}, Solid color: ${solidColor}`);
-
-    overlay.style.cssText = `
-      background-color: ${solidColor};
-    `;
-
-    overlay.setAttribute('data-animation', animationKey);
-    overlay.setAttribute('data-phase', 'exit');
-
-    const { exit, duration } = ANIMATION_PAIRS[animationKey];
-
-    // Add eXp logo + listing details
-    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
-    const logoPath = getExpLogo(currentTheme);
-
-    // Pick a listing for THIS transition and pin it. The enter side
-    // (which runs after window.location.reload) will consume the same
-    // pinned listing — keeps one property visible across exit→enter
-    // instead of flashing two different ones.
-    const listing = getRandomListing();
-    if (listing) pinTransitionListing(listing);
-
-    // If no listings available, show simple solid color transition
-    if (!listing) {
-      console.warn('[ThemeTransition] No featured listings available, using simple color transition');
-
-      // Create simple solid color overlay
-      document.body.appendChild(overlay);
-
-      // Simple fade transition (no property showcase)
-      const simpleDuration = 800; // Faster than full animation
-
-      setTimeout(() => {
-        console.log(`[ThemeTransition] Simple EXIT transition complete - solid ${solidColor}`);
-        resolve();
-      }, simpleDuration);
-      return;
-    }
-
-    // Content container with listing photo background (will fade to reveal solid color)
-    const contentHTML = `
-      <div id="exit-content" style="
-        position: absolute;
-        inset: 0;
-        background-image: url('${listing.photoUrl}');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-      ">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center; width: 90%; max-width: 600px;">
-          <img
-            src="${logoPath}"
-            alt="eXp Realty"
-            style="width: 300px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));"
-          />
-          <div style="
-            margin-top: 30px;
-            font-size: 28px;
-            font-weight: 700;
-            color: white;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.6);
-            letter-spacing: 1px;
-            opacity: 0;
-            animation: fadeInText 0.5s ease-out ${duration}ms forwards;
-          ">
-            Broker Listing
-          </div>
-          <div style="
-            margin-top: 20px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            opacity: 0;
-            animation: fadeInText 0.5s ease-out ${duration + 200}ms forwards;
-          ">
-            <div style="
-              font-size: 22px;
-              font-weight: 600;
-              color: white;
-              margin-bottom: 12px;
-              text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            ">
-              ${listing.address}
-            </div>
-            <div style="
-              font-size: 18px;
-              color: #e0e0e0;
-              margin-bottom: 8px;
-            ">
-              ${listing.city}
-            </div>
-            <div style="
-              display: flex;
-              justify-content: center;
-              gap: 30px;
-              margin-top: 16px;
-              flex-wrap: wrap;
-            ">
-              <div style="
-                font-size: 32px;
-                font-weight: 700;
-                color: #4ade80;
-                text-shadow: 0 2px 10px rgba(74, 222, 128, 0.5);
-              ">
-                $${listing.price.toLocaleString()}
-              </div>
-              <div style="
-                font-size: 20px;
-                color: white;
-                display: flex;
-                gap: 20px;
-                align-items: center;
-              ">
-                <span style="font-weight: 600;">${listing.beds} BD</span>
-                <span style="opacity: 0.5;">|</span>
-                <span style="font-weight: 600;">${listing.baths} BA</span>
-                ${listing.sqft ? `<span style="opacity: 0.5;">|</span><span style="font-weight: 600;">${listing.sqft.toLocaleString()} SF</span>` : ''}
-              </div>
-            </div>
-            ${listing.agentName ? `
-              <div style="
-                margin-top: 18px;
-                padding-top: 14px;
-                border-top: 1px solid rgba(255, 255, 255, 0.15);
-                font-size: 14px;
-                color: rgba(255, 255, 255, 0.85);
-                letter-spacing: 0.5px;
-              ">
-                <span style="opacity: 0.6; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px;">Listed by</span>
-                <span style="margin-left: 8px; font-weight: 600;">${listing.agentName}</span>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      </div>
-      <style>
-        @keyframes fadeInText {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      </style>
-    `;
-    overlay.innerHTML = contentHTML;
-
-    // Plain opacity fade-in. The user wants the transition to be one
-    // fade in → listing → fade out cycle, not a door/curtain animation.
-    // Start the overlay invisible, then animate to full opacity. CSS
-    // transition kicks in once requestAnimationFrame paints the
-    // initial opacity:0 frame. The exit class (door/curtain animation)
-    // is intentionally NOT applied — animationKey/duration are only
-    // kept in scope for compatibility with the rest of the system
-    // (sessionStorage flag still selects a "pair" for branching, but
-    // both phases now just fade).
-    overlay.style.opacity = '0';
-    overlay.style.transition = `opacity ${600}ms ease-in-out`;
-
-    document.body.appendChild(overlay);
-
-    // Suppress unused-var warnings — kept in scope for future use.
-    void exit;
-    void duration;
-
-    // Trigger the fade-in on the next paint frame (immediate set
-    // wouldn't transition since we'd still be on the initial render).
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      console.log(`[ThemeTransition] 🌅 EXIT: fade-in (600ms) → hold (1.5s) → cross-dissolve to ${solidColor} (600ms)`);
-    });
-
-    // Timeline:
-    // 1. Fade in overlay with listing - 600ms
-    // 2. Hold with listing photo - 1500ms
-    // 3. Cross-dissolve listing → solid color - 600ms
-    //    (so the cross-refresh boundary is solid→solid, no flash)
-    // 4. Hold on solid color - 300ms (stability buffer)
-    // 5. Refresh triggers (overlay stays as solid color)
-
-    const fadeInDuration = 600;
-    const holdDuration = 1500;
-    const crossDissolveDuration = 600;
-    const solidColorBuffer = 300;
-
-    // After fade-in + hold, cross-dissolve listing content to solid
-    // color so the refresh boundary is seamless (blocking script on
-    // the new page paints the same solid color).
-    setTimeout(() => {
-      const contentDiv = overlay.querySelector('#exit-content') as HTMLElement;
-      if (contentDiv) {
-        contentDiv.classList.add('cross-dissolve-to-color');
-        console.log(`[ThemeTransition] Cross-dissolving listing → ${solidColor}...`);
-      }
-    }, fadeInDuration + holdDuration);
-
-    // Resolve once the solid color is stable. Overlay is NOT removed
-    // here — it stays visible across the refresh; ENTER fades it out.
-    const totalDuration =
-      fadeInDuration + holdDuration + crossDissolveDuration + solidColorBuffer;
-    setTimeout(() => {
-      console.log(`[ThemeTransition] EXIT complete - solid color stable, ready for refresh`);
-      resolve();
-    }, totalDuration);
+/** Swap the theme classes on <html> and <body>. `dark` rides along for the
+ *  `.dark, .theme-blackspace` CSS block and (post Phase-3 config fix) Tailwind. */
+function applyThemeClasses(theme: ThemeName) {
+  [document.documentElement, document.body].forEach((el) => {
+    el.className = el.className
+      .split(" ")
+      .filter((c) => c && !c.startsWith("theme-") && c !== "dark")
+      .concat(`theme-${theme}`)
+      .concat(theme === "blackspace" ? ["dark"] : [])
+      .join(" ");
   });
 }
 
-/**
- * Play ENTER animation (opening the new theme)
- * Sequence: Remove instant overlay → Replace with listing photo overlay → Cross-dissolve in → Hold → Animation OUT
- */
-function playEnterAnimation(
-  animationKey: AnimationPairKey
-): Promise<void> {
-  return new Promise((resolve) => {
-    // CRITICAL: Remove the instant solid color overlay created by blocking script
-    const instantOverlay = document.getElementById('instant-transition-overlay');
-    if (instantOverlay) {
-      console.log(`[ThemeTransition] Removing instant solid color overlay`);
-      instantOverlay.remove();
-    }
-
-    // Also remove any other existing overlays
-    const existingOverlays = document.querySelectorAll('.theme-transition-overlay');
-    existingOverlays.forEach(old => {
-      if (old.id !== 'instant-transition-overlay') {
-        console.log(`[ThemeTransition] Removing old overlay`);
-        old.remove();
-      }
-    });
-
-    const overlay = document.createElement('div');
-    overlay.className = 'theme-transition-overlay';
-
-    // Get current theme (NEW theme after refresh)
-    const currentTheme = document.documentElement.classList.contains('theme-blackspace') ? 'blackspace' : 'lightgradient';
-    const solidColor = currentTheme === 'blackspace' ? '#000000' : '#ffffff';
-
-    console.log(`[ThemeTransition] ENTER animation - Current theme: ${currentTheme}, Solid color: ${solidColor}`);
-
-    // Solid color as underlay (will be covered when content fades in)
-    overlay.style.cssText = `
-      background-color: ${solidColor};
-    `;
-
-    overlay.setAttribute('data-animation', animationKey);
-    overlay.setAttribute('data-phase', 'enter');
-
-    const { enter, duration } = ANIMATION_PAIRS[animationKey];
-
-    // Logo matches NEW theme
-    const logoPath = getExpLogo(currentTheme);
-
-    // Consume + discard the pinned listing so it doesn't leak into a
-    // future transition. We deliberately do NOT render it here — the
-    // listing card was the "bye" reveal during the EXIT phase. After
-    // the page reload, the new theme should appear cleanly without
-    // re-flashing the same property card. (User feedback: showing the
-    // listing on both phases felt like seeing the same photo twice in
-    // one transition.)
-    consumeTransitionListing();
-
-    // Suppress unused-var warnings for refs no longer needed by the
-    // simple-fade path.
-    void logoPath;
-    void enter;
-    void duration;
-
-    // Simple solid-color fade-out. The page-reload already swapped to
-    // the new theme; this overlay just gracefully reveals the new UI.
-    overlay.style.transition = 'opacity 0.8s ease-out';
-    document.body.appendChild(overlay);
-
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '0';
-    });
-
-    setTimeout(() => {
-      overlay.remove();
-      // Force-clean any other stale overlays
-      document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
-      const instantOverlay = document.getElementById('instant-transition-overlay');
-      if (instantOverlay) instantOverlay.remove();
-      console.log('[ThemeTransition] ENTER fade complete');
-      resolve();
-    }, 1000);
-
-    // SAFETY NET: Force remove ALL overlays after 6 seconds max
-    setTimeout(() => {
-      document.querySelectorAll('.theme-transition-overlay').forEach(el => el.remove());
-      const instantOverlay = document.getElementById('instant-transition-overlay');
-      if (instantOverlay) instantOverlay.remove();
-    }, 6000);
-  });
-}
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
 
 interface ThemeProviderProps {
   children: ReactNode;
+  /** Server-resolved theme (cookie/echo/lock) — seeds state so SSR and first
+   *  client render agree. */
   initialTheme?: ThemeName;
-  // When the tenant locks the theme (agentProfile.themeMode = light|dark), the
-  // visitor can't toggle and the cookie/localStorage is ignored.
+  /** Server-read preference (site-theme cookie, migrated). */
+  initialPreference?: ThemePreference;
+  /** Tenant forces light/dark — hide toggles, ignore visitor preference. */
   themeLocked?: boolean;
   forcedTheme?: ThemeName;
 }
 
-export function ThemeProvider({ children, initialTheme, themeLocked = false, forcedTheme }: ThemeProviderProps) {
-  // Initialize with the server-provided theme to prevent hydration mismatch
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>(forcedTheme || initialTheme || 'lightgradient');
-  const [mounted, setMounted] = useState(false);
+export function ThemeProvider({
+  children,
+  initialTheme,
+  initialPreference = "system",
+  themeLocked = false,
+  forcedTheme,
+}: ThemeProviderProps) {
+  const [currentTheme, setCurrentTheme] = useState<ThemeName>(
+    forcedTheme || initialTheme || "lightgradient"
+  );
+  const [preference, setPreferenceState] = useState<ThemePreference>(
+    themeLocked ? themeToPref(forcedTheme || initialTheme || "lightgradient") : initialPreference
+  );
 
-  // After mount, sync with cookie/localStorage if needed (handles edge cases like stale props).
-  // When the theme is LOCKED, skip this — the agent's forced theme always wins.
+  // Refs so the single matchMedia listener always sees fresh values without
+  // re-subscribing on every state change.
+  const prefRef = useRef(preference);
+  prefRef.current = preference;
+  const lockedRef = useRef(themeLocked);
+  lockedRef.current = themeLocked;
+  const themeRef = useRef(currentTheme);
+  themeRef.current = currentTheme;
+  // Ephemeral pin (landing-page themeOverride). While set, the system-sync
+  // and OS-change listener must NOT touch currentTheme, and the chrome metas
+  // follow the pinned theme instead of the device. Held as ref + state:
+  // effects read the ref; the state makes the apply effect re-run on changes.
+  const ephemeralRef = useRef(false);
+  const [ephemeralActive, setEphemeralActive] = useState(false);
+
+  // On mount: if following the system, sync to the real device preference
+  // (the server only knows it from the echo cookie — first visit it guessed
+  // light) and subscribe to live OS changes. The correction renders as a
+  // smooth 0.3s morph, not a flash: SSR page was internally consistent.
+  //
+  // NOTE: a child's applyEphemeralTheme (LandingPageClient) runs BEFORE this
+  // ancestor effect in the same flush — the ephemeralRef guard is what stops
+  // this sync from instantly clobbering the landing page's override.
   useEffect(() => {
-    setMounted(true);
     if (themeLocked) return;
 
-    const storedTheme = getInitialTheme();
-    // Only update if stored theme differs (e.g., user changed theme in another tab)
-    if (storedTheme !== currentTheme) {
-      setCurrentTheme(storedTheme);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
-  // Fetch nearby eXp broker listings on mount (geolocation prompt → Palm Desert fallback)
+    // Clear legacy localStorage so long-cached OLD bundles (immutable page
+    // HTML) can't resurrect stale values into the legacy cookie.
+    try {
+      localStorage.removeItem("site-theme");
+      localStorage.removeItem("last-theme-animation");
+    } catch {}
+
+    // The echo cookie ALWAYS records the DEVICE scheme (never the page theme —
+    // an ephemeral landing-page override must not pollute it). The head script
+    // writes it pre-paint too; this keeps it fresh across long sessions.
+    writeCookie(RESOLVED_COOKIE, mql.matches ? "dark" : "light");
+
+    if (prefRef.current === "system" && !ephemeralRef.current) {
+      const resolved = mql.matches ? "blackspace" : "lightgradient";
+      setCurrentTheme((prev) => (prev === resolved ? prev : resolved));
+    }
+
+    const onChange = (e: MediaQueryListEvent) => {
+      writeCookie(RESOLVED_COOKIE, e.matches ? "dark" : "light");
+      if (lockedRef.current || prefRef.current !== "system" || ephemeralRef.current) return;
+      setCurrentTheme(e.matches ? "blackspace" : "lightgradient");
+    };
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [themeLocked]);
+
+  // Apply resolved theme to the document: classes + chrome metas.
+  // NO persistence here — preference writes only happen on explicit action,
+  // and the echo cookie is device-derived (effect above). While an ephemeral
+  // override is active the chrome must match the PINNED theme, not the device
+  // (dual media metas would recolor the island to the OS scheme and
+  // contradict the page).
   useEffect(() => {
-    fetchFeaturedListings();
+    applyThemeClasses(currentTheme);
+    applyChromeMetas(
+      currentTheme,
+      !themeLocked && preference === "system" && !ephemeralActive
+    );
+  }, [currentTheme, preference, themeLocked, ephemeralActive]);
+
+  const clearEphemeral = useCallback(() => {
+    ephemeralRef.current = false;
+    setEphemeralActive(false);
   }, []);
 
-  // Apply theme to document and persist
-  useEffect(() => {
-    if (!mounted) return;
+  const setPreference = useCallback(
+    (pref: ThemePreference) => {
+      if (lockedRef.current) return;
+      clearEphemeral(); // explicit action always wins over an LP override
+      setPreferenceState(pref);
+      setCurrentTheme(pref === "system" ? systemTheme() : prefToTheme(pref));
+      writeCookie(THEME_PREF_COOKIE, pref);
+    },
+    [clearEphemeral]
+  );
 
-    console.log('=== [THEMECONTEXT APPLY THEME] ===');
-    console.log('[ThemeContext] Current theme:', currentTheme);
-    console.log('[ThemeContext] Mounted:', mounted);
+  const setTheme = useCallback(
+    (theme: ThemeName) => {
+      if (!isThemeName(theme)) return;
+      setPreference(themeToPref(theme));
+    },
+    [setPreference]
+  );
 
-    const theme = themes[currentTheme];
-    const root = document.documentElement;
-    const isLight = currentTheme === 'lightgradient';
+  const toggleTheme = useCallback(() => {
+    if (lockedRef.current) return;
+    clearEphemeral();
+    // Side effects OUTSIDE the state updater (StrictMode double-invokes
+    // updaters; cookie writes there would run twice).
+    const next: ThemeName =
+      themeRef.current === "blackspace" ? "lightgradient" : "blackspace";
+    setPreferenceState(themeToPref(next));
+    writeCookie(THEME_PREF_COOKIE, themeToPref(next));
+    setCurrentTheme(next);
+  }, [clearEphemeral]);
 
-    console.log('[ThemeContext] Is light theme:', isLight);
-    console.log('[ThemeContext] Theme object:', theme);
-
-    // Apply CSS variables
-    Object.entries(theme.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--color-${key}`, value);
-    });
-    console.log('[ThemeContext] CSS variables applied');
-
-    // Update theme classes on both html and body
-    [document.documentElement, document.body].forEach(el => {
-      const oldClassName = el.className;
-      el.className = el.className
-        .split(" ")
-        .filter((c) => !c.startsWith("theme-") && c !== "dark")
-        .concat(`theme-${currentTheme}`)
-        .concat(isLight ? [] : ["dark"]) // Add 'dark' class for Tailwind dark mode
-        .join(" ");
-      console.log('[ThemeContext] Class updated on', el.tagName, 'from:', oldClassName, 'to:', el.className);
-    });
-
-    // Detect if running as PWA (standalone mode)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                        (window.navigator as any).standalone ||
-                        document.referrer.includes('android-app://');
-
-    console.log('[ThemeContext] Display mode check:');
-    console.log('[ThemeContext]   - matchMedia standalone:', window.matchMedia('(display-mode: standalone)').matches);
-    console.log('[ThemeContext]   - navigator.standalone:', (window.navigator as any).standalone);
-    console.log('[ThemeContext]   - android-app referrer:', document.referrer.includes('android-app://'));
-    console.log('[ThemeContext]   - Final isStandalone:', isStandalone);
-
-    // Update meta tags in both PWA and browser modes
-    // Safari DOES respect these updates, even in browser mode, for Dynamic Island/status bar
-    const themeColor = isLight ? '#ffffff' : '#000000'; // White for light, black for dark
-    // Light theme: 'default' (light status bar, no black overlay)
-    // Dark theme: 'black' (opaque black status bar)
-    const statusBarStyle = isLight ? 'default' : 'black';
-
-    console.log('[ThemeContext] Computed values:');
-    console.log('[ThemeContext]   - themeColor:', themeColor, '(expected: lightgradient=#ffffff, blackspace=#000000)');
-    console.log('[ThemeContext]   - statusBarStyle:', statusBarStyle, '(expected: lightgradient=default, blackspace=black)');
-
-    // Update theme-color meta tag (for Dynamic Island / status bar)
-    // Remove and recreate to force Safari to recognize the change
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    const oldThemeColor = metaThemeColor ? metaThemeColor.getAttribute('content') : 'not found';
-    console.log('[ThemeContext] Old theme-color value:', oldThemeColor);
-
-    if (metaThemeColor) {
-      metaThemeColor.remove();
-      console.log('[ThemeContext] Removed old theme-color meta tag');
-    }
-    metaThemeColor = document.createElement('meta');
-    metaThemeColor.setAttribute('name', 'theme-color');
-    metaThemeColor.setAttribute('content', themeColor);
-    document.head.appendChild(metaThemeColor);
-    console.log('[ThemeContext] Created new theme-color meta tag:', themeColor);
-
-    // Update iOS status bar style
-    let metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    const oldStatusBar = metaStatusBar ? metaStatusBar.getAttribute('content') : 'not found';
-    console.log('[ThemeContext] Old status-bar-style value:', oldStatusBar);
-
-    if (metaStatusBar) {
-      metaStatusBar.remove();
-      console.log('[ThemeContext] Removed old status-bar-style meta tag');
-    }
-    metaStatusBar = document.createElement('meta');
-    metaStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-    metaStatusBar.setAttribute('content', statusBarStyle);
-    document.head.appendChild(metaStatusBar);
-    console.log('[ThemeContext] Created new status-bar-style meta tag:', statusBarStyle);
-
-    if (isStandalone) {
-      console.log('[ThemeContext] ✅ PWA mode - Meta tags updated');
-    } else {
-      console.log('[ThemeContext] ✅ Browser mode - Meta tags updated (helps ensure Dynamic Island shows correct color)');
-    }
-
-    // Persist to both cookie (for SSR) and localStorage (for backup).
-    // Skip when the theme is locked — we don't want a tenant's forced theme to
-    // overwrite the visitor's own preference cookie (which other sites rely on).
-    if (!themeLocked) {
-      setThemeCookie(currentTheme);
-      localStorage.setItem("site-theme", currentTheme);
-    }
-  }, [currentTheme, mounted, themeLocked]);
-
-  // Play ENTER animation on mount if coming from theme toggle
-  useEffect(() => {
-    if (!mounted) return;
-
-    const animationKey = sessionStorage.getItem('theme-transition-pair') as AnimationPairKey | null;
-    const timestamp = sessionStorage.getItem('theme-transition-timestamp');
-
-    if (animationKey && timestamp) {
-      const age = Date.now() - parseInt(timestamp, 10);
-
-      // Only play if refresh happened within 5 seconds (prevent stale animations)
-      if (age < 5000) {
-        console.log(`[ThemeTransition] 🎬 Act 2: Playing ENTER animation`);
-
-        playEnterAnimation(animationKey).then(() => {
-          // Cleanup sessionStorage after animation completes
-          sessionStorage.removeItem('theme-transition-pair');
-          sessionStorage.removeItem('theme-transition-timestamp');
-        });
-      } else {
-        // Clear stale data
-        console.log('[ThemeTransition] ⏰ Stale animation data cleared (>5s old)');
-        sessionStorage.removeItem('theme-transition-pair');
-        sessionStorage.removeItem('theme-transition-timestamp');
-      }
-    }
-  }, [mounted, currentTheme]);
-
-  const setTheme = (theme: ThemeName) => {
+  const applyEphemeralTheme = useCallback((theme: ThemeName) => {
+    if (lockedRef.current || !isThemeName(theme)) return;
+    // Visual only: no cookie writes, no preference change. Pins the theme so
+    // the system-sync / OS-change listener can't clobber the landing page's
+    // styled moment; cleared on LP unmount or any explicit user action.
+    ephemeralRef.current = true;
+    setEphemeralActive(true);
     setCurrentTheme(theme);
-  };
+  }, []);
 
-  const toggleTheme = async () => {
-    // Locked tenants (themeMode light/dark only) can't switch themes.
-    if (themeLocked) return;
-    const newTheme = currentTheme === "blackspace" ? "lightgradient" : "blackspace";
-    const oldColor = getThemeColor(currentTheme);
-
-    // Detect if running as PWA (standalone mode)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                        (window.navigator as any).standalone ||
-                        document.referrer.includes('android-app://');
-
-    if (!isStandalone) {
-      // Browser mode: Two-act animation system
-      const selectedAnimation = selectRandomAnimation();
-
-      // Save animation choice and timestamp to sessionStorage
-      sessionStorage.setItem('theme-transition-pair', selectedAnimation);
-      sessionStorage.setItem('theme-transition-timestamp', Date.now().toString());
-
-      console.log(`[ThemeTransition] 🎬 Starting two-act transition: ${selectedAnimation}`);
-
-      // Act 1: Play EXIT animation → Hold → Cross-dissolve to solid color (target theme)
-      await playExitAnimation(selectedAnimation, newTheme);
-
-      // Update cookie for server-side rendering
-      setThemeCookie(newTheme);
-
-      // Cache listings in sessionStorage so ENTER animation has them instantly after refresh
-      cacheFeaturedListings();
-
-      // Trigger page refresh (Act 2 will play on mount)
-      window.location.reload();
-    } else {
-      // PWA mode: Instant theme change (no refresh needed)
-      console.log('[ThemeTransition] ⚡ PWA mode - instant theme change');
-      setCurrentTheme(newTheme);
-    }
-  };
+  const clearEphemeralTheme = useCallback(() => {
+    if (!ephemeralRef.current) return;
+    clearEphemeral();
+    if (lockedRef.current) return;
+    // Re-resolve from the real preference (not a snapshot — the OS scheme may
+    // have flipped while the override was active).
+    setCurrentTheme(
+      prefRef.current === "system" ? systemTheme() : prefToTheme(prefRef.current as "light" | "dark")
+    );
+  }, [clearEphemeral]);
 
   const value: ThemeContextType = {
     currentTheme,
-    theme: themes[currentTheme],
+    preference,
+    setPreference,
     setTheme,
     toggleTheme,
+    applyEphemeralTheme,
+    clearEphemeralTheme,
     themeLocked,
   };
 

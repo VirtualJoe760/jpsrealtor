@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import { signOutChain } from "@/lib/signout-chain";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,6 +10,7 @@ import { motion } from "framer-motion";
 import {
   Sun,
   Moon,
+  MonitorSmartphone,
   Menu,
   X,
   Settings,
@@ -33,7 +35,6 @@ interface ProfileCardProps {
   textPrimary: string;
   textSecondary: string;
   shadow: string;
-  toggleTheme: () => void;
 }
 
 export default function ProfileCard({
@@ -45,9 +46,11 @@ export default function ProfileCard({
   textPrimary,
   textSecondary,
   shadow,
-  toggleTheme,
 }: ProfileCardProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Tri-state theme control: Auto (follow device) | Light | Dark.
+  // Hidden entirely when the tenant locks the theme.
+  const { preference, setPreference, themeLocked } = useTheme();
 
   return (
     <motion.div
@@ -86,18 +89,41 @@ export default function ProfileCard({
 
         {/* Theme Toggle + Menu Buttons */}
         <div className="flex items-center gap-2">
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              isLight
-                ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-            }`}
-            aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
-          >
-            {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          </button>
+          {/* Theme: Auto (device) / Light / Dark — hidden when tenant-locked */}
+          {!themeLocked && (
+            <div
+              className={`flex items-center rounded-lg p-0.5 ${
+                isLight ? "bg-gray-200" : "bg-neutral-800"
+              }`}
+              role="group"
+              aria-label="Theme"
+            >
+              {([
+                { id: "system", icon: MonitorSmartphone, label: "Match device" },
+                { id: "light", icon: Sun, label: "Light" },
+                { id: "dark", icon: Moon, label: "Dark" },
+              ] as const).map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setPreference(id)}
+                  aria-label={label}
+                  aria-pressed={preference === id}
+                  title={label}
+                  className={`p-1.5 rounded-md transition-all duration-200 ${
+                    preference === id
+                      ? isLight
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "bg-neutral-600 text-white"
+                      : isLight
+                        ? "text-gray-500 hover:text-gray-700"
+                        : "text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Menu Button */}
           <button

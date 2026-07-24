@@ -1,7 +1,7 @@
 ---
 title: Architecture Index
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-07-24
 ---
 
 # Architecture Index
@@ -24,6 +24,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Area | Linchpin file | Deep dive |
 |---|---|---|
 | Routing | `src/proxy.ts` | [routing/](./routing/) |
+| Theming (system-pref default, Dynamic Island sync) | `src/app/contexts/ThemeContext.tsx` | [theming/](./theming/) |
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
 | Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |
 | CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useThemeClasses } from "../contexts/ThemeContext";
-import { useTheme } from "../contexts/ThemeContext";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { useRemovedListings } from "./hooks/useRemovedListings";
 import ProfileCard from "./components/ProfileCard";
@@ -30,7 +29,6 @@ export default function DashboardPage() {
     textTertiary,
     shadow,
   } = useThemeClasses();
-  const { toggleTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
   // Dashboard data
@@ -122,7 +120,6 @@ export default function DashboardPage() {
             textPrimary={textPrimary}
             textSecondary={textSecondary}
             shadow={shadow}
-            toggleTheme={toggleTheme}
           />
 
           {/* Statistics Cards */}
