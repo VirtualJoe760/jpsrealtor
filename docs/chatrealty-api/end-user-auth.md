@@ -105,7 +105,10 @@ The guest path IS verified end-to-end in a real build.
 
 - `RESEND_API_KEY` — required to send the magic-link email (platform already has it).
 - `END_USER_SESSION_SECRET` — optional; falls back to `NEXTAUTH_SECRET`.
-- `EMAIL_FROM_DOMAIN` — optional; the sign-in email's From domain (default `chatrealty.io`).
+- `END_USER_EMAIL_DOMAIN` — optional; the sign-in email's From domain (default
+  `chatrealty.io`). Deliberately NOT `EMAIL_FROM_DOMAIN` — that may be
+  `jpsrealtor.com` on this deployment, and every agent's sign-in email must send
+  from the shared verified PLATFORM domain, branded with the agent's site name.
 
 ## Security invariants
 

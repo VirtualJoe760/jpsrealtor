@@ -98,7 +98,11 @@ export async function sendMagicLinkEmail(opts: { to: string; url: string; siteNa
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not set");
   const resend = new Resend(apiKey);
-  const domain = process.env.EMAIL_FROM_DOMAIN || "chatrealty.io";
+  // Multi-tenant: end-user sign-in emails go out under the PLATFORM domain, not
+  // EMAIL_FROM_DOMAIN (which may be jpsrealtor.com on this deployment). Every
+  // agent's site sends from the same verified platform sender, with the agent's
+  // site name as the display name. Override with END_USER_EMAIL_DOMAIN if needed.
+  const domain = process.env.END_USER_EMAIL_DOMAIN || "chatrealty.io";
   const safeName = opts.siteName.replace(/[<>\r\n]/g, "").slice(0, 80) || "Your account";
 
   await resend.emails.send({
