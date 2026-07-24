@@ -84,6 +84,20 @@ type-clean; not yet exercised against a live provisioned tenant.**
 - `GET /me` — `X-End-User-Session` header → `{ email, name }`.
 - `GET/PUT /favorites` — session → the end-user's saved listing keys. PUT
   replaces the whole set (INSERT new + DELETE removed).
+- `POST /auth/upsert` (2026-07-24) — social-login identity exchange: the
+  site's SERVER posts a NextAuth-verified identity `{ email, name?, provider }`
+  with its crt bearer token → `onSignup` (end-user + deduped Contact) → session
+  JWT. Same server-to-server trust as `contacts/from-signup`; sessions are
+  tenant-bound. Template converges OAuth onto the same `cr_end_user` cookie via
+  `/api/account/oauth-bridge`.
+
+**Template auth (0.7.0):** Auth.js/NextAuth v5, JWT mode, DB-less. Google +
+Facebook providers auto-enable from the AGENT'S OWN keys (`AUTH_GOOGLE_ID/…`,
+`AUTH_FACEBOOK_ID/…`); `AUTH_SECRET` generated at scaffold. Magic-link remains
+the zero-setup path. **Favorites are gated**: when accounts are enabled, heart/
+swipe-right while signed out opens the sign-in dialog (guest localStorage mode
+remains ONLY where accounts are unavailable — test-data/free — so demos work).
+Live OAuth round trip still unverified (needs real provider keys + tenant).
 
 **Session:** `jsonwebtoken`, signed with `END_USER_SESSION_SECRET` (falls back to
 `NEXTAUTH_SECRET` — no new env required to function). `verifySession` requires

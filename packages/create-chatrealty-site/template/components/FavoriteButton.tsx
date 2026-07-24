@@ -1,6 +1,7 @@
 "use client";
 
 import { useFavorites } from "@/lib/favorites";
+import { useAccount } from "@/lib/account";
 import type { ListingSummary } from "@/lib/types";
 
 export default function FavoriteButton({
@@ -11,6 +12,7 @@ export default function FavoriteButton({
   className?: string;
 }) {
   const { isFavorite, toggle } = useFavorites();
+  const { status, openSignIn } = useAccount();
   const active = isFavorite(listing.listingKey);
 
   return (
@@ -19,6 +21,13 @@ export default function FavoriteButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Saving is an ACCOUNT feature: when accounts exist on this site,
+        // signing in is required to save. (Guest-only mode — test data /
+        // accounts not enabled — keeps on-device favorites so the demo works.)
+        if (status === "guest") {
+          openSignIn();
+          return;
+        }
         toggle(listing);
       }}
       aria-pressed={active}

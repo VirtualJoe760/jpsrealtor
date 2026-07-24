@@ -232,9 +232,19 @@ async function main(): Promise<void> {
   const chapBlock = chapKey.trim()
     ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). Widget is LIVE.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
     : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# The chat widget appears automatically once you set a key here.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+  const authSecret = require("crypto").randomBytes(32).toString("base64url");
+  const authBlock = `
+# Auth.js session secret (generated at scaffold time). Social login: add your
+# OWN OAuth app keys and the sign-in buttons appear automatically.
+AUTH_SECRET=${authSecret}
+# AUTH_GOOGLE_ID=
+# AUTH_GOOGLE_SECRET=
+# AUTH_FACEBOOK_ID=
+# AUTH_FACEBOOK_SECRET=
+`;
   const envContent = testMode
-    ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}`
-    : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}`;
+    ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}`
+    : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}`;
   fs.writeFileSync(path.join(dest, ".env.local"), envContent, { mode: 0o600 });
   console.log(`  ✓ Wrote .env.local (${testMode ? "TEST DATA mode" : "token kept server-side"}; already in .gitignore)`);
 

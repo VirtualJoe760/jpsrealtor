@@ -9,12 +9,14 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ListingSummary } from "@/lib/types";
 import { useFavorites } from "@/lib/favorites";
+import { useAccount } from "@/lib/account";
 import { money, num } from "@/lib/format";
 
 const SWIPE_THRESHOLD = 90; // px past which a release commits the swipe
 
 export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) {
   const { toggle, isFavorite } = useFavorites();
+  const { status, openSignIn } = useAccount();
   const [index, setIndex] = useState(0);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -27,6 +29,14 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
   const commit = useCallback(
     (dir: "left" | "right") => {
       if (!current || leaving) return;
+      // Saving requires an account when this site has them: prompt sign-in
+      // and keep the card in place so the save isn't lost. Passing stays free.
+      if (dir === "right" && status === "guest") {
+        setDrag(null);
+        setStart(null);
+        openSignIn();
+        return;
+      }
       if (dir === "right" && !isFavorite(current.listingKey)) {
         toggle(current);
         setSavedCount((c) => c + 1);
@@ -40,7 +50,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
         setLeaving(null);
       }, 240);
     },
-    [current, leaving, isFavorite, toggle]
+    [current, leaving, isFavorite, toggle, status, openSignIn]
   );
 
   // Keyboard: ← pass, → save.

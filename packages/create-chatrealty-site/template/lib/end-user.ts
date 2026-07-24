@@ -89,6 +89,27 @@ export async function verifyMagicLink(token: string) {
 // available:false → accounts aren't enabled here at all (test-data / free) →
 // guest-only mode. available:true + user:null → accounts work but nobody's
 // signed in (show a Sign in button). available:true + user → signed in.
+// Exchange a NextAuth-verified identity (Google/Facebook) for a ChatRealty
+// end-user session. Server-side only — called by /api/account/oauth-bridge
+// with an email the OAuth provider already verified.
+export async function upsertOAuthUser(email: string, name?: string, provider = "oauth") {
+  if (!accountsPossible()) return unavailable();
+  try {
+    const res = await platformFetch("/api/skill/end-users/auth/upsert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name, provider }),
+    });
+    if (classify(res) !== "ok") return unavailable();
+    const body = await res.json().catch(() => ({}));
+    const session = body?.sessionToken ?? body?.data?.sessionToken;
+    if (typeof session !== "string" || !session) return { available: true as const, ok: false as const };
+    return { available: true as const, ok: true as const, session };
+  } catch {
+    return unavailable();
+  }
+}
+
 export async function getMe(session: string | undefined) {
   if (!accountsPossible()) return unavailable();
   if (!session) return { available: true as const, user: null };

@@ -10,12 +10,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "@/lib/account";
 import { useFavorites } from "@/lib/favorites";
-import SignInDialog from "./SignInDialog";
 
 export default function AccountMenu() {
-  const { status, user, signOut } = useAccount();
+  const { status, user, signOut, openSignIn } = useAccount();
   const { favorites } = useFavorites();
-  const [dialog, setDialog] = useState(false);
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -44,10 +42,9 @@ export default function AccountMenu() {
     return (
       <div className="flex items-center gap-5 text-sm font-medium text-gray-600">
         {saved}
-        <button onClick={() => setDialog(true)} className="hover:text-brand">
+        <button onClick={openSignIn} className="hover:text-brand">
           Sign in
         </button>
-        {dialog && <SignInDialog onClose={() => setDialog(false)} />}
       </div>
     );
   }
