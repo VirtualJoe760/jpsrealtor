@@ -75,12 +75,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="mt-16 border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-400">
+          {/* COMPLIANCE — always visible, never remove: license number,
+              brokerage, and team (when one exists). Contact info (phone/email)
+              is the agent's choice: public here, or gated behind /contact. */}
           <p className="font-medium text-gray-600">
             {siteName}
             {agent.brokerageName ? ` · ${agent.brokerageName}` : ""}
           </p>
+          {agent.licenseNumber && (
+            <p className="mt-1 font-medium text-gray-500">License #{agent.licenseNumber}</p>
+          )}
           <p className="mt-1">
-            {[agent.phone, agent.email, agent.licenseNumber].filter(Boolean).join(" · ")}
+            {[agent.phone, agent.email].filter(Boolean).join(" · ")}
           </p>
           <p className="mt-2">
             Listing data via the MLS. Powered by{" "}
