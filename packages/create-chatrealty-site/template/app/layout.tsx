@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import TestDataBanner from "@/components/TestDataBanner";
 import ChapWidget from "@/components/ChapWidget";
+import AccountMenu from "@/components/AccountMenu";
+import { AccountProvider } from "@/lib/account";
 import { getAgentProfile } from "@/lib/chatrealty";
 
 // Identity flows from the agent's ChatRealty profile (or the bundled sample in
@@ -31,6 +33,8 @@ function findLogo(): string | null {
   return null;
 }
 
+// Favorites intentionally lives in the account menu (right side), not here —
+// saved homes are an account feature, not a top-level destination.
 const NAV = [
   { href: "/listings", label: "Listings" },
   { href: "/discover", label: "Discover" },
@@ -38,7 +42,6 @@ const NAV = [
   { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
-  { href: "/favorites", label: "Favorites" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+        <AccountProvider>
         <TestDataBanner />
         <header className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
@@ -60,13 +64,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 siteName
               )}
             </Link>
-            <nav className="flex items-center gap-5 text-sm font-medium text-gray-600">
-              {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className="hover:text-brand">
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
+            <div className="flex items-center gap-6">
+              <nav className="hidden items-center gap-5 text-sm font-medium text-gray-600 sm:flex">
+                {NAV.map((n) => (
+                  <Link key={n.href} href={n.href} className="hover:text-brand">
+                    {n.label}
+                  </Link>
+                ))}
+              </nav>
+              <AccountMenu />
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
@@ -87,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </p>
         </footer>
         <ChapWidget />
+        </AccountProvider>
       </body>
     </html>
   );
