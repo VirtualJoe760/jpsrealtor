@@ -1,18 +1,18 @@
 "use client";
 
 // Conversational agent setup — the default first-run experience.
-// A chat (styled with the chat-v3 vocabulary) collects what the classic
-// wizard collects; a live progress card fills in beside it as fields land.
-// "Prefer forms?" links to the classic wizard at /agent/settings?onboarding=true.
+// Styled to match CHAP (src/app/components/chat/ChatWidget.tsx): emerald-
+// gradient user bubbles, neutral glass assistant bubbles with a Bot avatar,
+// large readable type, a floating rounded composer. A live profile-progress
+// card fills in as fields land. Classic form wizard remains the fallback.
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { chatThemeClasses } from "@/app/components/chat-v3/themeClasses";
 import TypingAnimation from "@/app/components/chat/TypingAnimation";
-import { CheckCircle2, Circle, Send } from "lucide-react";
+import { Bot, CheckCircle2, Circle, Send } from "lucide-react";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Profile = {
@@ -40,7 +40,6 @@ export default function AgentSetupPage() {
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
-  const t = chatThemeClasses(isLight);
 
   const [messages, setMessages] = useState<Msg[]>([OPENER]);
   const [input, setInput] = useState("");
@@ -102,63 +101,94 @@ export default function AgentSetupPage() {
     { label: "Brand color", ok: Boolean(profile?.brandColor) },
   ];
 
+  // CHAP palette
+  const textMain = isLight ? "text-gray-900" : "text-neutral-50";
+  const textDim = isLight ? "text-gray-500" : "text-neutral-400";
+  const cardBg = isLight ? "bg-white/90 border-gray-200/60" : "bg-neutral-900/70 border-neutral-700/50";
+
   return (
-    <div className={`mx-auto flex min-h-[calc(100dvh-4rem)] max-w-4xl gap-6 px-4 py-8`}>
+    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-5xl gap-6 px-4 py-6">
       {/* Chat column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="mb-4">
-          <h1 className={`text-xl font-bold ${t.textPrimary}`}>Set up your account</h1>
-          <p className={`text-sm ${t.textMuted}`}>
+        <div className="mb-5">
+          <h1 className={`text-2xl font-bold tracking-[-0.02em] ${textMain}`}>Set up your account</h1>
+          <p className={`mt-0.5 text-sm ${textDim}`}>
             Prefer forms?{" "}
-            <Link href="/agent/settings?onboarding=true" className="underline">
+            <Link href="/agent/settings?onboarding=true" className="underline hover:text-emerald-500">
               Use the classic setup
             </Link>
           </p>
         </div>
 
-        <div className={`flex-1 space-y-3 overflow-y-auto rounded-2xl border p-4 ${t.bgCard} ${t.border}`}>
+        {/* Message stream */}
+        <div className="flex-1 space-y-5 overflow-y-auto pb-4">
           {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              {m.role === "assistant" && (
+                <div
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                    isLight
+                      ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
+                      : "border border-neutral-600 bg-gradient-to-br from-neutral-600 to-neutral-800"
+                  }`}
+                >
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+              )}
               <div
-                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${
+                className={`max-w-[85%] select-text whitespace-pre-wrap rounded-2xl px-5 py-4 text-base leading-relaxed tracking-[-0.01em] sm:text-[19px] ${
                   m.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : `${isLight ? "bg-gray-100" : "bg-neutral-700/60"} ${t.textPrimary}`
+                    ? isLight
+                      ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20"
+                      : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25"
+                    : isLight
+                      ? "border border-gray-200/60 bg-white/90 text-gray-800 shadow-md"
+                      : "border border-neutral-700/50 bg-neutral-900/80 text-neutral-50 shadow-lg backdrop-blur-sm"
                 }`}
               >
                 {m.content}
               </div>
             </div>
           ))}
+
           {busy && (
-            <div className="flex justify-start">
-              <div className={`rounded-2xl px-4 py-2.5 ${isLight ? "bg-gray-100" : "bg-neutral-700/60"}`}>
+            <div className="flex gap-3">
+              <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${isLight ? "bg-gradient-to-br from-emerald-400 to-emerald-600" : "border border-neutral-600 bg-gradient-to-br from-neutral-600 to-neutral-800"}`}>
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <div className={`rounded-2xl px-5 py-4 ${isLight ? "bg-white/90 border border-gray-200/60" : "bg-neutral-900/80 border border-neutral-700/50 backdrop-blur-sm"}`}>
                 <TypingAnimation />
               </div>
             </div>
           )}
+
           {done && (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
-              You're all set — taking you to your dashboard…
+            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-sm font-medium text-emerald-500">
+              You&apos;re all set — taking you to your dashboard…
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
-        <div className="mt-3 flex gap-2">
+        {/* Floating composer — CHAP style */}
+        <div
+          className={`sticky bottom-4 mt-2 flex items-center gap-2 rounded-2xl border px-3 py-2 shadow-xl ${
+            isLight ? "border-gray-200 bg-white" : "border-neutral-700/70 bg-neutral-900/90 backdrop-blur-md"
+          }`}
+        >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
             placeholder="Type your answer…"
             disabled={busy || done}
-            className={`flex-1 rounded-xl border px-4 py-3 text-sm outline-none ${t.bgCard} ${t.border} ${t.textPrimary}`}
+            className={`flex-1 bg-transparent px-3 py-2.5 text-base outline-none tracking-[-0.01em] ${textMain} ${isLight ? "placeholder:text-gray-400" : "placeholder:text-neutral-500"}`}
           />
           <button
             onClick={send}
             disabled={busy || done || !input.trim()}
             aria-label="Send"
-            className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:opacity-50"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white transition hover:bg-emerald-400 disabled:opacity-40"
           >
             <Send className="h-5 w-5" />
           </button>
@@ -166,25 +196,27 @@ export default function AgentSetupPage() {
       </div>
 
       {/* Live progress card */}
-      <aside className={`hidden w-60 flex-shrink-0 md:block`}>
-        <div className={`sticky top-24 rounded-2xl border p-4 ${t.bgCard} ${t.border}`}>
-          <p className={`text-sm font-bold ${t.textPrimary}`}>Your profile</p>
-          <ul className="mt-3 space-y-2">
+      <aside className="hidden w-60 flex-shrink-0 md:block">
+        <div className={`sticky top-24 rounded-2xl border p-5 backdrop-blur-sm ${cardBg}`}>
+          <p className={`text-sm font-bold ${textMain}`}>Your profile</p>
+          <ul className="mt-4 space-y-2.5">
             {checklist.map((c) => (
-              <li key={c.label} className="flex items-center gap-2 text-sm">
+              <li key={c.label} className="flex items-center gap-2.5 text-sm">
                 {c.ok ? (
                   <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-500" />
                 ) : (
-                  <Circle className={`h-4 w-4 flex-shrink-0 ${t.textMuted}`} />
+                  <Circle className={`h-4 w-4 flex-shrink-0 ${textDim}`} />
                 )}
-                <span className={c.ok ? t.textPrimary : t.textMuted}>
+                <span className={c.ok ? textMain : textDim}>
                   {c.label}
                   {c.required && !c.ok ? " *" : ""}
                 </span>
               </li>
             ))}
           </ul>
-          <p className={`mt-3 text-[11px] ${t.textMuted}`}>* required to finish — license & brokerage appear on your site by law.</p>
+          <p className={`mt-4 text-[11px] leading-relaxed ${textDim}`}>
+            * required to finish — license &amp; brokerage appear on your site by law.
+          </p>
         </div>
       </aside>
     </div>

@@ -4,7 +4,16 @@ import { money, num } from "@/lib/format";
 import Attribution from "./Attribution";
 import FavoriteButton from "./FavoriteButton";
 
-export default function ListingCard({ listing }: { listing: ListingSummary }) {
+export default function ListingCard({
+  listing,
+  priority = false,
+}: {
+  listing: ListingSummary;
+  // Above-the-fold cards (featured homes, first listings row) pass priority so
+  // their photo loads eagerly — lazy-loading them left blank gray boxes on
+  // first paint (tester find). Off-screen cards stay lazy.
+  priority?: boolean;
+}) {
   const specs = [
     listing.beds != null ? `${num(listing.beds)} bd` : null,
     listing.baths != null ? `${num(listing.baths)} ba` : null,
@@ -27,7 +36,10 @@ export default function ListingCard({ listing }: { listing: ListingSummary }) {
               src={listing.thumbUrl}
               alt={listing.address || "Listing photo"}
               className="h-full w-full object-cover transition group-hover:scale-[1.02]"
-              loading="lazy"
+              loading={priority ? "eager" : "lazy"}
+              // @ts-expect-error fetchPriority is valid HTML but not yet in React's img types
+              fetchpriority={priority ? "high" : undefined}
+              decoding="async"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-gray-400">

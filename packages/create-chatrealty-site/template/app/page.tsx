@@ -56,7 +56,7 @@ export default async function Home() {
           </div>
           <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {featured.items.map((l) => (
-              <ListingCard key={l.listingKey} listing={l} />
+              <ListingCard key={l.listingKey} listing={l} priority />
             ))}
           </div>
         </section>

@@ -176,8 +176,10 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((l) => (
-                <ListingCard key={l.listingKey} listing={l} />
+              {items.map((l, i) => (
+                // First row (up to 3 across) loads eagerly — no blank boxes on
+                // first paint; the rest lazy-load as they scroll into view.
+                <ListingCard key={l.listingKey} listing={l} priority={i < 3} />
               ))}
             </div>
           )}
