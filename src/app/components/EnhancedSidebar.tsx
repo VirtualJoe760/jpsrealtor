@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import Wordmark from "@/app/components/brand/Wordmark";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ChevronLeft,
-  ChevronRight,
   MessageSquare,
   Home,
   LayoutDashboard,
@@ -225,18 +223,58 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
         )}
         {!isMobile && (
-          <button
+          /* Collapse toggle: sits at the right edge when open, slides to the
+             center of the 80px rail when collapsed. The icon morphs between a
+             back arrow (open) and a hamburger (collapsed) by animating three
+             SVG line endpoints. Widths are the sidebar's fixed 280/80px:
+             button box is 36px (p-2 + 20px icon), so open left = 280-12-36,
+             collapsed left = (80-36)/2. */
+          <motion.button
             onClick={() => toggleSidebar()}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
+            initial={false}
+            animate={{ left: effectivelyCollapsed ? 22 : 232 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ top: "50%", y: "-50%" }}
+            className={`absolute p-2 rounded-lg transition-colors ${
               isLight ? "hover:bg-gray-100" : "hover:bg-neutral-800"
             }`}
+            aria-label={effectivelyCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isCollapsed ? (
-              <ChevronRight className={`w-5 h-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`} />
-            ) : (
-              <ChevronLeft className={`w-5 h-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`} />
-            )}
-          </button>
+            <motion.svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              initial={false}
+              animate={{ scale: effectivelyCollapsed ? 1.15 : 1 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className={`w-5 h-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`}
+            >
+              {/* top: hamburger bar ↔ upper arrowhead */}
+              <motion.line
+                initial={false}
+                animate={
+                  effectivelyCollapsed
+                    ? { x1: 4, y1: 6, x2: 20, y2: 6 }
+                    : { x1: 4, y1: 12, x2: 11, y2: 5 }
+                }
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              />
+              {/* middle: hamburger bar ↔ arrow shaft */}
+              <line x1={4} y1={12} x2={20} y2={12} />
+              {/* bottom: hamburger bar ↔ lower arrowhead */}
+              <motion.line
+                initial={false}
+                animate={
+                  effectivelyCollapsed
+                    ? { x1: 4, y1: 18, x2: 20, y2: 18 }
+                    : { x1: 4, y1: 12, x2: 11, y2: 19 }
+                }
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              />
+            </motion.svg>
+          </motion.button>
         )}
       </div>
 
