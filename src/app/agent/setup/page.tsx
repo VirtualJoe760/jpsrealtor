@@ -26,31 +26,58 @@ type Profile = {
   serviceAreas: string[];
   specializations: string[];
   brandColor: string | null;
+  headshot: string | null;
   onboardingComplete: boolean;
 };
 
-const OPENER: Msg = {
-  role: "assistant",
-  content:
-    "Welcome to ChatRealty — let's get your account set up. It takes about two minutes.\n\nFirst: do you go by your own name (like \"Jane Smith, Real Estate Agent\"), or do you have a team or group name?",
-};
-
 export default function AgentSetupPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  const [messages, setMessages] = useState<Msg[]>([OPENER]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [done, setDone] = useState(false);
+  // Quick-reply chips for the CURRENT question (server-derived).
+  const [choices, setChoices] = useState<string[]>([]);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [uploadChip, setUploadChip] = useState(false); // headshot question → file picker
+  const [picked, setPicked] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/signin?callbackUrl=/agent/setup");
   }, [status, router]);
+
+  // Greet by the agent's known name (from their account) and open on the team/
+  // brand question — the name is pre-filled, so it's not asked again. If we
+  // somehow don't know the name, open by asking for it (free text, no chips).
+  useEffect(() => {
+    if (status !== "authenticated" || messages.length > 0) return;
+    const name = session?.user?.name?.trim();
+    const first = name ? name.split(" ")[0] : null;
+    if (first) {
+      setMessages([
+        {
+          role: "assistant",
+          content: `Welcome, ${first}! Let's set up your account — it takes about two minutes.\n\nDo you operate under a team or brand name (like "The Sardella Group"), or just under your own name?`,
+        },
+      ]);
+      setChoices(["Just my own name", "I have a team or brand name"]);
+    } else {
+      setMessages([
+        {
+          role: "assistant",
+          content: "Welcome to ChatRealty — let's set up your account. It takes about two minutes.\n\nFirst, what's your name?",
+        },
+      ]);
+    }
+  }, [status, session, messages.length]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,10 +90,12 @@ export default function AgentSetupPage() {
     }
   }, [done, router]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(override?: string) {
+    const text = (override ?? input).trim();
     if (!text || busy) return;
     setInput("");
+    setChoices([]);
+    setPicked([]);
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next);
     setBusy(true);
@@ -80,6 +109,9 @@ export default function AgentSetupPage() {
       if (data?.reply) setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
       if (data?.profile) setProfile(data.profile);
       if (data?.done) setDone(true);
+      setChoices(Array.isArray(data?.choices) ? data.choices : []);
+      setMultiSelect(Boolean(data?.multiSelect));
+      setUploadChip(Boolean(data?.upload));
     } catch {
       setMessages((m) => [
         ...m,
@@ -87,6 +119,44 @@ export default function AgentSetupPage() {
       ]);
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Headshot: upload the file to /api/upload (Cloudinary), then hand the URL to
+  // the setup-chat route to save deterministically and let the assistant move on.
+  async function uploadHeadshot(file: File) {
+    if (uploading) return;
+    setUploading(true);
+    setChoices([]);
+    setMessages((m) => [...m, { role: "user", content: "📸 Uploading my headshot…" }]);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", "general");
+      const up = await fetch("/api/upload", { method: "POST", body: fd });
+      const upData = await up.json();
+      const url = upData?.url || upData?.data?.url;
+      if (!url) throw new Error("no url");
+      const next = [...messages, { role: "user" as const, content: "I added my headshot." }];
+      const res = await fetch("/api/agent/setup-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: next, headshotUrl: url }),
+      });
+      const data = await res.json();
+      setMessages((m) => {
+        const trimmed = m.filter((x) => x.content !== "📸 Uploading my headshot…");
+        return [...trimmed, { role: "assistant", content: data?.reply || "Great — your headshot's saved." }];
+      });
+      if (data?.profile) setProfile(data.profile);
+      if (data?.done) setDone(true);
+      setChoices(Array.isArray(data?.choices) ? data.choices : []);
+      setMultiSelect(Boolean(data?.multiSelect));
+      setUploadChip(Boolean(data?.upload));
+    } catch {
+      setMessages((m) => m.filter((x) => x.content !== "📸 Uploading my headshot…"));
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -99,6 +169,7 @@ export default function AgentSetupPage() {
     { label: "Market", ok: (profile?.serviceAreas?.length || 0) > 0 },
     { label: "Focus", ok: (profile?.specializations?.length || 0) > 0 },
     { label: "Brand color", ok: Boolean(profile?.brandColor) },
+    { label: "Headshot", ok: Boolean(profile?.headshot) },
   ];
 
   // CHAP palette
@@ -162,6 +233,47 @@ export default function AgentSetupPage() {
             </div>
           )}
 
+          {/* Quick-reply chips for the current question (CHAP-style buttons) */}
+          {!busy && !done && choices.length > 0 && (
+            <div className="flex flex-wrap gap-2 pl-11">
+              {choices.map((c) => {
+                const on = picked.includes(c);
+                return (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      if (uploadChip && c === "Upload a photo") {
+                        fileRef.current?.click();
+                      } else if (multiSelect && c !== "Skip for now") {
+                        setPicked((p) => (on ? p.filter((x) => x !== c) : [...p, c]));
+                      } else {
+                        send(c); // single-select, or Skip (even in multi mode)
+                      }
+                    }}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                      on
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : isLight
+                          ? "border-gray-300 bg-white text-gray-700 hover:border-emerald-400 hover:text-emerald-600"
+                          : "border-neutral-600 bg-neutral-800/70 text-neutral-200 hover:border-emerald-500 hover:text-emerald-300"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+              {multiSelect && (
+                <button
+                  onClick={() => picked.length && send(picked.join(", "))}
+                  disabled={picked.length === 0}
+                  className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-40"
+                >
+                  Continue{picked.length ? ` (${picked.length})` : ""}
+                </button>
+              )}
+            </div>
+          )}
+
           {done && (
             <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-sm font-medium text-emerald-500">
               You&apos;re all set — taking you to your dashboard…
@@ -169,6 +281,19 @@ export default function AgentSetupPage() {
           )}
           <div ref={bottomRef} />
         </div>
+
+        {/* Hidden file input for the headshot upload chip */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadHeadshot(f);
+            e.target.value = "";
+          }}
+        />
 
         {/* Floating composer — CHAP style */}
         <div

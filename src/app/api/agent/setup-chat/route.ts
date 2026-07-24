@@ -71,6 +71,47 @@ const TOOLS = [
   },
 ] as const;
 
+// Quick-reply chips keyed to the question actually being asked (matched on the
+// reply text so they never mismatch the model's freeform phrasing). CHAP-style
+// interactive answers — the visitor taps instead of typing. Optional questions
+// get a Skip chip; license/brokerage NEVER do (required). The headshot question
+// gets an Upload chip the UI turns into a file picker.
+const SKIP = "Skip for now";
+function deriveChoices(
+  reply: string,
+  snap: ReturnType<typeof snapshot>
+): { choices: string[]; multiSelect: boolean; upload?: boolean } | null {
+  const r = reply.toLowerCase();
+  // Required fields — no chips, never skippable.
+  if (/license|brokerage/.test(r) && (!snap.licenseNumber || !snap.brokerageName)) return null;
+
+  // The team/brand question (name is free text, no chips).
+  if (!snap.teamName && /(team|brand|group)( or (brand|team))? name|operate under/.test(r)) {
+    return { choices: ["Just my own name", "I have a team or brand name"], multiSelect: false };
+  }
+  if (!snap.contactVisibility && /(publicly|public|gated|contact form)/.test(r)) {
+    return { choices: ["Show it publicly", "Gate it behind the form", SKIP], multiSelect: false };
+  }
+  if (
+    (!snap.specializations || snap.specializations.length === 0) &&
+    /(focus|special|luxury|investment|vacation|senior|first-time)/.test(r)
+  ) {
+    return {
+      choices: ["Luxury", "Investment", "Senior living", "Family & first-time", "Vacation homes", SKIP],
+      multiSelect: true,
+    };
+  }
+  if (!snap.headshot && /(headshot|profile photo|profile picture|selfie)/.test(r)) {
+    return { choices: ["Upload a photo", SKIP], multiSelect: false, upload: true };
+  }
+  // Free-text optional questions still get a Skip chip.
+  if (!snap.phone && /phone/.test(r)) return { choices: [SKIP], multiSelect: false };
+  if (snap.serviceAreas.length === 0 && /(cities|areas|market|serve)/.test(r))
+    return { choices: [SKIP], multiSelect: false };
+  if (!snap.brandColor && /(brand )?colou?r/.test(r)) return { choices: [SKIP], multiSelect: false };
+  return null;
+}
+
 function snapshot(u: any) {
   const ap = u.agentProfile || {};
   return {
@@ -86,6 +127,7 @@ function snapshot(u: any) {
       : [],
     specializations: ap.specializations || [],
     brandColor: ap.brandColors?.primary || null,
+    headshot: ap.headshot || null,
     onboardingComplete: Boolean(u.agentProfile?.onboardingComplete),
   };
 }
@@ -93,14 +135,18 @@ function snapshot(u: any) {
 function systemPrompt(snap: ReturnType<typeof snapshot>): string {
   return [
     "You are ChatRealty's setup assistant, talking to a real-estate agent setting up their account.",
-    "VOICE: confident consultant, plain English. Never mention tools, fields, databases, or that you are saving anything — just have the conversation. Short messages; ONE topic per message; prefer checklists / either-or choices over open-ended questions.",
+    "VOICE: confident consultant, plain English. Never mention tools, fields, databases, or that you are saving anything — just have the conversation. Short messages; ONE topic per message. Use tap-choices where they fit, but NOT for free-text answers like a name or cities.",
+    "NAME vs TEAM — two SEPARATE things: (a) the person's NAME (e.g. 'Joseph Sardella') and (b) an optional TEAM or BRAND name they operate under (e.g. 'The Sardella Group', 'Sardella Real Estate'). When you SAVE a name, save ONLY the person's name — strip any brokerage/marketing suffix. If they say 'Joseph Sardella Real Estate', save name='Joseph Sardella' and treat 'Sardella Real Estate' as their team/brand name. NEVER put 'Real Estate'/'Realty'/'Group'/'Team' in the name field.",
     "GOAL — collect what's missing, in this order:",
-    "1. How they go by: their own name ('Jane Smith, Real Estate Agent') or a team/group name.",
-    "2. COMPLIANCE MUST-HAVES (cannot finish without): license ID number and brokerage. Team name too if one exists.",
-    "3. Phone, then one question: contact info shown publicly on their site, or gated behind a contact form?",
-    "4. The market/cities they serve.",
-    "5. Their focus (offer a checklist: luxury · investment · senior living · family & first-time · vacation homes).",
-    "6. A brand color if they have one (hex or a plain description you convert).",
+    "1. Their NAME is usually already known from their account (shown below) — greet them by it and do NOT re-ask. Only if it's missing, ask their name (free text — no tap-choices).",
+    "2. A TEAM or BRAND name — ask if they operate under one (offer tap-choices: 'Just my own name' / 'I have a team or brand name'). If yes, ask for it and save it to the team name. Separate from their personal name.",
+    "3. COMPLIANCE MUST-HAVES (cannot finish without): license ID number and brokerage.",
+    "4. Phone, then one question: contact info shown publicly on their site, or gated behind a contact form?",
+    "5. The market/cities they serve (free text — no tap-choices).",
+    "6. Their focus (offer a checklist: luxury · investment · senior living · family & first-time · vacation homes).",
+    "7. A brand color if they have one (hex or a plain description you convert).",
+    "8. A professional HEADSHOT — ask if they'd like to add one now; they can upload a photo or skip and add it later in Settings. (The site build can also generate one from a selfie later.)",
+    "SKIPPING: every question EXCEPT license number and brokerage is optional. If they skip one (say 'skip' or tap Skip), acknowledge in a few words, do NOT save it, move on, and never ask it again. License number and brokerage CANNOT be skipped — if they try, gently explain you can't finish setup without them (they must be displayed on the site by law) and ask again.",
     "CRITICAL RULE: when the agent's latest message contains ANY collectible fact (name/team, license number, brokerage, phone, contact-visibility choice, cities, focus/specializations, color), your FIRST action MUST be a save_profile call carrying every fact from that message — write your reply only after the tool result. Never answer without saving first; unsaved answers are lost.",
     "Skip anything already known below — NEVER re-ask it.",
     "The contact-visibility choice (public vs gated) is itself a fact to SAVE (contactVisibility). If it is still null after their phone answer, ask that one question before moving on.",
@@ -121,11 +167,23 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const clientMessages = Array.isArray(body?.messages) ? body.messages.slice(-30) : [];
+  // Headshot URL comes from the client AFTER it uploaded the file to /api/upload
+  // (Cloudinary). Saved deterministically here — the model never handles image
+  // URLs. Must be a Cloudinary/https URL.
+  const headshotUrl =
+    typeof body?.headshotUrl === "string" && /^https:\/\//.test(body.headshotUrl)
+      ? body.headshotUrl
+      : null;
 
   await dbConnect();
   let user = await User.findOne({ email: session.user.email });
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  }
+
+  if (headshotUrl) {
+    await User.updateOne({ _id: user._id }, { $set: { "agentProfile.headshot": headshotUrl } });
+    user = await User.findOne({ email: session.user.email });
   }
 
   const messages: any[] = [
@@ -229,7 +287,7 @@ export async function POST(req: NextRequest) {
     // Plain text reply — we're done this turn.
     user = await User.findById(user._id);
     return NextResponse.json(
-      { reply: msg.content || "…", profile: snapshot(user), done },
+      { reply: msg.content || "…", profile: snapshot(user), done, ...(deriveChoices(msg.content || "", snapshot(user)) || {}) },
       { headers: NO_STORE }
     );
   }
