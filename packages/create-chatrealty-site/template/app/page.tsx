@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { searchListings, getMarketStats, getAgentProfile } from "@/lib/chatrealty";
 import ListingCard from "@/components/ListingCard";
+import RecommendedRail from "@/components/RecommendedRail";
 import { money, num } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,10 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      {/* Recommended for you — personalized from the visitor's saved homes
+          (client-side; renders only once they've saved at least one). */}
+      <RecommendedRail />
 
       {/* Market strip — live stats */}
       {stats && stats.activeCount > 0 && (
