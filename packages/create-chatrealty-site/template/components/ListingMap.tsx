@@ -9,14 +9,17 @@ import type { ListingSummary } from "@/lib/types";
 import { moneyShort, money } from "@/lib/format";
 
 // A price-label pin as an HTML divIcon — avoids the broken default-marker-image
-// problem in bundlers entirely (no PNG assets to resolve).
+// problem in bundlers entirely (no PNG assets to resolve). Styling + the pointer
+// tail live in globals.css (`.cr-pin`); it self-centers over the exact coordinate
+// via a CSS transform, so iconAnchor is [0,0] and the tail tip lands on the spot.
+// It reads `--brand` (globals.css :root), so restyling the theme restyles pins.
 function priceIcon(listing: ListingSummary): L.DivIcon {
   const label = moneyShort(listing.currentPrice ?? listing.listPrice);
   return L.divIcon({
-    className: "",
-    html: `<div style="background:#1e3a5f;color:#fff;font:600 12px/1 system-ui,sans-serif;padding:5px 8px;border-radius:9999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35)">${label}</div>`,
+    className: "cr-pin-wrap",
+    html: `<div class="cr-pin"><span>${label}</span></div>`,
     iconSize: [0, 0],
-    iconAnchor: [24, 12],
+    iconAnchor: [0, 0],
   });
 }
 

@@ -14,6 +14,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import UnifiedListing from "@/models/unified-listing";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
+import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
 import { getTemplate } from "@/lib/cover-templates";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
   }
   const rl = skillRateLimit(auth, "write");
   if (rl) return rl;
+  // Per-tenant isolation: a tenant-bound token must not read the shared dogfood
+  // dataset through this not-yet-ported route. Refuse cleanly (no leak).
+  if (auth.ok && (auth as any).tenantId) return tenantNotReadyResponse("Cover-image generation");
 
   let body: any;
   try {

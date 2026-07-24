@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { City } from "@/models/cities";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
+import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -24,6 +25,9 @@ export async function GET(
   if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
   const rl = skillRateLimit(auth, "read");
   if (rl) return rl;
+  // Per-tenant isolation: a tenant-bound token must not read the shared dogfood
+  // dataset through this not-yet-ported route. Refuse cleanly (no leak).
+  if (auth.ok && (auth as any).tenantId) return tenantNotReadyResponse("Neighborhood data");
 
   const { slug } = await params;
   await dbConnect();

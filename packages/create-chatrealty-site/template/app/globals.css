@@ -8,6 +8,44 @@
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
+  /* Brand color — drives map pins + any component reading var(--brand).
+     The design step keeps this in sync with tailwind.config's `brand`. */
+  --brand: #1e3a5f;
+}
+
+/* Map price markers (components/ListingMap.tsx). A rounded price pill with a
+   pointer tail whose tip sits exactly on the listing's coordinate. The wrapper
+   self-centers via transform, so Leaflet's anchor is [0,0]. */
+.cr-pin {
+  position: relative;
+  display: inline-block;
+  transform: translate(-50%, calc(-100% - 6px));
+  background: var(--brand, #1e3a5f);
+  color: #fff;
+  font: 700 12px/1 system-ui, -apple-system, sans-serif;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  border: 2px solid #fff;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.35);
+  transition: transform 0.12s ease;
+}
+.cr-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -2px);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--brand, #1e3a5f);
+  filter: drop-shadow(0 2px 1px rgba(15, 23, 42, 0.25));
+}
+.cr-pin-wrap:hover .cr-pin {
+  transform: translate(-50%, calc(-100% - 9px)) scale(1.06);
+  z-index: 1000;
 }
 
 html,

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
+import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
 import { findCashflowingListings, type SortBy } from "@/lib/listings/cashflow-query";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest) {
   if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
   const rl = skillRateLimit(auth, "read");
   if (rl) return rl;
+  // Per-tenant isolation: a tenant-bound token must not read the shared dogfood
+  // dataset through this not-yet-ported route. Refuse cleanly (no leak).
+  if (auth.ok && (auth as any).tenantId) return tenantNotReadyResponse("Cashflow search");
 
   const sp = req.nextUrl.searchParams;
   const num = (k: string) => {

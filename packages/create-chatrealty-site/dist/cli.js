@@ -138,6 +138,7 @@ async function main() {
     let dir;
     let apiBase = API_BASE_DEFAULT;
     let token = "";
+    let chapKey = "";
     let testMode = args.includes("--test-data");
     try {
         // 1. Target directory (positional arg, else prompt)
@@ -155,6 +156,13 @@ async function main() {
                 }
             }
         }
+        // CHAP — ChatRealty's flagship on-site AI listing search. It's a headline
+        // feature, so offer it up front (works in test-data mode too). BYOK: any
+        // OpenAI-compatible key; Groq (console.groq.com) has a generous free tier.
+        chapKey =
+            getFlag(args, "--chat-key") ||
+                process.env.CHAT_API_KEY ||
+                (await ask("  Enable CHAP AI listing chat now? Paste a Groq/OpenAI-compatible API key (Enter to skip): "));
     }
     finally {
         rl.close();
@@ -196,7 +204,9 @@ async function main() {
     const n = copyTemplate(TEMPLATE_DIR, dest);
     console.log(`\n  ✓ Wrote ${n} files to ${dest}`);
     // 6. .env.local — the token lives here (git-ignored), server-side only.
-    const chapBlock = `\n# CHAP — on-site property chat (BYOK, OpenAI-compatible; Groq recommended).\n# The chat widget appears automatically once a key is set.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+    const chapBlock = chapKey.trim()
+        ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). Widget is LIVE.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
+        : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# The chat widget appears automatically once you set a key here.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
     const envContent = testMode
         ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}`
         : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}`;
@@ -207,6 +217,12 @@ async function main() {
     console.log(`    cd ${dir}`);
     console.log("    npm install");
     console.log("    npm run dev\n");
+    if (chapKey.trim()) {
+        console.log("  ✓ CHAP AI listing chat is ENABLED — the chat bubble appears bottom-right. Try “3 beds under $800k with a pool”.\n");
+    }
+    else {
+        console.log("  ℹ CHAP AI listing chat is off. Add CHAT_API_KEY to .env.local (a free Groq key from console.groq.com) to switch it on.\n");
+    }
     if (testMode) {
         console.log("  Then open http://localhost:3000 — the full site runs on SAMPLE listings (banner shown on every page).");
         console.log("  Go live checklist: connect your MLS feed with ChatRealty, set CHATREALTY_API_TOKEN in .env.local,");

@@ -9,6 +9,9 @@ import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import UnifiedListing from "@/models/unified-listing";
 import { applyPropertyTypeFilter } from "@/lib/property-type";
+import { resolveAdapter } from "@/lib/tenant/resolve-connection";
+import { mapErrorToResponse } from "@/lib/skill-api/errors";
+import { statsFromListings } from "@/lib/skill/tenant-read";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -37,6 +40,31 @@ export async function GET(req: NextRequest) {
       { error: "validation_failed", message: "Provide city or subdivision" },
       { status: 400, headers: NO_STORE }
     );
+  }
+
+  // TENANT PATH (per-tenant read): a tenant-bound token reads its OWN database,
+  // never the shared dogfood Mongo. Default property type "A" (sales).
+  if (auth.tenantId) {
+    const pt = propertyType && propertyType.toLowerCase() !== "all" ? propertyType : "A";
+    const filter: import("@/lib/db/adapter").ListingFilter = { status: "Active" };
+    if (city) (filter as any).city = city;
+    if (subdivision) (filter as any).subdivision = subdivision;
+    if (pt) (filter as any).propertyType = pt;
+    try {
+      const adapter = await resolveAdapter(auth.tenantId);
+      const page = await adapter.listings.find(filter, { limit: 5000 });
+      const s = statsFromListings(page.items as any);
+      return NextResponse.json(
+        {
+          scope: { city: city || null, subdivision: subdivision || null, propertyType: pt },
+          propertyTypeRecognized: true,
+          ...s,
+        },
+        { headers: NO_STORE }
+      );
+    } catch (e) {
+      return mapErrorToResponse(e);
+    }
   }
 
   const query: Record<string, any> = { standardStatus: "Active" };

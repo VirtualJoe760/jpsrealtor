@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
+import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
 import UnifiedClosedListing from "@/models/unified-closed-listing";
 import { applyPropertyTypeFilter } from "@/lib/property-type";
 
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
   if (auth.ok === false) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
   const rl = skillRateLimit(auth, "read");
   if (rl) return rl;
+  // Per-tenant isolation: a tenant-bound token must not read the shared dogfood
+  // dataset through this not-yet-ported route. Refuse cleanly (no leak).
+  if (auth.ok && (auth as any).tenantId) return tenantNotReadyResponse("Closed-sale search");
 
   const sp = req.nextUrl.searchParams;
   const city = sp.get("city")?.trim();
