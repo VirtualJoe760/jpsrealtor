@@ -310,7 +310,7 @@ export default function AgentSetupPage() {
             className={`flex-1 bg-transparent px-3 py-2.5 text-base outline-none tracking-[-0.01em] ${textMain} ${isLight ? "placeholder:text-gray-400" : "placeholder:text-neutral-500"}`}
           />
           <button
-            onClick={send}
+            onClick={() => send()}
             disabled={busy || done || !input.trim()}
             aria-label="Send"
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white transition hover:bg-emerald-400 disabled:opacity-40"
