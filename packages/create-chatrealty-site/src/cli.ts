@@ -105,14 +105,52 @@ async function main(): Promise<void> {
   }
 
   const args = process.argv.slice(2);
-  const positional = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--")));
 
-  // A single readline over stdin — reused for every prompt so piped /
-  // non-interactive input works (recreating an interface per prompt eats the
-  // buffered lines). Closed before scaffolding.
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  // Real --help (previously this fell through into the interactive flow).
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`  Usage: npx create-chatrealty-site [dir] [flags]
+
+  Flags:
+    --test-data          Scaffold with bundled fictitious sample listings (no token; localhost preview only)
+    --token <crt_live_…> ChatRealty API token (or env CHATREALTY_API_TOKEN)
+    --api-base <url>     API base (default ${API_BASE_DEFAULT}; or env CHATREALTY_API_BASE)
+    --chat-key <key>     Enable CHAP AI chat with this Groq/OpenAI-compatible key (or env CHAT_API_KEY)
+    --no-chap            Skip the CHAP prompt entirely
+    --yes, -y            Non-interactive: accept defaults, never prompt
+    --help, -h           This help
+
+  Non-TTY stdin (agents, CI, pipes) is automatically non-interactive: prompts
+  are skipped and defaults/flags/env are used — EOF never aborts the scaffold.
+`);
+    process.exit(0);
+  }
+
+  const positional = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--") && !["--test-data", "--yes", "-y", "--no-chap"].includes(args[i - 1])));
+
+  // Non-interactive when stdin isn't a TTY (agent/CI runs — the PRIMARY path)
+  // or when --yes is passed. In that mode ask() resolves its fallback
+  // immediately: EOF means "accept default / skip", never "abort".
+  const interactive = Boolean(process.stdin.isTTY) && !args.includes("--yes") && !args.includes("-y");
+
+  // A single readline over stdin — reused for every prompt so piped input
+  // works (recreating an interface per prompt eats the buffered lines).
+  // Guarded against stdin closing mid-question (EOF → fallback, not a hang).
+  const rl = interactive
+    ? readline.createInterface({ input: process.stdin, output: process.stdout })
+    : null;
   const ask = (q: string, fallback = ""): Promise<string> =>
-    new Promise((resolve) => rl.question(q, (a) => resolve(a.trim() || fallback)));
+    new Promise((resolve) => {
+      if (!rl) return resolve(fallback);
+      let settled = false;
+      const done = (v: string) => {
+        if (!settled) {
+          settled = true;
+          resolve(v.trim() || fallback);
+        }
+      };
+      rl.once("close", () => done(fallback));
+      rl.question(q, done);
+    });
 
   let dir: string;
   let apiBase: string = API_BASE_DEFAULT;
@@ -141,12 +179,15 @@ async function main(): Promise<void> {
     // CHAP — ChatRealty's flagship on-site AI listing search. It's a headline
     // feature, so offer it up front (works in test-data mode too). BYOK: any
     // OpenAI-compatible key; Groq (console.groq.com) has a generous free tier.
+    // --no-chap skips the ask; non-interactive runs skip it automatically.
     chapKey =
       getFlag(args, "--chat-key") ||
       process.env.CHAT_API_KEY ||
-      (await ask("  Enable CHAP AI listing chat now? Paste a Groq/OpenAI-compatible API key (Enter to skip): "));
+      (args.includes("--no-chap")
+        ? ""
+        : await ask("  Enable CHAP AI listing chat now? Paste a Groq/OpenAI-compatible API key (Enter to skip): "));
   } finally {
-    rl.close();
+    rl?.close();
   }
 
   apiBase = apiBase.replace(/\/+$/, "");

@@ -89,7 +89,12 @@ export function testPostSummaries(): BlogPostSummary[] {
 export function testMarketStats(opts: { city?: string; subdivision?: string; propertyType?: string }): MarketStats {
   const { items } = searchTestListings({ city: opts.city, subdivision: opts.subdivision, propertyType: opts.propertyType, limit: 50 });
   const prices = items.map((l) => l.listPrice ?? 0).filter(Boolean).sort((a, b) => a - b);
-  const doms = items.map((l) => l.daysOnMarket ?? 0).sort((a, b) => a - b);
+  // Only real DOM values — most samples have daysOnMarket: null, and a median
+  // over coerced zeros surfaced a misleading "0 days on market" (tester find).
+  const doms = items
+    .map((l) => l.daysOnMarket)
+    .filter((d): d is number => typeof d === "number" && d > 0)
+    .sort((a, b) => a - b);
   const median = (xs: number[]) => (xs.length ? xs[Math.floor(xs.length / 2)] : null);
   return {
     scope: { city: opts.city ?? null, subdivision: opts.subdivision ?? null, propertyType: opts.propertyType ?? null },
