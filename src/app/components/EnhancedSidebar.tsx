@@ -245,40 +245,43 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             }`}
             aria-label={effectivelyCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <motion.svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
+            {/* Three CSS bars, not SVG endpoint interpolation: the arrowhead
+                bars fold in/out by ROTATING around their left ends (origin
+                left, where they meet the shaft), so every intermediate frame
+                is a natural pivot — the material hamburger⇄arrow morph. */}
+            <motion.span
               initial={false}
               animate={{ scale: effectivelyCollapsed ? 1.15 : 1 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className={`w-5 h-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`}
+              className={`relative block h-5 w-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`}
             >
-              {/* top: hamburger bar ↔ upper arrowhead */}
-              <motion.line
+              {/* top bar ↔ upper arrowhead */}
+              <motion.span
                 initial={false}
+                style={{ originX: 0 }}
                 animate={
                   effectivelyCollapsed
-                    ? { x1: 4, y1: 6, x2: 20, y2: 6 }
-                    : { x1: 4, y1: 12, x2: 11, y2: 5 }
+                    ? { y: -6, rotate: 0, width: 18 }
+                    : { y: 0, rotate: -45, width: 10 }
                 }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute left-[1px] top-[9px] h-[2px] rounded-full bg-current"
               />
-              {/* middle: hamburger bar ↔ arrow shaft */}
-              <line x1={4} y1={12} x2={20} y2={12} />
-              {/* bottom: hamburger bar ↔ lower arrowhead */}
-              <motion.line
+              {/* middle bar ↔ arrow shaft */}
+              <span className="absolute left-[1px] top-[9px] h-[2px] w-[18px] rounded-full bg-current" />
+              {/* bottom bar ↔ lower arrowhead */}
+              <motion.span
                 initial={false}
+                style={{ originX: 0 }}
                 animate={
                   effectivelyCollapsed
-                    ? { x1: 4, y1: 18, x2: 20, y2: 18 }
-                    : { x1: 4, y1: 12, x2: 11, y2: 19 }
+                    ? { y: 6, rotate: 0, width: 18 }
+                    : { y: 0, rotate: 45, width: 10 }
                 }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute left-[1px] top-[9px] h-[2px] rounded-full bg-current"
               />
-            </motion.svg>
+            </motion.span>
           </motion.button>
         )}
       </div>
