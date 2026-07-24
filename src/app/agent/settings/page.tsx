@@ -59,6 +59,12 @@ function SettingsContent() {
       // flag is the fallback for them.
       const notOnboarded = (session?.user as any)?.onboardingComplete === false;
       const lsComplete = localStorage.getItem("agent_settings_completed") === "true";
+      // First-run default is the CONVERSATIONAL setup (/agent/setup); the
+      // classic form wizard remains the explicit fallback via ?onboarding=true.
+      if (notOnboarded && !lsComplete && !isOnboardingParam) {
+        window.location.assign("/agent/setup");
+        return;
+      }
       setIsWizardMode(isOnboardingParam || (notOnboarded && !lsComplete));
     }
   }, [status, isOnboardingParam, session]);

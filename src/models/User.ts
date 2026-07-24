@@ -62,6 +62,9 @@ export interface IUser extends Document {
   licenseNumber?: string;
   brokerageName?: string;
   teamName?: string; // e.g., "The Sardella Team"
+  // Whether phone/email show publicly on the agent's site, or only behind the
+  // contact form. License/brokerage/team are ALWAYS public (compliance).
+  contactVisibility?: "public" | "gated";
   website?: string;
   voicePersonality?: string; // AI training prompt for script generation personality
   voiceTrainingResponses?: Record<string, string>; // Raw questionnaire responses
@@ -701,6 +704,7 @@ const UserSchema = new Schema<IUser>(
     licenseNumber: String,
     brokerageName: String,
     teamName: String,
+      contactVisibility: { type: String, enum: ["public", "gated"] },
     website: String,
     voicePersonality: String,
     voiceTrainingResponses: Schema.Types.Mixed,
