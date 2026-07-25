@@ -186,6 +186,16 @@ export default async function RootLayout({
     <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
+
+        {/* Meta (Facebook) domain verification — Business Settings → Brand
+            Safety → Domains. One deployment serves all three hosts, so all
+            three tokens ship in every response; Meta reads only the token
+            matching the host it fetched. Must be static in <head> (Meta
+            ignores JS-injected tags). Do not remove: unverifying a domain
+            revokes Aggregated Event Measurement + link-edit permissions. */}
+        <meta name="facebook-domain-verification" content="cx0d8mzk3moq5zo00x6jwczvdfo7hk" />
+        <meta name="facebook-domain-verification" content="94ml2uw0bpi23pw4haaakjc6lmjxka" />
+        <meta name="facebook-domain-verification" content="raq2r3ic1upg9z6ick2wqo016omla9" />
         <meta name="theme-color" content={themeColor} />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
