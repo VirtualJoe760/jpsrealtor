@@ -16,6 +16,7 @@ import dbConnect from '@/lib/mongoose'
 import UnifiedListing from '@/models/unified-listing'
 import { CRMLSListing } from '@/models/crmls-listings'
 import User from '@/models/User'
+import { getBaseUrl } from '@/lib/domain-utils'
 
 // ─────────────────────────────────────────────────────
 // Domain classification
@@ -88,17 +89,50 @@ async function resolveAgentBySubdomain(subdomain: string, host: string): Promise
 }
 
 async function resolveAgentByCustomDomain(host: string): Promise<DomainInfo> {
+  // The <loc> host is the CANONICAL primary (getBaseUrl applies the
+  // supplementary→primary alias), never the raw request host — a sitemap on
+  // josephsardella.com listing josephsardella.com URLs was directly fighting
+  // the canonical consolidation to jpsrealtor.com.
+  const canonicalBase = getBaseUrl(host)
+  const bareHost = host.replace(/^www\./, '')
+
   try {
     await dbConnect()
-    const agent = await User.findOne({ 'agentProfile.customDomain': host })
+    // customDomain with and without www, matching the other host resolvers.
+    let agent: any = await User.findOne({
+      'agentProfile.customDomain': { $in: [host, bareHost, `www.${bareHost}`] },
+    })
       .select('_id name agentProfile.serviceAreas agentProfile.customDomain')
       .lean()
+
+    // DomainRegistry fallback: hosts registered to an agent that aren't their
+    // agentProfile.customDomain (jpsrealtor.com — the PRIMARY — is exactly
+    // this case; without it the primary domain got the 11-URL platform
+    // sitemap while the 2,189-URL agent sitemap only existed on the
+    // supplementary domain).
+    if (!agent) {
+      const mongooseMod = await import('mongoose')
+      const db = mongooseMod.default.connection.db
+      if (db) {
+        const entry = await db
+          .collection('domainregistries')
+          .findOne(
+            { domain: { $in: [host, bareHost] }, status: 'active', ownerId: { $ne: null } },
+            { projection: { ownerId: 1 } }
+          )
+        if (entry?.ownerId) {
+          agent = await User.findById(entry.ownerId)
+            .select('_id name agentProfile.serviceAreas agentProfile.customDomain')
+            .lean()
+        }
+      }
+    }
 
     if (agent) {
       const ap = (agent as any).agentProfile || {}
       return {
         type: 'agent',
-        baseUrl: `https://${host}`,
+        baseUrl: canonicalBase,
         agentId: (agent as any)._id.toString(),
         agentName: (agent as any).name,
         serviceAreas: (ap.serviceAreas || []).map((a: any) => a.name || a),
@@ -276,40 +310,11 @@ async function generatePlatformSitemap(domain: DomainInfo): Promise<MetadataRout
     { url: `${baseUrl}/terms-of-service`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
 
-  // Add cross-domain links to known agent sites
-  try {
-    await dbConnect()
-    const agents = await User.find({
-      roles: 'realEstateAgent',
-      $or: [
-        { 'agentProfile.customDomain': { $exists: true, $ne: null } },
-        { 'agentProfile.subdomain': { $exists: true, $ne: null } },
-      ],
-    })
-      .select('agentProfile.customDomain agentProfile.subdomain')
-      .lean()
-
-    for (const agent of agents) {
-      const ap = (agent as any).agentProfile || {}
-      if (ap.customDomain) {
-        pages.push({
-          url: `https://${ap.customDomain}`,
-          lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.6,
-        })
-      } else if (ap.subdomain) {
-        pages.push({
-          url: `https://${ap.subdomain}.chatrealty.io`,
-          lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.6,
-        })
-      }
-    }
-  } catch (err) {
-    console.error('[Sitemap] Error fetching agent cross-links:', err)
-  }
+  // NO cross-host <loc> entries. The sitemap protocol requires every URL to
+  // live on the sitemap's own host — agent domains/subdomains listed here
+  // were invalid and ignored by Google. Agent sites are discovered via their
+  // OWN per-host sitemaps (this same route, served on their domain) plus
+  // on-page cross-links, not via the platform sitemap.
 
   console.log(`[Sitemap] ${baseUrl}: ${pages.length} platform URLs`)
   return pages
@@ -344,18 +349,14 @@ async function generateAgentSitemap(domain: DomainInfo): Promise<MetadataRoute.S
   // Listings limited to agent's service area cities
   const listingPages = await getListingPages(baseUrl, now, serviceAreas)
 
-  // Cross-domain link back to platform
-  const crossDomainLinks: MetadataRoute.Sitemap = [
-    { url: 'https://chatrealty.io', lastModified: now, changeFrequency: 'weekly', priority: 0.3 },
-  ]
-
+  // No cross-host entries (sitemap protocol: every <loc> must be on the
+  // sitemap's own host — the old chatrealty.io link here was invalid).
   const allPages = [
     ...staticPages,
     ...cityPages,
     ...subdivisionPages,
     ...blogPages,
     ...listingPages,
-    ...crossDomainLinks,
   ]
 
   console.log(

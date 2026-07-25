@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
+import { getBaseUrl } from '@/lib/domain-utils'
 
 // Domain-specific robots.txt rules and sitemap references.
 // Each domain in the ChatRealty network gets its own robots.txt that points
@@ -11,7 +12,11 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const headersList = await headers()
   const host = headersList.get('host') || 'chatrealty.io'
   const hostname = host.replace(/:\d+$/, '').toLowerCase()
-  const baseUrl = `https://${hostname}`
+  // Host:/Sitemap: directives use the CANONICAL host (supplementary domains
+  // alias to the primary via getBaseUrl) — josephsardella.com's robots.txt
+  // used to declare Host: josephsardella.com, reinforcing the wrong host
+  // against the canonical consolidation to jpsrealtor.com.
+  const baseUrl = getBaseUrl(hostname)
 
   const isPlatform = PLATFORM_DOMAINS.includes(hostname)
 
