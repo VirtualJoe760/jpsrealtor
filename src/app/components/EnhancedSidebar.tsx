@@ -246,13 +246,15 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             }`}
             aria-label={effectivelyCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {/* Three CSS bars, not SVG endpoint interpolation: the arrowhead
-                bars fold in/out by ROTATING around their left ends (origin
-                left, where they meet the shaft), so every intermediate frame
-                is a natural pivot — the material hamburger⇄arrow morph. */}
+            {/* Three CSS bars morphing hamburger ⇄ chevron ("<", point only —
+                no tail). The outer bars fold by rotating around their left
+                ends, which meet at the chevron's vertex; the middle bar
+                RETRACTS into that vertex (width→0 + fade) instead of staying
+                as an arrow shaft. Expanded chevron sits centered in the box:
+                vertex x=6, strokes 11px at ±45° → spans x6–14, y2–18. */}
             <motion.span
               initial={false}
-              animate={{ scale: effectivelyCollapsed ? 1.15 : 0.8 }}
+              animate={{ scale: effectivelyCollapsed ? 1.15 : 0.85 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className={`relative block h-5 w-5 transition-colors ${
                 effectivelyCollapsed
@@ -260,28 +262,37 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                   : isLight ? "text-gray-400" : "text-neutral-500"
               }`}
             >
-              {/* top bar ↔ upper arrowhead */}
+              {/* top bar ↔ upper chevron stroke */}
               <motion.span
                 initial={false}
                 style={{ originX: 0 }}
                 animate={
                   effectivelyCollapsed
-                    ? { y: -6, rotate: 0, width: 18 }
-                    : { y: 0, rotate: -45, width: 10 }
+                    ? { x: 0, y: -6, rotate: 0, width: 18 }
+                    : { x: 5, y: 0, rotate: -45, width: 11 }
                 }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="absolute left-[1px] top-[9px] h-[2px] rounded-full bg-current"
               />
-              {/* middle bar ↔ arrow shaft */}
-              <span className="absolute left-[1px] top-[9px] h-[2px] w-[18px] rounded-full bg-current" />
-              {/* bottom bar ↔ lower arrowhead */}
+              {/* middle bar ↔ retracts into the vertex */}
+              <motion.span
+                initial={false}
+                animate={
+                  effectivelyCollapsed
+                    ? { x: 0, width: 18, opacity: 1 }
+                    : { x: 5, width: 0, opacity: 0 }
+                }
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute left-[1px] top-[9px] h-[2px] rounded-full bg-current"
+              />
+              {/* bottom bar ↔ lower chevron stroke */}
               <motion.span
                 initial={false}
                 style={{ originX: 0 }}
                 animate={
                   effectivelyCollapsed
-                    ? { y: 6, rotate: 0, width: 18 }
-                    : { y: 0, rotate: 45, width: 10 }
+                    ? { x: 0, y: 6, rotate: 0, width: 18 }
+                    : { x: 5, y: 0, rotate: 45, width: 11 }
                 }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="absolute left-[1px] top-[9px] h-[2px] rounded-full bg-current"
