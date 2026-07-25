@@ -226,22 +226,23 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
         )}
         {!isMobile && (
-          /* Collapse toggle: sits at the right edge when open, slides to the
-             center of the 80px rail when collapsed. The icon morphs between a
-             back arrow (open) and a hamburger (collapsed) by animating three
-             SVG line endpoints. Widths are the sidebar's fixed 280/80px:
-             button box is 36px (p-2 + 20px icon), so open left = 280-12-36.
-             Collapsed left aligns the ICON CENTER with the nav-link icon
-             column (nav px-3 + link px-4 + half a 20px icon = 38px), not
-             the rail's geometric center: 38 - 18 = 20. */
+          /* Collapse toggle. The 21px wordmark spans ~200px of the 280px
+             sidebar, so a full-size arrow beside it collides with the mark.
+             Expanded, the arrow is therefore a QUIET control: scaled to 0.8,
+             dimmed, tucked at the edge (32px box = p-1.5 + 20px icon, left =
+             280-32-6). Collapsed, it's the primary control: hamburger at
+             1.15, full contrast, icon center on the nav-icon column (nav
+             px-3 + link px-4 + half a 20px icon = 38px → left = 38-16 = 22). */
           <motion.button
             onClick={() => toggleSidebar()}
             initial={false}
-            animate={{ left: effectivelyCollapsed ? 20 : 232 }}
+            animate={{ left: effectivelyCollapsed ? 22 : 242 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             style={{ top: "50%", y: "-50%" }}
-            className={`absolute p-2 rounded-lg transition-colors ${
-              isLight ? "hover:bg-gray-100" : "hover:bg-neutral-800"
+            className={`absolute p-1.5 rounded-full outline-none transition-colors focus-visible:ring-2 ${
+              isLight
+                ? "hover:bg-gray-100 focus-visible:ring-gray-300"
+                : "hover:bg-neutral-800 focus-visible:ring-neutral-600"
             }`}
             aria-label={effectivelyCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -251,9 +252,13 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                 is a natural pivot — the material hamburger⇄arrow morph. */}
             <motion.span
               initial={false}
-              animate={{ scale: effectivelyCollapsed ? 1.15 : 1 }}
+              animate={{ scale: effectivelyCollapsed ? 1.15 : 0.8 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className={`relative block h-5 w-5 ${isLight ? "text-gray-600" : "text-neutral-400"}`}
+              className={`relative block h-5 w-5 transition-colors ${
+                effectivelyCollapsed
+                  ? isLight ? "text-gray-600" : "text-neutral-400"
+                  : isLight ? "text-gray-400" : "text-neutral-500"
+              }`}
             >
               {/* top bar ↔ upper arrowhead */}
               <motion.span
