@@ -7,7 +7,7 @@
 // and chat/map actions so the two layouts stay in lockstep.
 
 import { usePathname, useRouter } from "next/navigation";
-import Wordmark from "@/app/components/brand/Wordmark";
+import NavBrandMark from "@/app/components/brand/NavBrandMark";
 import {
   MessageSquare,
   Home,
@@ -57,6 +57,8 @@ export default function EnhancedNavbar() {
     licenseNumber?: string;
     phone?: string;
     email?: string;
+    teamLogo?: string;
+    teamLogoDark?: string;
   }>({});
 
   useEffect(() => {
@@ -162,7 +164,14 @@ export default function EnhancedNavbar() {
     >
       {/* Logo → home */}
       <button onClick={() => handleNavigate("/")} className="flex items-center shrink-0" aria-label="Home">
-        <Wordmark className={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
+        <NavBrandMark
+          teamLogo={branding.teamLogo}
+          teamLogoDark={branding.teamLogoDark}
+          teamName={branding.teamName}
+          isLight={isLight}
+          wordmarkClassName={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
+          logoClassName="h-7 w-auto max-w-[160px] object-contain"
+        />
       </button>
 
       {/* Primary nav. NOTE: no overflow-x here — an overflow context would clip the

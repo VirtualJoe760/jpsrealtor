@@ -25,6 +25,39 @@ const NAV_OPTIONS: { id: NavLayout; label: string; icon: typeof PanelLeft; desc:
   { id: "navbar", label: "Top Navbar", icon: PanelTop, desc: "Horizontal navigation bar across the top" },
 ];
 
+// Navbar logo presets bundled with the platform (public/images/brand/).
+// Each needs BOTH variants: `light` renders on light backgrounds (dark
+// artwork), `dark` renders on dark backgrounds (white artwork). "Default"
+// clears the fields → the site falls back to the ChatRealty text wordmark.
+const NAV_LOGO_PRESETS: {
+  id: string;
+  label: string;
+  light: string | null;
+  dark: string | null;
+}[] = [
+  { id: "wordmark", label: "ChatRealty wordmark (default)", light: null, dark: null },
+  {
+    id: "obsidian",
+    label: "Obsidian Group | eXp",
+    light: "/images/brand/obsidian-logo-black.png",
+    dark: "/images/brand/logo-white-obsidian.png",
+  },
+  {
+    id: "exp",
+    label: "eXp Realty",
+    light: "/images/brand/exp-Realty-Logo-black.png",
+    dark: "/images/brand/EXP-white-square.png",
+  },
+];
+
+// Share-card background presets (public/ assets + the agent's own photos).
+const OG_BG_PRESETS: { id: string; label: string; value: string | null }[] = [
+  { id: "none", label: "Soft neutral (no photo)", value: null },
+  { id: "mcm", label: "Mid-century home", value: "/about-morph/03-mcmhouse.jpg" },
+  { id: "golf", label: "Golf course", value: "/about-morph/04-golf.jpg" },
+  { id: "clubhouse", label: "Clubhouse", value: "/about-morph/02-clubhouse.jpg" },
+];
+
 type HeroStyle = "split" | "fullwidth" | "video" | "carousel" | "minimal" | "spotlight";
 
 const HERO_OPTIONS: { id: HeroStyle; label: string; icon: typeof Columns2; desc: string }[] = [
@@ -46,6 +79,15 @@ export default function BrandingStep({
   const themeMode: ThemeMode = formData.agentProfile?.themeMode || "both";
   const navLayout: NavLayout = formData.agentProfile?.navLayout === "navbar" ? "navbar" : "sidebar";
   const heroStyle: HeroStyle = (HERO_OPTIONS.find((h) => h.id === formData.agentProfile?.heroStyle)?.id) || "split";
+  const teamLogo: string | null = formData.agentProfile?.teamLogo || null;
+  const teamLogoDark: string | null = formData.agentProfile?.teamLogoDark || null;
+
+  const ogBackgroundImage: string | null = formData.agentProfile?.ogBackgroundImage || null;
+
+  const applyLogoPreset = (preset: (typeof NAV_LOGO_PRESETS)[number]) => {
+    updateField("agentProfile.teamLogo", preset.light);
+    updateField("agentProfile.teamLogoDark", preset.dark);
+  };
 
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
     isLight
@@ -63,6 +105,9 @@ export default function BrandingStep({
         themeMode,
         navLayout,
         heroStyle,
+        teamLogo,
+        teamLogoDark,
+        ogBackgroundImage,
       },
     });
   };
@@ -204,6 +249,107 @@ export default function BrandingStep({
         <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
           {NAV_OPTIONS.find((o) => o.id === navLayout)?.desc} · Mobile always uses the bottom nav bar.
         </p>
+      </div>
+
+      {/* Navigation Bar Logo */}
+      <div className="mb-6">
+        <label className={labelClass}>Navigation Bar Logo</label>
+        <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          Shown top-left on your site and on your share cards. Needs a light-mode and a dark-mode version.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {NAV_LOGO_PRESETS.map((preset) => {
+            const isActive = teamLogo === preset.light && teamLogoDark === preset.dark;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyLogoPreset(preset)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all text-center ${
+                  isActive
+                    ? isLight
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-emerald-500 bg-emerald-900/20"
+                    : isLight
+                    ? "border-gray-200 bg-gray-50 hover:border-gray-300"
+                    : "border-gray-700 bg-gray-800/40 hover:border-gray-600"
+                }`}
+              >
+                {preset.light ? (
+                  <span className="flex w-full items-center justify-center rounded bg-white px-2 py-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preset.light} alt="" className="h-7 w-auto max-w-full object-contain" />
+                  </span>
+                ) : (
+                  <span
+                    className={`flex w-full items-center justify-center rounded px-2 py-2 text-sm uppercase tracking-[0.3em] ${
+                      isLight ? "bg-white text-gray-900" : "bg-neutral-900 text-neutral-100"
+                    }`}
+                  >
+                    <span className="font-extralight">Chat</span>
+                    <span className="font-medium">Realty</span>
+                  </span>
+                )}
+                <span
+                  className={`text-xs font-semibold ${
+                    isActive
+                      ? isLight ? "text-blue-700" : "text-emerald-300"
+                      : isLight ? "text-gray-700" : "text-gray-300"
+                  }`}
+                >
+                  {preset.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Share-card background */}
+      <div className="mb-6">
+        <label className={labelClass}>Share-Card Background</label>
+        <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          The photo behind your link-preview card (Facebook, iMessage, LinkedIn). A light overlay keeps your name readable.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {OG_BG_PRESETS.map((preset) => {
+            const isActive = ogBackgroundImage === preset.value;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => updateField("agentProfile.ogBackgroundImage", preset.value)}
+                className={`flex flex-col items-center gap-2 p-2 rounded-lg border-2 transition-all text-center ${
+                  isActive
+                    ? isLight
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-emerald-500 bg-emerald-900/20"
+                    : isLight
+                    ? "border-gray-200 bg-gray-50 hover:border-gray-300"
+                    : "border-gray-700 bg-gray-800/40 hover:border-gray-600"
+                }`}
+              >
+                {preset.value ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={preset.value} alt="" className="h-14 w-full rounded object-cover" />
+                ) : (
+                  <span className="flex h-14 w-full items-center justify-center rounded" style={{ backgroundColor: "#f5f4f2" }}>
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400">neutral</span>
+                  </span>
+                )}
+                <span
+                  className={`text-xs font-semibold ${
+                    isActive
+                      ? isLight ? "text-blue-700" : "text-emerald-300"
+                      : isLight ? "text-gray-700" : "text-gray-300"
+                  }`}
+                >
+                  {preset.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Hero Style */}

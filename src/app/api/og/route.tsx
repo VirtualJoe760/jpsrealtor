@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   await dbConnect();
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors")
+    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors agentProfile.teamLogo agentProfile.ogBackgroundImage")
     .lean();
 
   const ap = (agent as any)?.agentProfile;
@@ -78,7 +78,23 @@ export async function GET(request: NextRequest) {
   const brokerage: string = (agent as any)?.brokerageName || "";
   const license: string = (agent as any)?.licenseNumber || "";
   const headshotUrl: string = ap?.headshotTransparent || ap?.headshot || "";
-  const primaryColor: string = ap?.brandColors?.primary || "#1e3a5f";
+  // brandColors.primary can be a comma list ("#000000,#ffd700,#ffffff") —
+  // take the first entry as the primary, or the whole value if single.
+  const primaryColor: string =
+    (ap?.brandColors?.primary || "#1e3a5f").split(",")[0].trim() || "#1e3a5f";
+  // Team logo (e.g. Obsidian Group) replaces the platform wordmark on the
+  // agent's card — ChatRealty is the parent platform's brand, not the
+  // agent's agency. Relative paths resolve against this deployment.
+  const teamLogoRaw: string = ap?.teamLogo || "";
+  const teamLogoUrl = teamLogoRaw
+    ? teamLogoRaw.startsWith("http")
+      ? teamLogoRaw
+      : `${baseUrl}${teamLogoRaw}`
+    : "";
+  // Optional background photo under a light scrim (Brand settings →
+  // Share-Card Background). Empty = flat soft-neutral card.
+  const bgRaw: string = ap?.ogBackgroundImage || "";
+  const bgUrl = bgRaw ? (bgRaw.startsWith("http") ? bgRaw : `${baseUrl}${bgRaw}`) : "";
 
   // Account names often carry a role suffix ("Joseph Sardella Real Estate
   // Agent"). Split it so the card reads name / role on separate lines.
@@ -97,11 +113,27 @@ export async function GET(request: NextRequest) {
   if (lines.length === 0) lines.push({ text: "AI-Powered Real Estate", size: 28, color: "#6b7280", bold: false });
 
   return new ImageResponse(
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "white" }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#f5f4f2", position: "relative" }}>
+      {bgUrl ? (
+        <img
+          src={bgUrl}
+          width={1200}
+          height={630}
+          style={{ position: "absolute", top: 0, left: 0, objectFit: "cover" }}
+        />
+      ) : null}
+      {bgUrl ? (
+        // The scrim: keeps name/DRE readable over any photo.
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(247,246,244,0.87)", display: "flex" }} />
+      ) : null}
       <div style={{ display: "flex", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: 60, paddingTop: 60, paddingBottom: 60, flex: 1 }}>
           <div style={{ display: "flex", marginBottom: 44 }}>
-            <WordmarkRow fontSize={68} color="#16181d" />
+            {teamLogoUrl ? (
+              <img src={teamLogoUrl} alt="" width={560} height={131} style={{ objectFit: "contain" }} />
+            ) : (
+              <WordmarkRow fontSize={68} color="#16181d" />
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {lines.map((line, i) => (

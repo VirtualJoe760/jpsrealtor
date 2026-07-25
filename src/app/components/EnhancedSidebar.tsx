@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Wordmark from "@/app/components/brand/Wordmark";
+import NavBrandMark from "@/app/components/brand/NavBrandMark";
 import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare,
@@ -233,7 +234,14 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           room from the top edge and the nav never jumps on toggle. */}
       <div className="relative flex min-h-[68px] items-center py-5 pl-7 pr-5">
         {!effectivelyCollapsed && (
-          <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
+          <NavBrandMark
+            teamLogo={branding.teamLogo}
+            teamLogoDark={branding.teamLogoDark}
+            teamName={branding.teamName}
+            isLight={isLight}
+            wordmarkClassName={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
+            logoClassName="h-9 w-auto max-w-[200px] object-contain"
+          />
         )}
         {!isMobile && (
           /* Collapse toggle. The 21px wordmark spans ~200px of the 280px

@@ -731,6 +731,10 @@ const UserSchema = new Schema<IUser>(
       teamLogo: String,
       teamLogoDark: String,
 
+      // Share-card (OG image) background photo — rendered under a light
+      // scrim on /api/og. Empty = flat soft-neutral card.
+      ogBackgroundImage: String,
+
       // Branding
       fontFamily: String,
       themeMode: { type: String, enum: ["both", "light", "dark"], default: "both" },
