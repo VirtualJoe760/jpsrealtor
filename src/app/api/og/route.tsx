@@ -80,9 +80,18 @@ export async function GET(request: NextRequest) {
   const headshotUrl: string = ap?.headshotTransparent || ap?.headshot || "";
   const primaryColor: string = ap?.brandColors?.primary || "#1e3a5f";
 
+  // Account names often carry a role suffix ("Joseph Sardella Real Estate
+  // Agent"). Split it so the card reads name / role on separate lines.
+  const roleMatch = name.match(
+    /^(.*\S)\s+(Real Estate Agent|Real Estate Broker|Broker Associate|Broker|Realtor)\s*$/i
+  );
+  const displayName = roleMatch ? roleMatch[1] : name;
+  const role = roleMatch ? roleMatch[2] : "";
+
   // Build text lines array — no JSX conditionals
   const lines: { text: string; size: number; color: string; bold: boolean }[] = [];
-  if (name) lines.push({ text: name, size: 42, color: primaryColor, bold: true });
+  if (displayName) lines.push({ text: displayName, size: 46, color: primaryColor, bold: true });
+  if (role) lines.push({ text: role, size: 24, color: "#6b7280", bold: false });
   if (brokerage) lines.push({ text: brokerage, size: 22, color: "#6b7280", bold: false });
   if (license) lines.push({ text: `DRE# ${license}`, size: 16, color: "#9ca3af", bold: false });
   if (lines.length === 0) lines.push({ text: "AI-Powered Real Estate", size: 28, color: "#6b7280", bold: false });
