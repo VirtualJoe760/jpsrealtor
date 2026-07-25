@@ -10,7 +10,7 @@ import crypto from "crypto";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
-import { sendLeadEvent } from "@/lib/meta-capi";
+import { sendLeadEvent, eventSourceUrlFromRequest } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { resolveEmailAgent, type EmailAgent } from "@/lib/email-resend";
 import { Resend } from "resend";
@@ -228,7 +228,8 @@ export async function POST(req: NextRequest) {
         clientIp: req.headers.get("x-forwarded-for") || undefined,
         clientUserAgent: req.headers.get("user-agent") || undefined,
       },
-      { content_category: "campaign_lead", content_name: campaignTitle || campaignSlug }
+      { content_category: "campaign_lead", content_name: campaignTitle || campaignSlug },
+      eventSourceUrlFromRequest(req)
     ).catch(() => {});
 
     return NextResponse.json({

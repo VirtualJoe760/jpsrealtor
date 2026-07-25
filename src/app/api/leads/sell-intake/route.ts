@@ -14,7 +14,7 @@ import User from "@/models/User";
 import Contact from "@/models/Contact";
 import VerificationToken from "@/models/verificationToken";
 import { sendLeadWelcomeEmail } from "@/lib/email-resend";
-import { sendLeadEvent } from "@/lib/meta-capi";
+import { sendLeadEvent, eventSourceUrlFromRequest } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { verifyTurnstile, clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -314,7 +314,8 @@ export async function POST(request: NextRequest) {
         clientIp: request.headers.get("x-forwarded-for") || undefined,
         clientUserAgent: request.headers.get("user-agent") || undefined,
       },
-      { content_category: "sell_inquiry", content_name: cityName || "Sell Lead" }
+      { content_category: "sell_inquiry", content_name: cityName || "Sell Lead" },
+      eventSourceUrlFromRequest(request)
     ).catch(() => {});
 
     return NextResponse.json({ success: true, accountCreated });

@@ -6,7 +6,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import VerificationToken from "@/models/verificationToken";
 import { sendVerificationEmail } from "@/lib/email-resend";
-import { sendCompleteRegistrationEvent } from "@/lib/meta-capi";
+import { sendCompleteRegistrationEvent, eventSourceUrlFromRequest } from "@/lib/meta-capi";
 import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { verifyTurnstile, clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       lastName: rest.join(" "),
       clientIp: request.headers.get("x-forwarded-for") || undefined,
       clientUserAgent: request.headers.get("user-agent") || undefined,
-    }).catch(() => {});
+    }, eventSourceUrlFromRequest(request)).catch(() => {});
 
     return NextResponse.json(
       {

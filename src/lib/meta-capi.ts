@@ -94,16 +94,41 @@ export async function sendCAPIEvent(event: CAPIEvent): Promise<{ success: boolea
   }
 }
 
+/**
+ * Derive the true source origin for a server event from the incoming request.
+ * The platform serves multiple domains (jpsrealtor.com, josephsardella.com,
+ * chatrealty.io) from one deployment; without this, every CAPI event fell
+ * back to the hard-coded chatrealty.io and misreported which site actually
+ * produced the lead. Prefers the referer (full page URL when the browser
+ * sends it), falls back to the request host.
+ */
+export function eventSourceUrlFromRequest(req: Request): string | undefined {
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).href;
+    } catch {
+      /* fall through to host */
+    }
+  }
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  return host ? `https://${host.split(",")[0].trim()}` : undefined;
+}
+
 // Convenience wrappers for common events
 
-export function sendLeadEvent(userData: UserData, customData?: Record<string, any>) {
-  return sendCAPIEvent({ eventName: "Lead", userData, customData });
+export function sendLeadEvent(
+  userData: UserData,
+  customData?: Record<string, any>,
+  eventSourceUrl?: string
+) {
+  return sendCAPIEvent({ eventName: "Lead", userData, customData, eventSourceUrl });
 }
 
-export function sendCompleteRegistrationEvent(userData: UserData) {
-  return sendCAPIEvent({ eventName: "CompleteRegistration", userData });
+export function sendCompleteRegistrationEvent(userData: UserData, eventSourceUrl?: string) {
+  return sendCAPIEvent({ eventName: "CompleteRegistration", userData, eventSourceUrl });
 }
 
-export function sendSubscribeEvent(userData: UserData) {
-  return sendCAPIEvent({ eventName: "Subscribe", userData });
+export function sendSubscribeEvent(userData: UserData, eventSourceUrl?: string) {
+  return sendCAPIEvent({ eventName: "Subscribe", userData, eventSourceUrl });
 }
