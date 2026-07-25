@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Heart, MapPin, Bed, Bath, Maximize, ChevronLeft, ChevronRight, Loader2, ChevronDown, LayoutGrid, List } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 
@@ -293,15 +294,22 @@ const FaveSpot: React.FC<FaveSpotProps> = ({ className = "" }) => {
   const listRef = React.useRef<HTMLDivElement>(null);
 
   const cardBg = isLight ? "bg-white/80" : "bg-neutral-900/50";
+  const { status: sessionStatus } = useSession();
   const cardBorder = isLight ? "border-gray-200" : "border-neutral-700/50";
   const textPrimary = isLight ? "text-gray-900" : "text-white";
   const textSecondary = isLight ? "text-gray-600" : "text-gray-400";
   const textMuted = isLight ? "text-gray-500" : "text-gray-500";
   const shadow = isLight ? "shadow-lg" : "shadow-2xl shadow-black/40";
 
+  // AUTH GATE (2026-07-25): favorites are per-user — never fetch or render
+  // for anonymous visitors. The transport 401 is NOT enough: pre-2026-06-05
+  // these responses were cached `immutable` in browsers, so a logged-out
+  // device could replay a logged-in body straight from disk without ever
+  // hitting the server (the PWA favorites leak).
   useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
     loadFavoriteSpotlight();
-  }, []);
+  }, [sessionStatus]);
 
   // Reset to page 1 when switching view modes
   useEffect(() => {
@@ -333,7 +341,8 @@ const FaveSpot: React.FC<FaveSpotProps> = ({ className = "" }) => {
         ? `/api/insights/favorite-spotlight?community=${encodeURIComponent(community)}`
         : "/api/insights/favorite-spotlight";
 
-      const response = await fetch(url);
+      // no-store: bypass the HTTP cache entirely — per-user payload.
+      const response = await fetch(url, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         setTopCommunities(data.topCommunities || []);
@@ -436,6 +445,7 @@ const FaveSpot: React.FC<FaveSpotProps> = ({ className = "" }) => {
   }
 
   // Don't show if no data
+  if (sessionStatus !== "authenticated") return null;
   if (listings.length === 0) {
     return null;
   }

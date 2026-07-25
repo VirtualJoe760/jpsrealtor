@@ -22,6 +22,11 @@ export async function POST(request: NextRequest) {
       user = await User.findOne({ email: session.user.email });
     } else if (anonymousId) {
       user = await User.findOne({ anonymousId });
+      // IDOR guard (2026-07-25): anonymousId only authorizes pure guest
+      // records — never a registered account's (see /api/swipes/user).
+      if (user?.email) {
+        user = null;
+      }
     }
 
     if (!user) {

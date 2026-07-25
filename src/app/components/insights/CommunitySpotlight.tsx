@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Home, MapPin, Bed, Bath, Maximize, TrendingUp, ArrowRight, Loader2, ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import Link from "next/link";
@@ -311,15 +312,19 @@ const CommunitySpotlight: React.FC<CommunitySpotlightProps> = ({ className = "" 
   const listRef = React.useRef<HTMLDivElement>(null);
 
   const cardBg = isLight ? "bg-white/80" : "bg-neutral-900/50";
+  const { status: sessionStatus } = useSession();
   const cardBorder = isLight ? "border-gray-200" : "border-neutral-700/50";
   const textPrimary = isLight ? "text-gray-900" : "text-white";
   const textSecondary = isLight ? "text-gray-600" : "text-gray-400";
   const textMuted = isLight ? "text-gray-500" : "text-gray-500";
   const shadow = isLight ? "shadow-lg" : "shadow-2xl shadow-black/40";
 
+  // AUTH GATE (2026-07-25): same rule as FaveSpot — per-user data, never
+  // fetched or rendered for anonymous visitors (see the PWA favorites leak).
   useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
     loadCommunitySpotlight();
-  }, []);
+  }, [sessionStatus]);
 
   // Reset to page 1 when switching view modes
   useEffect(() => {
@@ -360,7 +365,8 @@ const CommunitySpotlight: React.FC<CommunitySpotlightProps> = ({ className = "" 
         ? `/api/insights/community-spotlight?community=${encodeURIComponent(communityName)}`
         : "/api/insights/community-spotlight";
 
-      const response = await fetch(url);
+      // no-store: bypass the HTTP cache entirely — per-user payload.
+      const response = await fetch(url, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         setCommunity(data.community);
@@ -505,6 +511,7 @@ const CommunitySpotlight: React.FC<CommunitySpotlightProps> = ({ className = "" 
   }
 
   // Don't show if no data
+  if (sessionStatus !== "authenticated") return null;
   if (!community || listings.length === 0) {
     return null;
   }

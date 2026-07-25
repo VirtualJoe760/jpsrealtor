@@ -77,5 +77,15 @@ export function getSignOutChainUrl(): string {
  */
 export function signOutChain(): void {
   if (typeof window === "undefined") return;
+  // Clear per-user client state BEFORE navigating: these keys survive the
+  // cookie chain otherwise, and a later session-loss write-back (see
+  // useFavorites) could leave the signed-in user's favorites readable on a
+  // logged-out device.
+  try {
+    localStorage.removeItem("likedListings");
+    localStorage.removeItem("dislikedListings");
+  } catch {
+    /* storage unavailable — nothing to clear */
+  }
   window.location.href = getSignOutChainUrl();
 }

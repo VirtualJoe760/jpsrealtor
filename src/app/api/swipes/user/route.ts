@@ -31,6 +31,15 @@ export async function GET(request: NextRequest) {
       user = await User.findOne({ email: session.user.email });
     } else if (anonymousId) {
       user = await User.findOne({ anonymousId });
+      // IDOR guard (2026-07-25): an anonymousId is a bearer secret from the
+      // device's localStorage, good ONLY for pure guest records. If the id
+      // is attached to a REGISTERED account (guest who later signed up),
+      // that account's favorites must never be readable session-less — a
+      // leaked/guessed id would expose a real user's data. Registered users
+      // read via their session.
+      if (user?.email) {
+        user = null;
+      }
     }
 
     if (!user) {
