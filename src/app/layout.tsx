@@ -137,9 +137,12 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [cfg.ogImage.startsWith("http") ? cfg.ogImage : `${cfg.baseUrl}${cfg.ogImage}`],
       creator: cfg.twitterHandle || undefined,
     },
-    alternates: {
-      canonical: cfg.baseUrl,
-    },
+    // NO alternates.canonical here. A root-layout canonical is INHERITED by
+    // every page that doesn't set its own, which stamped the bare domain root
+    // onto ~1,924 listing pages (+ /about, /pricing) — telling Google the
+    // whole catalog was a duplicate of the homepage. Pages that want a
+    // canonical set a path-preserving one themselves (homepage, listings,
+    // neighborhoods, insights, lp). No canonical beats a wrong one.
     category: "Real Estate",
   };
 }

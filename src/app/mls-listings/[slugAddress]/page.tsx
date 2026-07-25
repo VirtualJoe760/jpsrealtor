@@ -73,9 +73,18 @@ export async function generateMetadata({
 
   const image = listing.primaryPhotoUrl || "/images/no-photo.png";
 
+  // Path-preserving canonical on the PRIMARY host (getBaseUrlFromHeaders
+  // aliases supplementary domains). Before 2026-07-25 these pages inherited
+  // the root layout's bare-domain canonical, which told Google all ~1,924
+  // listings were duplicates of the homepage.
+  const canonicalBase = await getBaseUrlFromHeaders();
+
   return {
     title,
     description,
+    alternates: {
+      canonical: `${canonicalBase}/mls-listings/${slugAddress}`,
+    },
     // Noindex sold/inactive listings so Google drops them from the index
     ...(!isActive && {
       robots: {

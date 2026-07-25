@@ -61,7 +61,12 @@ export function isAgentDomain(hostname: string): boolean {
 export function getBaseUrl(hostname?: string): string {
   const h = hostname || 'chatrealty.io'
   const bare = normalizeHostname(h)
-  return `https://${bare}`
+  // Canonical-host alias: supplementary domains build their SEO URLs
+  // (canonicals, breadcrumb JSON-LD, og:url) on the PRIMARY host so the
+  // domains consolidate instead of competing. Every caller of this helper is
+  // an SEO surface — none needs the literal request host.
+  const canonicalHost = SUPPLEMENTARY_DOMAIN_CANONICALS[bare] || bare
+  return `https://${canonicalHost}`
 }
 
 /**
