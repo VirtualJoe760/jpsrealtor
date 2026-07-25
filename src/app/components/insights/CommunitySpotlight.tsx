@@ -424,6 +424,11 @@ const CommunitySpotlight: React.FC<CommunitySpotlightProps> = ({ className = "" 
   };
 
   // Show loading skeleton
+  // Session gate FIRST — for anonymous visitors `loading` never resolves
+  // (the fetch is session-gated), so the skeleton branch below would
+  // render forever. Guests see nothing, not a permanent skeleton.
+  if (sessionStatus !== "authenticated") return null;
+
   if (loading) {
     return (
       <div className={`${className} mb-4 md:mb-8`}>
@@ -511,7 +516,6 @@ const CommunitySpotlight: React.FC<CommunitySpotlightProps> = ({ className = "" 
   }
 
   // Don't show if no data
-  if (sessionStatus !== "authenticated") return null;
   if (!community || listings.length === 0) {
     return null;
   }
