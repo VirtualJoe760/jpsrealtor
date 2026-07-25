@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { getPageWindow } from "@/lib/pagination-window";
 import { BookOpen, MessageCircle, LayoutGrid, List, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -540,12 +541,12 @@ const InsightsPage = () => {
 
         {/* Pagination Controls */}
         {displayedArticles.length > articlesPerPage && (
-          <div className="mt-8 flex items-center justify-center gap-2">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
             {/* Previous Button */}
             <button
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-semibold shrink-0 transition-all ${
                 currentPage === 1
                   ? isLight
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -558,32 +559,47 @@ const InsightsPage = () => {
               Previous
             </button>
 
-            {/* Page Numbers */}
-            <div className="flex gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-10 h-10 rounded-lg font-semibold transition-all ${
-                    currentPage === page
-                      ? isLight
-                        ? "bg-blue-600 text-white"
-                        : "bg-emerald-600 text-white"
-                      : isLight
-                      ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                      : "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+            {/* Page Numbers — windowed (1 … 5 6 7 … 20). Rendering one
+                button per page overflowed the viewport on mobile. */}
+            <div className="flex gap-1.5 sm:gap-2">
+              {getPageWindow(currentPage, totalPages).map((item, i) =>
+                item === "ellipsis" ? (
+                  <span
+                    key={`gap-${i}`}
+                    aria-hidden="true"
+                    className={`flex w-6 sm:w-8 h-10 items-end justify-center pb-2 text-sm ${
+                      isLight ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setCurrentPage(item)}
+                    aria-label={`Page ${item}`}
+                    aria-current={currentPage === item ? "page" : undefined}
+                    className={`w-9 sm:w-10 h-10 shrink-0 rounded-lg font-semibold transition-all ${
+                      currentPage === item
+                        ? isLight
+                          ? "bg-blue-600 text-white"
+                          : "bg-emerald-600 text-white"
+                        : isLight
+                        ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
             </div>
 
             {/* Next Button */}
             <button
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-semibold shrink-0 transition-all ${
                 currentPage === totalPages
                   ? isLight
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"

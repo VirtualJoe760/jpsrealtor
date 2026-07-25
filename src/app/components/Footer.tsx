@@ -11,8 +11,11 @@ export default function Footer() {
 
   if (pathname !== '/') return null;
 
+  // Bottom padding clears the fixed mobile bottom nav (sm:hidden, ~85px
+  // measured, plus the device safe area) so the legal links aren't tucked
+  // behind it. Desktop has no bottom bar, so sm: resets to normal spacing.
   return (
-    <footer className="w-full py-4 px-6">
+    <footer className="w-full px-6 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
       <div className="flex items-center justify-center gap-4 text-xs">
         <Link
           href="/privacy-policy"
