@@ -216,12 +216,13 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       style={{ paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 20px)' : undefined }}
     >
       {/* Header */}
-      {/* Wordmark centered across the full sidebar width; the collapse
-          chevron floats right so it doesn't skew the centering. */}
+      {/* Wordmark LEFT-aligned with the nav-link icon column: pl-7 (28px)
+          = nav px-3 + link px-4, so the C sits flush over the nav icons.
+          The collapse chevron floats at the right edge. */}
       {/* min-h keeps the header the same height whether the wordmark is
           shown (expanded) or not (collapsed), so the toggle gets breathing
           room from the top edge and the nav never jumps on toggle. */}
-      <div className="relative flex min-h-[68px] items-center justify-center p-5">
+      <div className="relative flex min-h-[68px] items-center py-5 pl-7 pr-5">
         {!effectivelyCollapsed && (
           <Wordmark className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`} />
         )}

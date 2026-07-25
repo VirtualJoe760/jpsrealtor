@@ -27,7 +27,7 @@ export default function Wordmark({
         fontFamily: "'Jost', system-ui, sans-serif",
         letterSpacing: "0.3em",
         marginRight: "-0.3em",
-        transform: "translateY(0.05em) translateX(-0.1em)", // optical: REALTY's heavier weight pulls the eye right
+        transform: "translateY(0.05em)",
       }}
       aria-label="ChatRealty"
     >
