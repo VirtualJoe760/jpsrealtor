@@ -38,10 +38,14 @@ export async function GET(request: NextRequest) {
         .lean();
     }
 
-    // Try custom domain lookup (jpsrealtor.com → josephsardella, etc.)
+    // Try custom domain lookup (jpsrealtor.com → josephsardella, etc.) —
+    // with and without www so both host forms resolve identically.
+    const bareHost = host.replace(/^www\./, '');
     if (!agent && host && host !== 'localhost') {
       // Check agentProfile.customDomain first
-      agent = await User.findOne({ "agentProfile.customDomain": host })
+      agent = await User.findOne({
+        "agentProfile.customDomain": { $in: [host, bareHost, `www.${bareHost}`] },
+      })
         .select("name email phone licenseNumber brokerageName agentProfile")
         .lean();
 
@@ -52,7 +56,7 @@ export async function GET(request: NextRequest) {
           const db = mongoose.default.connection.db;
           if (db) {
             const domainEntry = await db.collection('domainregistries').findOne(
-              { domain: host, status: 'active' },
+              { domain: { $in: [host, bareHost] }, status: 'active' },
               { projection: { ownerId: 1 } }
             );
             if (domainEntry?.ownerId) {

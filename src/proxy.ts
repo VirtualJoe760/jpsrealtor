@@ -71,6 +71,12 @@ const PUBLIC_API_PREFIXES = [
 const PUBLIC_API_EXACT = new Set([
   "/api/site-config", // proxy middleware lookup for external-site routing (public, low-sensitivity)
   "/api/agent/public",
+  // Sidebar/footer branding for ANONYMOUS visitors (agent name, DRE#,
+  // brokerage — the required agency treatment). Same public-fields class as
+  // /api/agent/public; omitting it here 401'd the sidebar's fetch and
+  // silently hid the compliance block for every logged-out visitor from
+  // 2026-07-02 until 2026-07-25.
+  "/api/agent-branding",
   "/api/appointments/available-slots",
   "/api/appointments/book",
   "/api/articles/list",

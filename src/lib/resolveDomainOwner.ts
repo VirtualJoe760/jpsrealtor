@@ -77,10 +77,12 @@ export async function resolveDomainOwner(
     }
   }
 
-  // 2. customDomain on agentProfile
+  // 2. customDomain on agentProfile — match with and without www so
+  //    www.<domain> resolves identically to the apex.
+  const bareHost = host.replace(/^www\./, "");
   if (host && host !== "localhost") {
     const agent = await User.findOne(
-      { "agentProfile.customDomain": host },
+      { "agentProfile.customDomain": { $in: [host, bareHost, `www.${bareHost}`] } },
       { _id: 1 }
     ).lean();
     if (agent) {
@@ -98,7 +100,7 @@ export async function resolveDomainOwner(
       const db = mongoose.connection.db;
       if (db) {
         const entry = await db.collection("domainregistries").findOne(
-          { domain: host, status: "active" },
+          { domain: { $in: [host, bareHost] }, status: "active" },
           { projection: { ownerId: 1 } }
         );
         if (entry?.ownerId) {

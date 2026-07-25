@@ -113,11 +113,20 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     // customDomain -> DomainRegistry -> PRIMARY_AGENT_EMAIL fallback.
     const qs = subdomain ? `?subdomain=${encodeURIComponent(subdomain)}` : "";
     fetch(`/api/agent-branding${qs}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) {
+          // LOUD on purpose: this endpoint feeds the required agency
+          // treatment (agent name + DRE#). A middleware-gate regression
+          // 401'd it silently for three weeks in July 2026 — never again.
+          console.error(`[EnhancedSidebar] /api/agent-branding failed: ${r.status}`);
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
         if (data?.branding) setBranding(data.branding);
       })
-      .catch(() => {});
+      .catch((e) => console.error("[EnhancedSidebar] /api/agent-branding fetch error:", e));
   }, [status]);
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;

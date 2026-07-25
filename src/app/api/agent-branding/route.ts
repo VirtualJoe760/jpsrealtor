@@ -37,9 +37,13 @@ export async function GET(request: NextRequest) {
       .lean();
   }
 
-  // Try custom domain lookup (jpsrealtor.com -> Joseph, etc.)
+  // Try custom domain lookup (jpsrealtor.com -> Joseph, etc.) — with and
+  // without www so both host forms resolve identically.
+  const bareHost = host.replace(/^www\./, "");
   if (!agent && host && host !== "localhost") {
-    agent = await User.findOne({ "agentProfile.customDomain": host })
+    agent = await User.findOne({
+      "agentProfile.customDomain": { $in: [host, bareHost, `www.${bareHost}`] },
+    })
       .select(projection)
       .lean();
 
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
         if (db) {
           const domainEntry = await db
             .collection("domainregistries")
-            .findOne({ domain: host, status: "active" }, { projection: { ownerId: 1 } });
+            .findOne({ domain: { $in: [host, bareHost] }, status: "active" }, { projection: { ownerId: 1 } });
           if (domainEntry?.ownerId) {
             agent = await User.findById(domainEntry.ownerId).select(projection).lean();
           }

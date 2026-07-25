@@ -90,9 +90,30 @@ export async function getHostnameFromHeaders(): Promise<string> {
  * with data from the agent's DB profile (name, logo, description, etc.).
  * getDomainConfigFromHeaders() handles this enrichment automatically.
  */
+/**
+ * Supplementary → primary host mapping for SEO consolidation. A host listed
+ * here serves the SAME site as its primary, so its canonical/og URLs
+ * (baseUrl → metadataBase → alternates.canonical in layout.tsx) point at the
+ * primary instead of itself. This is the interim cross-domain-canonical hint;
+ * the endgame is a host-level 301 in Vercel at launch, after the corporate
+ * web-filter recategorization of jpsrealtor.com lands (redirecting sooner
+ * would bounce filtered visitors straight back into the block).
+ */
+const SUPPLEMENTARY_DOMAIN_CANONICALS: Record<string, string> = {
+  'josephsardella.com': 'jpsrealtor.com',
+  'www.josephsardella.com': 'jpsrealtor.com',
+  'www.jpsrealtor.com': 'jpsrealtor.com',
+}
+
+/** Lookup form of a host: port/case normalized AND leading www. stripped. */
+function stripWww(bare: string): string {
+  return bare.replace(/^www\./, '')
+}
+
 export function getDomainConfig(hostname: string): DomainSeoConfig {
   const bare = normalizeHostname(hostname)
-  const baseUrl = `https://${bare}`
+  const canonicalHost = SUPPLEMENTARY_DOMAIN_CANONICALS[bare] || bare
+  const baseUrl = `https://${canonicalHost}`
 
   if (PLATFORM_DOMAINS.has(bare)) {
     return {
@@ -162,22 +183,41 @@ export async function getDomainConfigFromHeaders(): Promise<DomainSeoConfig> {
       const mongoose = await import('mongoose')
       const db = mongoose.default.connection.db
       if (db) {
-        const or: Record<string, string>[] = [{ 'agentProfile.customDomain': bare }]
+        // Match customDomain with AND without www so www.josephsardella.com
+        // enriches the same as the apex.
+        const lookupHost = stripWww(bare)
+        const or: Record<string, string>[] = [
+          { 'agentProfile.customDomain': bare },
+          { 'agentProfile.customDomain': lookupHost },
+          { 'agentProfile.customDomain': `www.${lookupHost}` },
+        ]
         if (subdomain) or.push({ 'agentProfile.subdomain': subdomain })
 
-        const agent: any = await db.collection('users').findOne(
-          { $or: or },
-          {
-            projection: {
-              name: 1,
-              brokerageName: 1,
-              'agentProfile.subdomain': 1,
-              'agentProfile.headline': 1,
-              'agentProfile.metaTitle': 1,
-              'agentProfile.metaDescription': 1,
-            },
+        const projection = {
+          name: 1,
+          brokerageName: 1,
+          'agentProfile.subdomain': 1,
+          'agentProfile.headline': 1,
+          'agentProfile.metaTitle': 1,
+          'agentProfile.metaDescription': 1,
+        }
+
+        let agent: any = await db.collection('users').findOne({ $or: or }, { projection })
+
+        // DomainRegistry fallback: hosts registered to an agent without being
+        // their agentProfile.customDomain (e.g. jpsrealtor.com, whose account
+        // has customDomain=josephsardella.com). Without this, the PRIMARY
+        // domain served the generic "Real Estate Agent" metadata while the
+        // supplementary one got the branded tags — inverted.
+        if (!agent) {
+          const entry = await db.collection('domainregistries').findOne(
+            { domain: { $in: [bare, lookupHost] }, status: 'active', ownerId: { $ne: null } },
+            { projection: { ownerId: 1 } }
+          )
+          if (entry?.ownerId) {
+            agent = await db.collection('users').findOne({ _id: entry.ownerId }, { projection })
           }
-        )
+        }
 
         if (agent) {
           const ap = agent.agentProfile || {}

@@ -1,7 +1,7 @@
 ---
 title: Multi-tenant scoping (resolveDomainOwner)
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-07-25
 related: [../routing/README.md, ../auth/README.md]
 supersedes: docs/multi-tenant/index.md
 ---
@@ -16,6 +16,21 @@ branded sites. Every public-facing endpoint that displays content scoped to
 and filter by that — not by `session.user.id`. The helper that does this is
 `src/lib/resolveDomainOwner.ts`. Forgetting this rule is the single most
 common bug in this codebase.
+
+## Gotchas
+
+- **A public-facing endpoint must ALSO be in the proxy's allowlist**
+  (`PUBLIC_API_EXACT` / `PUBLIC_API_PREFIXES` in `src/proxy.ts`). The
+  deny-by-default API gate 401s anything else without a session.
+  `/api/agent-branding` was left out from 2026-07-02 to 2026-07-25, which
+  silently hid the required agency treatment (agent name + DRE#) from every
+  logged-out visitor — invisible to the owner because his own browser was
+  always signed in. If a "public" route feeds UI, verify it with a
+  cookie-less curl, not a logged-in browser.
+- **Strip `www.` before host lookups.** `agentProfile.customDomain` and
+  `domainregistries.domain` hold specific host forms; all four resolvers
+  (`resolveDomainOwner`, `getDomainConfigFromHeaders`, `/api/agent/public`,
+  `/api/agent-branding`) now match apex + www equivalently (2026-07-25).
 
 ## The rule
 
@@ -92,8 +107,8 @@ The systematic fix is to grep every API route for `session.user.id`, classify ea
 |---|---|---|
 | `chatrealty.io` / `www.chatrealty.io` | Platform marketing | Falls back to PRIMARY_AGENT_EMAIL (Joseph). `/` rewrites to `/chat-landing` so resolution rarely runs. |
 | `agent.chatrealty.io` | Admin-only owner preview | Treated as Joseph's site by content; admin gate is in the proxy. |
-| `jpsrealtor.com` / `www.jpsrealtor.com` | Joseph's apex | PRIMARY_AGENT_EMAIL fallback returns Joseph. |
-| `josephsardella.com` / `www.josephsardella.com` | Joseph's apex (alt) | Same as above. |
+| `jpsrealtor.com` / `www.jpsrealtor.com` | Joseph's PRIMARY apex (the SEO asset: indexed since 2023) | `DomainRegistry` ownerId (rows exist, `agent_custom`, active). All lookups strip `www.` first (2026-07-25). |
+| `josephsardella.com` / `www.josephsardella.com` | Joseph's SUPPLEMENTARY apex | `agentProfile.customDomain` exact match. Canonical/og URLs point at jpsrealtor.com via `SUPPLEMENTARY_DOMAIN_CANONICALS` in `src/lib/domain-utils.ts` (interim consolidation hint; host-level 301 planned at launch after the corporate-filter recategorization of jpsrealtor.com lands). |
 | `{slug}.chatrealty.io` | Agent subdomain | `agentProfile.subdomain` lookup. |
 | Custom agent domains | Agent's branded site | `agentProfile.customDomain` then `DomainRegistry` lookup. |
 
