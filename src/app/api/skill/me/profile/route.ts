@@ -13,6 +13,20 @@ import { authenticateSkillRequest, skillRateLimit } from "@/lib/skill-auth";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
+/**
+ * Collapse an empty/absent sub-object to null so "unset" has ONE shape across
+ * this payload. Mongoose hydrates unset nested paths as `{}`, which read as
+ * "present but empty" to a consumer diffing against null scalars.
+ */
+function emptyToNull<T extends Record<string, unknown>>(v: T | null | undefined): T | null {
+  if (!v) return null;
+  const plain = typeof (v as any).toObject === "function" ? (v as any).toObject() : v;
+  const hasValue = Object.values(plain).some(
+    (x) => x !== null && x !== undefined && x !== ""
+  );
+  return hasValue ? (plain as T) : null;
+}
+
 export async function GET(req: NextRequest) {
   const auth = await authenticateSkillRequest(req);
   if (auth.ok === false) {
@@ -66,11 +80,14 @@ export async function GET(req: NextRequest) {
       })),
       stats: (ap.stats || []).map((s: any) => ({ label: s?.label, value: s?.value })),
 
-      // Social — useful for Claude when drafting "find me on X" sections
-      socialMedia: ap.socialMedia || {},
+      // Social — useful for Claude when drafting "find me on X" sections.
+      // Unset reads as null, matching every other scalar field here: a tester
+      // flagged that {} / null / [] meant consumers had to handle three
+      // different shapes of "empty". Objects with content pass through as-is.
+      socialMedia: emptyToNull(ap.socialMedia),
 
       // Brand colors so Claude can suggest matching theme overrides
-      brandColors: ap.brandColors || {},
+      brandColors: emptyToNull(ap.brandColors),
       siteName: ap.siteName || null,
 
       // Domain + branding assets actually populated in the typical agent

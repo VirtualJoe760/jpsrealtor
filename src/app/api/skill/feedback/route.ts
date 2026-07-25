@@ -54,7 +54,17 @@ export async function POST(req: NextRequest) {
     uploadTokenExpiresAt: new Date(Date.now() + UPLOAD_TTL_MIN * 60 * 1000),
   });
 
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "https://www.chatrealty.io";
+  // Hand back the SAME origin the client just called, not NEXT_PUBLIC_BASE_URL
+  // — that env var is the platform's legacy domain (jpsrealtor.com in prod,
+  // localhost in dev), so it handed customers an upload host that didn't match
+  // the chatrealty.io API base they were talking to. A tester flagged it rather
+  // than PUT a project zip at an unexpected host, which is the correct
+  // instinct. Echoing the request origin is self-consistent by construction:
+  // the upload always goes back where the tool call came from. x-forwarded-*
+  // is set by Vercel's proxy; req.url alone can carry an internal host.
+  const fwdHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const fwdProto = req.headers.get("x-forwarded-proto") || "https";
+  const base = fwdHost ? `${fwdProto}://${fwdHost}` : "https://www.chatrealty.io";
   return NextResponse.json(
     {
       feedbackId: String(doc._id),
