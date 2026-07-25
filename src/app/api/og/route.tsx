@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   await dbConnect();
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors agentProfile.teamLogo agentProfile.ogBackgroundImage")
+    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors agentProfile.teamLogo agentProfile.teamLogoDark agentProfile.ogBackgroundImage")
     .lean();
 
   const ap = (agent as any)?.agentProfile;
@@ -79,22 +79,39 @@ export async function GET(request: NextRequest) {
   const license: string = (agent as any)?.licenseNumber || "";
   const headshotUrl: string = ap?.headshotTransparent || ap?.headshot || "";
   // brandColors.primary can be a comma list ("#000000,#ffd700,#ffffff") —
-  // take the first entry as the primary, or the whole value if single.
-  const primaryColor: string =
-    (ap?.brandColors?.primary || "#1e3a5f").split(",")[0].trim() || "#1e3a5f";
+  // first entry is the primary, second (when present) the accent.
+  const colorList = (ap?.brandColors?.primary || "#1e3a5f")
+    .split(",")
+    .map((c: string) => c.trim())
+    .filter(Boolean);
+  const primaryColor: string = colorList[0] || "#1e3a5f";
+  const accentColor: string = colorList[1] || primaryColor;
   // Team logo (e.g. Obsidian Group) replaces the platform wordmark on the
   // agent's card — ChatRealty is the parent platform's brand, not the
   // agent's agency. Relative paths resolve against this deployment.
-  const teamLogoRaw: string = ap?.teamLogo || "";
+  // Optional background photo (Brand settings → Share-Card Background).
+  // With a photo the card goes DARK: full-strength image, dark scrim on
+  // top, light copy + headshot above it (owner: don't fade the photo — put
+  // a dark opacity layer over it). Without a photo: flat soft-neutral card.
+  const bgRaw: string = ap?.ogBackgroundImage || "";
+  const bgUrl = bgRaw ? (bgRaw.startsWith("http") ? bgRaw : `${baseUrl}${bgRaw}`) : "";
+  const darkCard = Boolean(bgUrl);
+
+  // Team logo: the dark-mode (white) variant on the dark card.
+  const teamLogoRaw: string =
+    (darkCard ? ap?.teamLogoDark || ap?.teamLogo : ap?.teamLogo) || "";
   const teamLogoUrl = teamLogoRaw
     ? teamLogoRaw.startsWith("http")
       ? teamLogoRaw
       : `${baseUrl}${teamLogoRaw}`
     : "";
-  // Optional background photo under a light scrim (Brand settings →
-  // Share-Card Background). Empty = flat soft-neutral card.
-  const bgRaw: string = ap?.ogBackgroundImage || "";
-  const bgUrl = bgRaw ? (bgRaw.startsWith("http") ? bgRaw : `${baseUrl}${bgRaw}`) : "";
+
+  // Text + accent palette per card mode.
+  const nameColor = darkCard ? "#f5f5f3" : primaryColor;
+  const subColor = darkCard ? "#c9cdd2" : "#6b7280";
+  const faintColor = darkCard ? "#9aa1a8" : "#9ca3af";
+  const barColor = darkCard ? accentColor : primaryColor;
+  const markColor = darkCard ? "#f2f2f0" : "#16181d";
 
   // Account names often carry a role suffix ("Joseph Sardella Real Estate
   // Agent"). Split it so the card reads name / role on separate lines.
@@ -106,11 +123,11 @@ export async function GET(request: NextRequest) {
 
   // Build text lines array — no JSX conditionals
   const lines: { text: string; size: number; color: string; bold: boolean }[] = [];
-  if (displayName) lines.push({ text: displayName, size: 46, color: primaryColor, bold: true });
-  if (role) lines.push({ text: role, size: 24, color: "#6b7280", bold: false });
-  if (brokerage) lines.push({ text: brokerage, size: 22, color: "#6b7280", bold: false });
-  if (license) lines.push({ text: `DRE# ${license}`, size: 16, color: "#9ca3af", bold: false });
-  if (lines.length === 0) lines.push({ text: "AI-Powered Real Estate", size: 28, color: "#6b7280", bold: false });
+  if (displayName) lines.push({ text: displayName, size: 46, color: nameColor, bold: true });
+  if (role) lines.push({ text: role, size: 24, color: subColor, bold: false });
+  if (brokerage) lines.push({ text: brokerage, size: 22, color: subColor, bold: false });
+  if (license) lines.push({ text: `DRE# ${license}`, size: 16, color: faintColor, bold: false });
+  if (lines.length === 0) lines.push({ text: "AI-Powered Real Estate", size: 28, color: subColor, bold: false });
 
   return new ImageResponse(
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#f5f4f2", position: "relative" }}>
@@ -123,8 +140,9 @@ export async function GET(request: NextRequest) {
         />
       ) : null}
       {bgUrl ? (
-        // The scrim: keeps name/DRE readable over any photo.
-        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(247,246,244,0.87)", display: "flex" }} />
+        // The dark scrim: photo stays full-strength underneath; this layer
+        // sits between it and the copy/headshot so text reads cleanly.
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(10,11,14,0.68)", display: "flex" }} />
       ) : null}
       <div style={{ display: "flex", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: 60, paddingTop: 60, paddingBottom: 60, flex: 1 }}>
@@ -132,7 +150,7 @@ export async function GET(request: NextRequest) {
             {teamLogoUrl ? (
               <img src={teamLogoUrl} alt="" width={560} height={131} style={{ objectFit: "contain" }} />
             ) : (
-              <WordmarkRow fontSize={68} color="#16181d" />
+              <WordmarkRow fontSize={68} color={markColor} />
             )}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
@@ -147,7 +165,7 @@ export async function GET(request: NextRequest) {
           {headshotUrl ? <img src={headshotUrl} alt={name} height={580} /> : <div style={{ display: "flex" }} />}
         </div>
       </div>
-      <div style={{ display: "flex", height: 6, width: "100%", backgroundColor: primaryColor }} />
+      <div style={{ display: "flex", height: 6, width: "100%", backgroundColor: barColor }} />
     </div>,
     { width: 1200, height: 630, ...(fonts && { fonts }) }
   );
