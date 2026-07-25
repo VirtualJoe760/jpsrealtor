@@ -5,6 +5,7 @@
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { resolveDomainOwner } from "@/lib/resolveDomainOwner";
+import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AboutClient from "./AboutClient";
@@ -24,11 +25,14 @@ export async function generateMetadata(): Promise<Metadata> {
       const ap = u?.agentProfile || {};
       const title = `About ${name}${ap.brokerageName ? ` | ${ap.brokerageName}` : ""}`;
       const description = (ap.bio || ap.headline || `Get to know ${name}, your local real estate agent.`).slice(0, 160);
+      // Indexable since 2026-07-25: the page renders the owner's real
+      // profile, and the old noindex contradicted robots.txt + the sitemap
+      // (which both list /about) while hiding the E-E-A-T page from search.
+      const canonicalBase = await getBaseUrlFromHeaders();
       return {
         title,
         description,
-        // Kept out of search engines while the About page is still being built.
-        robots: { index: false, follow: false },
+        alternates: { canonical: `${canonicalBase}/about` },
         openGraph: { title, description, images: ap.headshot ? [{ url: ap.headshot }] : [] },
         twitter: { card: "summary_large_image", title, description },
       };
@@ -36,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     /* fall through to default */
   }
-  return { title: "About", description: "Get to know your local real estate agent.", robots: { index: false, follow: false } };
+  return { title: "About", description: "Get to know your local real estate agent." };
 }
 
 export default function AboutPage() {

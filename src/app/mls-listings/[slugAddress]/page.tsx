@@ -5,7 +5,7 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
-import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
+import { BreadcrumbJsonLd, PropertyListingJsonLd } from "@/app/components/seo/JsonLd";
 import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
@@ -190,6 +190,26 @@ export default async function ListingPage({
   return (
     <main className="w-full bg-black text-white">
       <BreadcrumbJsonLd items={breadcrumbItems} />
+      {/* Listing structured data — the audit found these pages emitted only
+          breadcrumbs, no RealEstateListing schema at all. */}
+      {listing.listPrice ? (
+        <PropertyListingJsonLd
+          name={address}
+          description={(listing.publicRemarks || "").substring(0, 300) || `Home for sale at ${address}`}
+          price={listing.listPrice}
+          address={{
+            streetAddress: listing.unparsedFirstLineAddress || address,
+            city: city || "",
+            state: (listing as any).stateOrProvince || "CA",
+            postalCode: (listing as any).postalCode || "",
+          }}
+          image={listing.primaryPhotoUrl || `${baseUrl}/images/no-photo.png`}
+          url={`${baseUrl}/mls-listings/${slugAddress}`}
+          bedrooms={(listing as any).bedroomsTotal || undefined}
+          bathrooms={(listing as any).bathroomsTotalInteger || undefined}
+          floorSize={(listing as any).livingArea || undefined}
+        />
+      ) : null}
       <UnifiedListingClient listing={listing} media={media} address={address} />
     </main>
   );
