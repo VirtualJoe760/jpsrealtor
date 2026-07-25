@@ -240,7 +240,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
             teamName={branding.teamName}
             isLight={isLight}
             wordmarkClassName={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
-            logoClassName="h-9 w-auto max-w-[200px] object-contain"
+            logoClassName="h-12 w-auto max-w-[224px] object-contain"
           />
         )}
         {!isMobile && (
@@ -496,10 +496,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                   DRE# {branding.licenseNumber}
                 </>
               )}
-              <br />
-              eXp Realty
               <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              <Wordmark className="text-[10px]" />
+              {branding.brokerageName || "eXp Realty"}
+              <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
+              {branding.teamName || <Wordmark className="text-[10px]" />}
             </p>
           </div>
         )}

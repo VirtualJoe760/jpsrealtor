@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const host = (request.headers.get("host") || "").split(":")[0];
 
   const projection =
-    "name email phone licenseNumber brokerageName " +
+    "name email phone licenseNumber brokerageName teamName " +
     "agentProfile.siteName agentProfile.teamName agentProfile.cellPhone " +
     "agentProfile.officePhone agentProfile.licenseNumber agentProfile.brokerageName " +
     "agentProfile.teamLogo agentProfile.teamLogoDark " +
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       email: agent.email,
       phone: ap.cellPhone || ap.officePhone || agent.phone,
       brokerageName: ap.brokerageName || agent.brokerageName,
-      teamName: ap.teamName,
+      teamName: ap.teamName || agent.teamName,
       licenseNumber: ap.licenseNumber || agent.licenseNumber,
       teamLogo: ap.teamLogo,
       teamLogoDark: ap.teamLogoDark,

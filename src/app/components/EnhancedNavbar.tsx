@@ -170,7 +170,7 @@ export default function EnhancedNavbar() {
           teamName={branding.teamName}
           isLight={isLight}
           wordmarkClassName={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
-          logoClassName="h-7 w-auto max-w-[160px] object-contain"
+          logoClassName="h-9 w-auto max-w-[200px] object-contain"
         />
       </button>
 
