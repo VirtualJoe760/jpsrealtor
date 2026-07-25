@@ -5,12 +5,29 @@
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { resolveDomainOwner } from "@/lib/resolveDomainOwner";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getBaseUrlFromHeaders, getDomainConfigFromHeaders } from "@/lib/domain-utils";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AboutClient from "./AboutClient";
 
 export async function generateMetadata(): Promise<Metadata> {
+  // On the PLATFORM domain this page currently renders the primary agent's
+  // bio (the owner-resolution fallback), which misrepresents ChatRealty and
+  // duplicates the agent's own /about. Keep it out of search until the
+  // platform has its own About content. Agent domains are unaffected.
+  try {
+    const cfg = await getDomainConfigFromHeaders();
+    if (cfg.type === "platform") {
+      return {
+        title: { absolute: "About | ChatRealty" },
+        description: "ChatRealty — AI-powered real estate sites for agents.",
+        robots: { index: false, follow: true },
+      };
+    }
+  } catch {
+    /* fall through to the agent path */
+  }
+
   try {
     const h = await headers();
     const host = h.get("host") || "localhost";
@@ -30,7 +47,9 @@ export async function generateMetadata(): Promise<Metadata> {
       // (which both list /about) while hiding the E-E-A-T page from search.
       const canonicalBase = await getBaseUrlFromHeaders();
       return {
-        title,
+        // `absolute` skips the root titleTemplate — it appended the agent
+        // name a second time ("About Joseph Sardella | Joseph Sardella").
+        title: { absolute: title },
         description,
         alternates: { canonical: `${canonicalBase}/about` },
         openGraph: { title, description, images: ap.headshot ? [{ url: ap.headshot }] : [] },
