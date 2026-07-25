@@ -85,7 +85,6 @@ export async function GET(request: NextRequest) {
     .map((c: string) => c.trim())
     .filter(Boolean);
   const primaryColor: string = colorList[0] || "#1e3a5f";
-  const accentColor: string = colorList[1] || primaryColor;
   // Team logo (e.g. Obsidian Group) replaces the platform wordmark on the
   // agent's card — ChatRealty is the parent platform's brand, not the
   // agent's agency. Relative paths resolve against this deployment.
@@ -110,7 +109,9 @@ export async function GET(request: NextRequest) {
   const nameColor = darkCard ? "#f5f5f3" : primaryColor;
   const subColor = darkCard ? "#c9cdd2" : "#6b7280";
   const faintColor = darkCard ? "#9aa1a8" : "#9ca3af";
-  const barColor = darkCard ? accentColor : primaryColor;
+  // No accent bar on the dark card — the gold line read as orange and
+  // fought the photo. Keep the bar only on the light neutral card.
+  const barColor = darkCard ? null : primaryColor;
   const markColor = darkCard ? "#f2f2f0" : "#16181d";
 
   // Account names often carry a role suffix ("Joseph Sardella Real Estate
@@ -165,7 +166,9 @@ export async function GET(request: NextRequest) {
           {headshotUrl ? <img src={headshotUrl} alt={name} height={580} /> : <div style={{ display: "flex" }} />}
         </div>
       </div>
-      <div style={{ display: "flex", height: 6, width: "100%", backgroundColor: barColor }} />
+      {barColor ? (
+        <div style={{ display: "flex", height: 6, width: "100%", backgroundColor: barColor }} />
+      ) : null}
     </div>,
     { width: 1200, height: 630, ...(fonts && { fonts }) }
   );
