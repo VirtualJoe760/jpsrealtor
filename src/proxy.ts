@@ -77,6 +77,12 @@ const PUBLIC_API_EXACT = new Set([
   // silently hid the compliance block for every logged-out visitor from
   // 2026-07-02 until 2026-07-25.
   "/api/agent-branding",
+  // Dynamic OG-image generator. Social crawlers hit it indirectly: the root
+  // opengraph-image/twitter-image file-convention routes self-fetch it, and
+  // the gate 401'ing that fetch made EVERY domain fall back to the plain-text
+  // "makeshift" card from 2026-07-02 until 2026-07-25. Public by design —
+  // renders only public branding (name, brokerage, DRE, headshot).
+  "/api/og",
   "/api/appointments/available-slots",
   "/api/appointments/book",
   "/api/articles/list",

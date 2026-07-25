@@ -4,6 +4,7 @@
 
 import { ImageResponse } from 'next/og'
 import { headers } from 'next/headers'
+import { resolveOgSubdomain } from '@/lib/og-image-source'
 
 export const runtime = 'nodejs'
 export const size = { width: 1200, height: 630 }
@@ -15,15 +16,10 @@ export default async function OGImage() {
   const proto = hdrs.get('x-forwarded-proto') || 'http'
   const bareHost = host.split(':')[0]
 
-  // Detect subdomain
-  let subdomain: string | undefined
-  if (bareHost.includes('chatrealty')) {
-    const parts = bareHost.split('chatrealty')[0]?.replace(/\.$/, '')
-    subdomain = parts?.split('.').filter(s => s && s !== 'www').pop()
-  } else if (bareHost.endsWith('.localhost')) {
-    const sub = bareHost.split('.localhost')[0]
-    if (sub && sub !== 'www') subdomain = sub
-  }
+  // Which agent's card? Parses chatrealty/localhost subdomains directly and
+  // resolves the domain OWNER for custom domains (jpsrealtor.com used to
+  // parse to nothing and render the generic platform logo).
+  const subdomain = await resolveOgSubdomain(hdrs)
 
   // Fetch the OG image from our API route which already handles all the logic
   const ogUrl = `${proto}://${host}/api/og${subdomain ? `?subdomain=${subdomain}` : ''}`

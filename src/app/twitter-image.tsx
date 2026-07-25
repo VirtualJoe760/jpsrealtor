@@ -3,6 +3,7 @@
 
 import { ImageResponse } from 'next/og'
 import { headers } from 'next/headers'
+import { resolveOgSubdomain } from '@/lib/og-image-source'
 
 export const runtime = 'nodejs'
 export const size = { width: 1200, height: 630 }
@@ -14,15 +15,9 @@ export default async function TwitterImage() {
   const proto = hdrs.get('x-forwarded-proto') || 'http'
   const bareHost = host.split(':')[0]
 
-  // Detect subdomain
-  let subdomain: string | undefined
-  if (bareHost.includes('chatrealty')) {
-    const parts = bareHost.split('chatrealty')[0]?.replace(/\.$/, '')
-    subdomain = parts?.split('.').filter(s => s && s !== 'www').pop()
-  } else if (bareHost.endsWith('.localhost')) {
-    const sub = bareHost.split('.localhost')[0]
-    if (sub && sub !== 'www') subdomain = sub
-  }
+  // Which agent's card? Same resolution as opengraph-image.tsx — parses
+  // subdomain hosts and resolves the domain OWNER for custom domains.
+  const subdomain = await resolveOgSubdomain(hdrs)
 
   // Fetch the OG image from our API route
   const ogUrl = `${proto}://${host}/api/og${subdomain ? `?subdomain=${subdomain}` : ''}`
