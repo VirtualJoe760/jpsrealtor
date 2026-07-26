@@ -17,6 +17,7 @@ import { config as loadDotenv } from "dotenv";
 import { Command } from "commander";
 
 import { configFromEnv, runSync } from "./index.js";
+import { ResoClient } from "./reso-fetch.js";
 
 // Load .env.local (preferred) then .env, without overriding real process env.
 loadDotenv({ path: ".env.local" });
@@ -101,6 +102,50 @@ program
     console.log("  3. Small local test fetch:     npx chatrealty-sync run --once --dry-run --max 25");
     console.log("  4. Full seed:                  npx chatrealty-sync run");
     console.log("  5. Daily sync (VPS, cron):     0 6 * * * cd /path/to/project && npx chatrealty-sync run >> sync.log 2>&1");
+  });
+
+program
+  .command("networks")
+  .description(
+    "List the MLS networks/associations your data key can see, with a sampled share of each."
+  )
+  .option("--pages <n>", "How many pages to sample (default 5)", "5")
+  .option("--field <name>", "Network field to group on (default OriginatingSystemName)")
+  .action(async (opts: { pages?: string; field?: string }) => {
+    // One data key often grants several associations sharing a data network.
+    // Seeding all of them can be 85k+ listings and ~26 minutes — most agents
+    // serve one or two. Look before you sync.
+    const cfg = configFromEnv(process.env, { dryRun: true });
+    const client = new ResoClient({
+      ...cfg.reso,
+      networkField: opts.field || cfg.reso.networkField,
+    });
+
+    console.log("[networks] sampling your feed…");
+    try {
+      const { field, networks, sampled } = await client.discoverNetworks(
+        Math.max(1, parseInt(opts.pages || "5", 10) || 5)
+      );
+      if (networks.length === 0) {
+        console.log("[networks] no records returned — check credentials with `doctor`.");
+        return;
+      }
+      console.log("");
+      console.log(`  Grouped on: ${field}   (sampled ${sampled} listings)`);
+      console.log("");
+      for (const n of networks) {
+        const pct = ((n.sampled / sampled) * 100).toFixed(1).padStart(5);
+        console.log(`  ${pct}%  ${n.name}`);
+      }
+      console.log("");
+      console.log("  Sync ONE or a FEW instead of everything — set in .env.local:");
+      console.log(`    RESO_NETWORKS=${networks[0].name}`);
+      console.log("    (comma-separated for several; unset = sync everything)");
+      console.log("");
+    } catch (err) {
+      console.error(`[networks] failed: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
   });
 
 program

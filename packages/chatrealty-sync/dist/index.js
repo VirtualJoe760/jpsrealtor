@@ -193,6 +193,13 @@ export function configFromEnv(env = process.env, overrides = {}) {
             scope: env.RESO_SCOPE,
             resource: env.RESO_RESOURCE ?? "Property",
             pageSize: env.RESO_PAGE_SIZE ? Number(env.RESO_PAGE_SIZE) : 200,
+            // Sync only these associations (comma-separated). Unset = everything.
+            // One data key often reaches several associations on a shared network;
+            // `npx chatrealty-sync networks` lists them so you can pick.
+            networks: env.RESO_NETWORKS
+                ? env.RESO_NETWORKS.split(",").map((n) => n.trim()).filter(Boolean)
+                : undefined,
+            networkField: env.RESO_NETWORK_FIELD,
         },
     };
 }

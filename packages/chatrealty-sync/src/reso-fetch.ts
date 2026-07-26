@@ -41,6 +41,21 @@ export interface ResoFetchConfig {
   readonly pageSize?: number;
   /** Optional explicit `$select`. Omit to pull all fields (recommended for BYOD). */
   readonly select?: readonly string[];
+  /**
+   * Restrict the pull to specific MLS networks/associations.
+   *
+   * One data key often grants access to SEVERAL associations sharing a data
+   * network (Joseph's grants 8). Seeding all of them can mean 85k+ listings
+   * and ~26 minutes; most agents only serve one or two. When set, the pull
+   * adds an OData filter on the network field so only those are synced.
+   */
+  readonly networks?: readonly string[];
+  /**
+   * Field that identifies the source association. RESO standard is
+   * OriginatingSystemName; Spark-flavored feeds often use MlsId.
+   * Defaults to "OriginatingSystemName".
+   */
+  readonly networkField?: string;
   /** Injectable fetch — defaults to global fetch. Tests pass a mock. */
   readonly fetchImpl?: typeof fetch;
 }
@@ -64,8 +79,10 @@ interface CachedToken {
  * the entire feed in memory.
  */
 export class ResoClient {
-  private readonly cfg: Required<Omit<ResoFetchConfig, "select" | "scope">> &
-    Pick<ResoFetchConfig, "select" | "scope">;
+  private readonly cfg: Required<
+    Omit<ResoFetchConfig, "select" | "scope" | "networks" | "networkField">
+  > &
+    Pick<ResoFetchConfig, "select" | "scope" | "networks" | "networkField">;
   private readonly doFetch: typeof fetch;
   private cached: CachedToken | null = null;
 
@@ -80,6 +97,8 @@ export class ResoClient {
       resource: cfg.resource ?? "Property",
       pageSize: cfg.pageSize ?? 200,
       select: cfg.select,
+      networks: cfg.networks,
+      networkField: cfg.networkField,
       fetchImpl: cfg.fetchImpl ?? fetch,
     };
     this.doFetch = this.cfg.fetchImpl;
@@ -141,11 +160,62 @@ export class ResoClient {
     if (this.cfg.select && this.cfg.select.length > 0) {
       params.set("$select", this.cfg.select.join(","));
     }
+    // Compose the incremental watermark filter with an optional network
+    // restriction, so "only sync these 2 associations" works on both a fresh
+    // seed and every incremental pull afterward.
+    const clauses: string[] = [];
     if (since) {
       // OData datetime literals are unquoted; the value is an ISO-8601 string.
-      params.set("$filter", `ModificationTimestamp gt ${since}`);
+      clauses.push(`ModificationTimestamp gt ${since}`);
     }
+    const networks = this.cfg.networks;
+    if (networks && networks.length > 0) {
+      const field = this.cfg.networkField || "OriginatingSystemName";
+      const ors = networks
+        .map((n) => `${field} eq '${String(n).replace(/'/g, "''")}'`)
+        .join(" or ");
+      clauses.push(networks.length > 1 ? `(${ors})` : ors);
+    }
+    if (clauses.length > 0) params.set("$filter", clauses.join(" and "));
     return `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+  }
+
+  /**
+   * Discover which MLS networks/associations this data key can see, with a
+   * rough per-network count — so the operator can choose to sync ONE instead
+   * of blindly seeding all of them (Joseph's key reaches 8 associations,
+   * ~85k listings, ~26 minutes for a full seed).
+   *
+   * Deliberately samples rather than aggregating: `$apply=groupby` is
+   * inconsistently supported across RESO/Spark vendors, and a sample is
+   * enough to name the networks and show relative share. `sampleSize` pages
+   * are pulled (default 5 × pageSize records).
+   */
+  async discoverNetworks(
+    sampleSize = 5
+  ): Promise<{ field: string; networks: { name: string; sampled: number }[]; sampled: number }> {
+    const field = this.cfg.networkField || "OriginatingSystemName";
+    const counts = new Map<string, number>();
+    let sampled = 0;
+
+    let url: string | null = this.buildInitialUrl(null);
+    for (let page = 0; page < sampleSize && url; page++) {
+      const { records, nextLink }: { records: ResoRecord[]; nextLink: string | null } =
+        await this.fetchPage(url);
+      for (const rec of records) {
+        sampled += 1;
+        const raw = (rec as Record<string, unknown>)[field];
+        const name = raw == null || raw === "" ? "(unspecified)" : String(raw);
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+      url = records.length > 0 ? nextLink : null;
+    }
+
+    const networks = [...counts.entries()]
+      .map(([name, n]) => ({ name, sampled: n }))
+      .sort((a, b) => b.sampled - a.sampled);
+
+    return { field, networks, sampled };
   }
 
   /** Fetch one OData page, returning its records + the next-page cursor. */

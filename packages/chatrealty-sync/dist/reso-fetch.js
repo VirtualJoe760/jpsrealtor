@@ -35,6 +35,8 @@ export class ResoClient {
             resource: cfg.resource ?? "Property",
             pageSize: cfg.pageSize ?? 200,
             select: cfg.select,
+            networks: cfg.networks,
+            networkField: cfg.networkField,
             fetchImpl: cfg.fetchImpl ?? fetch,
         };
         this.doFetch = this.cfg.fetchImpl;
@@ -89,11 +91,56 @@ export class ResoClient {
         if (this.cfg.select && this.cfg.select.length > 0) {
             params.set("$select", this.cfg.select.join(","));
         }
+        // Compose the incremental watermark filter with an optional network
+        // restriction, so "only sync these 2 associations" works on both a fresh
+        // seed and every incremental pull afterward.
+        const clauses = [];
         if (since) {
             // OData datetime literals are unquoted; the value is an ISO-8601 string.
-            params.set("$filter", `ModificationTimestamp gt ${since}`);
+            clauses.push(`ModificationTimestamp gt ${since}`);
         }
+        const networks = this.cfg.networks;
+        if (networks && networks.length > 0) {
+            const field = this.cfg.networkField || "OriginatingSystemName";
+            const ors = networks
+                .map((n) => `${field} eq '${String(n).replace(/'/g, "''")}'`)
+                .join(" or ");
+            clauses.push(networks.length > 1 ? `(${ors})` : ors);
+        }
+        if (clauses.length > 0)
+            params.set("$filter", clauses.join(" and "));
         return `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+    }
+    /**
+     * Discover which MLS networks/associations this data key can see, with a
+     * rough per-network count — so the operator can choose to sync ONE instead
+     * of blindly seeding all of them (Joseph's key reaches 8 associations,
+     * ~85k listings, ~26 minutes for a full seed).
+     *
+     * Deliberately samples rather than aggregating: `$apply=groupby` is
+     * inconsistently supported across RESO/Spark vendors, and a sample is
+     * enough to name the networks and show relative share. `sampleSize` pages
+     * are pulled (default 5 × pageSize records).
+     */
+    async discoverNetworks(sampleSize = 5) {
+        const field = this.cfg.networkField || "OriginatingSystemName";
+        const counts = new Map();
+        let sampled = 0;
+        let url = this.buildInitialUrl(null);
+        for (let page = 0; page < sampleSize && url; page++) {
+            const { records, nextLink } = await this.fetchPage(url);
+            for (const rec of records) {
+                sampled += 1;
+                const raw = rec[field];
+                const name = raw == null || raw === "" ? "(unspecified)" : String(raw);
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+            }
+            url = records.length > 0 ? nextLink : null;
+        }
+        const networks = [...counts.entries()]
+            .map(([name, n]) => ({ name, sampled: n }))
+            .sort((a, b) => b.sampled - a.sampled);
+        return { field, networks, sampled };
     }
     /** Fetch one OData page, returning its records + the next-page cursor. */
     async fetchPage(url) {

@@ -22,6 +22,21 @@ export interface ResoFetchConfig {
     readonly pageSize?: number;
     /** Optional explicit `$select`. Omit to pull all fields (recommended for BYOD). */
     readonly select?: readonly string[];
+    /**
+     * Restrict the pull to specific MLS networks/associations.
+     *
+     * One data key often grants access to SEVERAL associations sharing a data
+     * network (Joseph's grants 8). Seeding all of them can mean 85k+ listings
+     * and ~26 minutes; most agents only serve one or two. When set, the pull
+     * adds an OData filter on the network field so only those are synced.
+     */
+    readonly networks?: readonly string[];
+    /**
+     * Field that identifies the source association. RESO standard is
+     * OriginatingSystemName; Spark-flavored feeds often use MlsId.
+     * Defaults to "OriginatingSystemName".
+     */
+    readonly networkField?: string;
     /** Injectable fetch — defaults to global fetch. Tests pass a mock. */
     readonly fetchImpl?: typeof fetch;
 }
@@ -46,6 +61,25 @@ export declare class ResoClient {
      * @param since  ISO-8601 ModificationTimestamp watermark; omit for a full seed.
      */
     buildInitialUrl(since?: string | null): string;
+    /**
+     * Discover which MLS networks/associations this data key can see, with a
+     * rough per-network count — so the operator can choose to sync ONE instead
+     * of blindly seeding all of them (Joseph's key reaches 8 associations,
+     * ~85k listings, ~26 minutes for a full seed).
+     *
+     * Deliberately samples rather than aggregating: `$apply=groupby` is
+     * inconsistently supported across RESO/Spark vendors, and a sample is
+     * enough to name the networks and show relative share. `sampleSize` pages
+     * are pulled (default 5 × pageSize records).
+     */
+    discoverNetworks(sampleSize?: number): Promise<{
+        field: string;
+        networks: {
+            name: string;
+            sampled: number;
+        }[];
+        sampled: number;
+    }>;
     /** Fetch one OData page, returning its records + the next-page cursor. */
     fetchPage(url: string): Promise<{
         records: ResoRecord[];
