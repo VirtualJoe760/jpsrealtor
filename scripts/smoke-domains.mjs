@@ -13,10 +13,10 @@
 // Run it before any launch-adjacent deploy.
 
 const DOMAINS = [
-  { host: "jpsrealtor.com", kind: "agent", primary: true },
+  { host: "jpsrealtor.com", kind: "agent", primary: true, expectAgent: "Joseph Sardella" },
   { host: "josephsardella.com", kind: "agent", canonicalTo: "jpsrealtor.com" },
   { host: "www.chatrealty.io", kind: "platform" },
-  { host: "bethanyklier.chatrealty.io", kind: "agent-subdomain" },
+  { host: "bethanyklier.chatrealty.io", kind: "agent-subdomain", expectAgent: "Bethany Klier" },
 ];
 
 const REDIRECTS = [
@@ -112,9 +112,13 @@ async function checkDomain(d) {
       else {
         const j = JSON.parse(b.body || "{}");
         const br = j.branding || {};
-        br.agentName
-          ? ok(d.host, `branding: ${br.agentName}${br.licenseNumber ? ` · DRE# ${br.licenseNumber}` : ""}`)
-          : bad(d.host, "branding payload has no agentName");
+        if (!br.agentName) bad(d.host, "branding payload has no agentName");
+        else if (d.expectAgent && br.agentName !== d.expectAgent)
+          // COMPLIANCE: the wrong agent's name/DRE on a site is not a cosmetic
+          // bug. This must assert identity, not mere presence.
+          bad(d.host, "WRONG AGENT in branding", `got "${br.agentName}", expected "${d.expectAgent}"`);
+        else
+          ok(d.host, `branding: ${br.agentName}${br.licenseNumber ? ` · DRE# ${br.licenseNumber}` : ""}`);
         if (!br.licenseNumber) bad(d.host, "no licenseNumber in branding (compliance)");
       }
     } catch (err) {

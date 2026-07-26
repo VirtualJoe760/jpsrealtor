@@ -11,6 +11,7 @@
 //   4. PRIMARY_AGENT_EMAIL fallback (owner domains)
 
 import { NextRequest, NextResponse } from "next/server";
+import { parseOgSubdomain } from "@/lib/og-image-source";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 
@@ -19,7 +20,14 @@ export async function GET(request: NextRequest) {
 
   const subdomain =
     request.nextUrl.searchParams.get("subdomain") ||
-    request.headers.get("x-agent-subdomain");
+    request.headers.get("x-agent-subdomain") ||
+    // Parse it from the HOST as a last resort. Without this the route
+    // only resolved correctly when the caller happened to pass
+    // ?subdomain= (the sidebar does; nothing else has to), so a direct
+    // call on bethanyklier.chatrealty.io fell through to the primary-agent
+    // fallback and returned JOSEPH's name and DRE — the wrong license on
+    // another agent's site. Caught by scripts/smoke-domains.mjs.
+    parseOgSubdomain((request.headers.get("host") || "").split(":")[0].toLowerCase());
   const host = (request.headers.get("host") || "").split(":")[0];
 
   const projection =
