@@ -2,9 +2,9 @@
 title: ChatRealty Content Templates
 status: current
 last_verified: 2026-07-26
-last_verified_note: Cover-slide layout re-verified 2026-07-26; carousel/reel pipelines and storage layer unchanged since 2026-06-05.
+last_verified_note: Slides 2-10 moved to src/ and exposed via MCP 2026-07-26; reel pipeline and storage layer unchanged since 2026-06-05.
 owner: content
-related: [./cover-slide.md]
+related: [./cover-slide.md, ./carousel-slides.md]
 ---
 
 # Content Templates
@@ -25,12 +25,19 @@ that auto-populates from Cloudinary on demand and is safe to delete.
 | `staging-timelapse-reel` | wip | ~45s 9:16 IG Reel | 1 Makena Lane |
 | `simple-luxury` (cover only) | production | single 4:5 IG cover, on-demand via MCP | see [cover-slide.md](./cover-slide.md) |
 
-> **Single-cover path.** Agents generate a one-off cover from their own Claude
-> session via the `create_listing_cover` MCP tool — same visual design as carousel
-> slide 1, but rendered by `src/lib/cover-templates/simple-luxury.ts` instead of
-> the local script pipeline. That module and `scripts/lib/slide-templates.js`
-> carry duplicate layouts and must be kept in sync. Layout invariants (flush
-> headshot bleed, no bottom banner) are documented in
+> **Hosted / MCP path.** Agents build slides from their own Claude session:
+> `create_listing_cover` for slide 1 and `create_carousel_slide` for the caption
+> bands, CMA card, text slides and closing CTA — see
+> [carousel-slides.md](./carousel-slides.md).
+>
+> As of 2026-07-26 those four non-cover layouts live in
+> `src/lib/cover-templates/carousel-slides.js` and
+> `scripts/lib/slide-templates.js` **re-exports** them, so there is one
+> implementation each. The **cover is still duplicated** across
+> `src/lib/cover-templates/simple-luxury.ts` and the script's
+> `buildCoverTransformation`, and those two must be kept in sync — that
+> duplication is what let them drift into shipping different layouts. Layout
+> invariants (flush headshot bleed, no bottom banner, hook width cap) are in
 > [cover-slide.md](./cover-slide.md) — read it before editing either.
 
 ---
