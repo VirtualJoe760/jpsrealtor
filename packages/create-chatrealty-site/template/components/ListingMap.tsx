@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import type { ListingSummary } from "@/lib/types";
 import { moneyShort, money } from "@/lib/format";
 
@@ -17,7 +19,7 @@ function priceIcon(listing: ListingSummary): L.DivIcon {
   const label = moneyShort(listing.currentPrice ?? listing.listPrice);
   return L.divIcon({
     className: "cr-pin-wrap",
-    html: `<div class="cr-pin"><span>${label}</span></div>`,
+    html: `<div class="cr-pin"><span>${escapeHtml(label)}</span></div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
   });
@@ -29,6 +31,44 @@ function priceIcon(listing: ListingSummary): L.DivIcon {
 // the Leaflet map down on the simulated unmount, and manual map.remove()
 // workarounds either fail on v4 or double-remove on v5). v5 reworked the
 // lifecycle and handles Strict Mode correctly — do not downgrade these deps.
+//
+// CLUSTERING is driven by the vanilla `leaflet.markercluster` plugin through
+// an imperative `useMap()` child rather than a React wrapper component: the
+// wrappers track react-leaflet v4 and would reintroduce exactly the v4/v5
+// lifecycle problem above. Popups are therefore HTML strings (escaped), not
+// JSX — a popup link is a full navigation anyway, so next/link buys nothing.
+//
+// DO NOT render one <Marker> per listing without clustering: a real feed is
+// hundreds to thousands of homes and an unclustered Leaflet map stutters or
+// dies on mobile.
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function popupHtml(l: ListingSummary): string {
+  const href = `/listings/${encodeURIComponent(l.listingKey)}`;
+  const attribution = [l.listOfficeName, l.listAgentName].filter(Boolean).map(escapeHtml).join(" — ");
+  return [
+    '<div style="width:12rem">',
+    l.thumbUrl
+      ? `<img src="${escapeHtml(l.thumbUrl)}" alt="${escapeHtml(l.address || "")}" style="margin-bottom:.5rem;height:6rem;width:100%;border-radius:.25rem;object-fit:cover" />`
+      : "",
+    `<p style="font-size:.875rem;font-weight:700;margin:0">${escapeHtml(money(l.currentPrice ?? l.listPrice))}</p>`,
+    `<p style="font-size:.75rem;color:#4b5563;margin:.125rem 0 0">${escapeHtml(l.address || "")}</p>`,
+    // IDX display rule — the attribution line is required on every popup.
+    attribution
+      ? `<p style="margin:.25rem 0 0;font-size:.625rem;color:#6b7280">Listed by ${attribution}</p>`
+      : "",
+    `<a href="${href}" style="margin-top:.25rem;display:inline-block;font-size:.75rem;font-weight:600;color:var(--brand)">View listing →</a>`,
+    "</div>",
+  ].join("");
+}
 
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
@@ -40,6 +80,45 @@ function FitBounds({ points }: { points: [number, number][] }) {
     }
     map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
   }, [map, points]);
+  return null;
+}
+
+function ClusteredPins({ listings }: { listings: ListingSummary[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const group = (L as any).markerClusterGroup({
+      // Adds markers in batches so a few thousand pins never block the main
+      // thread on a phone.
+      chunkedLoading: true,
+      maxClusterRadius: 60,
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      iconCreateFunction: (cluster: any) => {
+        const count = cluster.getChildCount();
+        const size = count < 10 ? 34 : count < 100 ? 40 : 48;
+        return L.divIcon({
+          className: "cr-cluster-wrap",
+          html: `<div class="cr-cluster" style="width:${size}px;height:${size}px">${count}</div>`,
+          iconSize: [size, size],
+        });
+      },
+    });
+
+    for (const l of listings) {
+      const marker = L.marker([l.latitude as number, l.longitude as number], {
+        icon: priceIcon(l),
+      });
+      marker.bindPopup(popupHtml(l), { minWidth: 192 });
+      group.addLayer(marker);
+    }
+
+    map.addLayer(group);
+    return () => {
+      map.removeLayer(group);
+    };
+  }, [map, listings]);
+
   return null;
 }
 
@@ -57,35 +136,7 @@ export default function ListingMap({ listings }: { listings: ListingSummary[] })
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds points={points} />
-      {pins.map((l) => (
-        <Marker
-          key={l.listingKey}
-          position={[l.latitude as number, l.longitude as number]}
-          icon={priceIcon(l)}
-        >
-          <Popup>
-            <div className="w-48">
-              {l.thumbUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={l.thumbUrl} alt={l.address || ""} className="mb-2 h-24 w-full rounded object-cover" />
-              )}
-              <p className="text-sm font-bold">{money(l.currentPrice ?? l.listPrice)}</p>
-              <p className="text-xs text-gray-600">{l.address}</p>
-              {(l.listOfficeName || l.listAgentName) && (
-                <p className="mt-1 text-[10px] text-gray-500">
-                  Listed by {[l.listOfficeName, l.listAgentName].filter(Boolean).join(" — ")}
-                </p>
-              )}
-              <Link
-                href={`/listings/${encodeURIComponent(l.listingKey)}`}
-                className="mt-1 inline-block text-xs font-semibold text-brand"
-              >
-                View listing →
-              </Link>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      <ClusteredPins listings={pins} />
     </MapContainer>
   );
 }

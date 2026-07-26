@@ -78,6 +78,30 @@
   z-index: 1000;
 }
 
+/* Cluster bubbles (leaflet.markercluster). Without clustering a real feed of
+   hundreds/thousands of pins stalls the map — see components/ListingMap.tsx.
+   The count bubble inherits --brand so it restyles with the theme. */
+.cr-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--brand, #1e3a5f);
+  color: #fff;
+  font: 700 13px/1 system-ui, -apple-system, sans-serif;
+  border: 3px solid #fff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+}
+/* Neutralize the plugin's default green/yellow bubbles so only ours shows. */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large,
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: transparent;
+}
+
 html,
 body {
   max-width: 100vw;

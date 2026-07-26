@@ -164,8 +164,11 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
 
       {error && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
+      {/* FULL-BLEED map: breaks out of the page container (100vw at the
+          viewport edge) and fills the space under the header. A map boxed in
+          a narrow card is unusable on a phone, which is the primary device. */}
       {view === "map" ? (
-        <div className="h-[70vh] overflow-hidden rounded-xl border border-gray-200">
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen h-[calc(100vh-8rem)] overflow-hidden border-y border-gray-200 sm:h-[calc(100vh-9rem)]">
           <ListingMapClient listings={items} />
         </div>
       ) : (
