@@ -132,8 +132,10 @@ export interface OnSignupPayload {
 
 /** The result of the full signup hook. */
 export interface OnSignupResult {
-  /** The created/linked end-user account id. */
-  readonly endUserId: string;
+  /** The created/linked end-user account id. NULL when the token has no Neon
+   *  tenant (legacy/dogfood → Mongo adapter): end-user accounts are a
+   *  Postgres-only feature, so there is no account to reference. */
+  readonly endUserId: string | null;
   /** The upserted contact result (`contactId` null only if the CRM write failed). */
   readonly contact: UpsertContactResult;
 }
@@ -152,6 +154,19 @@ export async function onSignup(
   adapter: DbAdapter,
   payload: OnSignupPayload,
 ): Promise<OnSignupResult> {
+  // A token with no tenantId falls back to the legacy MONGO adapter, whose
+  // raw-SQL query() throws by design — which turned every such signup into a
+  // 500. The tenant end_user/contact tables are Postgres-only, so on Mongo we
+  // skip the tenant write entirely; the caller still mirrors the visitor into
+  // the owning agent's Mongo CRM + activity feed (mirror-to-owner.ts), which
+  // is the surface the agent actually sees.
+  if ((adapter as { dialect?: string }).dialect === "mongo") {
+    return {
+      endUserId: null,
+      contact: { contactId: null, created: false } as OnSignupResult["contact"],
+    };
+  }
+
   const endUser = await registerEndUser(adapter, {
     email: payload.email,
     name: payload.name,

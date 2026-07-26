@@ -148,7 +148,13 @@ export async function submitLead(input: {
 }): Promise<{ contactId: string | null }> {
   // Test-data mode: no CRM exists to write to — succeed quietly so the form
   // UX is previewable, but record nothing. The banner explains the mode.
-  if (isTestDataMode()) return { contactId: null };
+  if (isTestDataMode()) {
+    // LOUD on purpose: this used to be a silent no-op while the form still
+    // rendered "Thanks — we'll be in touch", so a tester believed leads were
+    // being delivered when nothing was ever transmitted.
+    console.warn("[chatrealty] TEST-DATA MODE: lead NOT sent to ChatRealty.");
+    return { contactId: null };
+  }
   const res = await skillFetch(`/api/skill/contacts/from-signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

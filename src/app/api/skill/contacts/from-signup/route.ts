@@ -19,6 +19,7 @@
 // (mapped by the wrapper) is a non-200.
 
 import { z } from "zod";
+import { mirrorContactToOwner } from "@/lib/crm/mirror-to-owner";
 
 import { withSkill, type SkillContext } from "@/lib/skill-api/with-skill";
 import { okOne, fail } from "@/lib/skill-api/response";
@@ -84,6 +85,21 @@ async function handler(ctx: SkillContext) {
   }
 
   const result = await onSignup(ctx.adapter, parsed.data);
+
+  // BRIDGE: onSignup wrote to the TENANT's Postgres `contact` table, which the
+  // agent's dashboard cannot see (it reads Mongo scoped by userId). Mirror the
+  // same visitor into the owning agent's Mongo CRM + activity feed. The token
+  // IS that agent's authority, so ctx.auth.user is the owner. Non-blocking.
+  await mirrorContactToOwner({
+    agentId: ctx.auth.user._id as any,
+    email: parsed.data.email,
+    name: parsed.data.name,
+    phone: parsed.data.phone,
+    endUserId: result.endUserId,
+    source: parsed.data.source,
+    tags: ["Website Signup", ...(parsed.data.tags ?? [])],
+    activityType: "lead",
+  });
 
   // Return only the contact id (no PII echoed back) — 201 when a new contact was
   // created, 200 when an existing one was linked. `contactId` may be null when

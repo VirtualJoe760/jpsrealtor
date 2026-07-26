@@ -25,7 +25,14 @@ function unavailable() {
 }
 
 function accountsPossible(): boolean {
-  return !isTestDataMode() && !!TOKEN;
+  if (isTestDataMode()) {
+    // LOUD on purpose — this silently disabled every account/auth call while
+    // the UI said "Accounts aren't switched on yet", so nothing reached
+    // ChatRealty and it looked like a config choice rather than a no-op.
+    console.warn("[chatrealty] TEST-DATA MODE: account/auth call NOT sent to ChatRealty.");
+    return false;
+  }
+  return !!TOKEN;
 }
 
 async function platformFetch(path: string, init?: RequestInit): Promise<Response> {

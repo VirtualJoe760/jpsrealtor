@@ -22,6 +22,7 @@ import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
 import GoLiveBounties from "./components/GoLiveBounties";
+import RecentActivity from "./components/RecentActivity";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -440,6 +441,12 @@ export default function AgentDashboard() {
           {/* Points Section */}
           <div className="mb-8">
             <PointsSection />
+          </div>
+
+          {/* Activity feed — signups, leads and saves coming off the agent's
+              tenant site (fed by the tenant→owner bridge). */}
+          <div className="mb-8">
+            <RecentActivity isLight={isLight} />
           </div>
 
           {/* Partnerships Section */}

@@ -14,6 +14,7 @@
 // email (the dedupe key); never returns other contacts' data.
 
 import { NextResponse } from "next/server";
+import { mirrorContactToOwner } from "@/lib/crm/mirror-to-owner";
 import { withSkill, type SkillContext } from "@/lib/skill-api/with-skill";
 import { onSignup } from "@/lib/crm/end-user";
 import { ensureEndUserAuthSchema, issueSession } from "@/lib/crm/end-user-auth";
@@ -35,6 +36,16 @@ async function handler(ctx: SkillContext): Promise<NextResponse> {
   }
 
   try {
+    // End-user accounts live in the tenant's Postgres. A token with no Neon
+    // tenant resolves to the legacy Mongo adapter, where the account tables
+    // don't exist — say so plainly instead of 500ing on raw SQL or minting a
+    // session with a null id.
+    if ((ctx.adapter as { dialect?: string }).dialect === "mongo") {
+      return NextResponse.json(
+        { error: "accounts_unavailable", message: "Visitor accounts require a connected tenant database." },
+        { status: 503, headers: NO_STORE }
+      );
+    }
     await ensureEndUserAuthSchema(ctx.adapter);
     // Create/link the end-user + mirror a deduped Contact (non-blocking CRM).
     const { endUserId } = await onSignup(ctx.adapter, {
@@ -42,6 +53,17 @@ async function handler(ctx: SkillContext): Promise<NextResponse> {
       name,
       source: "website",
       tags: [`Sign in: ${provider}`],
+    });
+
+    // BRIDGE: mirror into the OWNING AGENT's Mongo CRM + activity feed.
+    await mirrorContactToOwner({
+      agentId: ctx.auth.user._id as any,
+      email,
+      name,
+      endUserId,
+      source: `oauth:${provider}`,
+      tags: ["Website Signup", `Sign in: ${provider}`],
+      activityType: "signup",
     });
 
     const sessionToken = issueSession({
