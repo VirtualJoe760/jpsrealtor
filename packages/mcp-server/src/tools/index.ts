@@ -38,6 +38,7 @@ import { post_instagram_carousel } from "./post_instagram_carousel.js";
 import { stage_listing_with_agent } from "./stage_listing_with_agent.js";
 import { create_listing_cover } from "./create_listing_cover.js";
 import { create_carousel_slide } from "./create_carousel_slide.js";
+import { plan_listing_carousel } from "./plan_listing_carousel.js";
 import { get_build_guide } from "./get_build_guide.js";
 import { report_bug } from "./report_bug.js";
 import { give_feedback } from "./give_feedback.js";
@@ -99,7 +100,12 @@ const CRM_READ: ToolDef[] = [
 // Images — AI generation + templated cover slides. Returns Cloudinary URLs
 // for review. Not auto-posted; the agent (or Claude after agent confirmation)
 // passes the result into post_instagram_carousel separately.
-const IMAGES: ToolDef[] = [stage_listing_with_agent, create_listing_cover, create_carousel_slide];
+const IMAGES: ToolDef[] = [
+  plan_listing_carousel,
+  stage_listing_with_agent,
+  create_listing_cover,
+  create_carousel_slide,
+];
 
 // Social — real-world publish. Each tool requires its own scope; nothing
 // here lands in a default preset. Confirm with the agent before calling.

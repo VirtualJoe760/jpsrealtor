@@ -74,6 +74,8 @@ const TOOL_SCOPE: Record<string, string> = {
   get_landing_page: "landing_pages:read",
   create_landing_page: "landing_pages:write",
   update_landing_page: "landing_pages:write",
+  // Read/aggregate over listing + market data the agent can already reach.
+  plan_listing_carousel: "listings:read",
   create_listing_cover: "landing_pages:write",
   create_carousel_slide: "landing_pages:write",
   stage_listing_with_agent: "landing_pages:write",

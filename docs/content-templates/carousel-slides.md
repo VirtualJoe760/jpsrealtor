@@ -2,7 +2,7 @@
 title: Carousel slides 2-10 (hosted / MCP)
 status: current
 last_verified: 2026-07-26
-last_verified_note: Builders moved to src/ and exposed via /api/skill/images/carousel-slide + create_carousel_slide MCP tool.
+last_verified_note: Builders moved to src/ and exposed via create_carousel_slide; plan_listing_carousel added as the gathering step.
 owner: content
 related: [./README.md, ./cover-slide.md]
 ---
@@ -34,6 +34,7 @@ implementation of each layout. Edit it in `src/`.
 
 | Slide | What | Produced by |
 |---|---|---|
+| 0 | **Plan** — gather facts, photos, CMA | `plan_listing_carousel` |
 | 1 | Cover | `create_listing_cover` |
 | 2-5 | Room photos, agent composited in | `stage_listing_with_agent`, then `create_carousel_slide` `kind:"banner"` on each |
 | 6 | Subdivision CMA stat card | `create_carousel_slide` `kind:"cma"` |
@@ -94,15 +95,37 @@ pitch:        "Above the recent median in The Citrus. Below the top close."
 Keep `pitch` factual. It positions the subject listing against real comps and
 must not characterize another agent's pricing.
 
-## Known gap: authoring is still manual
+## Planning: `plan_listing_carousel`
 
-Rendering is now reachable end-to-end. **Assembly is not.** Nothing takes a
-`listingKey` and returns ten slides — the copy, room labels, pose direction and
-CMA framing are still written per listing, exactly as the
-`scripts/data/carousels/*.js` configs were. The MCP path replaces the config
-file with a Claude session; it does not yet replace the authoring.
+`POST /api/skill/content/carousel-plan` (scope `listings:read`) is the
+gathering step. One call returns listing facts, the photo list with indices,
+**real closed-sale stats already formatted for the CMA slide**, the agent's
+brand marks, and a slot-by-slot outline carrying each renderer's hard limits.
 
-`scripts/carousel-build.js` also supports per-room `pose` and `expression`
-direction that the hosted `stage_listing_with_agent` route does not — it uses
-one fixed prompt for every photo. That is why the script-built carousels vary
-the agent's stance room to room and hosted output does not.
+It returns material, **not copy**. Claude writes the hook, room captions, text
+slides and CTA; the plan makes that copy grounded in real figures and keeps it
+inside limits it would otherwise only discover by being rejected.
+
+Two things it does on the agent's behalf:
+
+- **Subdivision matching.** Listings carry a subdivision *name*; stats live on
+  the `Subdivision` doc. Matching is name-within-city, so identically-named
+  tracts in different cities don't cross-contaminate. Parent subdivisions
+  (e.g. "PGA West") carry no leaf stats and come back `available: false` with
+  their slug, rather than silently returning zeros.
+- **Positioning facts, not judgements.** `cma.positioning` reports whether the
+  subject price sits above or below the median and top close. Claude writes the
+  `pitch` line from that. Keep it factual — state where the price sits, never
+  characterize another agent's pricing.
+
+When `cma.available` is false, **omit slide 6** rather than inventing figures.
+
+## Known gap: copy and pose direction
+
+Gathering is automated; **authoring is not, by design** — the copy is the part
+that has to sound like the agent.
+
+One real gap remains: `scripts/carousel-build.js` supports per-room `pose` and
+`expression` direction that the hosted `stage_listing_with_agent` route does
+not — it sends one fixed prompt for every photo. That is why the script-built
+carousels vary the agent's stance room to room and hosted output does not.

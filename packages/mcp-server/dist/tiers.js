@@ -72,7 +72,8 @@ exports.RESEARCH_TOOL_NAMES = [
  * tools as a backstop).
  */
 exports.MARKETING_TOOL_NAMES = [
-    // Images — AI generation / templated slides (marketing production)
+    // Carousel production — planning + templated slides + AI generation
+    "plan_listing_carousel",
     "stage_listing_with_agent",
     "create_listing_cover",
     "create_carousel_slide",

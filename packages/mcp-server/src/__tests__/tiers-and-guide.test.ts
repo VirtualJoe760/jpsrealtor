@@ -52,6 +52,7 @@ const FORBIDDEN_FOR_RESEARCH = [
   "create_article",
   "update_article",
   // Marketing / social writes
+  "plan_listing_carousel",
   "stage_listing_with_agent",
   "create_listing_cover",
   "create_carousel_slide",
@@ -122,7 +123,7 @@ test("(c) agent tier excludes campaigns/marketing tools but keeps the rest", () 
   }
 
   // Specifically the three marketing tools shipping in this package today.
-  for (const m of ["stage_listing_with_agent", "create_listing_cover", "create_carousel_slide", "post_instagram_carousel"]) {
+  for (const m of ["plan_listing_carousel", "stage_listing_with_agent", "create_listing_cover", "create_carousel_slide", "post_instagram_carousel"]) {
     assert.ok(!agentNames.has(m), `agent tier must exclude "${m}"`);
   }
 
