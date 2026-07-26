@@ -37,7 +37,50 @@ const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_PHOTOS = 10;
 const DEFAULT_PHOTOS = 5;
 
-const DEFAULT_PROMPT = `Place the real-estate agent shown in the second image naturally into the home shown in the first image. The agent should appear professional, confident, and at ease — like they're showing the home to a prospective buyer. Position them realistically in the scene (standing in the space, walking through, or gesturing toward a key feature). Match the lighting direction, color temperature, and perspective. Apply a subtle warm color grade and slight contrast lift for a magazine-quality real-estate look distinct from the original photo. Keep every architectural detail, finish, and fixture in the home exactly as shown. Output: polished real-estate marketing photo in portrait orientation, no text overlays.`;
+// WHY THIS PROMPT IS SO PRESCRIPTIVE
+// ---------------------------------
+// The source headshot is a studio head-and-shoulders cutout. Given a loose
+// instruction, the model COMPOSITES that cutout rather than re-rendering the
+// person into the room: every output came back with the identical three-quarter
+// stance and the same palm-up gesture, lit with the studio's flat frontal light
+// regardless of whether the scene was noon or dusk, cropped mid-thigh so there
+// were no feet to anchor scale — which is why the agent floated at arbitrary
+// size, sometimes half the frame, sometimes standing on a roof.
+//
+// Each clause below counters a specific observed failure. Do not soften them
+// into "position them realistically" — that is what produced the sticker look.
+const BASE_PROMPT = `Re-render the person from the second image as a full-length human being standing inside the scene from the first image. Do NOT paste or composite the second image as a cutout — generate the person afresh, in this room, from this camera's viewpoint.
+
+HARD REQUIREMENTS:
+- FULL BODY, head to feet. Both feet must be visibly in contact with the floor or ground plane. Never crop the person at the waist or thigh, and never let them float.
+- REALISTIC HUMAN SCALE: an adult of average height (about 5'10"). Check their height against real references in the frame — door openings, counters, chair backs, ceiling height. They must read as a person who could walk through that doorway.
+- MIDDLE OR BACKGROUND OF THE SCENE, never a foreground overlay. The person should occupy roughly a quarter to a third of the frame height and be clearly standing IN the space, with correct occlusion behind furniture where appropriate.
+- LIGHTING MUST MATCH THE ROOM: same direction, same colour temperature, same softness, same contrast as the scene. If the scene is dusk or lamplit, the person is lit by that light, not by studio flash. Cast a believable contact shadow on the floor.
+- PERSPECTIVE MUST MATCH: the person's eye level must agree with the photo's horizon and vanishing points.
+
+KEEP: the face and identity from the second image, and every architectural detail, finish and fixture of the home exactly as shown. Change nothing about the property.
+
+Apply a subtle warm grade and slight contrast lift for a magazine-quality real-estate look. Output: a single polished photograph, portrait orientation, no text or graphics.`;
+
+// Per-photo direction. Sending one identical prompt to every photo produced
+// four slides of the same man in the same pose, which reads as a template
+// rather than a walkthrough. scripts/data/carousels/*.js always carried `pose`
+// and `expression` per room; this restores that for the hosted path by cycling
+// distinct staging directions across the batch.
+const POSE_VARIATIONS: string[] = [
+  "Standing a few steps into the room, body angled toward the camera, one hand gesturing openly toward the room's main feature. Warm, welcoming expression.",
+  "Walking through the space, caught mid-stride and looking off toward a window or focal point rather than at the camera. Relaxed, candid, not posed.",
+  "Standing further back near a wall or doorway with hands relaxed at their sides or one in a pocket, looking at the camera with a calm, confident half-smile.",
+  "Standing beside a key feature — an island, fireplace, or railing — with one hand resting lightly on it, turned three-quarters to the camera.",
+  "Standing near the far side of the room looking back toward the camera, giving a clear sense of the room's depth and scale.",
+];
+
+/** Compose the per-photo instruction: base rules + this slot's staging note. */
+function promptForIndex(base: string, i: number): string {
+  return `${base}\n\nSTAGING FOR THIS SHOT: ${POSE_VARIATIONS[i % POSE_VARIATIONS.length]}`;
+}
+
+const DEFAULT_PROMPT = BASE_PROMPT;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -247,7 +290,9 @@ export async function POST(req: NextRequest) {
               parts: [
                 { inlineData: { data: listingImg.base64, mimeType: listingImg.mimeType } },
                 { inlineData: { data: headshotImg.base64, mimeType: headshotImg.mimeType } },
-                { text: prompt },
+                // Per-photo staging note, so a 4-room batch reads as a
+                // walkthrough rather than the same pose four times.
+                { text: promptForIndex(prompt, i) },
               ],
             },
           ],
