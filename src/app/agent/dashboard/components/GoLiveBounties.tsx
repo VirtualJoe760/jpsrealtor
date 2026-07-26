@@ -68,16 +68,28 @@ export default function GoLiveBounties({ name, phone, agentProfile, isLight }: G
             </p>
           </div>
         </div>
-        <Link
-          href="/agent/settings"
-          className={`px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0 transition-colors ${
-            isLight
-              ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-              : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
-          }`}
-        >
-          Edit site
-        </Link>
+        <div className="flex flex-shrink-0 gap-2">
+          <Link
+            href="/agent/setup"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
+            }`}
+          >
+            Redo setup
+          </Link>
+          <Link
+            href="/agent/settings"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isLight
+                ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
+            }`}
+          >
+            Edit site
+          </Link>
+        </div>
       </div>
     );
   }
@@ -101,6 +113,14 @@ export default function GoLiveBounties({ name, phone, agentProfile, isLight }: G
             Complete these {total} bounties to publish your site on the ChatRealty network — no
             subscription needed.
           </p>
+          <Link
+            href="/agent/setup"
+            className={`mt-2 inline-flex items-center gap-1.5 text-sm font-semibold ${
+              isLight ? "text-blue-700 hover:text-blue-800" : "text-blue-300 hover:text-blue-200"
+            }`}
+          >
+            Finish setup in chat — 2 minutes →
+          </Link>
         </div>
         <div
           className={`text-3xl font-bold flex-shrink-0 ml-4 ${

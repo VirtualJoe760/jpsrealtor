@@ -185,7 +185,13 @@ async function resolveExternalSite(
   request: NextRequest,
   subdomain: string,
   pv: string | null
-): Promise<{ status: string; url: string | null; previewOk: boolean } | null> {
+): Promise<{
+  status: string;
+  url: string | null;
+  previewOk: boolean;
+  exists?: boolean;
+  ready?: boolean;
+} | null> {
   const host = request.headers.get("host") || "";
   const origin = host.includes("chatrealty")
     ? "https://www.chatrealty.io"
@@ -199,7 +205,13 @@ async function resolveExternalSite(
     );
     clearTimeout(t);
     if (!res.ok) return null;
-    return (await res.json()) as { status: string; url: string | null; previewOk: boolean };
+    return (await res.json()) as {
+      status: string;
+      url: string | null;
+      previewOk: boolean;
+      exists?: boolean;
+      ready?: boolean;
+    };
   } catch {
     return null;
   }
@@ -361,6 +373,20 @@ export async function proxy(request: NextRequest) {
       // serves its own static assets via assetPrefix (its origin), so only
       // pages + API calls flow through here.
       return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, cfg.url));
+    }
+
+    // Agent exists but hasn't finished the go-live checklist: show a real
+    // "under construction" page instead of a hollow half-built site. Only the
+    // page routes — assets and the agent's own API calls pass through.
+    // NOTE: a subdomain that was never registered as a Vercel domain 404s at
+    // the edge before this code runs; registering it at provisioning is what
+    // makes this reachable.
+    if (cfg && cfg.exists === true && cfg.ready === false && !pathname.startsWith("/api")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/coming-soon";
+      const soon = NextResponse.rewrite(url);
+      soon.headers.set("x-agent-subdomain", subdomain);
+      return soon;
     }
 
     // All paths (including /) — serve normally with agent subdomain header.

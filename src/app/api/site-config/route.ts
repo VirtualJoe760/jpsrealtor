@@ -6,6 +6,7 @@
 // middleware can't run jsonwebtoken.
 
 import { NextRequest, NextResponse } from "next/server";
+import { isSiteReady } from "@/lib/agent-site-readiness";
 import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
@@ -34,7 +35,21 @@ export async function GET(req: NextRequest) {
   await dbConnect();
   const user = await User.findOne(
     { "agentProfile.subdomain": subdomain },
-    { "agentProfile.externalSite": 1 }
+    {
+      "agentProfile.externalSite": 1,
+      // Readiness fields — an agent who hasn't finished setup gets a
+      // "coming soon" page instead of a half-empty site.
+      name: 1,
+      phone: 1,
+      "agentProfile.heroPhoto": 1,
+      "agentProfile.heroPhotoDark": 1,
+      "agentProfile.headshot": 1,
+      "agentProfile.headline": 1,
+      "agentProfile.personalStory": 1,
+      "agentProfile.videoIntro": 1,
+      "agentProfile.cellPhone": 1,
+      "agentProfile.officePhone": 1,
+    }
   ).lean<any>();
 
   const site = user?.agentProfile?.externalSite || {};
@@ -47,8 +62,14 @@ export async function GET(req: NextRequest) {
   // view on a subdomain). Preview-token lookups are personal — no-store.
   const cache = pv ? "no-store" : "public, s-maxage=30, stale-while-revalidate=60";
 
+  // `exists` distinguishes "no such agent" from "agent hasn't published yet";
+  // `ready` is the go-live checklist. The proxy serves /coming-soon when an
+  // agent exists but isn't ready, instead of a hollow site.
+  const exists = Boolean(user);
+  const ready = exists ? isSiteReady(user) : false;
+
   return NextResponse.json(
-    { status, url: status === "none" ? null : url, previewOk },
+    { status, url: status === "none" ? null : url, previewOk, exists, ready },
     { headers: { "Cache-Control": cache } }
   );
 }
