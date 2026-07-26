@@ -123,9 +123,9 @@ export const PRESETS: Record<Exclude<PresetId, "custom">, { label: string; descr
     ],
   },
   full_workspace: {
-    label: "Full workspace",
+    label: "Full workspace (no real-world publish)",
     description:
-      "Power-user set — also lets Claude draft campaigns and manage contact notes. Does NOT include campaign send.",
+      "Power-user set — also lets Claude draft campaigns and manage contact notes. Everything here is reversible: it does NOT include campaign send (campaigns:send), Instagram posting (social:post), or site management (site:manage). Add those individually under Custom.",
     scopes: [
       "landing_pages:read",
       "landing_pages:write",

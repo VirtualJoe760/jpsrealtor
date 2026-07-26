@@ -62,6 +62,18 @@ type PresetId =
   | "client_research"
   | "custom";
 
+// Scopes whose effects are immediate, outward-facing, and not undoable by
+// revoking the token afterwards. Checking one of these gets a red row and a
+// confirmation. Keep this in sync with the scopes NO preset grants
+// (src/lib/skill-scopes.ts) — that exclusion and this warning are the same
+// judgement call expressed in two places.
+const HIGH_RISK_SCOPES: Record<string, string> = {
+  "campaigns:send":
+    "campaigns:send lets Claude launch campaigns that cost real money (postcards, voicemails, ads). Consider creating a separate, scoped token just for sending and revoking it when not in use.",
+  "social:post":
+    "social:post lets Claude publish straight to your connected Instagram Business Account. Posts go live immediately — there is no draft step, and deleting one afterwards does not un-notify your followers. Consider a separate token just for posting.",
+};
+
 export default function IntegrationsStep({ isLight }: StepProps) {
   const cardClass = `rounded-xl border p-6 ${
     isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-800"
@@ -698,7 +710,12 @@ export default function IntegrationsStep({ isLight }: StepProps) {
               <div className={`mt-3 p-3 rounded-lg border ${isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/40 border-gray-700"}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {scopeCatalog.map((scope) => {
-                    const isSend = scope === "campaigns:send";
+                    // Irreversible, outward-facing scopes. These take effect in
+                    // the real world the moment Claude calls them — money leaves
+                    // an account, or a post appears on a public profile. Both
+                    // deserve the same treatment; only campaigns:send used to
+                    // get it, which read as "social posting is the safe one".
+                    const isSend = scope in HIGH_RISK_SCOPES;
                     const checked = customScopes.has(scope);
                     return (
                       <label
@@ -717,9 +734,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                             if (e.target.checked) {
                               next.add(scope);
                               if (isSend) {
-                                alert(
-                                  "campaigns:send lets Claude launch campaigns that cost real money (postcards, voicemails, ads). Consider creating a separate, scoped token just for sending and revoking it when not in use."
-                                );
+                                alert(HIGH_RISK_SCOPES[scope]);
                               }
                             } else {
                               next.delete(scope);
