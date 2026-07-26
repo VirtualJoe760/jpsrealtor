@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
     );
   }
   // COMPLIANCE: license number must exist before anything goes public.
-  if (!ap.licenseNumber || !String(ap.licenseNumber).trim()) {
+  // (licenseNumber is a TOP-LEVEL legacy field; check agentProfile too for safety.)
+  const license = (auth.user as any).licenseNumber || ap.licenseNumber;
+  if (!license || !String(license).trim()) {
     return NextResponse.json(
       {
         error:

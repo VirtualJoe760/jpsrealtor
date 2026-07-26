@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       deploymentUrl: site.deploymentUrl || null,
       subdomain,
       subdomainUrl: subdomain ? `https://${subdomain}.chatrealty.io` : null,
-      licenseOnFile: Boolean(ap.licenseNumber && String(ap.licenseNumber).trim()),
+      licenseOnFile: Boolean(((auth.user as any).licenseNumber || ap.licenseNumber || "").toString().trim()),
       connectedAt: site.connectedAt || null,
       liveAt: site.liveAt || null,
     },
