@@ -35,6 +35,10 @@ import {
 } from "@/lib/cover-templates/carousel-slides";
 import { v2 as cloudinary } from "cloudinary";
 
+// kind:"banner" fetches a staged image and uploads it to Cloudinary before
+// transforming. One upload, but a slow source makes the default budget tight.
+export const maxDuration = 60;
+
 const NO_STORE = { "Cache-Control": "no-store" };
 
 cloudinary.config({

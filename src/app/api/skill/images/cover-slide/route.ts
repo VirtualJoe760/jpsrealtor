@@ -18,6 +18,9 @@ import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
 import { getTemplate } from "@/lib/cover-templates";
 import { v2 as cloudinary } from "cloudinary";
 
+// Fetches the listing photo and uploads it to Cloudinary before transforming.
+export const maxDuration = 60;
+
 const NO_STORE = { "Cache-Control": "no-store" };
 
 cloudinary.config({

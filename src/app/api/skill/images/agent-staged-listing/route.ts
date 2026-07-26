@@ -26,6 +26,13 @@ import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/sk
 import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 
+// This route makes up to MAX_PHOTOS Gemini image-generation calls plus a
+// Cloudinary upload each. Without an explicit budget it inherits Vercel's
+// short default and returns 504 before Gemini finishes -- which it did, on a
+// 4-photo request, while the tool advertised "~30 seconds for 10 photos".
+// The work is inherently slow; the timeout has to say so.
+export const maxDuration = 300;
+
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_PHOTOS = 10;
 const DEFAULT_PHOTOS = 5;
