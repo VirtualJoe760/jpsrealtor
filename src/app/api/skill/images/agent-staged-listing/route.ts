@@ -153,6 +153,23 @@ export async function POST(req: NextRequest) {
   const prompt = String(body.prompt || "").trim() || DEFAULT_PROMPT;
   const headshotOverride = String(body.headshotUrl || "").trim();
 
+  // WHICH photos to stage. Without this the route took the first N, and the
+  // compositing quality depends heavily on the shot: an INTERIOR room gives the
+  // model a floor plane and human-scale reference and comes back excellent,
+  // while an AERIAL or distant exterior has neither and comes back with a giant
+  // agent floating over a hillside. Feeds commonly lead with aerials -- on
+  // 53806 Ridge Road the first three were drone shots, so 3 of 4 results were
+  // unusable. Callers pick interiors instead.
+  const photoIndexes: number[] | null = Array.isArray(body.photoIndexes)
+    ? body.photoIndexes
+        .map((n: any) => Number(n))
+        .filter((n: number) => Number.isInteger(n) && n >= 0)
+        .slice(0, MAX_PHOTOS)
+    : null;
+  if (photoIndexes && photoIndexes.length === 0) {
+    return bad("validation_failed", "photoIndexes must contain at least one non-negative integer index.");
+  }
+
   await dbConnect();
 
   // Resolve agent headshot (allow override for testing alt photos)
@@ -184,9 +201,24 @@ export async function POST(req: NextRequest) {
     return bad("listing_photos_unavailable", `Could not fetch photos for ${listingKey}`, 404);
   }
   const photosData: any = await photosRes.json();
-  const photos: any[] = (photosData.photos || []).slice(0, count);
-  if (photos.length === 0) {
+  const allPhotos: any[] = photosData.photos || [];
+  if (allPhotos.length === 0) {
     return bad("no_photos", "Listing has no photos to generate from.");
+  }
+
+  let photos: any[];
+  if (photoIndexes) {
+    const outOfRange = photoIndexes.filter((i) => i >= allPhotos.length);
+    if (outOfRange.length) {
+      return bad(
+        "validation_failed",
+        `photoIndexes out of range: ${outOfRange.join(", ")}. This listing has ${allPhotos.length} photos (0-${allPhotos.length - 1}).`
+      );
+    }
+    // Preserve the caller's order — it becomes the carousel's room order.
+    photos = photoIndexes.map((i) => ({ ...allPhotos[i], __index: i }));
+  } else {
+    photos = allPhotos.slice(0, count).map((p, i) => ({ ...p, __index: i }));
   }
 
   // Download the headshot once — used for every Gemini call.
@@ -247,7 +279,7 @@ export async function POST(req: NextRequest) {
         );
 
         return {
-          index: i,
+          index: photo.__index ?? i,
           originalUrl: listingUrl,
           stagedUrl: upload.secure_url,
           publicId: upload.public_id,
@@ -256,7 +288,7 @@ export async function POST(req: NextRequest) {
         };
       } catch (err: any) {
         return {
-          index: i,
+          index: photo.__index ?? i,
           originalUrl: listingUrl,
           error: err?.message || String(err),
         };
