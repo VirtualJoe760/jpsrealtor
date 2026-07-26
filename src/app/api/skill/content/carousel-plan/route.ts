@@ -144,10 +144,20 @@ export async function POST(req: NextRequest) {
       const subjectPrice = Number(
         listing.currentPrice ?? listing.currentPricePublic ?? listing.listPrice
       );
+      // NOTE: these are the pre-built nightly aggregate for the WHOLE tract --
+      // no bed/price-band filter. The shipped carousels used band-filtered
+      // comps from search_closed_listings instead (Villa Lima's card is
+      // subheaded "4BR+ · $1.5M-$3.5M"). Same underlying sales -- verified,
+      // top close agrees to the dollar -- but a broader, weaker comparison for
+      // a listing near the top of its tract. `scopeNote` tells the caller when
+      // to go get filtered comps instead. See docs/content-templates/
+      // carousel-slides.md.
       cma = {
         available: true,
         slug: sub.slug,
         confidence: sub.cmaStats?.quality?.confidence || null,
+        scopeNote:
+          "Whole-subdivision closed sales, unfiltered. If this listing sits well above or below the tract's typical price, pull band-filtered comps with search_closed_listings and pass those instead — then set `period` to describe the filter you applied.",
         // Ready to pass straight into create_carousel_slide kind:"cma".
         scope: String(sub.name).toUpperCase(),
         period: `LAST ${months} MONTHS`,

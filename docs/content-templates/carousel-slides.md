@@ -120,6 +120,33 @@ Two things it does on the agent's behalf:
 
 When `cma.available` is false, **omit slide 6** rather than inventing figures.
 
+### Known limitation: the plan's comps are unfiltered
+
+`plan_listing_carousel` reads the **pre-built nightly subdivision aggregate**
+(`Subdivision.cmaStats.closed`) — every closed sale in the tract, no filtering.
+
+The shipped carousels did not do that. Villa Lima's slide 6 is subheaded
+`4BR+ · $1.5M-$3.5M · LAST 12 MONTHS` — a band-filtered set computed from
+`search_closed_listings`. Verified 2026-07-26 against `the-citrus`:
+
+| | Plan (whole subdivision) | Villa Lima slide (4BR+, $1.5-3.5M) |
+|---|---|---|
+| homes sold | 25 | 6 |
+| median close | $1.4M | $2.36M |
+| price/sqft | $468 | $570 |
+| top close | **$3.06M** | **$3.06M** |
+
+Top close matches exactly — same data, different scope. The unfiltered set
+includes a $1.0M condo, so it measures a $2.6M home against stock it does not
+compete with. The numbers are true; they are just a weaker comparison.
+
+**If the price band matters for a given listing, pull filtered comps with
+`search_closed_listings` and pass those figures to `kind:"cma"` instead** —
+the renderer takes formatted strings and does not care where they came from.
+Set `period` to describe whatever filter you actually applied. Pre-built
+aggregates cannot express an arbitrary band; that is why the original flow
+used the query path.
+
 ## Known gap: copy and pose direction
 
 Gathering is automated; **authoring is not, by design** — the copy is the part
