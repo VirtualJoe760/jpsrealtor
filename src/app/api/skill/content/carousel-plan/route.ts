@@ -81,8 +81,15 @@ export async function POST(req: NextRequest) {
         listingKey: 1, unparsedAddress: 1, city: 1, stateOrProvince: 1,
         subdivisionName: 1, listPrice: 1, currentPrice: 1, currentPricePublic: 1,
         bedroomsTotal: 1, bedsTotal: 1, bathroomsTotalInteger: 1, bathsTotal: 1,
-        livingArea: 1, lotSizeAcres: 1, yearBuilt: 1, publicRemarks: 1,
-        listAgentName: 1, listOfficeName: 1, daysOnMarket: 1, propertyType: 1,
+        livingArea: 1, yearBuilt: 1, publicRemarks: 1,
+        // Lot size lands in whichever of these the feed populated — this
+        // listing carries only lotSizeSqft, so asking for acres alone
+        // reported null for a home whose 2.5 acres is a headline feature.
+        lotSizeAcres: 1, lotSizeSqft: 1, lotSizeArea: 1,
+        // daysOnMarket is NOT synced into the doc; derive it from onMarketDate
+        // the same way the listing detail route does.
+        onMarketDate: 1, daysOnMarket: 1,
+        listAgentName: 1, listOfficeName: 1, propertyType: 1,
       },
     }
   );
@@ -206,9 +213,22 @@ export async function POST(req: NextRequest) {
         sqft ? `${Number(sqft).toLocaleString("en-US")} SQFT` : null,
       ].filter(Boolean).join("  |  "),
       beds, baths, sqft,
-      lotSizeAcres: listing.lotSizeAcres ?? null,
+      lotSizeAcres:
+        listing.lotSizeAcres ??
+        (Number(listing.lotSizeSqft || listing.lotSizeArea) > 0
+          ? Math.round((Number(listing.lotSizeSqft || listing.lotSizeArea) / 43560) * 100) / 100
+          : null),
       yearBuilt: listing.yearBuilt ?? null,
-      daysOnMarket: listing.daysOnMarket ?? null,
+      daysOnMarket:
+        listing.daysOnMarket ??
+        (listing.onMarketDate
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(listing.onMarketDate).getTime()) / 86_400_000
+              )
+            )
+          : null),
       publicRemarks: listing.publicRemarks || null,
       listingCredit:
         listing.listAgentName && listing.listOfficeName
@@ -230,6 +250,18 @@ export async function POST(req: NextRequest) {
       hasBrokerLogo: !!(profile?.brokerLogoPublicId || profile?.brokerLogo || profile?.teamLogo),
     },
     outline: buildOutline(photos.length, cma.available),
+    // Surfaced UP FRONT because these fail late and expensively otherwise:
+    // staging burns ~30s and real Gemini spend before slide 10 refuses for a
+    // missing license, and a null handle renders an EMPTY footer rather than
+    // erroring at all — a silently unbranded slide nobody notices until it is
+    // published.
+    warnings: [
+      !handle && "No Instagram handle on the agent profile. The CMA, text and CTA slides print it in the footer and will render blank. Set it in Settings → Social, or pass `handle` explicitly to create_carousel_slide.",
+      !(profile?.headshotPublicId || profile?.headshot) && "No headshot on the agent profile — the cover and CTA slides both require one and will refuse.",
+      !(profile?.brokerLogoPublicId || profile?.brokerLogo || profile?.teamLogo) && "No brokerage logo on the agent profile — the CTA slide requires one and will refuse.",
+      !(profile?.licenseNumber || userDoc?.licenseNumber) && "No license number on the agent profile — the CTA slide prints it for compliance and will refuse.",
+      photos.length < 2 && `Only ${photos.length} photo(s) available; a carousel needs at least 2 images.`,
+    ].filter(Boolean),
   };
 
   return NextResponse.json(plan, { headers: NO_STORE });
