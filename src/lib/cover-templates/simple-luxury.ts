@@ -24,6 +24,11 @@
 //      the torso against a solid color and reads as a sliced headshot — it was
 //      masking the seam from (1) rather than fixing it. The listing credit lives
 //      in the info column under the address instead.
+//   3. The hook carries `width` + `crop: "fit"` from fitHeadline(). Without the
+//      width cap it is a bare 96pt overlay that runs off the panel and across
+//      the photo at anything over ~6 characters. Do not drop the cap or
+//      hardcode font_size/y back — the fitter bottom-anchors the block so it
+//      never reaches the city subtitle at y:240.
 //
 // This mirrors the shipped carousel cover in scripts/lib/slide-templates.js
 // (buildCoverTransformation) — keep the two in sync.
@@ -34,6 +39,8 @@
 // All text is Poppins (closest auto-loaded Cloudinary font to Jost). Once
 // raw-asset delivery is enabled on the Cloudinary account, swap font to
 // "jpsrealtor:fonts:Jost-Variable.ttf".
+
+import { fitHeadline } from "./fit-headline";
 
 export interface SimpleLuxuryData {
   basePhotoPublicId: string;     // Cloudinary public_id of the background photo
@@ -63,6 +70,7 @@ export function buildSimpleLuxuryTransformations(
 ): CloudinaryTransformation[] {
   const FONT = d.font || "Poppins";
   const COLOR = d.accentColor || "1C4A5A";
+  const hook = fitHeadline(d.hook);
 
   return [
     // 1. Base 4:5 portrait crop, 1080w
@@ -79,10 +87,16 @@ export function buildSimpleLuxuryTransformations(
       gravity: "west",
     },
 
-    // 3. Hook headline
+    // 3. Hook headline — auto-fitted to the panel, bottom-anchored above the
+    // city subtitle. See fit-headline.js: `width` + `crop: "fit"` is what makes
+    // overflow impossible; `fontSize`/`y` are what make it look deliberate.
+    // A short one-line hook resolves to 96pt at y:110, the values this was
+    // before the fitter existed.
     {
-      overlay: { font_family: FONT, font_size: 96, font_weight: "light", text: d.hook },
-      color: "white", gravity: "north_west", x: 70, y: 110,
+      overlay: { font_family: FONT, font_size: hook.fontSize, font_weight: "light", text: d.hook },
+      width: hook.maxWidth,
+      crop: "fit",
+      color: "white", gravity: "north_west", x: 70, y: hook.y,
     },
 
     // 4. City subtitle (letter-spaced for editorial feel)

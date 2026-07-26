@@ -3,6 +3,8 @@
 // Cloudinary transformation builders for the 10-slide IG carousel.
 // All slides are 1080x1350 (4:5). Banner color is parameterized per listing.
 
+const { fitHeadline } = require("../../src/lib/cover-templates/fit-headline.js");
+
 const FONT = "Poppins";
 const CREAM = "F1EBE0";
 const CREAM_DIM = "C8C0B0";
@@ -11,12 +13,18 @@ const CREAM_DIM = "C8C0B0";
 function buildCoverTransformation(d) {
   const { color, hook, city, price, addressLine1, addressLine2,
     listingCredit, specs, body, agentName, headshotPublicId } = d;
+  // Shared with the MCP-facing cover in src/lib/cover-templates/simple-luxury.ts.
+  // Both used to hardcode font_size:96 with no width cap, so both overflowed the
+  // panel on any hook over ~6 characters. Importing one fitter is what keeps the
+  // two layouts from drifting apart again.
+  const fitted = fitHeadline(hook);
   return [
     { width: 1080, aspect_ratio: "4:5", crop: "fill", gravity: "auto", quality: "auto:best" },
     { overlay: "sample", effect: "colorize:100", color: `rgb:${color}`, opacity: 75,
       width: 480, height: 1350, crop: "scale", gravity: "west" },
-    { overlay: { font_family: FONT, font_size: 96, font_weight: "light", text: hook },
-      color: "white", gravity: "north_west", x: 70, y: 110 },
+    { overlay: { font_family: FONT, font_size: fitted.fontSize, font_weight: "light", text: hook },
+      width: fitted.maxWidth, crop: "fit",
+      color: "white", gravity: "north_west", x: 70, y: fitted.y },
     { overlay: { font_family: FONT, font_size: 28, font_weight: "light", text: city, letter_spacing: 8 },
       color: "white", gravity: "north_west", x: 70, y: 240 },
     { overlay: { font_family: FONT, font_size: 60, font_weight: "medium", text: price },
