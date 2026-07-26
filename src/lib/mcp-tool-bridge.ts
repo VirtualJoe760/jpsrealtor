@@ -75,6 +75,7 @@ const TOOL_SCOPE: Record<string, string> = {
   create_landing_page: "landing_pages:write",
   update_landing_page: "landing_pages:write",
   create_listing_cover: "landing_pages:write",
+  create_carousel_slide: "landing_pages:write",
   stage_listing_with_agent: "landing_pages:write",
   // Real-money / real-world publish
   post_instagram_carousel: "social:post",

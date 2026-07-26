@@ -39,6 +39,7 @@ const FORBIDDEN_FOR_RESEARCH = [
     // Marketing / social writes
     "stage_listing_with_agent",
     "create_listing_cover",
+    "create_carousel_slide",
     "post_instagram_carousel",
 ];
 // ---------------------------------------------------------------------------
@@ -85,7 +86,7 @@ const FORBIDDEN_FOR_RESEARCH = [
         }
     }
     // Specifically the three marketing tools shipping in this package today.
-    for (const m of ["stage_listing_with_agent", "create_listing_cover", "post_instagram_carousel"]) {
+    for (const m of ["stage_listing_with_agent", "create_listing_cover", "create_carousel_slide", "post_instagram_carousel"]) {
         strict_1.default.ok(!agentNames.has(m), `agent tier must exclude "${m}"`);
     }
     // The campaign-name backstop catches hypothetical future campaign tools.

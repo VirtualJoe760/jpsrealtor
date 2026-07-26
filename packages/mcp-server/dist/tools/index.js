@@ -40,6 +40,7 @@ const my_recent_leads_js_1 = require("./my_recent_leads.js");
 const post_instagram_carousel_js_1 = require("./post_instagram_carousel.js");
 const stage_listing_with_agent_js_1 = require("./stage_listing_with_agent.js");
 const create_listing_cover_js_1 = require("./create_listing_cover.js");
+const create_carousel_slide_js_1 = require("./create_carousel_slide.js");
 const get_build_guide_js_1 = require("./get_build_guide.js");
 const report_bug_js_1 = require("./report_bug.js");
 const give_feedback_js_1 = require("./give_feedback.js");
@@ -93,7 +94,7 @@ const CRM_READ = [
 // Images — AI generation + templated cover slides. Returns Cloudinary URLs
 // for review. Not auto-posted; the agent (or Claude after agent confirmation)
 // passes the result into post_instagram_carousel separately.
-const IMAGES = [stage_listing_with_agent_js_1.stage_listing_with_agent, create_listing_cover_js_1.create_listing_cover];
+const IMAGES = [stage_listing_with_agent_js_1.stage_listing_with_agent, create_listing_cover_js_1.create_listing_cover, create_carousel_slide_js_1.create_carousel_slide];
 // Social — real-world publish. Each tool requires its own scope; nothing
 // here lands in a default preset. Confirm with the agent before calling.
 const SOCIAL = [post_instagram_carousel_js_1.post_instagram_carousel];

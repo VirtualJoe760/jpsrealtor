@@ -72,9 +72,10 @@ export const RESEARCH_TOOL_NAMES: readonly string[] = [
  * tools as a backstop).
  */
 export const MARKETING_TOOL_NAMES: readonly string[] = [
-  // Images — AI generation / templated cover slides (marketing production)
+  // Images — AI generation / templated slides (marketing production)
   "stage_listing_with_agent",
   "create_listing_cover",
+  "create_carousel_slide",
   // Social — real-world publish (marketing distribution)
   "post_instagram_carousel",
 ] as const;
