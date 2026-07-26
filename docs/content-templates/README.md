@@ -1,7 +1,10 @@
 ---
 title: ChatRealty Content Templates
-last_verified: 2026-06-05
+status: current
+last_verified: 2026-07-26
+last_verified_note: Cover-slide layout re-verified 2026-07-26; carousel/reel pipelines and storage layer unchanged since 2026-06-05.
 owner: content
+related: [./cover-slide.md]
 ---
 
 # Content Templates
@@ -20,6 +23,15 @@ that auto-populates from Cloudinary on demand and is safe to delete.
 |---|---|---|---|
 | `simple-luxury-carousel` | production | 10-slide IG carousel | 48750 El Nido |
 | `staging-timelapse-reel` | wip | ~45s 9:16 IG Reel | 1 Makena Lane |
+| `simple-luxury` (cover only) | production | single 4:5 IG cover, on-demand via MCP | see [cover-slide.md](./cover-slide.md) |
+
+> **Single-cover path.** Agents generate a one-off cover from their own Claude
+> session via the `create_listing_cover` MCP tool — same visual design as carousel
+> slide 1, but rendered by `src/lib/cover-templates/simple-luxury.ts` instead of
+> the local script pipeline. That module and `scripts/lib/slide-templates.js`
+> carry duplicate layouts and must be kept in sync. Layout invariants (flush
+> headshot bleed, no bottom banner) are documented in
+> [cover-slide.md](./cover-slide.md) — read it before editing either.
 
 ---
 

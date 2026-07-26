@@ -8,10 +8,25 @@
 //   - Price ($, 60pt medium)
 //   - Divider rule
 //   - Address (2 lines, light)
+//   - Listing credit ("Listed by [agent] · [brokerage]") directly under the address
 //   - Specs (BD | BA | SQFT)
 //   - Flowing 1-2 sentence body copy (italic, light)
-//   - Agent headshot at bottom, sits flush with the bottom banner
-// Bottom: thin banner with "Listed by [agent] · [brokerage]" in italic small print.
+//   - Agent headshot bled flush into the bottom-left corner
+//
+// LAYOUT INVARIANT — do not "fix" these two things back:
+//
+//   1. The headshot is a background-removed cutout PNG whose source frame ends
+//      mid-torso, so it carries a hard horizontal crop edge. It MUST sit flush
+//      at x:0, y:0 so that edge bleeds off-canvas. ANY positive y offset floats
+//      the cut line over the accent panel and renders the agent as a chopped-off
+//      rectangular slab.
+//   2. There is NO bottom banner. A full-width band at gravity:south terminates
+//      the torso against a solid color and reads as a sliced headshot — it was
+//      masking the seam from (1) rather than fixing it. The listing credit lives
+//      in the info column under the address instead.
+//
+// This mirrors the shipped carousel cover in scripts/lib/slide-templates.js
+// (buildCoverTransformation) — keep the two in sync.
 //
 // Accent color (default teal #1C4A5A) can be overridden per call so the
 // same layout can run in different brand palettes.
@@ -110,13 +125,36 @@ export function buildSimpleLuxuryTransformations(
       color: "white", gravity: "north_west", x: 70, y: 510,
     },
 
-    // 9. Specs
+    // 9. Listing credit (compliance) — sits directly under the address, wrapped.
+    // The credit string is long ("Listed by <Agent>  ·  <Full Office Name>"), so
+    // it needs crop:fit + a width cap to wrap to two lines rather than running
+    // off the accent panel.
     {
-      overlay: { font_family: FONT, font_size: 22, font_weight: "normal", text: d.specs },
-      color: "white", gravity: "north_west", x: 70, y: 575,
+      overlay: {
+        font_family: FONT,
+        font_size: 14,
+        font_weight: "light",
+        font_style: "italic",
+        text: d.listingCredit,
+      },
+      width: 360,
+      crop: "fit",
+      color: "rgb:E0E0E0",
+      gravity: "north_west",
+      x: 70, y: 548,
     },
 
-    // 10. Body copy — flowing description (italic light)
+    // 10. Specs
+    // y:605 budgets for a TWO-line credit above. Long brokerage names
+    // ("eXp Realty Of Southern California Inc") wrap at width 360; the shipped
+    // carousel uses y:590 only because its credits happen to fit on one line.
+    // Don't tighten this back to 590 — it crowds the wrapped second line.
+    {
+      overlay: { font_family: FONT, font_size: 22, font_weight: "normal", text: d.specs },
+      color: "white", gravity: "north_west", x: 70, y: 605,
+    },
+
+    // 11. Body copy — flowing description (italic light)
     {
       overlay: {
         font_family: FONT,
@@ -133,36 +171,15 @@ export function buildSimpleLuxuryTransformations(
       x: 70, y: 660,
     },
 
-    // 11. Headshot — native aspect ratio, flush with the bottom banner
+    // 12. Headshot — cutout PNG bled flush into the bottom-left corner.
+    // x:0, y:0 is load-bearing (see LAYOUT INVARIANT at the top of this file):
+    // the asset's hard bottom crop edge must run off-canvas, not float over
+    // the panel. Width 480 matches the accent panel so it fills edge-to-edge.
     {
       overlay: d.headshotPublicId.replace(/\//g, ":"),
-      width: 400,
+      width: 480,
       gravity: "south_west",
-      x: 40, y: 40,
-    },
-
-    // 12. Bottom banner — solid accent color, full width
-    {
-      overlay: "sample",
-      effect: "colorize:100",
-      color: `rgb:${COLOR}`,
-      width: 1080, height: 40,
-      crop: "scale",
-      gravity: "south",
-    },
-
-    // 13. Listing credit — italic, light, small print
-    {
-      overlay: {
-        font_family: FONT,
-        font_size: 13,
-        font_weight: "light",
-        font_style: "italic",
-        text: d.listingCredit,
-      },
-      color: "rgb:EFEFEF",
-      gravity: "south",
-      y: 13,
+      x: 0, y: 0,
     },
   ];
 }

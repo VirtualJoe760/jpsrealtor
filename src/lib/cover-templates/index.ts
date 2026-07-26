@@ -30,7 +30,7 @@ export const TEMPLATES: Record<CoverTemplateId, CoverTemplate> = {
     id: "simple-luxury",
     label: "Simple Luxury",
     description:
-      "Editorial 4:5 cover with a left accent panel, large light hook, city subtitle, price, address, specs, italic body copy, agent headshot at bottom, and a thin Listed-by banner. Accent color is configurable per call.",
+      "Editorial 4:5 cover with a left accent panel, large light hook, city subtitle, price, address, the Listed-by credit under the address, specs, italic body copy, and the agent headshot bled flush into the bottom-left corner. Accent color is configurable per call.",
     build: buildSimpleLuxuryTransformations,
   },
 };
