@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Wordmark from "@/app/components/brand/Wordmark";
 import NavBrandMark from "@/app/components/brand/NavBrandMark";
+import { isPlatformDomain } from "@/lib/domain-classify";
 import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare,
@@ -50,6 +51,10 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const isChapPage = pathname === "/chap";
 
   const [isMobile, setIsMobile] = useState(false);
+  // Platform vs agent site. chatrealty.io is the PLATFORM — it must not wear
+  // an agent's compliance treatment just because owner-resolution falls back
+  // to PRIMARY_AGENT_EMAIL. Read post-mount so SSR and hydration agree.
+  const [isPlatformHost, setIsPlatformHost] = useState(false);
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -87,6 +92,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   }, [status, session, dashboardDropdownOpen, pathname]);
 
   useEffect(() => {
+    setIsPlatformHost(isPlatformDomain(window.location.hostname));
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -485,8 +491,36 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         </div>
         )}
 
-        {/* Agent Branding - Required Agency Treatment */}
-        {!effectivelyCollapsed && branding.agentName && (
+        {/* PLATFORM account strip — chatrealty.io is not an agent site, so it
+            shows who you're signed in as (or an invite to join) instead of
+            somebody's DRE treatment. */}
+        {!effectivelyCollapsed && isPlatformHost && (
+          <div className={`px-4 pt-3 pb-2 mx-3 border-t ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
+            {session?.user ? (
+              <p className={`text-[11px] text-center leading-relaxed ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
+                Signed in as
+                <br />
+                <span className={isLight ? "text-gray-700" : "text-neutral-300"}>
+                  {session.user.name || session.user.email}
+                </span>
+              </p>
+            ) : (
+              <button
+                onClick={() => handleNavigate("/auth/signup")}
+                className={`w-full rounded-lg py-2 text-[12px] font-semibold transition-colors ${
+                  isLight
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700"
+                }`}
+              >
+                Create an account
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Agent Branding - Required Agency Treatment (agent sites only) */}
+        {!effectivelyCollapsed && !isPlatformHost && branding.agentName && (
           <div className={`px-4 pt-3 pb-2 mx-3 border-t ${isLight ? "border-gray-200" : "border-neutral-700/50"}`}>
             <p className={`text-[11px] text-center leading-relaxed ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
               {branding.agentName}
