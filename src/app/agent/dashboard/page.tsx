@@ -23,6 +23,7 @@ import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
 import GoLiveBounties from "./components/GoLiveBounties";
 import RecentActivity from "./components/RecentActivity";
+import PostReview from "./components/PostReview";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -447,6 +448,13 @@ export default function AgentDashboard() {
               tenant site (fed by the tenant→owner bridge). */}
           <div className="mb-8">
             <RecentActivity isLight={isLight} />
+          </div>
+
+          {/* Social posts awaiting approval. Sits high on the dashboard because
+              it is time-sensitive — a post that isn't approved before its slot
+              rolls to the next one. */}
+          <div className="mb-8">
+            <PostReview isLight={isLight} />
           </div>
 
           {/* Partnerships Section */}
