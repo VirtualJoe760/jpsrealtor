@@ -218,14 +218,14 @@ function Lightbox({
           <button
             onClick={(e) => { e.stopPropagation(); onIndex((index - 1 + n) % n); }}
             aria-label="Previous"
-            className="absolute left-2 sm:left-6 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+            className="absolute left-20 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onIndex((index + 1) % n); }}
             aria-label="Next"
-            className="absolute right-2 sm:right-6 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+            className="absolute right-20 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
