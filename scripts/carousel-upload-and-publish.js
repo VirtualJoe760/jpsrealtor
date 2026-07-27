@@ -25,9 +25,76 @@ const EDITS_DIR = path.join(__dirname, "..", "temp-images", SLUG, "_edits");
 const CAPTION_FILE = path.join(__dirname, "..", "temp-images", SLUG, "caption.txt");
 const LOG_DIR = path.join(__dirname, "..", "temp-images", SLUG);
 
-const TOKEN = process.env.META_IG_TEST_TOKEN;
-const IG_USER_ID = process.env.META_IG_TEST_USER_ID;
 const API = "https://graph.facebook.com/v21.0";
+
+// Credentials come from the SAME place the app's API route reads them: the
+// agent's stored Meta connection on their User doc. That token is a permanent
+// PAGE token (verified via debug_token: expires_at = 0) carrying
+// instagram_basic + instagram_content_publish.
+//
+// This script used to read META_IG_TEST_TOKEN — a Graph API Explorer token
+// that expires in hours, which is why publishing needed a manual token refresh
+// before every run. The permanent token was already sitting in the database;
+// the script was just never pointed at it. The env vars are kept as an
+// override for testing against a different account.
+// The stored connection wins by DEFAULT. The old META_IG_TEST_* vars are still
+// sitting in .env.local, so preferring them would silently keep using the
+// expiring token and make this whole change a no-op. Opt in explicitly with
+// META_USE_ENV_TOKEN=1 when testing against a different account.
+async function resolveCreds() {
+  if (
+    process.env.META_USE_ENV_TOKEN === "1" &&
+    process.env.META_IG_TEST_TOKEN &&
+    process.env.META_IG_TEST_USER_ID
+  ) {
+    return {
+      token: process.env.META_IG_TEST_TOKEN,
+      igUserId: process.env.META_IG_TEST_USER_ID,
+      source: "env override (META_USE_ENV_TOKEN=1)",
+    };
+  }
+
+  const mongoose = require("mongoose");
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error("MONGODB_URI not set and no META_IG_TEST_* override provided.");
+
+  await mongoose.connect(uri);
+  try {
+    const email = process.env.PRIMARY_AGENT_EMAIL || "josephsardella@gmail.com";
+    const user = await mongoose.connection.db
+      .collection("users")
+      .findOne({ email }, { projection: { "adAccounts.meta": 1 } });
+
+    const meta = user?.adAccounts?.meta || {};
+    const token = meta.pageAccessToken || meta.accessToken;
+    const pageId = meta.pageId;
+    if (!token || !pageId) {
+      throw new Error(
+        `No Meta connection stored for ${email}. Connect Meta in Settings → Integrations.`
+      );
+    }
+
+    // The IG business account hangs off the Page, so resolve it rather than
+    // storing a second id that can drift out of sync with the Page.
+    const r = await fetch(
+      `${API}/${pageId}?fields=instagram_business_account&access_token=${encodeURIComponent(token)}`
+    );
+    const j = await r.json();
+    const igUserId = j?.instagram_business_account?.id;
+    if (!igUserId) {
+      throw new Error(
+        `Page ${pageId} has no linked Instagram Business Account` +
+          (j?.error?.message ? ` — ${j.error.message}` : "")
+      );
+    }
+    return { token, igUserId, source: `stored Meta connection (page ${pageId})` };
+  } finally {
+    await mongoose.disconnect();
+  }
+}
+
+let TOKEN;
+let IG_USER_ID;
 
 const SLIDE_FILES = Array.from({ length: 10 }, (_, i) =>
   `slide-${String(i + 1).padStart(2, "0")}.jpg`
@@ -55,7 +122,15 @@ async function gget(p, params) {
 }
 
 (async () => {
-  if (!TOKEN || !IG_USER_ID) { console.error("Missing META_IG_TEST_TOKEN / USER_ID"); process.exit(1); }
+  try {
+    const creds = await resolveCreds();
+    TOKEN = creds.token;
+    IG_USER_ID = creds.igUserId;
+    console.log(`[auth] ${creds.source} — ig user ${IG_USER_ID}`);
+  } catch (err) {
+    console.error(`[auth] ${err.message}`);
+    process.exit(1);
+  }
 
   const caption = fs.readFileSync(CAPTION_FILE, "utf8").trim();
   console.log(`[${SLUG}] caption ${caption.length} chars`);
