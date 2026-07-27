@@ -24,7 +24,7 @@ Depth is what makes it trustworthy rather than lucky: a fitted floor PLANE says
 where feet may land, and metric depth says exactly how tall a 1.78m person is
 at that distance. Both become numeric accept/reject gates instead of prompts.
 """
-import os, sys, io, json, base64, warnings, pathlib
+import os, sys, io, re, json, base64, warnings, pathlib
 warnings.filterwarnings("ignore")
 
 import numpy as np
@@ -43,7 +43,82 @@ ASSUMED_CAM_H = 1.45
 NL = "\n"
 
 
+# ADE20K class ids. The segmentation model we already run for the person mask
+# also knows what the furniture IS, which is how a "game room" stops being a
+# brick wall: pool table and bar are nameable classes, so the crop can be
+# required to keep them.
+ADE = {"wall": 0, "floor": 3, "ceiling": 5, "bed": 7, "windowpane": 8, "cabinet": 10,
+       "person": 12, "door": 14, "table": 15, "curtain": 18, "chair": 19, "painting": 22,
+       "sofa": 23, "shelf": 24, "mirror": 27, "rug": 28, "armchair": 30, "seat": 31,
+       "desk": 33, "wardrobe": 35, "lamp": 36, "railing": 38, "column": 42, "counter": 45,
+       "sink": 47, "fireplace": 49, "refrigerator": 50, "stairs": 53, "pooltable": 56,
+       "bookcase": 62, "coffeetable": 64, "countertop": 70, "stove": 71, "island": 73,
+       "bar": 77}
+
+# What a room is actually selling, most distinctive first. A pool table makes a
+# game room; a wall does not.
+FEATURE_WEIGHTS = {"pooltable": 6.0, "bar": 5.0, "island": 5.0, "fireplace": 4.5,
+                   "stove": 3.0, "countertop": 2.5, "counter": 2.5, "sink": 1.5,
+                   "bed": 4.0, "sofa": 2.5, "armchair": 1.5, "bookcase": 2.0,
+                   "windowpane": 2.0, "coffeetable": 1.0, "table": 1.0}
+
+
+def semantic(img):
+    """ADE20K semantic map of the room (not the render) - what everything IS."""
+    from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    mid = "nvidia/segformer-b4-finetuned-ade-512-512"
+    proc = SegformerImageProcessor.from_pretrained(mid)
+    model = SegformerForSemanticSegmentation.from_pretrained(mid).to(dev).eval()
+    inp = proc(images=img, return_tensors="pt").to(dev)
+    with torch.no_grad():
+        logits = model(**inp).logits
+    up = torch.nn.functional.interpolate(
+        logits, size=img.size[::-1], mode="bilinear", align_corners=False)
+    return up.argmax(1)[0].cpu().numpy()
+
+
 # ---------------------------------------------------------------- geometry --
+def crop_45_feature(img):
+    """Choose the 4:5 window that KEEPS what makes the room that room.
+
+    A centre crop of the game room threw away the pool table and the bar and
+    kept a brick chimney, so the slide captioned "the game room" contained no
+    game room. The crop is now scored on weighted feature pixels retained."""
+    W, H = img.size
+    f_orig, _, _ = intrinsics(W, H)
+    cw = min(W, int(round(H * 4 / 5)))
+    ch = min(H, int(round(cw * 5 / 4)))
+    if cw >= W:
+        return crop_45(img)
+
+    sem = semantic(img)
+    score_map = np.zeros(sem.shape, np.float32)
+    present = {}
+    for name, wgt in FEATURE_WEIGHTS.items():
+        m = sem == ADE[name]
+        if m.sum() > 0.004 * sem.size:
+            score_map[m] = wgt
+            present[name] = int(m.sum())
+
+    best_left, best = 0, -1.0
+    for left in range(0, W - cw + 1, 16):
+        s = float(score_map[:, left:left + cw].sum())
+        # Nudge toward centre only to break ties between equal-content windows.
+        s -= 0.02 * abs((left + cw / 2) - W / 2)
+        if s > best:
+            best_left, best = left, s
+
+    top = (H - ch) // 2
+    out = img.crop((best_left, top, best_left + cw, top + ch)).resize(
+        (OUT_W, OUT_H), Image.LANCZOS)
+    f_out = f_orig * (OUT_W / cw)
+    kept = ", ".join(sorted(present, key=lambda k: -present[k])[:4]) or "nothing named"
+    print("  crop x={} of {} (centre would be {})  keeps: {}".format(
+        best_left, W - cw, (W - cw) // 2, kept))
+    return out, f_out
+
+
 def crop_45(img):
     """Crop to 4:5 keeping full height, and return the focal length OF THE CROP.
 
@@ -171,6 +246,119 @@ def pick_spot(floor, depth, f):
     print("  spot               x={} feet_y={} depth={:.2f}m height={:.0f}px "
           "({:.0%} of frame)".format(x, y, depth[y, x], h, h / OUT_H))
     return x, y, h
+
+
+def clearance(floor, depth, x, y, deg, max_px=520):
+    """How many METRES of open floor lie in a given image direction from the
+    feet. This is what 'walking into a brick wall' failed: a walking pose was
+    assigned before anything checked there was anywhere to walk."""
+    import math
+    dx, dy = math.cos(math.radians(deg)), -math.sin(math.radians(deg))
+    H, W = floor.shape
+    d0 = depth[y, x]
+    last = 0.0
+    for t in range(4, max_px, 4):
+        xx, yy = int(x + dx * t), int(y + dy * t)
+        if not (0 <= xx < W and 0 <= yy < H) or not floor[yy, xx]:
+            break
+        # Ground distance travelled, from the depth change along the ray.
+        last = abs(depth[yy, xx] - d0) + 0.35 * (t / max(1.0, depth[yy, xx]) * 0.01)
+    return last
+
+
+def candidates(floor, depth, f, sem, n=4):
+    """Emit several spots that are ALL physically valid, well separated.
+
+    Geometry's job is to guarantee validity - real floor, whole body in frame,
+    correct scale, room to stand. Choosing which valid spot best SHOWS THE ROOM
+    is a question about meaning, and is handed to the vision model instead."""
+    ys, xs = np.where(floor)
+    pool = []
+    for i in range(0, len(ys), 5):
+        y, x = int(ys[i]), int(xs[i])
+        d = depth[y, x]
+        if not np.isfinite(d) or d <= 0.5:
+            continue
+        h = f * PERSON_H / d
+        if not (0.32 * OUT_H <= h <= 0.66 * OUT_H):
+            continue
+        if y - h < 45 or y > OUT_H - 40:
+            continue
+        half = max(8, int(h * 0.16))
+        if x - half < 25 or x + half > OUT_W - 25:
+            continue
+        sub = floor[max(0, y - 8):y + 9, x - half:x + half + 1]
+        if (sub.mean() if sub.size else 0) < 0.78:
+            continue
+        # Free space to either side and ahead - a spot boxed in on all sides is
+        # where the "walking into a brick wall" frame came from.
+        cl = {a: clearance(floor, depth, x, y, a) for a in (0, 45, 90, 135, 180)}
+        openness = sum(sorted(cl.values())[-3:])
+        pool.append((openness, x, y, h, cl))
+
+    pool.sort(key=lambda p: -p[0])
+    out = []
+    for cand in pool:
+        if all(abs(cand[1] - o[1]) > 0.16 * OUT_W or abs(cand[2] - o[2]) > 0.16 * OUT_H
+               for o in out):
+            out.append(cand)
+        if len(out) == n:
+            break
+    if not out:
+        raise RuntimeError("no valid candidate spots")
+    return out
+
+
+def choose_spot(img, cands, room_kind):
+    """Geometry proposed; vision disposes. Show the numbered valid options and
+    ask which one actually shows off the room - plus what he should be doing
+    there and what he must not block."""
+    import requests
+    from PIL import ImageDraw
+    ov = img.copy()
+    dr = ImageDraw.Draw(ov)
+    for i, (_, x, y, h, _) in enumerate(cands, 1):
+        half = h * 0.17
+        dr.rectangle([x - half, y - h, x + half, y], outline=(255, 0, 0, 255), width=5)
+        dr.ellipse([x - 26, y - h - 52, x + 26, y - h], fill=(255, 0, 0))
+        dr.text((x - 8, y - h - 40), str(i), fill=(255, 255, 255))
+
+    buf = io.BytesIO(); ov.save(buf, format="PNG")
+    prompt = (
+        "This is a real-estate photo of a " + room_kind.replace("_", " ") + ". The red "
+        "boxes are candidate positions for a real-estate agent to stand. Every one is "
+        "already verified as real floor at the correct human scale - you are NOT judging "
+        "whether a person fits." + NL + NL
+        + "Judge only which position makes the best MARKETING photograph:" + NL
+        + "- he must not block or crowd the feature that makes this room worth seeing" + NL
+        + "- he must not read as facing into a wall, a corner, or a dead end" + NL
+        + "- he should have somewhere natural to look or gesture" + NL + NL
+        + "Reply ONLY with JSON: {\"choice\": <box number>, \"feature\": \"<the one thing "
+          "this room is selling>\", \"facing\": \"<what he should face or turn toward>\", "
+          "\"doing\": \"<one concrete thing he is doing, in under 15 words>\", "
+          "\"reject\": \"<why the other boxes are worse, one short clause>\"}"
+    )
+    r = requests.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-2.5-flash:generateContent",
+        params={"key": os.environ["GEMINI_API_KEY"]},
+        json={"contents": [{"role": "user", "parts": [
+            {"inline_data": {"mime_type": "image/png",
+                             "data": base64.b64encode(buf.getvalue()).decode()}},
+            {"text": prompt}]}]},
+        timeout=120)
+    r.raise_for_status()
+    txt = "".join(p.get("text", "") for p in r.json()["candidates"][0]["content"]["parts"])
+    m = re.search(r"\{[\s\S]*\}", txt)
+    if not m:
+        raise RuntimeError("no choice returned")
+    j = json.loads(m.group(0))
+    k = max(1, min(len(cands), int(j.get("choice", 1))))
+    print("  vision picks       box {} - feature: {} | facing: {}".format(
+        k, j.get("feature"), j.get("facing")))
+    print("  doing              {}".format(j.get("doing")))
+    print("  rejected others    {}".format(j.get("reject")))
+    return cands[k - 1], j
 
 
 # -------------------------------------------------------------------- pose --
@@ -443,21 +631,42 @@ HEADSHOT = ("https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/"
 SHARP_ROOMS = {"living", "great_room", "dining", "primary_bedroom", "office", "exterior"}
 
 
-def stage_one(src, pose_key, room_kind, out_name="staged.png", takes=3):
+def stage_one(src, room_kind, out_name="staged.png", takes=3):
     import requests
     print("geometry...")
-    base, f = crop_45(Image.open(src).convert("RGB"))
+    base, f = crop_45_feature(Image.open(src).convert("RGB"))
     base.save(src.with_name("base_" + out_name))
     headshot = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
 
     floor, depth = analyse(base, f)
-    x, y, h = pick_spot(floor, depth, f)
+    sem = semantic(base)
+    cands = candidates(floor, depth, f, sem)
+    print("  candidates         {} valid spots".format(len(cands)))
+    (_, x, y, h, cl), plan = choose_spot(base, cands, room_kind)
+
+    # A walking pose needs somewhere to walk. Pick the pose to fit the SPOT
+    # rather than assigning it up front - which is how a stride ended up
+    # aimed at a brick chimney.
+    best_dir = max(cl, key=cl.get)
+    room_ahead = cl[best_dir]
+    if room_ahead > 1.1:
+        pose_key = "walk_look_back"
+    elif any(k in str(plan.get("facing", "")).lower()
+             for k in ("island", "counter", "fireplace", "window", "view", "table", "bar")):
+        pose_key = "gesture_to_feature"
+    else:
+        pose_key = "mid_sentence" if room_ahead > 0.6 else "hand_pocket_angle"
+    print("  clearance          best {:.2f}m at {} deg -> pose {}".format(
+        room_ahead, best_dir, pose_key))
+
     wardrobe = pick_wardrobe(base, x, y, h,
                              "sharp" if room_kind in SHARP_ROOMS else "casual")
     mark = marker(base, x, y, h, pose_key)
     mark.save(src.with_name("marker_" + out_name))
-    pose = POSES[pose_key]["desc"]
-    print("  pose               {}".format(pose_key))
+
+    pose = "{} He is {}. He faces {}. Do not block or crowd the {}.".format(
+        POSES[pose_key]["desc"], plan.get("doing", "showing the room"),
+        plan.get("facing", "into the open room"), plan.get("feature", "room's feature"))
 
     for take in range(1, takes + 1):
         print("take {}...".format(take))
@@ -476,9 +685,8 @@ def stage_one(src, pose_key, room_kind, out_name="staged.png", takes=3):
 
 def main():
     src = pathlib.Path(sys.argv[1])
-    pose_key = sys.argv[2] if len(sys.argv) > 2 else "hand_pocket_angle"
-    room_kind = sys.argv[3] if len(sys.argv) > 3 else "living"
-    stage_one(src, pose_key, room_kind)
+    room_kind = sys.argv[2] if len(sys.argv) > 2 else "living"
+    stage_one(src, room_kind)
 
 
 if __name__ == "__main__":
