@@ -80,6 +80,16 @@ export interface IPendingPost extends Document {
   approvedVia?: "dashboard" | "sms" | null;
   declinedAt?: Date | null;
   declineReason?: string | null;
+  /**
+   * Per-slide notes from the agent — "blank space at the bottom", "same posture
+   * as slide 2", "don't compare it to another market".
+   *
+   * Slide-level rather than post-level because that is how the feedback
+   * actually arrives: a post is rarely wholly bad, it is slide 2 and slide 7.
+   * Post-level notes lose which slide they were about, which is exactly the
+   * information needed to regenerate just that one.
+   */
+  slideFeedback?: Array<{ n: number; note: string }>;
 
   // --- scheduling ------------------------------------------------------
   /** The slot this post is aimed at. Rolls forward when a slot is missed. */
@@ -175,6 +185,11 @@ const PendingPostSchema = new Schema<IPendingPost>(
     approvedVia: { type: String, enum: ["dashboard", "sms", null], default: null },
     declinedAt: { type: Date, default: null },
     declineReason: { type: String, default: null },
+    slideFeedback: {
+      type: [{ n: Number, note: String }],
+      default: undefined,
+      _id: false,
+    },
 
     scheduledFor: { type: Date, default: null },
     rollCount: { type: Number, default: 0 },

@@ -166,8 +166,7 @@ function buildTextPostTransformation(post, handle) {
  */
 function buildCtaTransformation(cta) {
   const BG = cta.color;
-  const TEXT = `rgb:${CREAM}`;
-  const TEXT_DIM = `rgb:${CREAM_DIM}`;
+  
   // Cloudinary overlay ids use COLONS as the folder separator, not slashes.
   // A raw public_id like "headshots/head-shot-2026" produces l_headshots/head-
   // shot-2026, which 404s — and a 404 overlay doesn't error, it just renders
@@ -176,26 +175,44 @@ function buildCtaTransformation(cta) {
   // always done this conversion; this one did not.
   const oid = (id) => String(id || "").replace(/\//g, ":");
   const headshot = oid(cta.headshotPublicId);
-  const brokerLogo = oid(cta.brokerLogoPublicId);
+
+  // Pick the logo variant that can actually be SEEN on this background.
+  // A black eXp mark on a light champagne card is invisible-ish and reads as a
+  // smudge; the same card also carried near-white body text, so the slide had
+  // dark and light marks fighting each other. Choose by luminance instead of
+  // hoping the caller passed the right file.
+  const hex = String(cta.color || "1C4A5A").replace(/^#/, "");
+  const lum =
+    (0.299 * parseInt(hex.slice(0, 2), 16) +
+      0.587 * parseInt(hex.slice(2, 4), 16) +
+      0.114 * parseInt(hex.slice(4, 6), 16)) / 255;
+  const bgIsLight = lum > 0.55;
+  const requested = oid(cta.brokerLogoPublicId);
+  const brokerLogo = bgIsLight
+    ? requested.replace(/[-_]?white/i, "").replace(/EXP-?square/i, "EXP-Black-square")
+    : requested.replace(/Black/i, "white");
+  // Body copy has to flip with it, or light text lands on a light card.
+  const BODY = bgIsLight ? "rgb:1F1F1F" : `rgb:${CREAM}`;
+  const BODY_DIM = bgIsLight ? "rgb:5A5A5A" : `rgb:${CREAM_DIM}`;
   return [
     { effect: "colorize:100", color: `rgb:${BG}`, width: 1080, height: 1350, crop: "scale" },
     { overlay: { font_family: FONT, font_size: 16, font_weight: "light", text: cta.label, letter_spacing: 8 },
-      color: TEXT_DIM, gravity: "north", y: 100 },
-    { overlay: "sample", effect: "colorize:100", color: `rgb:${CREAM}`,
+      color: BODY_DIM, gravity: "north", y: 100 },
+    { overlay: "sample", effect: "colorize:100", color: BODY,
       width: 50, height: 1, crop: "scale", gravity: "north", y: 132 },
-    { overlay: headshot, width: 200, gravity: "north", y: 170 },
+    { overlay: headshot, width: 200, height: 200, crop: "thumb", gravity: "face", radius: "max", y: 170 },
     { overlay: { font_family: FONT, font_size: 30, font_weight: "light", text: cta.agentName, letter_spacing: 6 },
-      color: TEXT, gravity: "north", y: 410 },
+      color: BODY, gravity: "north", y: 410 },
     { overlay: { font_family: FONT, font_size: 16, font_weight: "light", text: cta.agentLicense, letter_spacing: 4 },
-      color: TEXT_DIM, gravity: "north", y: 460 },
+      color: BODY_DIM, gravity: "north", y: 460 },
     { overlay: "sample", effect: "colorize:100", color: `rgb:${CREAM}`,
       width: 40, height: 1, crop: "scale", gravity: "north", y: 510 },
     { overlay: { font_family: FONT, font_size: 34, font_weight: "normal", text: cta.paragraphs[0] },
-      width: 880, crop: "fit", color: TEXT, gravity: "north_west", x: 100, y: 600 },
+      width: 880, crop: "fit", color: BODY, gravity: "north_west", x: 100, y: 600 },
     { overlay: { font_family: FONT, font_size: 34, font_weight: "normal", text: cta.paragraphs[1] },
-      width: 880, crop: "fit", color: TEXT, gravity: "north_west", x: 100, y: 760 },
+      width: 880, crop: "fit", color: BODY, gravity: "north_west", x: 100, y: 760 },
     { overlay: { font_family: FONT, font_size: 38, font_weight: "light", font_style: "italic", text: cta.italicLast },
-      width: 880, crop: "fit", color: TEXT, gravity: "north_west", x: 100, y: 1010 },
+      width: 880, crop: "fit", color: BODY, gravity: "north_west", x: 100, y: 1010 },
     // Repaint the footer strip so wrapped copy above cannot collide with the
     // logo/handle row.
     { overlay: "sample", effect: "colorize:100", color: `rgb:${BG}`,

@@ -103,6 +103,58 @@ contain the feature being sold.
 
 ---
 
+## 3b. Use the depth of the room
+
+**Put the actor in the middle ground, not flat against the foreground.**
+
+Listing photos are shot wide precisely to show depth — a room receding toward a
+window, a counter running away from the lens. Standing the actor at the front
+plane throws that away and reads as a cutout laid on top, even when the scale is
+right.
+
+- Place them **into** the room: partway back, with floor visible in front of them
+  and space behind.
+- They should be standing **on** the surface that defines the space — on the rug,
+  on the pool deck — not beside it or at its edge.
+- Let real geometry pass in front of them where it naturally would. Occlusion is
+  the strongest single cue that a person is actually in a space.
+
+**The strongest single pose: torso angled toward the feature, head turned back to
+camera.** Standing at an island with the body square to the counter and the face
+to the lens reads as someone caught mid-tour. Body and face both square to the
+camera reads as a portrait pasted into a room.
+
+## 3c. Vary posture AND expression across a batch
+
+Two slides with the same stance make the whole carousel look templated, which is
+exactly what it is trying not to look like.
+
+Within one post, no two slides may share:
+
+- **the same body posture** — if slide 2 is standing with hands relaxed, slide 3
+  is seated, leaning, or mid-stride
+- **the same facial expression** — vary between a warm smile, a relaxed neutral,
+  and a slight laugh
+- **the same camera relationship** — some looking at the lens, some looking into
+  the room
+
+Alternate **seated and standing** through the sequence. A carousel where the
+agent sits, then stands at a counter, then leans on a rail reads as a walkthrough.
+Four standing shots read as a template with the background swapped.
+
+## 3d. Reject generation artifacts
+
+Image models sometimes return a frame with a **blank band** — a strip of flat
+white or grey along an edge where it failed to fill the canvas. It is obvious
+once seen and easy to miss when scanning a small thumbnail.
+
+Any image with a blank or flat-colour band at any edge is **rejected outright**,
+no retake judgement needed. Check the bottom edge specifically; that is where it
+has appeared.
+
+Also reject: duplicated limbs, a second partial person, hands with wrong finger
+counts, and text or watermarks the model invented.
+
 ## 4. Physical realism — non-negotiable
 
 Each of these counters an observed failure. Do not soften them.

@@ -63,6 +63,8 @@ export async function GET(request: NextRequest) {
           approvedAt: p.approvedAt,
           approvedVia: p.approvedVia,
           declinedAt: p.declinedAt,
+          declineReason: p.declineReason,
+          slideFeedback: p.slideFeedback || [],
           postedAt: p.postedAt,
           permalink: p.permalink,
           error: p.error,

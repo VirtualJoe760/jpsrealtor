@@ -88,7 +88,17 @@ export async function PATCH(
   if (action === "decline") {
     post.status = "declined";
     post.declinedAt = new Date();
-    post.declineReason = body.reason ? String(body.reason).slice(0, 500) : null;
+    post.declineReason = body.reason ? String(body.reason).slice(0, 2000) : null;
+
+    // Per-slide notes are the useful half. "Slide 2 has a blank strip at the
+    // bottom and the same posture as slide 3" is actionable; "this post is bad"
+    // is not, and a post-level-only field silently discards the difference.
+    if (Array.isArray(body.slideFeedback)) {
+      post.slideFeedback = body.slideFeedback
+        .map((f: any) => ({ n: Number(f?.n), note: String(f?.note || "").slice(0, 1000) }))
+        .filter((f: any) => Number.isInteger(f.n) && f.note);
+    }
+
     post.approvedAt = null;
     post.approvedVia = null;
     post.scheduledFor = null;

@@ -24,6 +24,8 @@ type PendingPost = {
   caption: string;
   approvalCode: string;
   scheduledFor: string | null;
+  declineReason?: string | null;
+  slideFeedback?: Array<{ n: number; note: string }>;
   postedAt: string | null;
   permalink: string | null;
   error: string | null;
@@ -48,7 +50,15 @@ function fmtSlot(iso: string | null): string {
   );
 }
 
-function Carousel({ slides, isLight }: { slides: Slide[]; isLight: boolean }) {
+function Carousel({
+  slides,
+  isLight,
+  onEnlarge,
+}: {
+  slides: Slide[];
+  isLight: boolean;
+  onEnlarge: (slides: Slide[], index: number) => void;
+}) {
   const [i, setI] = useState(0);
   const n = slides.length;
   if (n === 0) return null;
@@ -64,7 +74,9 @@ function Carousel({ slides, isLight }: { slides: Slide[]; isLight: boolean }) {
           <img
             src={s.url}
             alt={`Slide ${s.n} — ${s.kind}`}
-            className="absolute inset-0 h-full w-full object-cover"
+            onClick={() => onEnlarge(slides, i)}
+            title="Click to enlarge"
+            className="absolute inset-0 h-full w-full object-cover cursor-zoom-in"
           />
           <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
             {s.n}/{n} · {KIND_LABEL[s.kind] || s.kind}
@@ -115,11 +127,188 @@ function Carousel({ slides, isLight }: { slides: Slide[]; isLight: boolean }) {
   );
 }
 
+/**
+ * Full-screen slide viewer. A 300px carousel is fine for "is this the right
+ * house"; it is useless for "is the agent's posture wrong in slide 2" or for
+ * reading text-slide copy, which is most of what review actually is.
+ */
+function Lightbox({
+  slides,
+  index,
+  onClose,
+  onIndex,
+}: {
+  slides: Slide[];
+  index: number;
+  onClose: () => void;
+  onIndex: (i: number) => void;
+}) {
+  const n = slides.length;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") onIndex((index + 1) % n);
+      if (e.key === "ArrowLeft") onIndex((index - 1 + n) % n);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [index, n, onClose, onIndex]);
+
+  const s = slides[index];
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <img
+        src={s.url}
+        alt={`Slide ${s.n}`}
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[88vh] max-w-full rounded-lg object-contain"
+      />
+
+      {n > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); onIndex((index - 1 + n) % n); }}
+            aria-label="Previous"
+            className="absolute left-2 sm:left-6 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onIndex((index + 1) % n); }}
+            aria-label="Next"
+            className="absolute right-2 sm:right-6 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </>
+      )}
+
+      <div className="absolute bottom-5 left-0 right-0 text-center text-sm text-white/70">
+        {s.n} / {n} · {KIND_LABEL[s.kind] || s.kind}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Decline capture.
+ *
+ * The whole point of declining is the REASON. Without it a decline is just a
+ * deleted post and the next generation repeats the same mistakes — which is
+ * exactly what happened when feedback had to travel by chat message instead.
+ *
+ * Notes are per-slide because that is how the problems actually arrive: slide 2
+ * has a blank strip, slide 3 has the same posture as slide 2, slide 7 compares
+ * the town to somewhere else. A single free-text box loses which slide each
+ * point was about, and that is the one thing needed to fix it.
+ */
+function DeclineModal({
+  post,
+  isLight,
+  busy,
+  onCancel,
+  onSubmit,
+}: {
+  post: PendingPost;
+  isLight: boolean;
+  busy: boolean;
+  onCancel: () => void;
+  onSubmit: (reason: string, slideFeedback: Array<{ n: number; note: string }>) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState<Record<number, string>>({});
+
+  const field = `w-full rounded-lg border px-3 py-2 text-sm ${
+    isLight
+      ? "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
+      : "bg-gray-950 border-gray-700 text-gray-100 placeholder-gray-500"
+  }`;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
+      <div
+        className={`w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border p-5 ${
+          isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-800"
+        }`}
+      >
+        <h3 className={`font-semibold mb-1 ${isLight ? "text-gray-900" : "text-gray-100"}`}>
+          What was wrong with it?
+        </h3>
+        <p className={`text-xs mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          {post.listing.address}. This goes back into how the next one is generated,
+          so be as specific as you like.
+        </p>
+
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          placeholder="Overall — colour, tone, anything that applies to the whole post"
+          className={`${field} mb-4`}
+        />
+
+        <div className="space-y-2 mb-4">
+          {post.slides.map((s) => (
+            <div key={s.n} className="flex items-start gap-2">
+              <img src={s.url} alt="" className="h-16 w-[52px] shrink-0 rounded object-cover" />
+              <input
+                value={notes[s.n] || ""}
+                onChange={(e) => setNotes((prev) => ({ ...prev, [s.n]: e.target.value }))}
+                placeholder={`Slide ${s.n} (${KIND_LABEL[s.kind] || s.kind}) — what's wrong?`}
+                className={field}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              isLight ? "border-gray-300 text-gray-700" : "border-gray-700 text-gray-300"
+            }`}
+          >
+            Cancel
+          </button>
+          <button
+            disabled={busy}
+            onClick={() =>
+              onSubmit(
+                reason.trim(),
+                Object.entries(notes)
+                  .map(([n, note]) => ({ n: Number(n), note: note.trim() }))
+                  .filter((f) => f.note)
+              )
+            }
+            className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white
+                       hover:bg-red-700 disabled:opacity-50"
+          >
+            Decline &amp; send feedback
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstagramContent({ isLight }: { isLight: boolean }) {
   const [posts, setPosts] = useState<PendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [openCaption, setOpenCaption] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ slides: Slide[]; index: number } | null>(null);
+  const [declining, setDeclining] = useState<PendingPost | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -136,13 +325,17 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function act(id: string, action: "approve" | "decline") {
+  async function act(
+    id: string,
+    action: "approve" | "decline",
+    extra?: { reason?: string; slideFeedback?: Array<{ n: number; note: string }> }
+  ) {
     setBusy(id);
     try {
       const r = await fetch(`/api/agent/pending-posts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...extra }),
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
@@ -151,6 +344,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
       await load();
     } finally {
       setBusy(null);
+      setDeclining(null);
     }
   }
 
@@ -180,7 +374,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
               key={p.id}
               className={`rounded-lg border p-4 ${isLight ? "border-gray-200" : "border-gray-800"}`}
             >
-              <Carousel slides={p.slides} isLight={isLight} />
+              <Carousel slides={p.slides} isLight={isLight} onEnlarge={(sl,i)=>setLightbox({slides:sl,index:i})} />
 
               <div className="mt-3">
                 <div className={`font-medium text-sm truncate ${textPrimary}`}>
@@ -243,7 +437,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
                   </button>
                   <button
                     disabled={busy === p.id}
-                    onClick={() => act(p.id, "decline")}
+                    onClick={() => setDeclining(p)}
                     className={`inline-flex items-center justify-center gap-1.5 rounded-lg border
                                 px-3 py-1.5 text-sm disabled:opacity-50
                                 ${isLight ? "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -257,6 +451,27 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
           );
         })}
       </div>
+
+      {lightbox && (
+        <Lightbox
+          slides={lightbox.slides}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onIndex={(i) => setLightbox((lb) => (lb ? { ...lb, index: i } : lb))}
+        />
+      )}
+
+      {declining && (
+        <DeclineModal
+          post={declining}
+          isLight={isLight}
+          busy={busy === declining.id}
+          onCancel={() => setDeclining(null)}
+          onSubmit={(reason, slideFeedback) =>
+            act(declining.id, "decline", { reason, slideFeedback })
+          }
+        />
+      )}
     </div>
   );
 }
