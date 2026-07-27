@@ -42,6 +42,28 @@ ASSUMED_CAM_H = 1.45
 
 NL = "\n"
 
+# WHAT IS BOUNDED AND WHAT IS NOT - this is what makes the thing scale.
+#
+# The ACTION is unbounded and generative. Affordance research separates an
+# object's GIBSONIAN affordances (what you could physically do with it - stand
+# near, touch) from its TELIC affordance (what it is FOR - a pool table is for
+# playing pool). Every pose in the old library was Gibsonian at best, which is
+# why the agent kept pointing at things: pointing is what you do when you have
+# no idea what the object is for. The vision model already carries telic
+# knowledge for essentially every household object, so we ask it rather than
+# enumerate. That works for a piano, a wine fridge or a putting green without
+# anyone maintaining a list, and no list goes stale.
+#
+# The BODY MODE is bounded, because physics is. Only four modes change how tall
+# a person stands on screen, and the scale gate must know which one it judges -
+# a man bent over a pool table is not a failed standing man.
+BODY_MODES = {
+    "standing":  1.00,
+    "leaning":   0.82,   # bent over a table, propped on a counter
+    "crouching": 0.62,   # at a hearth, a low cabinet
+    "seated":    0.55,   # bar stool, dining chair, sofa
+}
+
 
 # ADE20K class ids. The segmentation model we already run for the person mask
 # also knows what the furniture IS, which is how a "game room" stops being a
@@ -104,8 +126,20 @@ def read_photo(img):
           "empty circulation space, or anything with no clear floor for a person to "
           "stand on. There are always other photos; a forced one is worse than none." + NL + NL
         + "If it is usable, decide what this room is SELLING - the one thing that makes "
-          "the photo worth posting - and where a person should stand to show that off "
-          "WITHOUT blocking or crowding it." + NL + NL
+          "the photo worth posting - and then decide what the agent is DOING." + NL + NL
+        + "THE ACTION IS THE POINT. Do not have him present, gesture at, point toward or "
+          "display anything. A man standing in a room with his hand held out is an estate "
+          "agent selling you a room; a man USING the room is a photograph of a life. Ask "
+          "what the feature is FOR, and have him do that:" + NL
+        + "  a pool table -> leaning over it, mid-shot, cue in hand" + NL
+        + "  a fireplace or wood burner -> stood close with his back to it, warming" + NL
+        + "  a kitchen island -> hands working on the counter, or leaning on it talking" + NL
+        + "  a bar -> perched on a stool, or pouring something behind it" + NL
+        + "  a window with a view -> looking OUT of it, away from the camera" + NL
+        + "  a dining table -> pulling out a chair, or setting something down" + NL
+        + "That list is illustrative, not exhaustive - work out what THIS object is for, "
+          "even if it is a piano, a wine fridge or a putting green, and have him use it. "
+          "He may be turned away from the camera if the action calls for it." + NL + NL
         + "Reply ONLY with JSON, all coordinates normalised 0-1000 as [ymin,xmin,ymax,xmax] "
           "on this image:" + NL
         + '{"usable": true|false, "reject_reason": "<short, or null>", '
@@ -113,13 +147,17 @@ def read_photo(img):
           '"feature": "<the one thing this room is selling, concrete>", '
           '"feature_box": [y,x,y,x], '
           '"stand_region": [y,x,y,x], '
-          '"facing": "<what he turns toward or looks at>", '
-          '"doing": "<one concrete action, under 15 words>", '
+          '"action": "<what he is DOING with the feature, concrete and physical, under 18 words>", '
+          '"contact_object": "<the object he is touching or using, or null>", '
+          '"body_mode": "standing"|"leaning"|"crouching"|"seated", '
+          '"facing": "<where he looks - may be away from camera>", '
           '"formality": "sharp"|"casual", '
-          '"why": "<one clause: why that spot flatters this room>"}' + NL + NL
-        + "stand_region must be OPEN FLOOR wide enough for a whole standing person, "
-          "in the middle ground rather than jammed against the lens, and must not "
-          "overlap feature_box."
+          '"why": "<one clause: why this action suits this room>"}' + NL + NL
+        + "body_mode must match the action: leaning over a pool table or onto a counter "
+          "is 'leaning'; perched on a stool or sat on a sofa is 'seated'; at a hearth "
+          "or a low cabinet is 'crouching'; otherwise 'standing'." + NL
+        + "stand_region must be floor he can occupy for that action - beside or at the "
+          "object he is using, not across the room from it."
     )
     r = requests.post(
         "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -159,7 +197,7 @@ def _box_px(box, W, H):
     return r
 
 
-def crop_for_plan(img, plan):
+def crop_for_plan(img, plan, sem_orig=None):
     """Crop 4:5 to SERVE the plan: keep the feature whole and the standing
     region inside. The crop is chosen last among these three, not first."""
     W, H = img.size
@@ -174,6 +212,30 @@ def crop_for_plan(img, plan):
     feat = _box_px(plan.get("feature_box"), W, H)
     stand = _box_px(plan.get("stand_region"), W, H)
 
+    # THE OBJECT HE IS TOUCHING MUST SURVIVE THE CROP, WITH ROOM BESIDE IT.
+    # Keeping the "feature" whole was not enough: the pool table sat at the very
+    # frame edge, so the only floor within reach of it was a sliver, and the
+    # render came out as a man in a perfect shooting stance cueing at thin air.
+    # Find the contact object in the ORIGINAL frame and demand the crop hold it
+    # plus roughly a person's width of floor on either side.
+    contact = None
+    name = str(plan.get("contact_object") or "").lower()
+    if sem_orig is not None and name:
+        m = None
+        for cls, idx in ADE.items():
+            if cls in name.replace(" ", "") or cls in name:
+                c = sem_orig == idx
+                if c.sum() > 0.002 * sem_orig.size:
+                    m = c if m is None else (m | c)
+        if m is not None:
+            xs = np.where(m.any(0))[0]
+            ys = np.where(m.any(1))[0]
+            pad = 0.10 * W
+            contact = (max(0, xs.min() - pad), ys.min(),
+                       min(W, xs.max() + pad), ys.max())
+            print("  contact object     '{}' spans x {}-{} of {}".format(
+                name, int(xs.min()), int(xs.max()), W))
+
     def covered(rect, left):
         if not rect:
             return 1.0
@@ -186,14 +248,17 @@ def crop_for_plan(img, plan):
         # The feature must survive WHOLE - a clipped pool table is the failure
         # this ordering exists to prevent - and the actor needs somewhere to be.
         s = 3.0 * covered(feat, left) + 1.6 * covered(stand, left)
+        if contact is not None:
+            s += 5.0 * covered(contact, left)   # outranks everything else
         s -= 0.00004 * abs((left + cw / 2) - W / 2)
         if s > best:
             best_left, best = left, s
 
     out = img.crop((best_left, top, best_left + cw, top + ch)).resize(
         (OUT_W, OUT_H), Image.LANCZOS)
-    print("  crop x={} of {}   feature kept {:.0%}, stand region kept {:.0%}".format(
-        best_left, W - cw, covered(feat, best_left), covered(stand, best_left)))
+    print("  crop x={} of {}   feature {:.0%}, stand {:.0%}, contact {:.0%}".format(
+        best_left, W - cw, covered(feat, best_left), covered(stand, best_left),
+        covered(contact, best_left) if contact is not None else 1.0))
     return out, f_orig * (OUT_W / cw), best_left, top, cw
 
 
@@ -299,9 +364,19 @@ def analyse(img, f):
     d = d * s
 
     signed = pts @ n + d
-    floor = np.abs(signed) < 0.06
+    above = np.abs(signed)            # metres above the floor plane
+    floor = above < 0.06
     floor[: int(h * 0.45), :] = False
-    return floor, depth
+
+    # A HEARTH IS NOT A COFFEE TABLE. The binary floor mask rejected the
+    # fireplace frame at 0% feet-on-floor - but "warming yourself at the wood
+    # burner" REQUIRES standing on its raised hearth, and a hearth, a step or a
+    # threshold are all things people legitimately stand on. Anything within
+    # step height is standable; a coffee table (0.4m) and a counter (0.9m)
+    # still are not, which is the case the gate exists for.
+    standable = (above <= 0.30)
+    standable[: int(h * 0.45), :] = False
+    return floor, depth, standable
 
 
 def person_mask(img):
@@ -318,7 +393,25 @@ def person_mask(img):
     up = torch.nn.functional.interpolate(
         logits, size=img.size[::-1], mode="bilinear", align_corners=False
     )
-    return up.argmax(1)[0].cpu().numpy() == ADE_PERSON
+    pm = up.argmax(1)[0].cpu().numpy() == ADE_PERSON
+
+    # KEEP ONLY THE LARGEST FIGURE. Semantic segmentation labels every person
+    # pixel in the frame, so when the model invented a second figure behind the
+    # bar it was composited in alongside the agent - a stranger in the client's
+    # listing photo. Connected-component labelling keeps our man and drops
+    # anyone else the render hallucinated.
+    try:
+        from scipy import ndimage
+        lab, n = ndimage.label(pm)
+        if n > 1:
+            sizes = ndimage.sum(pm, lab, range(1, n + 1))
+            keep = int(np.argmax(sizes)) + 1
+            dropped = int(pm.sum() - sizes[keep - 1])
+            pm = lab == keep
+            print("  extra figures      dropped {} px of hallucinated people".format(dropped))
+    except ImportError:
+        pass
+    return pm
 
 
 # ------------------------------------------------------------------- spot --
@@ -341,9 +434,10 @@ def pick_spot(floor, depth, f):
         if not np.isfinite(d) or d <= 0.5:
             continue
         h = f * PERSON_H / d
-        if not (0.32 * OUT_H <= h <= 0.66 * OUT_H):
+        lo, hi = (0.24, 0.78) if _relaxed else (0.32, 0.66)
+        if not (lo * OUT_H <= h <= hi * OUT_H):
             continue
-        if y - h < 45 or y > OUT_H - 40:
+        if y - h < (10 if _relaxed else 45) or y > OUT_H - 40:
             continue
         half = max(8, int(h * 0.16))
         if x - half < 25 or x + half > OUT_W - 25:
@@ -385,7 +479,34 @@ def clearance(floor, depth, x, y, deg, max_px=520):
     return last
 
 
-def candidates(floor, depth, f, sem, n=4, region=None):
+def near_object(sem, name, reach_px):
+    """Mask of floor-adjacent space within reach of a named object.
+
+    THE CONTRADICTION THIS RESOLVES: an action needs the agent AT the thing he
+    is using, but the candidate generator rewards wide-open floor, which is by
+    definition away from furniture. So the pool-shot render came out as a man
+    bent double reaching into thin air with the table off to his left. When the
+    plan names something he is touching, candidates must be beside it."""
+    if not name:
+        return None
+    key = str(name).lower()
+    hit = None
+    for cls, idx in ADE.items():
+        if cls in key.replace(" ", "") or cls in key:
+            m = sem == idx
+            if m.sum() > 400:
+                hit = m if hit is None else (hit | m)
+    if hit is None or hit.sum() < 400:
+        return None
+    r = max(12, int(reach_px))
+    grown = hit.copy()
+    for _ in range(r // 6):
+        grown = (grown | np.roll(grown, 6, 0) | np.roll(grown, -6, 0)
+                 | np.roll(grown, 6, 1) | np.roll(grown, -6, 1))
+    return grown & ~hit
+
+
+def candidates(floor, depth, f, sem, n=4, region=None, _relaxed=False, near=None):
     """Emit several spots that are ALL physically valid, well separated.
 
     Geometry's job is to guarantee validity - real floor, whole body in frame,
@@ -399,15 +520,16 @@ def candidates(floor, depth, f, sem, n=4, region=None):
         if not np.isfinite(d) or d <= 0.5:
             continue
         h = f * PERSON_H / d
-        if not (0.32 * OUT_H <= h <= 0.66 * OUT_H):
+        lo, hi = (0.24, 0.78) if _relaxed else (0.32, 0.66)
+        if not (lo * OUT_H <= h <= hi * OUT_H):
             continue
-        if y - h < 45 or y > OUT_H - 40:
+        if y - h < (10 if _relaxed else 45) or y > OUT_H - 40:
             continue
         half = max(8, int(h * 0.16))
         if x - half < 25 or x + half > OUT_W - 25:
             continue
         sub = floor[max(0, y - 8):y + 9, x - half:x + half + 1]
-        if (sub.mean() if sub.size else 0) < 0.78:
+        if (sub.mean() if sub.size else 0) < (0.55 if _relaxed else 0.78):
             continue
         # Free space to either side and ahead - a spot boxed in on all sides is
         # where the "walking into a brick wall" frame came from.
@@ -418,6 +540,10 @@ def candidates(floor, depth, f, sem, n=4, region=None):
         # still surface if the reader's box was poor.
         if region and region[0] <= x <= region[2] and region[1] <= y <= region[3]:
             openness += 4.0
+        # Being within arm's reach of the object he is using outranks having
+        # lots of room - a pool shot happens at the table, not near it.
+        if near is not None and near[min(y, near.shape[0] - 1), x]:
+            openness += 12.0
         pool.append((openness, x, y, h, cl))
 
     pool.sort(key=lambda p: -p[0])
@@ -428,6 +554,11 @@ def candidates(floor, depth, f, sem, n=4, region=None):
             out.append(cand)
         if len(out) == n:
             break
+    if not out and not _relaxed:
+        # A tight crop around a small feature can leave no spot that clears the
+        # strict bars (the game room's wood burner did exactly this). Retry once
+        # with looser standing-room and framing limits before giving up.
+        return candidates(floor, depth, f, sem, n=n, region=region, _relaxed=True, near=near)
     if not out:
         raise RuntimeError("no valid candidate spots")
     return out
@@ -540,7 +671,7 @@ BONES = [("head", "neck"), ("neck", "sL"), ("neck", "sR"), ("sL", "eL"), ("eL", 
          ("hL", "kL"), ("kL", "aL"), ("hR", "kR"), ("kR", "aR")]
 
 
-def marker(img, x, y, h, pose_key):
+def marker(img, x, y, h, pose_key, mode="standing"):
     """The room with the target footprint AND a pose skeleton drawn on it.
 
     Gemini places a person far more reliably from a picture than from a
@@ -551,9 +682,16 @@ def marker(img, x, y, h, pose_key):
     ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
     dr = ImageDraw.Draw(ov)
 
-    half = h * 0.17
-    dr.rectangle([x - half, y - h, x + half, y], outline=(255, 0, 0, 190), width=4)
+    bh = h * BODY_MODES.get(mode, 1.0)
+    half = bh * (0.17 if mode == "standing" else 0.30)
+    dr.rectangle([x - half, y - bh, x + half, y], outline=(255, 0, 0, 190), width=4)
     dr.line([x - half * 1.7, y, x + half * 1.7, y], fill=(255, 0, 0, 220), width=7)
+
+    # A standing stick figure would actively fight a bent-over or seated pose,
+    # and the model can see the object it is interacting with, so for those the
+    # box alone carries position and scale and the ACTION carries the body.
+    if mode != "standing":
+        return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
 
     j = POSES[pose_key]["j"]
     pt = lambda k: (x + j[k][0] * h, y - h + j[k][1] * h)
@@ -638,11 +776,16 @@ def render(img, mark, headshot, pose, wardrobe):
           "box - that box is his true size at that distance in the room. The skeleton "
           "and box are guides ONLY: do NOT draw any box, line, dot or skeleton in your "
           "output." + NL + NL
-        + "The skeleton is deliberately asymmetric. Keep that asymmetry - uneven "
-          "shoulders, the two arms doing different things, hips not square to the lens. "
-          "This must read as a candid frame from documentary footage, someone caught "
-          "mid-motion. It must NOT read as a catalogue model posing." + NL + NL
-        + "WHAT HE IS DOING: " + pose + NL + NL
+        + "Keep the body asymmetric - uneven shoulders, the two arms doing different "
+          "things, hips not square to the lens. This must read as a candid frame from "
+          "documentary footage, someone caught mid-motion. It must NOT read as a "
+          "catalogue model posing." + NL + NL
+        + "WHAT HE IS DOING - this is the most important instruction here: " + pose + NL
+        + "He is USING this room, not presenting it. He must NOT point at anything, hold "
+          "an arm out to display anything, or address the camera like a salesman. If the "
+          "action means his back or profile is to the lens, that is correct and good. "
+          "Show real physical contact with whatever he is using - hands actually on it, "
+          "weight actually through it." + NL + NL
         + "IDENTITY: the face must match IMAGE 3 exactly - hair colour and texture, face "
           "shape, jawline, skin tone. Do not idealize, smooth or slim him." + NL + NL
         + "WARDROBE: " + wardrobe + NL + NL
@@ -672,7 +815,7 @@ def render(img, mark, headshot, pose, wardrobe):
 
 
 # --------------------------------------------------------------- composite --
-def compose(base, gen, pm, floor, depth, f):
+def compose(base, gen, pm, floor, depth, f, mode="standing", sem=None, standable=None):
     """Keep only the person; transfer their shadow as darken-only."""
     ys, xs = np.where(pm)
     if len(ys) < 500:
@@ -690,22 +833,51 @@ def compose(base, gen, pm, floor, depth, f):
     # --- GATE 1: are the feet on the fitted floor plane? ---
     y0 = max(0, bot - 12)
     fys, fxs = np.where(pm[y0:bot + 1, :])
+    surf = standable if standable is not None else floor
     on_floor = 0
     for yy, xx in zip(fys + y0, fxs):
-        on_floor += floor[min(yy + 6, floor.shape[0] - 1), xx]
+        on_floor += surf[min(yy + 6, surf.shape[0] - 1), xx]
     frac = on_floor / max(1, len(fys))
     print("  feet-on-floor      {:.0%}".format(frac))
-    if frac < 0.30:
-        raise RuntimeError("feet are not on the floor plane ({:.0%})".format(frac))
+    # WHEN THE LOWER BODY IS HIDDEN, THE BOTTOM OF THE MASK IS NOT THE FEET.
+    # Leaning on an island or sat at a table puts the legs BEHIND the furniture,
+    # so the mask stops at the counter edge and a feet-on-floor test reads 0% on
+    # a perfectly good frame - which is exactly how the kitchen was rejected
+    # three times. For those modes, verify he is really touching the thing he is
+    # using instead: what lies just under the mask must be floor OR solid
+    # furniture, never empty wall (which would mean he is floating).
+    if mode == "standing":
+        if frac < 0.30:
+            raise RuntimeError("feet are not on the floor plane ({:.0%})".format(frac))
+    else:
+        support = frac
+        if sem is not None and frac < 0.30:
+            SOLID = {ADE[k] for k in ("cabinet", "table", "chair", "sofa", "shelf",
+                                      "armchair", "seat", "desk", "counter", "countertop",
+                                      "island", "bar", "pooltable", "coffeetable",
+                                      "bed", "stove", "sink", "case" if "case" in ADE else "table")}
+            hit = 0
+            for yy, xx in zip(fys + y0, fxs):
+                y2 = min(yy + 6, sem.shape[0] - 1)
+                if sem[y2, xx] in SOLID or floor[y2, xx]:
+                    hit += 1
+            support = hit / max(1, len(fys))
+            print("  contact support    {:.0%} (lower body occluded by furniture)".format(support))
+        if support < 0.30:
+            raise RuntimeError(
+                "{} figure is neither on the floor nor against furniture ({:.0%})".format(
+                    mode, support))
 
     # --- GATE 2: does their size match the depth at their feet? ---
     fd = float(np.median(depth[max(0, bot - 8):bot + 1, max(0, fx - 8):fx + 9]))
-    expect = f * PERSON_H / fd
+    # Judge against the posture we ASKED for. Scoring a man leaning over a pool
+    # table against a standing man's height rejects a correct frame.
+    expect = f * PERSON_H * BODY_MODES.get(mode, 1.0) / fd
     actual = bot - top
     ratio = actual / expect
-    print("  depth at feet      {:.2f}m -> expect {:.0f}px, got {}px ({:.2f}x)".format(
-        fd, expect, actual, ratio))
-    if not (0.80 <= ratio <= 1.25):
+    print("  depth at feet      {:.2f}m -> expect {:.0f}px ({}), got {}px ({:.2f}x)".format(
+        fd, expect, mode, actual, ratio))
+    if not (0.70 <= ratio <= 1.32):
         raise RuntimeError("scale wrong for that distance ({:.2f}x)".format(ratio))
 
     b = np.array(base).astype(np.float32)
@@ -765,12 +937,13 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
     room_kind = room_hint or plan.get("room", "living")
 
     # 2. CROP to serve that decision.
-    base, f, cl_x, cl_y, cw = crop_for_plan(orig, plan)
+    sem_orig = semantic(orig) if plan.get("contact_object") else None
+    base, f, cl_x, cl_y, cw = crop_for_plan(orig, plan, sem_orig)
     base.save(src.with_name("base_" + out_name))
 
     # 3. GEOMETRY proves which spots are physically real.
     print("geometry...")
-    floor, depth = analyse(base, f)
+    floor, depth, standable = analyse(base, f)
     sem = semantic(base)
 
     region = None
@@ -779,7 +952,12 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
         sc = OUT_W / cw
         region = ((r[0] - cl_x) * sc, (r[1] - cl_y) * sc,
                   (r[2] - cl_x) * sc, (r[3] - cl_y) * sc)
-    cands = candidates(floor, depth, f, sem, region=region)
+    reach = f * 0.9 / max(1.5, float(np.median(depth[floor]) if floor.any() else 3.0))
+    near = near_object(sem, plan.get("contact_object") or plan.get("feature"), reach)
+    if near is not None:
+        print("  contact object     '{}' found, restricting spots to within reach".format(
+            plan.get("contact_object") or plan.get("feature")))
+    cands = candidates(floor, depth, f, sem, region=region, near=near)
     print("  candidates         {} valid spots".format(len(cands)))
 
     # 4. VISION picks among valid options, seeded with the plan's intent.
@@ -788,53 +966,56 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
         if pick.get(k):
             plan[k] = pick[k]
 
-    # 5. POSE: the reader's INTENT chooses, clearance only vetoes, and a pose
-    # already used in this batch is skipped. An earlier version selected purely
-    # on clearance ("more than 1.1m ahead -> walk"), which fired on all four
-    # rooms and produced four near-identical mid-strides - the samey-pose
-    # problem, reintroduced by the fix for the brick-wall problem.
+    # 5. ACTION drives the body; the pose skeleton is now only a fallback for
+    # plain standing shots. What he is DOING comes from the reader's telic
+    # reading of the feature ("a pool table is for playing pool"), which is
+    # unbounded; the body MODE it implies is one of four, which is what the
+    # geometry gates need to judge him fairly.
     best_dir = max(cl, key=cl.get)
     ahead = cl[best_dir]
-    intent = (str(plan.get("doing", "")) + " " + str(plan.get("facing", ""))).lower()
-    if any(w in intent for w in ("gestur", "present", "point", "showing", "highlight",
-                                 "toward", "towards")):
-        order = ["gesture_to_feature", "mid_sentence", "hand_pocket_angle", "walk_look_back"]
-    elif any(w in intent for w in ("walk", "stride", "stepping", "entering", "moving")):
-        order = ["walk_look_back", "mid_sentence", "gesture_to_feature", "hand_pocket_angle"]
-    elif any(w in intent for w in ("talk", "convers", "explain", "laugh", "welcom")):
-        order = ["mid_sentence", "gesture_to_feature", "hand_pocket_angle", "walk_look_back"]
-    else:
-        order = ["hand_pocket_angle", "mid_sentence", "gesture_to_feature", "walk_look_back"]
+    mode = plan.get("body_mode", "standing")
+    if mode not in BODY_MODES:
+        mode = "standing"
 
+    intent = (str(plan.get("action", "")) + " " + str(plan.get("facing", ""))).lower()
+    if any(w in intent for w in ("walk", "stride", "stepping", "entering")) and ahead > 1.1:
+        pose_key = "walk_look_back"
+    elif any(w in intent for w in ("talk", "convers", "laugh", "welcom")):
+        pose_key = "mid_sentence"
+    else:
+        pose_key = "hand_pocket_angle"
     used = used_poses if used_poses is not None else set()
-    feasible = [k for k in order if k != "walk_look_back" or ahead > 1.1]
-    pose_key = next((k for k in feasible if k not in used), feasible[0])
-    used.add(pose_key)
+    used.add(mode + ":" + pose_key)
+    print("  action             {}".format(plan.get("action")))
+    print("  body mode          {} (x{:.2f} height) | contact: {}".format(
+        mode, BODY_MODES[mode], plan.get("contact_object")))
     print("  clearance          {:.2f}m ahead at {} deg".format(ahead, best_dir))
-    print("  pose               {} (intent-led, {} already used)".format(
-        pose_key, len(used) - 1))
 
     formal = "sharp" if plan.get("formality") == "sharp" or room_kind in SHARP_ROOMS else "casual"
     wardrobe = pick_wardrobe(base, x, y, h, formal)
-    mark = marker(base, x, y, h, pose_key)
+    mark = marker(base, x, y, h, pose_key, mode)
     mark.save(src.with_name("marker_" + out_name))
 
     headshot = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
-    pose = "{} He is {}. He faces {}. Do not block or crowd the {}.".format(
-        POSES[pose_key]["desc"], plan.get("doing", "showing the room"),
-        plan.get("facing", "into the open room"), plan.get("feature", "room's feature"))
+    contact = plan.get("contact_object")
+    pose = "{}{} He is looking {}. Do not block or crowd the {}.".format(
+        plan.get("action", POSES[pose_key]["desc"]),
+        " He is in real physical contact with the {}.".format(contact) if contact else "",
+        plan.get("facing", "into the room"), plan.get("feature", "room's feature"))
 
     for take in range(1, takes + 1):
         print("take {}...".format(take))
         gen = render(base, mark, headshot, pose, wardrobe)
         try:
-            out, stats = compose(base, gen, person_mask(gen), floor, depth, f)
+            out, stats = compose(base, gen, person_mask(gen), floor, depth, f, mode, sem, standable)
         except RuntimeError as e:
             print("  rejected: {}".format(e))
             continue
         out.save(src.with_name(out_name))
         stats["room"] = room_kind
         stats["feature"] = plan.get("feature")
+        stats["action"] = plan.get("action")
+        stats["mode"] = mode
         print("OK -> {} {}".format(out_name, json.dumps(stats)))
         return out, plan
     print("all takes rejected")
