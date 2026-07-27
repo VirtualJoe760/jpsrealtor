@@ -796,19 +796,6 @@ BONES = [("head", "neck"), ("neck", "sL"), ("neck", "sR"), ("sL", "eL"), ("eL", 
          ("hL", "kL"), ("kL", "aL"), ("hR", "kR"), ("kR", "aR")]
 
 
-def reaction_marker(img, side):
-    """Guide box for an edge reaction: waist-up, hard against one side, running
-    off the bottom of frame on purpose."""
-    from PIL import ImageDraw
-    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    dr = ImageDraw.Draw(ov)
-    w = int(OUT_W * 0.36)
-    x0 = 0 if side == "left" else OUT_W - w
-    y0 = int(OUT_H * 0.26)
-    dr.rectangle([x0 + 3, y0, x0 + w - 3, OUT_H - 3], outline=(255, 0, 0, 210), width=6)
-    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
-
-
 def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
     import requests
 
@@ -817,15 +804,17 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
         return base64.b64encode(b.getvalue()).decode()
 
     prompt = (
-        "IMAGE 1 is a photograph of a room. IMAGE 2 is the same room with a red box on "
-        "one side. IMAGE 3 is a photograph of a real-estate agent." + NL + NL
+        "IMAGE 1 is a photograph of a room. IMAGE 2 is a POSITION DIAGRAM on a dark "
+        "canvas at the same dimensions - not a photograph, and nothing in it should "
+        "appear in your output. IMAGE 3 is a photograph of a real-estate agent." + NL + NL
         + "Return IMAGE 1 with that agent added, and nothing else about the room changed." + NL + NL
         + "FRAMING - this is a REACTION shot, not a full-length one. He stands close to "
           "the camera at the side of frame, inside the red box, seen from roughly the "
           "waist up and running off the BOTTOM EDGE of the picture. That bottom crop is "
           "intended - do not shrink him to fit his whole body in. He is at the edge so "
           "the ROOM stays the subject; he must not cover " + str(feature) + "." + NL
-        + "Do not draw the box." + NL + NL
+        + "The pale shape in IMAGE 2 marks that position. No shape, box or edge from "
+          "IMAGE 2 may appear in your output." + NL + NL
         + "WHAT HE IS DOING: " + reaction + NL
         + "It must look like a real reaction caught by a camera, not a stock pose - "
           "slightly off-centre, shoulders uneven, weight on one foot." + NL + NL
@@ -946,37 +935,40 @@ def compose_reaction(base, gen, pm, side, feat_box=None, ref=None):
 
 
 def marker(img, x, y, h, pose_key, mode="standing"):
-    """The room with the target footprint AND a pose skeleton drawn on it.
+    """A POSITION DIAGRAM on its own canvas — never marks drawn on the room.
 
-    Gemini places a person far more reliably from a picture than from a
-    sentence - three straight takes ignored 'middle ground' and put him in the
-    foreground with his feet off-frame. The skeleton adds posture to that same
-    picture, so position, scale and pose all arrive as geometry."""
+    Overlaying a bright box and skeleton onto the room photo and then asking for
+    that room back without them fights the model, and it loses: 8 of 19 takes in
+    one run came back with the guide painted onto the figure, all correctly
+    rejected but all wasted. Put the guide on a SEPARATE canvas of identical
+    dimensions and there is no marked-up room to copy — the coordinates still
+    map one-to-one."""
     from PIL import ImageDraw
-    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    dr = ImageDraw.Draw(ov)
+    g = Image.new("RGB", img.size, (26, 26, 30))
+    dr = ImageDraw.Draw(g)
+    dr.line([0, y, OUT_W, y], fill=(90, 90, 100), width=3)          # the floor line
 
     bh = h * BODY_MODES.get(mode, 1.0)
     half = bh * (0.17 if mode == "standing" else 0.30)
-    dr.rectangle([x - half, y - bh, x + half, y], outline=(255, 0, 0, 190), width=4)
-    dr.line([x - half * 1.7, y, x + half * 1.7, y], fill=(255, 0, 0, 220), width=7)
+    dr.rectangle([x - half, y - bh, x + half, y], fill=(235, 235, 240))
 
-    # A standing stick figure would actively fight a bent-over or seated pose,
-    # and the model can see the object it is interacting with, so for those the
-    # box alone carries position and scale and the ACTION carries the body.
-    if mode != "standing":
-        return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+    if mode == "standing":
+        j = POSES[pose_key]["j"]
+        pt = lambda k: (x + j[k][0] * h, y - h + j[k][1] * h)
+        for a, b in BONES:
+            dr.line([pt(a), pt(b)], fill=(120, 120, 130), width=max(3, int(h * 0.010)))
+    return g
 
-    j = POSES[pose_key]["j"]
-    pt = lambda k: (x + j[k][0] * h, y - h + j[k][1] * h)
-    for a, b in BONES:
-        dr.line([pt(a), pt(b)], fill=(0, 210, 255, 190), width=max(3, int(h * 0.008)))
-    for k in j:
-        r = h * (0.030 if k == "head" else 0.011)
-        cx, cy = pt(k)
-        dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(0, 210, 255, 255))
 
-    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+def reaction_marker(img, side):
+    """Position diagram for an edge reaction, same separate-canvas rule."""
+    from PIL import ImageDraw
+    g = Image.new("RGB", img.size, (26, 26, 30))
+    dr = ImageDraw.Draw(g)
+    w = int(OUT_W * 0.36)
+    x0 = 0 if side == "left" else OUT_W - w
+    dr.rectangle([x0, int(OUT_H * 0.26), x0 + w, OUT_H], fill=(235, 235, 240))
+    return g
 
 
 # ---------------------------------------------------------------- wardrobe --
@@ -1039,17 +1031,18 @@ def render(img, mark, headshot, pose, wardrobe):
            "gemini-2.5-flash-image:generateContent")
 
     prompt = (
-        "IMAGE 1 is a photograph of a room. IMAGE 2 is the same room with a red box and "
-        "a blue stick-figure skeleton drawn on it. IMAGE 3 is a photograph of a "
-        "real-estate agent." + NL + NL
+        "IMAGE 1 is a photograph of a room. IMAGE 2 is a POSITION DIAGRAM on a dark "
+        "canvas at exactly the same dimensions - it is not a photograph and nothing in "
+        "it should appear in your output. IMAGE 3 is a photograph of a real-estate "
+        "agent." + NL + NL
         + "Return IMAGE 1 with that agent added to the room, and nothing else changed." + NL + NL
-        + "PLACEMENT AND POSE - exact, not suggestions. The blue skeleton in IMAGE 2 is "
-          "the agent's body: match its stance limb for limb. Where the skeleton's head, "
-          "shoulders, elbows, wrists, hips, knees and ankles sit is where his are. His "
-          "FEET rest on the red line and the TOP OF HIS HEAD reaches the top of the red "
-          "box - that box is his true size at that distance in the room. The skeleton "
-          "and box are guides ONLY: do NOT draw any box, line, dot or skeleton in your "
-          "output." + NL + NL
+        + "PLACEMENT AND POSE - exact, not suggestions. Map IMAGE 2 onto IMAGE 1: the "
+          "pale shape marks exactly where the agent stands and how large he is, his "
+          "FEET on the horizontal line at its base and the TOP OF HIS HEAD at its top. "
+          "Where the grey stick figure's head, shoulders, elbows, wrists, hips, knees "
+          "and ankles sit is where his are. Your output is IMAGE 1 with a real person "
+          "in it - never a copy of the diagram, and no shape, box, line or stick figure "
+          "from IMAGE 2 may appear in it." + NL + NL
         + "Keep the body asymmetric - uneven shoulders, the two arms doing different "
           "things, hips not square to the lens. This must read as a candid frame from "
           "documentary footage, someone caught mid-motion. It must NOT read as a "
