@@ -168,13 +168,22 @@ function buildCtaTransformation(cta) {
   const BG = cta.color;
   const TEXT = `rgb:${CREAM}`;
   const TEXT_DIM = `rgb:${CREAM_DIM}`;
+  // Cloudinary overlay ids use COLONS as the folder separator, not slashes.
+  // A raw public_id like "headshots/head-shot-2026" produces l_headshots/head-
+  // shot-2026, which 404s — and a 404 overlay doesn't error, it just renders
+  // nothing, so the slide comes back as a blank colour card that looks
+  // plausible until you notice the agent is missing. The cover template has
+  // always done this conversion; this one did not.
+  const oid = (id) => String(id || "").replace(/\//g, ":");
+  const headshot = oid(cta.headshotPublicId);
+  const brokerLogo = oid(cta.brokerLogoPublicId);
   return [
     { effect: "colorize:100", color: `rgb:${BG}`, width: 1080, height: 1350, crop: "scale" },
     { overlay: { font_family: FONT, font_size: 16, font_weight: "light", text: cta.label, letter_spacing: 8 },
       color: TEXT_DIM, gravity: "north", y: 100 },
     { overlay: "sample", effect: "colorize:100", color: `rgb:${CREAM}`,
       width: 50, height: 1, crop: "scale", gravity: "north", y: 132 },
-    { overlay: cta.headshotPublicId, width: 200, gravity: "north", y: 170 },
+    { overlay: headshot, width: 200, gravity: "north", y: 170 },
     { overlay: { font_family: FONT, font_size: 30, font_weight: "light", text: cta.agentName, letter_spacing: 6 },
       color: TEXT, gravity: "north", y: 410 },
     { overlay: { font_family: FONT, font_size: 16, font_weight: "light", text: cta.agentLicense, letter_spacing: 4 },
@@ -191,7 +200,7 @@ function buildCtaTransformation(cta) {
     // logo/handle row.
     { overlay: "sample", effect: "colorize:100", color: `rgb:${BG}`,
       width: 1080, height: 90, crop: "scale", gravity: "south" },
-    { overlay: cta.brokerLogoPublicId, width: 70, gravity: "south_west", x: 60, y: 20 },
+    { overlay: brokerLogo, width: 70, gravity: "south_west", x: 60, y: 20 },
     { overlay: { font_family: FONT, font_size: 22, font_weight: "normal", text: cta.handle },
       color: HANDLE_COLOR, gravity: "south_east", x: 60, y: 34 },
   ];
