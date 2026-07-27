@@ -1,257 +1,263 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-07-26
+last_verified: 2026-07-27
 owner: content
-related: [./README.md, ./carousel-slides.md, ./cover-slide.md]
+related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
 
 # Actor generation
 
-**Read this before every Gemini call that puts a person into a listing photo.**
+**Read this before every call that puts a person into a listing photo.**
 
 The "actor" is the agent — Joseph on jpsrealtor, or whichever agent owns the
-listing. The goal is a photo that looks like the agent was actually in the room
-when the photographer was there: relaxed, doing something a person would
-plausibly do, at the right size, lit by the room's own light.
+listing. The goal is a photograph that looks like the agent was there when the
+photographer was: doing something a person would plausibly do, at the right
+size, lit by the room's own light.
 
-The goal is NOT a headshot pasted onto a wall.
+The goal is NOT a headshot pasted onto a wall, and it is NOT an estate agent
+standing in the middle of a room with his arm out.
 
----
-
-## 1. The affordance rule (the one that matters most)
-
-> **Pick the pose from what is in the photo. Never pick the photo to fit a pose.**
-
-A photo can only host the actor if it contains somewhere a person would
-naturally *be*: a chair, a sofa, a counter with standing room, a kitchen
-island, a lounger by the pool, an open floor with a clear foreground.
-
-If the frame offers no such place, **do not stage that photo.** Choose a
-different one. There is always another photo; there is not always another way
-to make a person standing in a corridor look intentional.
-
-This is the rule that was missing when a staircase photo got staged and the
-result was the agent at the foot of the stairs, arm extended, presenting a
-closed door. Nothing in that frame gave him anything to do.
+Implementation: `scripts/stage_geometric.py`, `scripts/floor_plane.py`.
 
 ---
 
-## 2. Approved placements
+## 0. The order of operations
 
-Each requires its prerequisite to be visibly in the frame.
+This order matters and was learned the hard way. Cropping used to run first and
+scored "feature pixels" blindly, which threw away a pool table and a bar and
+left a slide captioned *the game room* showing a brick chimney.
 
-| Placement | Photo must contain | Reads as |
+| # | Step | Why it is here and not later |
 |---|---|---|
-| **Seated in an accent chair** | a visible armchair/accent chair with clear space | relaxed, confident, at home |
-| **Lounging on the sofa** | a sofa shot from the front or three-quarter | lifestyle, aspirational |
-| **Standing at the kitchen island / counter** | an island or counter with standing room on the camera side | "let me show you this kitchen" |
-| **Leaning on a counter or railing** | counter, bar, or balcony rail at waist height | casual, unposed |
-| **Poolside — seated on a lounger or standing at the deck edge** | pool deck with loungers or open decking | leisure, the desert-lifestyle shot |
-| **Seated at the dining table** | dining table with pulled-out chair or open seat | entertaining |
-| **Seated on the edge of the bed** | a made bed, shot wide enough to sit on its edge, feet on the floor | at-home, editorial |
-| **Standing in open living space, mid-conversation** | genuinely open floor, furniture behind them | walkthrough, natural |
+| 1 | **READ** the full, uncropped original | A crop is a composition decision. It cannot be made before anything knows what the photo is OF or FOR. |
+| 2 | **CROP** to serve the reading | Must keep the feature whole, the contact object whole, and standing room beside it. |
+| 3 | **GEOMETRY** proves valid spots | Depth → floor plane → which spots are physically real. |
+| 4 | **VISION** picks among them | Meaning is its job; metric estimation is not. |
+| 5 | **RENDER**, then gate | Numeric accept/reject, retry on failure. |
 
-Vary the placement across a carousel. Four slides of the same stance reads as a
-template. The batch should feel like one continuous walkthrough of a home.
+**Never let the crop precede the reading.**
 
 ---
 
-## 2b. A gesture needs a subject
+## 1. Two tiers: ACTION and REACTION
 
-**If the actor is presenting, there must be something in frame worth presenting
-to.** This is separate from whether the composite is technically good, and it
-is the failure that is easiest to miss.
+### Tier 1 — ACTION (preferred)
 
-A generated entry-hall shot passed every physical check — correct scale, both
-feet on the tile, lighting matched, natural posture — and was still unusable,
-because he was gesturing at a *closed front door*. It looked like a real
-photograph of a meaningless moment. Reviewed on technique alone it reads as the
-best image in the batch; reviewed on meaning it is the worst.
+> **Do the thing the object is FOR. Do not present the room.**
 
-So, before accepting a frame:
+Affordance research separates an object's **Gibsonian** affordances — what you
+could physically do with it (stand near, touch) — from its **telic** affordance
+— what it is *for*. A pool table is for playing pool.
 
-- **Name the subject of the gesture out loud.** "Presenting the kitchen
-  island." "Showing the fairway through the glass." If the honest answer is
-  "a wall", "a door", or "nothing", the frame fails.
-- **The subject must be the thing the slide is selling** — a view, an island, a
-  fireplace, the pool. Not circulation space.
-- **No empty corners.** A person standing in a space whose only features are
-  walls, doors and floor has nothing to do, and the image says nothing about
-  the home.
-- If the room is genuinely worth showing but offers no subject to gesture at,
-  use a **non-presenting** placement — seated, leaning, mid-stride — rather
-  than forcing an outstretched arm.
+Every pose in the old library was Gibsonian at best, which is exactly why the
+agent kept pointing at things: **pointing is what you do when you have no idea
+what an object is for.**
 
-**Entries, foyers and landings usually fail this test.** They are circulation,
-not living space; there is rarely anything in them to show. Prefer rooms that
-contain the feature being sold.
+| Object | Telic action |
+|---|---|
+| Pool table | Leaning over it, cue in hand, lining up a shot |
+| Fireplace / wood burner | Back to it, warming himself |
+| Kitchen island | Hands working on the counter, or leaning on it talking |
+| Bar | Pouring something, or perched on a stool |
+| Window with a view | Looking **out** of it, away from camera |
+| Dining table | Pulling out a chair, setting something down |
+
+**This table is illustrative, never exhaustive, and must not be turned into a
+lookup.** The vision model already holds telic knowledge for essentially every
+household object — a piano, a wine fridge, a putting green — so it is *asked*,
+not looked up. That is what makes this scale: no list to maintain, none to go
+stale.
+
+He may face away from the camera if the action calls for it.
+
+### Tier 2 — REACTION (when nothing is worth using)
+
+Some frames genuinely contain nothing to use: a handsome empty room, a view, a
+volume of space. **Do not invent a reason to stand in the middle of it.**
+
+Instead he comes to the **left or right edge**, close to the lens, **waist-up**,
+running off the bottom of frame on purpose, and *reacts* while the room stays
+the subject.
+
+| Reaction | Use when |
+|---|---|
+| `wow` | The property genuinely earns astonishment. Reserve it — super-luxury only. |
+| `thumbs_up` | Warm approval, lighter properties |
+| `open_hand` | Open palm toward the space, inviting |
+| `approving` | Arms folded, small satisfied nod |
+
+Pick the side with **less to look at**, so he never covers the good part.
+
+**Reaction is also the universal fallback.** A waist-up figure at the frame edge
+needs no floor spot, no feet and no scale gate, so *"no valid candidate spots"*
+and *"all action takes rejected"* both degrade into a reaction shot instead of
+failing the slide.
+
+---
+
+## 2. Body modes — the only bounded list
+
+The action is unbounded; **physics is not**. Only four postures change how tall
+a person is on screen, and the scale gate has to know which one it is judging.
+A man bent over a pool table is not a failed standing man.
+
+| Mode | Height factor | Example |
+|---|---|---|
+| `standing` | 1.00 | at a window, mid-stride |
+| `leaning` | 0.82 | over a pool table, propped on an island |
+| `crouching` | 0.62 | at a hearth, a low cabinet |
+| `seated` | 0.55 | bar stool, dining chair, sofa |
+
+---
 
 ## 3. Never place the actor here
 
-- **Bathrooms or showers.** Ever. Regardless of how good the room looks.
-- **Bedrooms, lying down.** Seated is fine — a chair, or the EDGE of a made
-  bed with feet on the floor (owner-corrected 2026-07-27: an earlier version
-  of this doc banned beds outright; that was the assistant's inference, not
-  the owner's rule, and it produced a deformed-in-a-chair render where
-  sitting on the bed was the natural shot).
-- **Corners, narrow hallways, or against a blank wall.** Nowhere to be.
-- **Staircases** — the base, the landing, or mid-flight. There's no natural
-  reason to stand there and the geometry fights the figure.
-- **Doorways gesturing at a closed door.** Presenting nothing.
-- **Aerials, drone shots, or distant exteriors.** No floor plane and no
-  human-scale reference; the model will invent a scale and get it wrong. This
-  is where "giant agent floating over a hillside" comes from.
-- **Detail and close-up shots** (fixtures, tile, hardware). No room to stand.
-- **Any frame where they'd occlude the feature the slide is selling.**
+- **Bathrooms or showers.** Ever.
+- **Bedrooms, lying down.** Seated is fine — a chair, or the EDGE of a made bed,
+  feet on the floor. (Owner-corrected 2026-07-27: an earlier version of this doc
+  banned beds outright; that was the assistant's inference, not the owner's rule,
+  and it produced a deformed-in-a-chair render.)
+- **Aerials, drone shots, distant exteriors.** No floor plane, no human-scale
+  reference; the model invents a scale and gets it wrong.
+- **Detail and close-up shots.** No room to stand.
+- **Corridors and empty circulation space.** Nothing to do.
+- **Anywhere he'd occlude the feature the slide is selling.**
+
+The photo reader refuses these up front, so this is enforced rather than hoped
+for.
 
 ---
 
-## 3b. Use the depth of the room
+## 4. Scale, and the ruler problem
 
-**Put the actor in the middle ground, not flat against the foreground.**
+**Scale is derived from geometry, never from a prompt or a hand-tuned curve.**
 
-Listing photos are shot wide precisely to show depth — a room receding toward a
-window, a counter running away from the lens. Standing the actor at the front
-plane throws that away and reads as a cutout laid on top, even when the scale is
-right.
+Figure height = `focal × 1.78m × mode_factor ÷ depth_at_feet`.
 
-- Place them **into** the room: partway back, with floor visible in front of them
-  and space behind.
-- They should be standing **on** the surface that defines the space — on the rug,
-  on the pool deck — not beside it or at its edge.
-- Let real geometry pass in front of them where it naturally would. Occlusion is
-  the strongest single cue that a person is actually in a space.
+Two calibration traps, both of which silently poisoned every frame until found:
 
-**The strongest single pose: torso angled toward the feature, head turned back to
-camera.** Standing at an island with the body square to the counter and the face
-to the lens reads as someone caught mid-tour. Body and face both square to the
-camera reads as a portrait pasted into a room.
+- **Focal length belongs to the ORIGINAL frame, not the crop.** Cropping the
+  sides off a 3:2 photo narrows the horizontal field of view. Assuming the
+  original's FOV on the cropped image put `f` at 600px instead of 1125px and
+  sized every person at 18% of frame height.
+- **Metric depth models carry scale bias on wide-angle interiors** — well
+  outside their training set. The fitted floor put the *camera* 1.78–2.27m above
+  the floor across four frames of one house; listing photos are shot off a
+  tripod at roughly **1.45m**. Depth was long by ~1.4×, which was precisely the
+  factor by which renders were being rejected as "too big". **The model was
+  obeying the guide box; the ruler was wrong.** Depth is now anchored to camera
+  height, the one absolute length we genuinely know about this genre.
 
-## 3c. Vary posture AND expression across a batch
+**The floor is the LOWEST strong horizontal plane, not the most populous.**
+Maximising RANSAC inliers fitted the *countertop* in a galley kitchen (0.64m
+below the camera — counter height for a 1.5m tripod). Counters, islands and
+tables all sit above the floor and are therefore nearer the camera.
 
-Two slides with the same stance make the whole carousel look templated, which is
-exactly what it is trying not to look like.
+**A hearth is not a coffee table.** Standable is a range — up to 0.30m above the
+floor plane — because "warming yourself at the wood burner" *requires* standing
+on its raised hearth. A coffee table at 0.4m and a counter at 0.9m still fail.
 
-Within one post, no two slides may share:
+---
 
-- **the same body posture** — if slide 2 is standing with hands relaxed, slide 3
-  is seated, leaning, or mid-stride
-- **the same facial expression** — vary between a warm smile, a relaxed neutral,
-  and a slight laugh
-- **the same camera relationship** — some looking at the lens, some looking into
-  the room
+## 5. Placement — geometry proposes, vision disposes
 
-Alternate **seated and standing** through the sequence. A carousel where the
-agent sits, then stands at a counter, then leans on a rail reads as a walkthrough.
-Four standing shots read as a template with the background swapped.
+Neither system can do this alone, so neither is asked to:
 
-## 3d. Reject generation artifacts
+- **Geometry proposes.** Emits several well-separated spots, every one already
+  verified against the floor plane, frame fit, human scale, standing room and
+  measured free space. It guarantees *physical validity*.
+- **Vision disposes.** Picks among valid options for *meaning*, and returns the
+  feature, what he faces, what he is doing, and why the others are worse.
 
-Image models sometimes return a frame with a **blank band** — a strip of flat
-white or grey along an edge where it failed to fill the canvas. It is obvious
-once seen and easy to miss when scanning a small thumbnail.
+Metric estimation is what vision models are bad at. Judging what makes a
+marketing photograph is what geometry cannot see.
 
-Any image with a blank or flat-colour band at any edge is **rejected outright**,
-no retake judgement needed. Check the bottom edge specifically; that is where it
-has appeared.
+**Actions happen AT objects.** When the plan names something he is touching,
+candidate spots must be within arm's reach of it, and the crop must keep that
+object plus standing room beside it. Without this the geometry rewards wide-open
+floor — which is by definition *away* from furniture — and produces a man in a
+flawless shooting stance cueing at thin air.
 
-Also reject: duplicated limbs, a second partial person, hands with wrong finger
-counts, and text or watermarks the model invented.
+**A stride needs somewhere to walk.** Clearance is measured in metres of open
+floor along a ray. But clearance may only **veto** a pose, never select one:
+selecting on clearance alone fired on all four rooms of a batch and produced
+four near-identical mid-strides.
 
-## 3e. Wardrobe follows the scene — within business bounds
+---
 
-Two modes only, chosen by the room being staged. Nothing more casual than
-business casual, ever — no shorts, no t-shirts, whatever the scene:
+## 6. Posture and variety
 
-| Scene | Wardrobe |
+- No two slides in a post may share a **body posture**, an **expression**, or a
+  **camera relationship**. Alternate seated and standing through the sequence.
+- Poses are **asymmetric**: uneven shoulders, the two arms doing different
+  things, hips off-axis. Symmetry is what reads as robotic.
+- Candid, not catalogue: caught mid-moment — mid-step, mid-turn, a breath into a
+  laugh. A pose that would pass in a clothing catalogue fails here.
+
+---
+
+## 7. Wardrobe
+
+**Business casual or business professional. Nothing more casual, ever** — no
+shorts, no t-shirts, whatever the scene.
+
+Colour is chosen from **measured backdrop pixels** — luminance, warm/cool
+balance and colourfulness of what he actually stands against — not guessed from
+the room's name:
+
+| Backdrop | Wardrobe |
 |---|---|
-| Living, dining, primary, office, exteriors | **Business professional** — dark grey suit over a light blue collared shirt, no tie (the headshot look) |
-| Kitchen, game room, pool, outdoor living | **Business casual** — collared shirt, sleeves rolled once, dark chinos, leather loafers |
+| Light room (luminance > 150) | Charcoal or deep navy — dark figure pops |
+| Dark room (luminance < 95) | Light grey or soft tan |
+| Warm room (wood, terracotta) | Cool cloth — navy, slate |
+| Already colourful room | Plain and solid, no pattern competing |
 
-## 3f. Candid, not catalog
-
-Reviewer's words: the poses looked robotic. Every figure generation now carries
-the candid clause — weight clearly on one hip, shoulders relaxed and uneven,
-caught mid-moment (mid-step, mid-turn, a breath into a laugh), never
-symmetrical, never squared to the camera, arms never mirroring each other. A
-pose that would pass in a clothing catalog fails here.
-
-## 3g. Scale comes from depth, not from a box
-
-Feet position in frame encodes distance: feet lower means closer means taller
-in frame. Figure height maps monotonically from the FEET LINE (~0.38 of frame
-height when feet sit at 62%, up to ~0.62 at the bottom edge). The vision
-model's box height both over-shot (a ten-foot agent) and under-shot ("a little
-short" in review); the feet anchor is the part it gets right, so that is the
-only part trusted.
-
-## 4. Physical realism — non-negotiable
-
-Each of these counters an observed failure. Do not soften them.
-
-- **Full body, head to feet.** Both feet visibly contacting the floor. Never
-  crop at the waist or thigh — a cropped figure has nothing anchoring its size
-  and will float.
-- **Realistic human scale**, roughly 5'10". Check the figure against real
-  references in frame: door openings, counter height, chair backs, ceiling.
-  They must read as someone who could walk through that doorway.
-- **Middle ground, not foreground overlay.** Roughly a quarter to a third of
-  frame height, standing *in* the space, correctly occluded by furniture in
-  front of them.
-- **Lighting matched to the room** — direction, colour temperature, softness,
-  contrast. A dusk or lamplit room does not light a person like studio flash.
-  Cast a believable contact shadow on the floor.
-- **Perspective matched.** Eye level must agree with the photo's horizon.
-- **Generate, don't composite.** Say so explicitly in the prompt. Given a loose
-  instruction the model pastes the source cutout, which carries the studio pose
-  and studio light into every single output.
+Formality follows the room: sharp suit in great room / dining / living /
+exteriors; business casual in kitchen / game room / pool.
 
 ---
 
-## 5. Identity and wardrobe
+## 8. Identity
 
-- Match facial features **exactly** as in the source headshot: hair colour and
-  texture, face shape, jawline, skin tone, eye colour.
-- **Do not idealize, smooth, slim, or otherwise alter their appearance.** This
-  is a real person's likeness on their own marketing.
-- Wardrobe: professional dark grey suit jacket over a light blue collared
-  shirt, no tie — unless the agent's brand says otherwise.
-- Expression: warm and natural. Vary it across a batch — not the same smile
-  five times.
+Match the source headshot **exactly** — hair colour and texture, face shape,
+jawline, skin tone, eye colour. **Do not idealize, smooth, or slim.** This is a
+real person's likeness on their own marketing.
+
+> **Known weakness:** identity drifts most in `reaction` framing, where the face
+> is largest in frame. Check the face on every reaction shot.
 
 ---
 
-## 6. Tone
+## 9. Gates — what gets rejected automatically
 
-"Realistic, in a fun, AI-driven way." The image should be *believable* first —
-correct scale, correct light, natural posture — and only then stylish. A subtle
-warm grade and slight contrast lift is the house look. Anything that reads as
-obviously fake undermines the listing it is selling.
+Room preservation is **structural, not checked**: only pixels a segmentation
+model calls "person" are taken from the render and pasted onto the untouched
+original, and the shadow transfers as a **darken-only multiply**, which cannot
+change a floor's material. Measured: 86–91% of frame bit-identical, and no pixel
+outside the figure ever gets brighter.
 
----
-
-## 7. Disclosure
-
-Meta's container endpoint accepts **`is_ai_generated`**. These composites are
-AI-generated images of a real person in a real property; set it. It costs
-nothing and it is the honest call on marketing that depicts an agent somewhere
-they may not have physically stood.
-
----
-
-## 8. Where this is enforced
-
-| Path | File |
+| Gate | Rejects |
 |---|---|
-| Hosted / MCP | `src/app/api/skill/images/agent-staged-listing/route.ts` — `BASE_PROMPT` + `POSE_VARIATIONS` |
-| Local scripts | `scripts/carousel-build.js` — `STAGE_PROMPT(c)`, fed per-room `pose` + `expression` from `scripts/data/carousels/<slug>.js` |
+| Feet cropped | Figure running off the bottom edge (action tier only) |
+| Feet on standable surface | On a coffee table, a counter, or floating |
+| Contact support | Non-standing modes: occluded legs must abut real furniture |
+| Scale ratio 0.70–1.32× | Giants and dolls, judged against the body mode |
+| Largest component only | **Hallucinated extra people** — segmentation labels every person in frame, so a second invented figure would otherwise be composited into a client's listing photo |
+| Room drift | Shadow transfer skipped if the frames no longer align |
+| Reaction: edge / height / width / feature overlap | Figure that wandered off the edge, shrank to full body, or covered the feature |
 
-The local script path takes explicit per-room direction and is the stronger of
-the two — it always had identity preservation and per-room posing. When the two
-disagree, the script is right.
+**Occluded legs are not missing legs.** Leaning on an island puts the lower body
+behind it, so the mask stops at the counter edge and a feet-on-floor test reads
+0% on a perfectly good frame.
 
-**Photo selection is part of this contract, not a separate step.** Review the
-photo set first (a contact sheet works well), pick the frames that satisfy the
-affordance rule, and assign each one a placement from §2 before generating
-anything.
+Also reject on sight: blank or flat-colour bands at any edge, duplicated limbs,
+hands with wrong finger counts, and invented text or watermarks.
+
+---
+
+## 10. Disclosure
+
+Meta's container endpoint accepts **`is_ai_generated`**. These are AI-generated
+images of a real person in a real property; set it. It costs nothing and it is
+the honest call.

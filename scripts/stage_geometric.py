@@ -57,6 +57,25 @@ NL = "\n"
 # The BODY MODE is bounded, because physics is. Only four modes change how tall
 # a person stands on screen, and the scale gate must know which one it judges -
 # a man bent over a pool table is not a failed standing man.
+# THE SECOND TIER. Not every photograph contains something worth using — a
+# handsome empty room, a view, a volume of space. Forcing an action there is
+# what produced the man standing in the middle of a room with his arm out.
+# Instead he comes to the EDGE of frame, close to the lens, waist-up, and
+# REACTS while the room stays the subject.
+#
+# This is also the graceful degradation for every geometry failure: a waist-up
+# figure at the frame edge needs no floor spot, no feet and no scale gate, so
+# "no valid candidate spots" stops being fatal and becomes a fallback.
+REACTIONS = {
+    "wow": "eyes wide and eyebrows up in genuine astonishment, mouth slightly open, "
+           "caught in the second of actually being impressed",
+    "thumbs_up": "giving a clear thumbs-up to camera with a warm, easy grin",
+    "open_hand": "one open palm turned up toward the room in invitation, the other "
+                 "relaxed, smiling at the camera",
+    "approving": "arms loosely folded, head tilted in a small satisfied nod, "
+                 "an unforced half-smile",
+}
+
 BODY_MODES = {
     "standing":  1.00,
     "leaning":   0.82,   # bent over a table, propped on a counter
@@ -140,6 +159,15 @@ def read_photo(img):
         + "That list is illustrative, not exhaustive - work out what THIS object is for, "
           "even if it is a piano, a wine fridge or a putting green, and have him use it. "
           "He may be turned away from the camera if the action calls for it." + NL + NL
+        + "IF THERE IS GENUINELY NOTHING WORTH USING - a handsome but empty room, a "
+          "view, a volume of space - do NOT invent a reason to stand in the middle of it "
+          "holding an arm out. Set tier to 'reaction' instead: he appears at the LEFT or "
+          "RIGHT EDGE of frame, close to the lens, from about the waist up, reacting to "
+          "the room while the room itself stays the subject. Choose the reaction: 'wow' "
+          "(genuine astonishment - reserve it for properties that truly earn it), "
+          "'thumbs_up' (warm approval), 'open_hand' (an inviting open palm toward the "
+          "space), or 'approving' (arms folded, satisfied nod). Say which side he stands "
+          "on - pick the side with LESS to look at, so he never covers the good part." + NL + NL
         + "Reply ONLY with JSON, all coordinates normalised 0-1000 as [ymin,xmin,ymax,xmax] "
           "on this image:" + NL
         + '{"usable": true|false, "reject_reason": "<short, or null>", '
@@ -147,9 +175,13 @@ def read_photo(img):
           '"feature": "<the one thing this room is selling, concrete>", '
           '"feature_box": [y,x,y,x], '
           '"stand_region": [y,x,y,x], '
+          '"tier": "action"|"reaction", '
           '"action": "<what he is DOING with the feature, concrete and physical, under 18 words>", '
           '"contact_object": "<the object he is touching or using, or null>", '
           '"body_mode": "standing"|"leaning"|"crouching"|"seated", '
+          '"reaction": "wow"|"thumbs_up"|"open_hand"|"approving", '
+          '"side": "left"|"right", '
+          '"luxury": true|false, '
           '"facing": "<where he looks - may be away from camera>", '
           '"formality": "sharp"|"casual", '
           '"why": "<one clause: why this action suits this room>"}' + NL + NL
@@ -671,6 +703,107 @@ BONES = [("head", "neck"), ("neck", "sL"), ("neck", "sR"), ("sL", "eL"), ("eL", 
          ("hL", "kL"), ("kL", "aL"), ("hR", "kR"), ("kR", "aR")]
 
 
+def reaction_marker(img, side):
+    """Guide box for an edge reaction: waist-up, hard against one side, running
+    off the bottom of frame on purpose."""
+    from PIL import ImageDraw
+    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    dr = ImageDraw.Draw(ov)
+    w = int(OUT_W * 0.36)
+    x0 = 0 if side == "left" else OUT_W - w
+    y0 = int(OUT_H * 0.26)
+    dr.rectangle([x0 + 3, y0, x0 + w - 3, OUT_H - 3], outline=(255, 0, 0, 210), width=6)
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
+def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
+    import requests
+
+    def b64(im):
+        b = io.BytesIO(); im.save(b, format="PNG")
+        return base64.b64encode(b.getvalue()).decode()
+
+    prompt = (
+        "IMAGE 1 is a photograph of a room. IMAGE 2 is the same room with a red box on "
+        "one side. IMAGE 3 is a photograph of a real-estate agent." + NL + NL
+        + "Return IMAGE 1 with that agent added, and nothing else about the room changed." + NL + NL
+        + "FRAMING - this is a REACTION shot, not a full-length one. He stands close to "
+          "the camera at the side of frame, inside the red box, seen from roughly the "
+          "waist up and running off the BOTTOM EDGE of the picture. That bottom crop is "
+          "intended - do not shrink him to fit his whole body in. He is at the edge so "
+          "the ROOM stays the subject; he must not cover " + str(feature) + "." + NL
+        + "Do not draw the box." + NL + NL
+        + "WHAT HE IS DOING: " + reaction + NL
+        + "It must look like a real reaction caught by a camera, not a stock pose - "
+          "slightly off-centre, shoulders uneven, weight on one foot." + NL + NL
+        + "IDENTITY: the face must match IMAGE 3 exactly - hair colour and texture, face "
+          "shape, jawline, skin tone. Do not idealize, smooth or slim him." + NL
+        + "WARDROBE: " + wardrobe + NL + NL
+        + "Light him with THIS ROOM's light - being nearer the lens he catches more of "
+          "it - and keep him sharp against the room behind."
+    )
+    r = requests.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-2.5-flash-image:generateContent",
+        params={"key": os.environ["GEMINI_API_KEY"]},
+        json={"contents": [{"role": "user", "parts": [
+            {"inline_data": {"mime_type": "image/png", "data": b64(img)}},
+            {"inline_data": {"mime_type": "image/png", "data": b64(mark)}},
+            {"inline_data": {"mime_type": "image/png", "data": b64(headshot)}},
+            {"text": prompt}]}],
+              "generationConfig": {"imageConfig": {"aspectRatio": "4:5", "imageSize": "2K"}}},
+        timeout=180)
+    r.raise_for_status()
+    for part in r.json()["candidates"][0]["content"]["parts"]:
+        d = part.get("inlineData") or part.get("inline_data")
+        if d and d.get("data"):
+            return Image.open(io.BytesIO(base64.b64decode(d["data"]))).convert("RGB").resize(
+                (OUT_W, OUT_H), Image.LANCZOS)
+    raise RuntimeError("no image returned")
+
+
+def compose_reaction(base, gen, pm, side, feat_box=None):
+    """Gates for an edge reaction. Deliberately NOT the standing gates: there
+    are no feet to put on a floor and no full height to measure, so checking
+    for them would reject every correct frame. What matters instead is that he
+    stayed at the edge, stayed big, and left the room visible."""
+    ys, xs = np.where(pm)
+    if len(ys) < 500:
+        raise RuntimeError("segmentation found no person")
+    top, bot, left, right = ys.min(), ys.max(), xs.min(), xs.max()
+
+    if bot < OUT_H - 12:
+        raise RuntimeError("reaction figure is not running off the bottom edge (full body)")
+    edge_ok = left <= 40 if side == "left" else right >= OUT_W - 40
+    if not edge_ok:
+        raise RuntimeError("reaction figure drifted off the {} edge".format(side))
+    hfrac = (bot - top) / OUT_H
+    if not (0.36 <= hfrac <= 0.92):
+        raise RuntimeError("reaction figure is {:.0%} of frame, want 36-92%".format(hfrac))
+    wfrac = (right - left) / OUT_W
+    if wfrac > 0.52:
+        raise RuntimeError("reaction figure covers {:.0%} of the width".format(wfrac))
+    if feat_box is not None:
+        fy0, fx0, fy1, fx1 = feat_box
+        ov = (max(0, min(right, fx1) - max(left, fx0)) *
+              max(0, min(bot, fy1) - max(top, fy0)))
+        frac = ov / max(1.0, (fx1 - fx0) * (fy1 - fy0))
+        if frac > 0.35:
+            raise RuntimeError("reaction figure covers {:.0%} of the feature".format(frac))
+    print("  reaction figure    {:.0%} tall, {:.0%} wide, on the {} edge".format(
+        hfrac, wfrac, side))
+
+    b = np.array(base).astype(np.float32)
+    g = np.array(gen).astype(np.float32)
+    a = Image.fromarray((pm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
+    a = (np.array(a).astype(np.float32) / 255.0)[..., None]
+    comp = b * (1 - a) + g * a
+    drift = float(np.abs(b[~pm] - g[~pm]).mean())
+    print("  room drift         {:.1f}/255 outside the figure".format(drift))
+    return (Image.fromarray(np.clip(comp, 0, 255).astype(np.uint8)),
+            {"tier": "reaction", "height_frac": round(hfrac, 3), "drift": round(drift, 1)})
+
+
 def marker(img, x, y, h, pose_key, mode="standing"):
     """The room with the target footprint AND a pose skeleton drawn on it.
 
@@ -952,12 +1085,50 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
         sc = OUT_W / cw
         region = ((r[0] - cl_x) * sc, (r[1] - cl_y) * sc,
                   (r[2] - cl_x) * sc, (r[3] - cl_y) * sc)
+    # REACTION: either the reader asked for it (nothing here worth using), or
+    # the action path cannot find anywhere valid to stand. Both end up here,
+    # which is why no geometry failure needs to be fatal any more.
+    def _reaction(reason):
+        side = plan.get("side") if plan.get("side") in ("left", "right") else "right"
+        rk = plan.get("reaction") if plan.get("reaction") in REACTIONS else (
+            "wow" if plan.get("luxury") else "open_hand")
+        print("  TIER reaction      {} on the {} ({})".format(rk, side, reason))
+        mark = reaction_marker(base, side)
+        mark.save(src.with_name("marker_" + out_name))
+        wd = pick_wardrobe(base, OUT_W // 2, int(OUT_H * 0.9), int(OUT_H * 0.6),
+                           "sharp" if plan.get("luxury") else "casual")
+        fb = _box_px(plan.get("feature_box"), *orig.size)
+        fbc = None
+        if fb:
+            sc = OUT_W / cw
+            fbc = ((fb[1] - cl_y) * sc, (fb[0] - cl_x) * sc,
+                   (fb[3] - cl_y) * sc, (fb[2] - cl_x) * sc)
+        hs = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
+        for take in range(1, takes + 1):
+            print("take {} (reaction)...".format(take))
+            g = render_reaction(base, mark, hs, REACTIONS[rk], wd, plan.get("feature"))
+            try:
+                o, st = compose_reaction(base, g, person_mask(g), side, fbc)
+            except RuntimeError as e:
+                print("  rejected: {}".format(e)); continue
+            o.save(src.with_name(out_name))
+            st.update({"room": plan.get("room"), "reaction": rk, "feature": plan.get("feature")})
+            print("OK -> {} {}".format(out_name, json.dumps(st)))
+            return o, plan
+        return None, plan
+
+    if str(plan.get("tier", "action")).lower() == "reaction":
+        return _reaction("nothing here worth using")
+
     reach = f * 0.9 / max(1.5, float(np.median(depth[floor]) if floor.any() else 3.0))
     near = near_object(sem, plan.get("contact_object") or plan.get("feature"), reach)
     if near is not None:
         print("  contact object     '{}' found, restricting spots to within reach".format(
             plan.get("contact_object") or plan.get("feature")))
-    cands = candidates(floor, depth, f, sem, region=region, near=near)
+    try:
+        cands = candidates(floor, depth, f, sem, region=region, near=near)
+    except RuntimeError as e:
+        return _reaction("no full-body spot: {}".format(e))
     print("  candidates         {} valid spots".format(len(cands)))
 
     # 4. VISION picks among valid options, seeded with the plan's intent.
@@ -1018,8 +1189,7 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
         stats["mode"] = mode
         print("OK -> {} {}".format(out_name, json.dumps(stats)))
         return out, plan
-    print("all takes rejected")
-    return None, plan
+    return _reaction("all action takes rejected")
 
 
 def main():
