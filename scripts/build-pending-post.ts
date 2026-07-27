@@ -82,7 +82,17 @@ function code() {
 
 (async () => {
   const slug = process.argv[2];
-  if (!slug) throw new Error("usage: build-pending-post.ts <slug>");
+  if (!slug) throw new Error("usage: build-pending-post.ts <slug> [--exclude 3,7,12]");
+
+  // Photos already used for this listing. A second post about the same house
+  // that reuses the same four frames reads as a repost, so rebuilds take a
+  // fresh set — and a rejected frame is worth excluding too, since the reasons
+  // (no floor, nothing to use) tend to be properties of the photo.
+  const exArg = process.argv.indexOf("--exclude");
+  const EXCLUDE = new Set<number>(
+    exArg > -1 ? (process.argv[exArg + 1] || "").split(",").map(Number).filter(Number.isFinite) : []
+  );
+  if (EXCLUDE.size) console.log(`   excluding photos: ${[...EXCLUDE].join(", ")}`);
   const CFG = require(`./data/pending/${slug}`).default ?? require(`./data/pending/${slug}`);
 
   await mongoose.connect(process.env.MONGODB_URI as string);
@@ -108,9 +118,12 @@ function code() {
   // and the next only 1 of 4 — so the pipeline needs spare frames to fall back
   // on rather than failing the whole post.
   const WANT_SLIDES = 4;
-  const { selected } = await selectStagingPhotos({ photoUrls, want: 8, sample: 26 });
-  for (const s of selected.slice(0, WANT_SLIDES)) console.log(`   #${s.index} ${s.room} — ${s.placementDetail}`);
-  if (selected.length === 0) throw new Error("no stageable photos");
+  // Sample wide. With 87 photos on this listing a narrow sample keeps landing
+  // on the same handful, and excluding those then leaves nothing.
+  const picked = await selectStagingPhotos({ photoUrls, want: 14, sample: 48 });
+  const selected = picked.selected.filter((s) => !EXCLUDE.has(s.index));
+  for (const s of selected.slice(0, WANT_SLIDES + 4)) console.log(`   #${s.index} ${s.room}`);
+  if (selected.length === 0) throw new Error("no stageable photos left after exclusions");
 
   // ---- 2. STAGE (geometric) ----------------------------------------------
   // Handed wholesale to scripts/stage_geometric.py, which reads each photo
@@ -125,7 +138,7 @@ function code() {
   const staged: Array<{ url: string; publicId: string; room: string; index: number;
                         feature?: string; action?: string }> = [];
 
-  const jobs = selected.slice(0, WANT_SLIDES + 3).map((s) => ({
+  const jobs = selected.slice(0, WANT_SLIDES + 5).map((s) => ({
     photoUrl: photoUrls[s.index],
     index: s.index,
   }));
