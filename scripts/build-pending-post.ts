@@ -29,7 +29,7 @@ import mongoose from "mongoose";
 import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 import { selectStagingPhotos } from "../src/lib/content/select-staging-photos";
-import { verifyStagedPhoto } from "../src/lib/content/verify-staged-photo";
+import { verifyStagedPhoto, describeImage } from "../src/lib/content/verify-staged-photo";
 import { buildSimpleLuxuryTransformations } from "../src/lib/cover-templates/simple-luxury";
 
 const {
@@ -127,11 +127,23 @@ function code() {
   const MAX_TAKES = 3;
   const usedRooms = new Set<string>();
 
+  // Posture and expression must VARY across a batch — four standing shots read
+  // as one pose with the background swapped, which is exactly what a reviewer
+  // called out. Alternate seated/standing and rotate the expression, and reject
+  // a take whose posture duplicates one already accepted.
+  // See actor-generation.md §3c.
+  const VARIATION = POSTURE_VARIATIONS;
+  const usedPostures = new Set<string>();
+
   for (const s of selected) {
     if (staged.length >= WANT_SLIDES) break;
     if (usedRooms.has(s.room)) continue; // keep the walkthrough varied
 
     const src = await b64(photoUrls[s.index]);
+    // Describe the ORIGINAL once per photo and reuse it across takes, so the
+    // baseline cannot drift between retries of the same frame.
+    let baseline: any = null;
+    try { baseline = await describeImage(photoUrls[s.index]); } catch {}
     for (let take = 1; take <= MAX_TAKES; take++) {
       process.stdout.write(`2. staging #${s.index} (${s.room}) take ${take}… `);
       try {
@@ -143,7 +155,12 @@ function code() {
               parts: [
                 { inlineData: { data: src.data, mimeType: src.mimeType } },
                 { inlineData: { data: head.data, mimeType: head.mimeType } },
-                { text: `${BASE_PROMPT}\n\nWHERE TO PUT THEM IN THIS SPECIFIC PHOTOGRAPH: ${s.placementDetail}` },
+                {
+                  text:
+                    `${BASE_PROMPT}` +
+                    `\n\nWHERE TO PUT THEM IN THIS SPECIFIC PHOTOGRAPH: ${s.placementDetail}` +
+                    `\n\nPOSTURE AND EXPRESSION FOR THIS SLIDE — must differ from the other slides in this set: ${VARIATION[staged.length % VARIATION.length]}`,
+                },
               ],
             },
           ],
@@ -161,6 +178,7 @@ function code() {
         const v = await verifyStagedPhoto({
           originalUrl: photoUrls[s.index],
           stagedUrl: up.secure_url,
+          originalDescription: baseline,
         });
         if (!v.pass) {
           console.log(`rejected — ${v.changes.join("; ") || v.error}`);
@@ -168,6 +186,14 @@ function code() {
           await cloudinary.uploader.destroy(up.public_id).catch(() => {});
           continue;
         }
+        // "none" means the describer did not report a posture, not that two
+        // slides share one — treating it as a duplicate rejected good takes.
+        if (v.posture && v.posture !== "none" && usedPostures.has(v.posture) && take < MAX_TAKES) {
+          console.log(`rejected — posture "${v.posture}" already used on another slide`);
+          await cloudinary.uploader.destroy(up.public_id).catch(() => {});
+          continue;
+        }
+        if (v.posture) usedPostures.add(v.posture);
         console.log("PASS" + (v.notes?.length ? `  (note: ${v.notes[0]})` : ""));
         staged.push({ url: up.secure_url, publicId: up.public_id, room: s.room, index: s.index });
         usedRooms.add(s.room);
@@ -181,10 +207,36 @@ function code() {
 
   // ---- 4. BAND ------------------------------------------------------------
   console.log("3. banding rooms…");
-  const roomSlides = staged.map((st, i) => {
-    const band = CFG.rooms[i] || CFG.rooms[CFG.rooms.length - 1];
+
+  // Labels come from the room that was ACTUALLY staged, never from position in
+  // the config. Photos are chosen dynamically and rejected takes shift
+  // everything after them: a rejected game room promoted a bedroom into slot 4,
+  // and the positional label shipped a dining nook captioned "THE GAME ROOM"
+  // and a bedroom captioned "THE POOL DECK".
+  const ROOM_LABELS: Record<string, string> = {
+    living: "THE GREAT ROOM",
+    kitchen: "THE KITCHEN",
+    dining: "THE DINING ROOM",
+    primary_bedroom: "THE PRIMARY",
+    bedroom: "THE BEDROOM",
+    game_room: "THE GAME ROOM",
+    office: "THE OFFICE",
+    outdoor_living: "OUTDOOR LIVING",
+    pool: "THE POOL DECK",
+    exterior: "THE GROUNDS",
+    other: "INSIDE",
+  };
+
+  const roomSlides = staged.map((st) => {
+    // Caption is looked up by room too, falling back to any spare line rather
+    // than to whatever happened to sit at this index.
+    const byRoom = (CFG.rooms || []).find(
+      (r: any) => r.room === st.room || r.label === ROOM_LABELS[st.room]
+    );
+    const label = ROOM_LABELS[st.room] || "INSIDE";
+    const caption = byRoom?.caption || CFG.fallbackCaption || "";
     return {
-      url: cloudinary.url(st.publicId, { transformation: buildBannerTransform(band.label, band.caption) }),
+      url: cloudinary.url(st.publicId, { transformation: buildBannerTransform(label, caption) }),
       publicId: st.publicId,
       kind: "room" as const,
     };

@@ -165,7 +165,13 @@ async function assessOne(
     // that calls a bathroom stageable must not be able to put the agent there,
     // and one that wants him standing over a bed must not get to.
     const allowed = ROOM_PLACEMENT_WHITELIST[room];
-    const placementOk = !!placement && (!allowed || allowed.includes(placement));
+    const detail = String(j.placementDetail || "").toLowerCase();
+    // The whitelist gates the ENUM, but placementDetail is free text and can
+    // still say "seated on the bed" while claiming seated_chair. A bedroom
+    // slide with the agent on the bed shipped exactly that way.
+    const onTheBed = /on the bed|sitting on the bed|edge of the bed/.test(detail);
+    const placementOk =
+      !!placement && (!allowed || allowed.includes(placement)) && !onTheBed;
     const stageable = !!j.stageable && !BANNED_ROOMS.includes(room) && placementOk;
 
     return {

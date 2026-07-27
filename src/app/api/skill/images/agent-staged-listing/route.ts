@@ -25,6 +25,7 @@ import User from "@/models/User";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
+import { STAGING_BASE_PROMPT, POSTURE_VARIATIONS } from "@/lib/content/staging-prompt";
 
 // This route makes up to MAX_PHOTOS Gemini image-generation calls plus a
 // Cloudinary upload each. Without an explicit budget it inherits Vercel's
@@ -63,46 +64,14 @@ const DEFAULT_PHOTOS = 5;
 // This version states the constraint first, in the language of EDITING, and
 // gives the model an explicit out (return the image unchanged) so it is never
 // cornered into repainting the room to satisfy the request.
-const BASE_PROMPT = `You are EDITING an existing photograph. You are not creating a new one.
-
-Return the FIRST image with exactly ONE change: a person has been added to the scene.
-
-EVERYTHING ELSE MUST BE IDENTICAL TO THE INPUT PHOTOGRAPH. This is the most important requirement and overrides every other instruction:
-- Do NOT change the framing, the crop, or the camera position. Same viewpoint, same composition.
-- Do NOT change the FLOORING. Tile stays tile, wood stays wood, and the exact colour and pattern stay the same.
-- Do NOT change, move, add, remove or restyle ANY furniture, rug, cushion, artwork or decor.
-- Do NOT change any fixture: lights, fans, pot racks, hardware, cabinetry, counters, backsplash, railings.
-- Do NOT change walls, ceilings, windows, doors, stairs, or any architecture.
-- Do NOT re-light, re-colour, re-grade, sharpen, or "improve" the photograph in any way.
-- Do NOT tidy, stage, declutter or redecorate. If something looks worn or oddly placed, leave it exactly as it is.
-
-Every pixel that is not the added person, their shadow, or what their body occludes must match the input exactly.
-
-IF YOU CANNOT ADD THE PERSON WITHOUT ALTERING THE ROOM, RETURN THE PHOTOGRAPH UNCHANGED. An unchanged photo is a correct answer. An altered room is not.
-
-THE PERSON TO ADD — take their face and identity from the SECOND image:
-- Full body, head to feet, both feet visibly in contact with the floor. Never cropped at the waist, never floating.
-- Realistic adult height, about 5'10". Check them against real references already in the frame: door openings, counter height, chair backs.
-- Standing IN the space, correctly occluded by anything in front of them. Not a foreground overlay.
-- Lit by the room's own light — same direction, colour temperature and softness as the scene — with a believable contact shadow on the floor.
-- Eye level consistent with the photograph's existing perspective.
-- Match the face exactly: hair colour and texture, face shape, jawline, skin tone. Do not idealize, smooth or slim them.
-- Dark grey suit jacket over a light blue collared shirt, no tie.
-
-No text, watermarks or graphics.`;
+const BASE_PROMPT = STAGING_BASE_PROMPT;
 
 // Per-photo direction. Sending one identical prompt to every photo produced
 // four slides of the same man in the same pose, which reads as a template
 // rather than a walkthrough. scripts/data/carousels/*.js always carried `pose`
 // and `expression` per room; this restores that for the hosted path by cycling
 // distinct staging directions across the batch.
-const POSE_VARIATIONS: string[] = [
-  "Standing a few steps into the room, body angled toward the camera, one hand gesturing openly toward the room's main feature. Warm, welcoming expression.",
-  "Walking through the space, caught mid-stride and looking off toward a window or focal point rather than at the camera. Relaxed, candid, not posed.",
-  "Standing further back near a wall or doorway with hands relaxed at their sides or one in a pocket, looking at the camera with a calm, confident half-smile.",
-  "Standing beside a key feature — an island, fireplace, or railing — with one hand resting lightly on it, turned three-quarters to the camera.",
-  "Standing near the far side of the room looking back toward the camera, giving a clear sense of the room's depth and scale.",
-];
+const POSE_VARIATIONS: string[] = POSTURE_VARIATIONS;
 
 /**
  * Compose the per-photo instruction.

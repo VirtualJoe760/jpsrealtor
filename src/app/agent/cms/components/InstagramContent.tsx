@@ -11,7 +11,7 @@
 // See docs/content-templates/auto-posting.md.
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, X, Clock, AlertTriangle, ExternalLink, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, Clock, AlertTriangle, ExternalLink, Instagram, ChevronLeft, ChevronRight, Wand2 } from "lucide-react";
 
 type Slide = { n: number; url: string; kind: string };
 
@@ -135,15 +135,53 @@ function Carousel({
 function Lightbox({
   slides,
   index,
+  postId,
   onClose,
   onIndex,
+  onImprinted,
 }: {
   slides: Slide[];
   index: number;
+  postId: string;
   onClose: () => void;
   onIndex: (i: number) => void;
+  onImprinted: () => void;
 }) {
   const n = slides.length;
+  const [imprinting, setImprinting] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function onImprint() {
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await fetch(`/api/agent/pending-posts/${postId}/imprint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideN: slides[index].n, correction: note.trim() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (j.ok) {
+        setResult({ ok: true, message: "Done — reloading the post." });
+        setNote("");
+        onImprinted();
+      } else {
+        // A rejected take is normal, not an error: the model samples, and QC
+        // discards anything that repainted the room. Say so plainly so the
+        // agent retries rather than assuming it is broken.
+        setResult({
+          ok: false,
+          message: j.message || "That didn't work — try again or reword it.",
+        });
+      }
+    } catch {
+      setResult({ ok: false, message: "Network error. Try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -194,109 +232,62 @@ function Lightbox({
         </>
       )}
 
+      {/* Imprint — fix THIS photo without throwing away the rest of the post.
+          Only staged room photos are regenerated this way; a text slide's
+          problem is its copy, which is edited on the post, not re-rolled. */}
+      {s.kind === "room" && (
+        <div
+          className="absolute bottom-16 left-0 right-0 flex justify-center px-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {!imprinting ? (
+            <button
+              onClick={() => setImprinting(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2
+                         text-sm text-white backdrop-blur hover:bg-white/25"
+            >
+              <Wand2 className="h-4 w-4" /> Imprint a fix on this photo
+            </button>
+          ) : (
+            <div className="w-full max-w-xl rounded-xl bg-black/80 p-3 backdrop-blur">
+              <textarea
+                autoFocus
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What should change? e.g. put me on the rug, further into the room, different posture from the last slide"
+                className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2
+                           text-sm text-white placeholder-white/40"
+              />
+              {result && (
+                <p className={`mt-2 text-xs ${result.ok ? "text-emerald-400" : "text-amber-400"}`}>
+                  {result.message}
+                </p>
+              )}
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => { setImprinting(false); setResult(null); }}
+                  className="rounded-lg px-3 py-1.5 text-sm text-white/70 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={busy || !note.trim()}
+                  onClick={onImprint}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5
+                             text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  {busy ? "Regenerating…" : "Imprint"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="absolute bottom-5 left-0 right-0 text-center text-sm text-white/70">
         {s.n} / {n} · {KIND_LABEL[s.kind] || s.kind}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Decline capture.
- *
- * The whole point of declining is the REASON. Without it a decline is just a
- * deleted post and the next generation repeats the same mistakes — which is
- * exactly what happened when feedback had to travel by chat message instead.
- *
- * Notes are per-slide because that is how the problems actually arrive: slide 2
- * has a blank strip, slide 3 has the same posture as slide 2, slide 7 compares
- * the town to somewhere else. A single free-text box loses which slide each
- * point was about, and that is the one thing needed to fix it.
- */
-function DeclineModal({
-  post,
-  isLight,
-  busy,
-  onCancel,
-  onSubmit,
-}: {
-  post: PendingPost;
-  isLight: boolean;
-  busy: boolean;
-  onCancel: () => void;
-  onSubmit: (reason: string, slideFeedback: Array<{ n: number; note: string }>) => void;
-}) {
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState<Record<number, string>>({});
-
-  const field = `w-full rounded-lg border px-3 py-2 text-sm ${
-    isLight
-      ? "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
-      : "bg-gray-950 border-gray-700 text-gray-100 placeholder-gray-500"
-  }`;
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
-      <div
-        className={`w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border p-5 ${
-          isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-800"
-        }`}
-      >
-        <h3 className={`font-semibold mb-1 ${isLight ? "text-gray-900" : "text-gray-100"}`}>
-          What was wrong with it?
-        </h3>
-        <p className={`text-xs mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-          {post.listing.address}. This goes back into how the next one is generated,
-          so be as specific as you like.
-        </p>
-
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          placeholder="Overall — colour, tone, anything that applies to the whole post"
-          className={`${field} mb-4`}
-        />
-
-        <div className="space-y-2 mb-4">
-          {post.slides.map((s) => (
-            <div key={s.n} className="flex items-start gap-2">
-              <img src={s.url} alt="" className="h-16 w-[52px] shrink-0 rounded object-cover" />
-              <input
-                value={notes[s.n] || ""}
-                onChange={(e) => setNotes((prev) => ({ ...prev, [s.n]: e.target.value }))}
-                placeholder={`Slide ${s.n} (${KIND_LABEL[s.kind] || s.kind}) — what's wrong?`}
-                className={field}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className={`rounded-lg border px-3 py-1.5 text-sm ${
-              isLight ? "border-gray-300 text-gray-700" : "border-gray-700 text-gray-300"
-            }`}
-          >
-            Cancel
-          </button>
-          <button
-            disabled={busy}
-            onClick={() =>
-              onSubmit(
-                reason.trim(),
-                Object.entries(notes)
-                  .map(([n, note]) => ({ n: Number(n), note: note.trim() }))
-                  .filter((f) => f.note)
-              )
-            }
-            className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white
-                       hover:bg-red-700 disabled:opacity-50"
-          >
-            Decline &amp; send feedback
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -307,8 +298,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [openCaption, setOpenCaption] = useState<string | null>(null);
-  const [lightbox, setLightbox] = useState<{ slides: Slide[]; index: number } | null>(null);
-  const [declining, setDeclining] = useState<PendingPost | null>(null);
+  const [lightbox, setLightbox] = useState<{ slides: Slide[]; index: number; postId: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -344,7 +334,6 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
       await load();
     } finally {
       setBusy(null);
-      setDeclining(null);
     }
   }
 
@@ -374,7 +363,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
               key={p.id}
               className={`rounded-lg border p-4 ${isLight ? "border-gray-200" : "border-gray-800"}`}
             >
-              <Carousel slides={p.slides} isLight={isLight} onEnlarge={(sl,i)=>setLightbox({slides:sl,index:i})} />
+              <Carousel slides={p.slides} isLight={isLight} onEnlarge={(sl,i)=>setLightbox({slides:sl,index:i,postId:p.id})} />
 
               <div className="mt-3">
                 <div className={`font-medium text-sm truncate ${textPrimary}`}>
@@ -437,7 +426,7 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
                   </button>
                   <button
                     disabled={busy === p.id}
-                    onClick={() => setDeclining(p)}
+                    onClick={() => act(p.id, "decline")}
                     className={`inline-flex items-center justify-center gap-1.5 rounded-lg border
                                 px-3 py-1.5 text-sm disabled:opacity-50
                                 ${isLight ? "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -456,22 +445,14 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
         <Lightbox
           slides={lightbox.slides}
           index={lightbox.index}
+          postId={lightbox.postId}
           onClose={() => setLightbox(null)}
           onIndex={(i) => setLightbox((lb) => (lb ? { ...lb, index: i } : lb))}
+          onImprinted={() => { setLightbox(null); load(); }}
         />
       )}
 
-      {declining && (
-        <DeclineModal
-          post={declining}
-          isLight={isLight}
-          busy={busy === declining.id}
-          onCancel={() => setDeclining(null)}
-          onSubmit={(reason, slideFeedback) =>
-            act(declining.id, "decline", { reason, slideFeedback })
-          }
-        />
-      )}
+
     </div>
   );
 }

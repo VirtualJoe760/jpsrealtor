@@ -44,6 +44,9 @@ export interface StagingVerdict {
   confidence: number;
   /** Set when the check itself failed — treated as a FAIL, never a pass. */
   error?: string;
+  /** Posture/expression of the added figure, so a batch can enforce variety. */
+  posture?: string | null;
+  expression?: string | null;
   /** Non-blocking observations — worth a glance, never a rejection. */
   notes?: string[];
   /** Both descriptions, for showing the agent WHY something was rejected. */
@@ -67,7 +70,9 @@ export interface StagingVerdict {
  * work, and a floor that reads "terracotta tile" in one and "hardwood" in the
  * other is unmissable.
  */
-const DESCRIBE_PROMPT = `Describe this room photograph factually. Ignore any people entirely.
+const DESCRIBE_PROMPT = `Describe this room photograph factually.
+
+Describe the ROOM as if no person were present — if someone is standing in front of a sofa, the sofa is still there. Do not let a person's presence change how you describe the furniture, flooring or fixtures. Separately, report that person's posture and expression in the person_ fields.
 
 Reply ONLY with JSON, no markdown fence:
 {
@@ -79,8 +84,14 @@ Reply ONLY with JSON, no markdown fence:
   "ceiling": "<short: material/colour/beams/fan>",
   "major_furniture": ["<piece + colour>", ...],
   "fixtures": ["<light fittings, pot racks, fans, built-ins>", ...],
-  "notable_features": ["<fireplace, island, staircase, neon sign, etc>", ...]
+  "notable_features": ["<fireplace, island, staircase, neon sign, etc>", ...],
+  "has_blank_band": <bool>,
+  "person_posture": "<standing|seated|leaning|walking|none>",
+  "person_expression": "<smiling|neutral|laughing|none>",
+  "person_defects": ["<duplicated limb, malformed hand, second partial person, invented text>", ...]
 }
+
+"has_blank_band": true if ANY edge of the image has a strip of flat white or grey where the picture simply stops — a generation artifact, not part of the room. Check the bottom edge especially.
 
 Be concrete and literal. Name materials, not moods.`;
 
@@ -110,37 +121,59 @@ async function toPart(url: string) {
  * publishing an altered photo of someone else's listing because a fetch
  * timed out.
  */
+export async function describeImage(url: string): Promise<any> {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+  const part = await toPart(url);
+  const res: any = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [part, { text: DESCRIBE_PROMPT }] }],
+  });
+  const text: string =
+    res?.candidates?.[0]?.content?.parts?.find((p: any) => p?.text)?.text || "";
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("unparseable description");
+  return JSON.parse(m[0]);
+}
+
 export async function verifyStagedPhoto(opts: {
   originalUrl: string;
   stagedUrl: string;
+  /**
+   * Pre-computed description of the ORIGINAL, from describeImage().
+   *
+   * Pass this when retrying the same source photo. The describer is not
+   * deterministic — the same untouched frame came back "[tile, hardwood]" on
+   * one call and "[tile, hardwood, terracotta]" on the next — so re-describing
+   * the original each take means comparing against a baseline that moves,
+   * which rejects good images for differences that exist only between two
+   * descriptions of the same unchanged photo. It also halves the cost.
+   */
+  originalDescription?: any;
 }): Promise<StagingVerdict> {
   if (!process.env.GEMINI_API_KEY) {
     return { pass: false, changes: [], confidence: 0, error: "GEMINI_API_KEY not set" };
   }
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    const describe = async (url: string) => {
-      const part = await toPart(url);
-      const res: any = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [{ role: "user", parts: [part, { text: DESCRIBE_PROMPT }] }],
-      });
-      const text: string =
-        res?.candidates?.[0]?.content?.parts?.find((p: any) => p?.text)?.text || "";
-      const m = text.match(/\{[\s\S]*\}/);
-      if (!m) throw new Error("unparseable description");
-      return JSON.parse(m[0]);
-    };
 
     // Describe independently — neither call sees the other image, so neither
     // can be talked into agreeing with it.
     const [orig, staged] = await Promise.all([
-      describe(opts.originalUrl),
-      describe(opts.stagedUrl),
+      opts.originalDescription ?? describeImage(opts.originalUrl),
+      describeImage(opts.stagedUrl),
     ]);
 
     const changes: string[] = [];
+
+    // Generation artifacts. Outright rejects — no judgement needed, and cheap to
+    // check. A white strip along the bottom edge shipped in a reviewed post
+    // because it is easy to miss on a small thumbnail.
+    if (staged?.has_blank_band === true) {
+      changes.push("BLANK BAND at an edge — generation artifact");
+    }
+    const defects: string[] = Array.isArray(staged?.person_defects) ? staged.person_defects : [];
+    if (defects.length) {
+      changes.push(`figure defects: ${defects.slice(0, 3).join("; ")}`);
+    }
 
     // Flooring is compared as a SET of materials, not a string. The model
     // answers "hardwood and tile" one run and "hardwood" the next for the same
@@ -215,6 +248,8 @@ export async function verifyStagedPhoto(opts: {
       changes,
       notes,
       confidence: changes.length === 0 ? 1 : 0,
+      posture: staged?.person_posture || null,
+      expression: staged?.person_expression || null,
       details: { original: orig, staged },
     };
   } catch (err: any) {
