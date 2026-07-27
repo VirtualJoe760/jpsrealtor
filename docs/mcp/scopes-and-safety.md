@@ -1,8 +1,8 @@
 ---
 title: MCP Scopes, Rate Limits, and Safety
 status: current
-last_verified: 2026-07-23
-related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md]
+last_verified: 2026-07-26
+related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md, ../content-templates/README.md]
 ---
 
 # MCP Scopes, Rate Limits, and Safety
@@ -12,6 +12,43 @@ related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md]
 > `McpToolCallLog` collection, daily spend cap, and two-call confirmation
 > flow for `campaigns:send` remain design-only — they land with the
 > campaigns tools in Phase 3/4.
+
+## GOTCHA: connectors freeze scopes AND tool schemas at connect time
+
+Cost us three failed cycles on 2026-07-26. Read this before iterating on tools.
+
+A connected MCP client caches **both** the granted scopes and the full
+`tools/list` schema from the moment it connects. Nothing you ship reaches it
+until the agent reconnects:
+
+| You ship | Connected client sees | Looks like |
+|---|---|---|
+| A new tool | nothing | "the deploy didn't land" |
+| A new **parameter** on an existing tool | parameter **silently stripped** | "the route is ignoring my argument" |
+| A new scope on the token | old scope set | "the endpoint is broken" |
+
+The parameter case is the nastiest: the cached schema carries
+`additionalProperties: false`, so the client drops the unknown field **before
+the request is sent**. The route never sees it, returns a perfectly valid
+response computed from the remaining args, and every signal points at a
+backend bug. Adding `photoIndexes` to `stage_listing_with_agent` failed this
+way — repeatedly, while the deploy was fine the whole time.
+
+**Rules:**
+
+- **Never iterate on tool surface through a live connector.** Test routes
+  directly (`curl` with a `crt_live_` token) or via the stdio server, where a
+  restart re-reads the schema.
+- **Verify the surface before blaming the backend.** If an argument seems
+  ignored, re-read the tool's schema as the client sees it. If the parameter
+  isn't there, it never left the client.
+- **Reconnecting is a user action with a decision in it** — the authorize page
+  validates a *pasted* token, and its scopes become the grant. Minting a
+  correctly-scoped token does nothing until that specific token is the one
+  pasted. Say which token, by name and last-4.
+- If you find yourself asking for a reconnect a second time, stop: the loop is
+  the problem. For first-party work, use the local script path
+  (see [content-templates/](../content-templates/)).
 
 ## Token scope model
 
