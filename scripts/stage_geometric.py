@@ -861,6 +861,27 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
     raise RuntimeError("no image returned")
 
 
+def check_guides(img):
+    """Reject a take that DREW the guide marks instead of following them.
+
+    The prompt says the red box and the blue skeleton are guides only, and the
+    model mostly obeys - but on a queued game-room slide it painted the cyan
+    skeleton straight onto his legs and arm, and nothing caught it because no
+    gate looked. Telling the model not to do something is not a control; a
+    check is. Both guide colours are far outside any listing-photo palette, so
+    residue is unambiguous.
+    """
+    a = np.array(img).astype(np.int16)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    cyan = (b > 200) & (g > 170) & (r < 110) & ((b - r) > 120)
+    red = (r > 200) & (g < 70) & (b < 70)
+    n = int(cyan.sum() + red.sum())
+    if n > 350:
+        raise RuntimeError(
+            "guide marks were drawn into the render ({} px of skeleton/box)".format(n))
+    return n
+
+
 def check_identity(gen, ref, tier):
     """Reject a take whose face is not his. Runs on the RENDER, before anything
     is composited, so a stranger never reaches an image we might publish."""
@@ -884,6 +905,7 @@ def compose_reaction(base, gen, pm, side, feat_box=None, ref=None):
     are no feet to put on a floor and no full height to measure, so checking
     for them would reject every correct frame. What matters instead is that he
     stayed at the edge, stayed big, and left the room visible."""
+    check_guides(gen)
     sim = check_identity(gen, ref, "reaction")
     ys, xs = np.where(pm)
     if len(ys) < 500:
@@ -948,7 +970,7 @@ def marker(img, x, y, h, pose_key, mode="standing"):
     j = POSES[pose_key]["j"]
     pt = lambda k: (x + j[k][0] * h, y - h + j[k][1] * h)
     for a, b in BONES:
-        dr.line([pt(a), pt(b)], fill=(0, 210, 255, 255), width=max(4, int(h * 0.012)))
+        dr.line([pt(a), pt(b)], fill=(0, 210, 255, 190), width=max(3, int(h * 0.008)))
     for k in j:
         r = h * (0.030 if k == "head" else 0.011)
         cx, cy = pt(k)
@@ -1073,6 +1095,7 @@ def render(img, mark, headshot, pose, wardrobe):
 # --------------------------------------------------------------- composite --
 def compose(base, gen, pm, floor, depth, f, mode="standing", sem=None, standable=None, ref=None):
     """Keep only the person; transfer their shadow as darken-only."""
+    check_guides(gen)
     sim = check_identity(gen, ref, "action")
     ys, xs = np.where(pm)
     if len(ys) < 500:
@@ -1320,6 +1343,33 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
 
 
 def main():
+    """CLI, and the interface the TypeScript generator drives.
+
+      python scripts/stage_geometric.py <image> [out.png]        one photo
+      python scripts/stage_geometric.py --batch <jobs.json>      many
+
+    --batch reads [{"src": "...", "out": "..."}] and prints ONE json line per
+    job to stdout, so build-pending-post.ts can spawn this once for a whole
+    listing rather than paying model-load cost per photo. Progress goes to
+    stderr; stdout stays parseable."""
+    if sys.argv[1] == "--batch":
+        jobs = json.load(open(sys.argv[2]))
+        used = set()
+        real_stdout, sys.stdout = sys.stdout, sys.stderr   # keep stdout clean
+        results = []
+        for j in jobs:
+            try:
+                img, plan = stage_one(pathlib.Path(j["src"]), j["out"], used_poses=used)
+                results.append({"src": j["src"], "out": j["out"], "ok": img is not None,
+                                "room": plan.get("room"), "feature": plan.get("feature"),
+                                "action": plan.get("action") or plan.get("reaction"),
+                                "tier": plan.get("tier", "action")})
+            except Exception as e:
+                results.append({"src": j["src"], "out": j["out"], "ok": False,
+                                "error": str(e)[:200]})
+        sys.stdout = real_stdout
+        print(json.dumps(results))
+        return
     src = pathlib.Path(sys.argv[1])
     stage_one(src, sys.argv[2] if len(sys.argv) > 2 else "staged.png")
 

@@ -261,10 +261,23 @@ false-accept a near-stranger in close-up.
 
 A failed take is retried, not published.
 
-> **Known trade-off:** the face plate anchors identity so strongly that it can
-> pull the headshot's *expression* along with it — a `wow` reaction came back
-> smiling. Expression variety and identity fidelity pull against each other
-> here; watch for it on reaction shots.
+### Structure is not expression
+
+The face plate initially anchored identity so hard it dragged the headshot's
+*smile* with it — a `wow` reaction came back beaming, which is the wrong
+photograph even though the face was finally right.
+
+They are different things to copy, and the crop conflates them unless the
+prompt says otherwise: **the face crop is for BONE STRUCTURE ONLY** — nose
+shape and width, eye set and spacing, brow, jawline, chin, hairline, skin tone
+and texture — and explicitly *not* for the expression, smile or head angle,
+which come from the action or reaction direction instead. The reaction prompt
+goes further and states that returning the headshot smile means the shot has
+failed.
+
+With that split stated, the same frame returned a genuine open-mouthed `wow`
+at cosine **0.513** against the 0.34 bar for that face size. Identity anchored,
+expression free.
 
 ---
 
@@ -284,7 +297,7 @@ outside the figure ever gets brighter.
 | Scale ratio 0.70–1.32× | Giants and dolls, judged against the body mode |
 | Largest component only | **Hallucinated extra people** — segmentation labels every person in frame, so a second invented figure would otherwise be composited into a client's listing photo |
 | Room drift | Shadow transfer skipped if the frames no longer align |
-| **Identity (ArcFace)** | **A face that is not his � threshold keyed to face size, see �8** |
+| **Identity (ArcFace)** | **A face that is not his � threshold keyed to face size, see �8** |
 | Reaction: edge / height / width / feature overlap | Figure that wandered off the edge, shrank to full body, or covered the feature |
 
 **Occluded legs are not missing legs.** Leaning on an island puts the lower body

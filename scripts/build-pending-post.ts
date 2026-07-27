@@ -13,9 +13,9 @@
  * agent.
  *
  * Pipeline:
- *   look at photos  → selectStagingPhotos (affordance rule, per-frame placement)
- *   stage           → Gemini, edit-not-generate, native 4:5
- *   VERIFY          → verifyStagedPhoto; anything that altered the room is dropped
+ *   look at photos  → selectStagingPhotos narrows the set
+ *   stage           → scripts/stage_geometric.py: read → crop → depth/floor →
+ *                     render the agent USING the room → geometry + identity gates
  *   band            → room label + caption over each surviving photo
  *   cover           → simple-luxury
  *   cma             → only when the subdivision actually has closed-sale stats
@@ -29,17 +29,7 @@ import mongoose from "mongoose";
 import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 import { selectStagingPhotos } from "../src/lib/content/select-staging-photos";
-import { verifyStagedPhoto, describeImage } from "../src/lib/content/verify-staged-photo";
-import { stageByComposite, type Wardrobe } from "../src/lib/content/stage-composite";
-
-// Wardrobe follows the scene. A dark suit by the pool reads wrong; shorts in
-// the formal living room reads wrong the other way.
-const ROOM_WARDROBE: Record<string, Wardrobe> = {
-  pool: "business_casual",
-  outdoor_living: "business_casual",
-  game_room: "business_casual",
-  kitchen: "business_casual",
-};
+import { stageGeometric } from "../src/lib/content/stage-geometric";
 import { buildSimpleLuxuryTransformations } from "../src/lib/cover-templates/simple-luxury";
 
 const {
@@ -61,8 +51,6 @@ const HEADSHOT_ID = "headshots/head-shot-2026";
 const BROKER_LOGO_ID = "jpsrealtor/logos/EXP-Black-square";
 const HANDLE = "@instadella";
 const AGENT_EMAIL = "josephsardella@gmail.com";
-
-import { STAGING_BASE_PROMPT as BASE_PROMPT, POSTURE_VARIATIONS } from "../src/lib/content/staging-prompt";
 
 async function b64(url: string) {
   const r = await fetch(url);
@@ -124,132 +112,55 @@ function code() {
   for (const s of selected.slice(0, WANT_SLIDES)) console.log(`   #${s.index} ${s.room} — ${s.placementDetail}`);
   if (selected.length === 0) throw new Error("no stageable photos");
 
-  // ---- 2. STAGE + 3. VERIFY ---------------------------------------------
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-  const head = await b64(HEADSHOT_URL);
-  const staged: Array<{ url: string; publicId: string; room: string; index: number }> = [];
+  // ---- 2. STAGE (geometric) ----------------------------------------------
+  // Handed wholesale to scripts/stage_geometric.py, which reads each photo
+  // BEFORE cropping, proves a standing spot against a fitted floor plane,
+  // renders the agent USING the room (or reacting at the frame edge when there
+  // is nothing worth using), and verifies identity with ArcFace. See
+  // docs/content-templates/actor-generation.md.
+  //
+  // Everything the old block did here — placement prose, posture rotation,
+  // room-preservation QC — is now either structural or a numeric gate inside
+  // that script, so none of it is duplicated on this side.
+  const staged: Array<{ url: string; publicId: string; room: string; index: number;
+                        feature?: string; action?: string }> = [];
 
-  // Retry a rejected frame before abandoning it. A rejection means THAT ROLL
-  // repainted something, not that the photo is unusable — the model is
-  // sampling, so the next take from the same input often preserves the room.
-  const MAX_TAKES = 3;
+  const jobs = selected.slice(0, WANT_SLIDES + 3).map((s) => ({
+    photoUrl: photoUrls[s.index],
+    index: s.index,
+  }));
+  console.log(`2. staging ${jobs.length} candidates for ${WANT_SLIDES} slots…`);
+
+  const results = await stageGeometric(jobs, {
+    onProgress: (line) => console.log("   " + line),
+  });
+
   const usedRooms = new Set<string>();
-
-  // Posture and expression must VARY across a batch — four standing shots read
-  // as one pose with the background swapped, which is exactly what a reviewer
-  // called out. Alternate seated/standing and rotate the expression, and reject
-  // a take whose posture duplicates one already accepted.
-  // See actor-generation.md §3c.
-  const VARIATION = POSTURE_VARIATIONS;
-  const usedPostures = new Set<string>();
-
-  const COMPOSITE_POSES = [
-    "STANDING, weight on one leg, hands relaxed at their sides. Warm, natural smile. Looking at the camera.",
-    "STANDING, half-turned into the room, hands loosely clasped in front. Calm, easy expression. Looking into the room.",
-    "WALKING, caught mid-stride, arms natural. Relaxed, candid. Looking slightly off-camera.",
-    "STANDING, one hand in trouser pocket, the other relaxed. Slight laugh, mid-conversation. Looking at the camera.",
-  ];
-
-  for (const s of selected) {
+  for (const r of results) {
     if (staged.length >= WANT_SLIDES) break;
-    if (usedRooms.has(s.room)) continue; // keep the walkthrough varied
-
-    // COMPOSITE FIRST: the actor is generated alone, matted, and planted on
-    // the untouched original — the room cannot change because no image model
-    // ever receives it. Falls back to edit+QC when the composite retakes run
-    // out (or a contact pose is wanted for this room).
-    try {
-      const comp = await stageByComposite({
-        photoUrl: photoUrls[s.index],
-        headshotUrl: HEADSHOT_URL,
-        placement: s.placementDetail,
-        poseDirection: COMPOSITE_POSES[staged.length % COMPOSITE_POSES.length],
-        wardrobe: ROOM_WARDROBE[s.room] || "business_professional",
-      });
-      const up = await cloudinary.uploader.upload(
-        "data:image/png;base64," + comp.png.toString("base64"),
-        { folder: `jpsrealtor/pending/${slug}/staged` }
-      );
-      // Figure-defect check only; room checks are moot on a composite.
-      const v = await verifyStagedPhoto({ originalUrl: photoUrls[s.index], stagedUrl: up.secure_url });
-      const figureIssues = (v.changes || []).filter((c) => /figure|blank band/i.test(c));
-      if (figureIssues.length === 0) {
-        console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… PASS (room untouched by construction)`);
-        staged.push({ url: up.secure_url, publicId: up.public_id, room: s.room, index: s.index });
-        usedRooms.add(s.room);
-        continue;
-      }
-      console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… figure rejected — ${figureIssues[0]}`);
-      await cloudinary.uploader.destroy(up.public_id).catch(() => {});
-    } catch (e: any) {
-      console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… fell back — ${String(e.message).slice(0, 80)}`);
+    if (!r.ok || !r.png) {
+      console.log(`   #${r.index} rejected — ${r.error}`);
+      continue;
     }
-
-    const src = await b64(photoUrls[s.index]);
-    // Describe the ORIGINAL once per photo and reuse it across takes, so the
-    // baseline cannot drift between retries of the same frame.
-    let baseline: any = null;
-    try { baseline = await describeImage(photoUrls[s.index]); } catch {}
-    for (let take = 1; take <= MAX_TAKES; take++) {
-      process.stdout.write(`2. staging #${s.index} (${s.room}) take ${take}… `);
-      try {
-        const res: any = await ai.models.generateContent({
-          model: "gemini-2.5-flash-image",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { inlineData: { data: src.data, mimeType: src.mimeType } },
-                { inlineData: { data: head.data, mimeType: head.mimeType } },
-                {
-                  text:
-                    `${BASE_PROMPT}` +
-                    `\n\nWHERE TO PUT THEM IN THIS SPECIFIC PHOTOGRAPH: ${s.placementDetail}` +
-                    `\n\nPOSTURE AND EXPRESSION FOR THIS SLIDE — must differ from the other slides in this set: ${VARIATION[staged.length % VARIATION.length]}`,
-                },
-              ],
-            },
-          ],
-          config: { imageConfig: { aspectRatio: "4:5", imageSize: "2K" } },
-        });
-        const img = (res?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
-        if (!img) throw new Error("no image returned");
-
-        const up = await cloudinary.uploader.upload(
-          `data:image/png;base64,${img.inlineData.data}`,
-          { folder: `jpsrealtor/pending/${slug}/staged` }
-        );
-
-        // QC before it is allowed anywhere near the queue.
-        const v = await verifyStagedPhoto({
-          originalUrl: photoUrls[s.index],
-          stagedUrl: up.secure_url,
-          originalDescription: baseline,
-        });
-        if (!v.pass) {
-          console.log(`rejected — ${v.changes.join("; ") || v.error}`);
-          // Don't keep a rejected asset around; it must never be reachable.
-          await cloudinary.uploader.destroy(up.public_id).catch(() => {});
-          continue;
-        }
-        // "none" means the describer did not report a posture, not that two
-        // slides share one — treating it as a duplicate rejected good takes.
-        if (v.posture && v.posture !== "none" && usedPostures.has(v.posture) && take < MAX_TAKES) {
-          console.log(`rejected — posture "${v.posture}" already used on another slide`);
-          await cloudinary.uploader.destroy(up.public_id).catch(() => {});
-          continue;
-        }
-        if (v.posture) usedPostures.add(v.posture);
-        console.log("PASS" + (v.notes?.length ? `  (note: ${v.notes[0]})` : ""));
-        staged.push({ url: up.secure_url, publicId: up.public_id, room: s.room, index: s.index });
-        usedRooms.add(s.room);
-        break;
-      } catch (e: any) {
-        console.log(`failed — ${e.message}`);
-      }
+    const room = r.room || "room";
+    if (usedRooms.has(room)) {
+      console.log(`   #${r.index} skipped — already have a ${room}`);
+      continue;
     }
+    const up = await cloudinary.uploader.upload(
+      "data:image/png;base64," + r.png.toString("base64"),
+      { folder: `jpsrealtor/pending/${slug}/staged` }
+    );
+    console.log(`   #${r.index} PASS (${room}, ${r.tier}) — ${r.action}`);
+    staged.push({ url: up.secure_url, publicId: up.public_id, room, index: r.index,
+                  feature: r.feature, action: r.action });
+    usedRooms.add(room);
   }
-  if (staged.length < 2) throw new Error(`only ${staged.length} photo(s) survived QC; need at least 2`);
+
+  if (staged.length === 0) throw new Error("no photo survived staging");
+  if (staged.length < WANT_SLIDES) {
+    console.log(`   only ${staged.length}/${WANT_SLIDES} slides survived — continuing`);
+  }
 
   // ---- 4. BAND ------------------------------------------------------------
   console.log("3. banding rooms…");
