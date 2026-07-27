@@ -35,6 +35,21 @@ function reviewUrl(): string {
 }
 
 /**
+ * Alerts go out on a DEDICATED number, separate from the client-facing one.
+ *
+ * Two reasons. Practically, it gives the agent one thread that is only ever
+ * the platform talking to them, so an approval reply can't land in the middle
+ * of a client conversation. Structurally, it keeps platform→agent traffic off
+ * the number whose A2P campaign is registered for agent→consumer messaging.
+ *
+ * Falls back to the shared platform number if unset, so nothing breaks before
+ * the env var is deployed.
+ */
+function alertFrom(): string | undefined {
+  return process.env.TWILIO_ALERT_NUMBER || undefined;
+}
+
+/**
  * "2 posts ready to review."
  * @param posts each needs its approvalCode and a human label.
  */
@@ -59,6 +74,7 @@ export async function notifyPostsReady(opts: {
 
     await sendSMS({
       to,
+      from: alertFrom(),
       body: [
         `📸 ${n} post${n === 1 ? "" : "s"} ready to review`,
         ...lines,
@@ -85,6 +101,7 @@ export async function notifyPostSlotDue(opts: {
     if (!to) return;
     await sendSMS({
       to,
+      from: alertFrom(),
       body: [
         `⏰ Ready to post: ${opts.label}`,
         `Not approved yet. Reply POST ${opts.approvalCode} within ${Math.round(opts.graceMinutes / 60)}h or it moves to the next slot.`,
@@ -106,6 +123,7 @@ export async function notifyPostPublished(opts: {
     if (!to) return;
     await sendSMS({
       to,
+      from: alertFrom(),
       body: [`✅ Posted: ${opts.label}`, opts.permalink || undefined]
         .filter(Boolean)
         .join("\n"),

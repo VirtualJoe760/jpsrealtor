@@ -96,7 +96,14 @@ export async function POST(request: NextRequest) {
 
     // --- Multi-tenant routing: the `To` number identifies the AGENT who owns it.
     let ownerUser = await User.findOne({ 'messaging.twilioNumber': twilioData.To });
-    if (!ownerUser && twilioData.To === process.env.TWILIO_PHONE_NUMBER) {
+    if (
+      !ownerUser &&
+      (twilioData.To === process.env.TWILIO_PHONE_NUMBER ||
+        // Platform→agent alert number. Inbound here is the agent replying to a
+        // notification (e.g. "POST A4"), never a client, so it resolves to the
+        // primary agent the same way the legacy shared number does.
+        (process.env.TWILIO_ALERT_NUMBER && twilioData.To === process.env.TWILIO_ALERT_NUMBER))
+    ) {
       // Legacy shared env number → the platform/primary agent (NOT an arbitrary "first user").
       const primaryEmail = process.env.PRIMARY_AGENT_EMAIL || 'josephsardella@gmail.com';
       ownerUser = await User.findOne({ email: primaryEmail });
