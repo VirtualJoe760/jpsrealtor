@@ -68,7 +68,7 @@ NL = "\n"
 # The BODY MODE is bounded, because physics is. Only four modes change how tall
 # a person stands on screen, and the scale gate must know which one it judges -
 # a man bent over a pool table is not a failed standing man.
-# THE SECOND TIER. Not every photograph contains something worth using ï¿½ a
+# THE SECOND TIER. Not every photograph contains something worth using - a
 # handsome empty room, a view, a volume of space. Forcing an action there is
 # what produced the man standing in the middle of a room with his arm out.
 # Instead he comes to the EDGE of frame, close to the lens, waist-up, and
@@ -935,13 +935,13 @@ def compose_reaction(base, gen, pm, side, feat_box=None, ref=None):
 
 
 def marker(img, x, y, h, pose_key, mode="standing"):
-    """A POSITION DIAGRAM on its own canvas — never marks drawn on the room.
+    """A POSITION DIAGRAM on its own canvas - never marks drawn on the room.
 
     Overlaying a bright box and skeleton onto the room photo and then asking for
     that room back without them fights the model, and it loses: 8 of 19 takes in
     one run came back with the guide painted onto the figure, all correctly
     rejected but all wasted. Put the guide on a SEPARATE canvas of identical
-    dimensions and there is no marked-up room to copy — the coordinates still
+    dimensions and there is no marked-up room to copy - the coordinates still
     map one-to-one."""
     from PIL import ImageDraw
     g = Image.new("RGB", img.size, (26, 26, 30))
