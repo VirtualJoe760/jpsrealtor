@@ -108,6 +108,32 @@ luxury format. Selection must filter to `A`, require enough photos to stage
 (`photosCount >= 12`), and apply a price floor. "Newest" alone picks the wrong
 listing.
 
+## Pool depth and what it means for cadence
+
+Measured 2026-07-26:
+
+| Filter | Count |
+|---|---|
+| Active, team pool, all types | 40 |
+| Sales only (`propertyType: 'A'`) | 24 |
+| Sales with ≥12 photos (stageable) | **22** |
+| …and ≥$500k | 12 |
+
+**At 3 posts/week the whole team's stageable inventory is consumed in about
+seven weeks** — and under four weeks if a $500k floor is applied. New listings
+replenish it, but not at 12/month.
+
+Two consequences:
+
+1. **Don't apply a hard luxury price floor.** The team's stageable sales run
+   roughly $300k–$950k; a $500k cut halves the pool for no real gain. The
+   template is editorial, not luxury-exclusive — the copy should carry the
+   price point rather than the selection filter.
+2. **One post type is not enough to sustain 3/week indefinitely.** New-listing
+   carousels alone will start repeating properties. Price improvements, open
+   houses, just-sold, and the reel format all widen the rotation. Worth
+   planning for before the cadence outruns the inventory.
+
 ## Pipeline
 
 ```
