@@ -88,7 +88,7 @@ Reply ONLY with JSON, no markdown fence:
   "has_blank_band": <bool>,
   "person_posture": "<standing|seated|leaning|walking|none>",
   "person_expression": "<smiling|neutral|laughing|none>",
-  "person_defects": ["<duplicated limb, malformed hand, second partial person, invented text>", ...]
+  "person_defects": ["<duplicated limb, malformed hand, second partial person, invented text, body fused with or clipping through furniture, anatomically impossible sitting position, legs merging into a chair>", ...]
 }
 
 "has_blank_band": true if ANY edge of the image has a strip of flat white or grey where the picture simply stops — a generation artifact, not part of the room. Check the bottom edge especially.

@@ -49,6 +49,7 @@ Each requires its prerequisite to be visibly in the frame.
 | **Leaning on a counter or railing** | counter, bar, or balcony rail at waist height | casual, unposed |
 | **Poolside — seated on a lounger or standing at the deck edge** | pool deck with loungers or open decking | leisure, the desert-lifestyle shot |
 | **Seated at the dining table** | dining table with pulled-out chair or open seat | entertaining |
+| **Seated on the edge of the bed** | a made bed, shot wide enough to sit on its edge, feet on the floor | at-home, editorial |
 | **Standing in open living space, mid-conversation** | genuinely open floor, furniture behind them | walkthrough, natural |
 
 Vary the placement across a carousel. Four slides of the same stance reads as a
@@ -89,8 +90,11 @@ contain the feature being sold.
 ## 3. Never place the actor here
 
 - **Bathrooms or showers.** Ever. Regardless of how good the room looks.
-- **Bedrooms**, unless it's a sitting area within the bedroom and they are
-  clearly seated in a chair — never on or beside the bed.
+- **Bedrooms, lying down.** Seated is fine — a chair, or the EDGE of a made
+  bed with feet on the floor (owner-corrected 2026-07-27: an earlier version
+  of this doc banned beds outright; that was the assistant's inference, not
+  the owner's rule, and it produced a deformed-in-a-chair render where
+  sitting on the bed was the natural shot).
 - **Corners, narrow hallways, or against a blank wall.** Nowhere to be.
 - **Staircases** — the base, the landing, or mid-flight. There's no natural
   reason to stand there and the geometry fights the figure.

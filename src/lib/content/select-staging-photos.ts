@@ -28,7 +28,7 @@ export type RoomKind =
 /** Placements from actor-generation.md §2. */
 export type Placement =
   | "seated_chair" | "seated_sofa" | "standing_counter" | "leaning_counter"
-  | "poolside" | "seated_dining" | "standing_open";
+  | "poolside" | "seated_dining" | "standing_open" | "seated_bed";
 
 export interface PhotoAssessment {
   index: number;
@@ -69,8 +69,8 @@ const BANNED_ROOMS: RoomKind[] = ["bathroom", "hallway", "detail", "aerial", "en
  * because the model will not.
  */
 const ROOM_PLACEMENT_WHITELIST: Partial<Record<RoomKind, Placement[]>> = {
-  bedroom: ["seated_chair"],
-  primary_bedroom: ["seated_chair"],
+  bedroom: ["seated_chair", "seated_bed"],
+  primary_bedroom: ["seated_chair", "seated_bed"],
 };
 
 /**
@@ -120,6 +120,7 @@ placement must be one of these when stageable, else null:
 - leaning_counter    (counter, bar or balcony rail at waist height)
 - poolside           (pool deck with loungers or open decking)
 - seated_dining      (dining table with an open or pulled-out chair)
+- seated_bed         (sitting on the EDGE of a made bed, feet on the floor — never lying down)
 - standing_open      (genuinely open floor with furniture behind, room to stand)
 
 "appeal" is how good the photo is as a marketing image: light, composition, how much of the room it shows.`;
@@ -169,7 +170,9 @@ async function assessOne(
     // The whitelist gates the ENUM, but placementDetail is free text and can
     // still say "seated on the bed" while claiming seated_chair. A bedroom
     // slide with the agent on the bed shipped exactly that way.
-    const onTheBed = /on the bed|sitting on the bed|edge of the bed/.test(detail);
+    // Sitting on the EDGE of a made bed is an approved placement (owner
+    // corrected an earlier blanket ban). Only LYING on it stays out.
+    const onTheBed = /(lying|laying|reclin)/.test(detail);
     const placementOk =
       !!placement && (!allowed || allowed.includes(placement)) && !onTheBed;
     const stageable = !!j.stageable && !BANNED_ROOMS.includes(room) && placementOk;
