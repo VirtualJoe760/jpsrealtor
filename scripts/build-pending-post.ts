@@ -30,6 +30,7 @@ import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 import { selectStagingPhotos } from "../src/lib/content/select-staging-photos";
 import { verifyStagedPhoto, describeImage } from "../src/lib/content/verify-staged-photo";
+import { stageByComposite } from "../src/lib/content/stage-composite";
 import { buildSimpleLuxuryTransformations } from "../src/lib/cover-templates/simple-luxury";
 
 const {
@@ -52,9 +53,7 @@ const BROKER_LOGO_ID = "jpsrealtor/logos/EXP-Black-square";
 const HANDLE = "@instadella";
 const AGENT_EMAIL = "josephsardella@gmail.com";
 
-const BASE_PROMPT = require("fs")
-  .readFileSync("src/app/api/skill/images/agent-staged-listing/route.ts", "utf8")
-  .match(/const BASE_PROMPT = `([\s\S]*?)`;/)[1];
+import { STAGING_BASE_PROMPT as BASE_PROMPT, POSTURE_VARIATIONS } from "../src/lib/content/staging-prompt";
 
 async function b64(url: string) {
   const r = await fetch(url);
@@ -135,9 +134,46 @@ function code() {
   const VARIATION = POSTURE_VARIATIONS;
   const usedPostures = new Set<string>();
 
+  const COMPOSITE_POSES = [
+    "STANDING, weight on one leg, hands relaxed at their sides. Warm, natural smile. Looking at the camera.",
+    "STANDING, half-turned into the room, hands loosely clasped in front. Calm, easy expression. Looking into the room.",
+    "WALKING, caught mid-stride, arms natural. Relaxed, candid. Looking slightly off-camera.",
+    "STANDING, one hand in trouser pocket, the other relaxed. Slight laugh, mid-conversation. Looking at the camera.",
+  ];
+
   for (const s of selected) {
     if (staged.length >= WANT_SLIDES) break;
     if (usedRooms.has(s.room)) continue; // keep the walkthrough varied
+
+    // COMPOSITE FIRST: the actor is generated alone, matted, and planted on
+    // the untouched original — the room cannot change because no image model
+    // ever receives it. Falls back to edit+QC when the composite retakes run
+    // out (or a contact pose is wanted for this room).
+    try {
+      const comp = await stageByComposite({
+        photoUrl: photoUrls[s.index],
+        headshotUrl: HEADSHOT_URL,
+        placement: s.placementDetail,
+        poseDirection: COMPOSITE_POSES[staged.length % COMPOSITE_POSES.length],
+      });
+      const up = await cloudinary.uploader.upload(
+        "data:image/png;base64," + comp.png.toString("base64"),
+        { folder: `jpsrealtor/pending/${slug}/staged` }
+      );
+      // Figure-defect check only; room checks are moot on a composite.
+      const v = await verifyStagedPhoto({ originalUrl: photoUrls[s.index], stagedUrl: up.secure_url });
+      const figureIssues = (v.changes || []).filter((c) => /figure|blank band/i.test(c));
+      if (figureIssues.length === 0) {
+        console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… PASS (room untouched by construction)`);
+        staged.push({ url: up.secure_url, publicId: up.public_id, room: s.room, index: s.index });
+        usedRooms.add(s.room);
+        continue;
+      }
+      console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… figure rejected — ${figureIssues[0]}`);
+      await cloudinary.uploader.destroy(up.public_id).catch(() => {});
+    } catch (e: any) {
+      console.log(`2. staging #${s.index} (${s.room}) COMPOSITE… fell back — ${String(e.message).slice(0, 80)}`);
+    }
 
     const src = await b64(photoUrls[s.index]);
     // Describe the ORIGINAL once per photo and reuse it across takes, so the
