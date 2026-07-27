@@ -36,6 +36,17 @@ from floor_plane import intrinsics, unproject, fit_floor, PERSON_H
 
 OUT_W, OUT_H = 1080, 1350
 ADE_PERSON = 12  # ADE20K semantic class id for "person"
+
+# Structure and expression are different things to copy, and the face plate
+# conflates them unless told not to. Anchoring identity hard enough to fix a
+# stranger (cosine 0.039 -> 0.884) also dragged the headshot's SMILE along, so
+# a "wow" reaction came back beaming. Name the split explicitly.
+SEPARATE_STRUCTURE_FROM_EXPRESSION = (
+    "IMAGE 4 IS FOR BONE STRUCTURE ONLY, NOT FOR EXPRESSION. Copy from it the "
+    "geometry of the face - the shape and width of the nose, the set and spacing "
+    "of the eyes, the brow, the jawline and chin, the hairline, the skin tone and "
+    "texture. Do NOT copy the expression, the smile or the head angle in it; those "
+    "come from the direction below and will usually be different. ")
 # Tripod height for interior listing photography. This is the absolute length
 # the whole scale chain is anchored to - see the calibration note in analyse().
 ASSUMED_CAM_H = 1.45
@@ -819,10 +830,12 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
         + "It must look like a real reaction caught by a camera, not a stock pose - "
           "slightly off-centre, shoulders uneven, weight on one foot." + NL + NL
         + "IDENTITY - CRITICAL, his face is large in this framing: IMAGE 3 is the agent "
-          "and IMAGE 4 is a close crop of his face. Match IMAGE 4 feature for feature - "
-          "nose shape, eye set and spacing, eyebrows, jawline, chin, hairline, skin tone "
-          "and texture. Do NOT idealize, smooth, slim or beautify him, and do not "
-          "substitute a generically handsome face. It must be recognisably THIS man." + NL
+          "and IMAGE 4 is a close crop of his face. "
+        + SEPARATE_STRUCTURE_FROM_EXPRESSION
+        + "The expression you render is the REACTION described above, which is not the "
+          "expression in IMAGE 4 - if it comes out as his headshot smile the shot has "
+          "failed. Do NOT idealize, smooth, slim or beautify him, and do not substitute "
+          "a generically handsome face. It must be recognisably THIS man." + NL
         + "WARDROBE: " + wardrobe + NL + NL
         + "Light him with THIS ROOM's light - being nearer the lens he catches more of "
           "it - and keep him sharp against the room behind."
@@ -1025,12 +1038,11 @@ def render(img, mark, headshot, pose, wardrobe):
           "action means his back or profile is to the lens, that is correct and good. "
           "Show real physical contact with whatever he is using - hands actually on it, "
           "weight actually through it." + NL + NL
-        + "IDENTITY: IMAGE 3 is the agent and IMAGE 4 is a close crop of his face. The "
-          "rendered face must match IMAGE 4 feature for feature - the shape of the nose, "
-          "the set and spacing of the eyes, the eyebrows, the jawline and chin, the "
-          "hairline, the skin tone and texture. Do NOT idealize, smooth, slim or "
-          "beautify him, and do not substitute a generically handsome face. It must be "
-          "recognisably THIS man to someone who knows him." + NL + NL
+        + "IDENTITY: IMAGE 3 is the agent and IMAGE 4 is a close crop of his face. "
+        + SEPARATE_STRUCTURE_FROM_EXPRESSION
+        + "Do NOT idealize, smooth, slim or beautify him, and do not substitute a "
+          "generically handsome face. It must be recognisably THIS man to someone who "
+          "knows him." + NL + NL
         + "WARDROBE: " + wardrobe + NL + NL
         + "Light him with THIS ROOM's light - the same direction, colour temperature "
           "and softness as everything else in frame - and give him a believable "
