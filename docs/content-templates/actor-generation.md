@@ -218,14 +218,53 @@ exteriors; business casual in kitchen / game room / pool.
 
 ---
 
-## 8. Identity
+## 8. Identity — measured, not hoped for
 
 Match the source headshot **exactly** — hair colour and texture, face shape,
 jawline, skin tone, eye colour. **Do not idealize, smooth, or slim.** This is a
 real person's likeness on their own marketing.
 
-> **Known weakness:** identity drifts most in `reaction` framing, where the face
-> is largest in frame. Check the face on every reaction shot.
+**Two mechanisms, because the prompt alone was not remotely enough.**
+
+### The face plate
+
+The full headshot is mostly shoulders and background. When a render puts the
+face large in frame, the model has little facial detail to copy and drifts to a
+generic handsome face. Every render now also receives a **tight, upscaled crop
+of the reference face**, and the prompt names the features that must match —
+nose shape, eye set and spacing, eyebrows, jawline, chin, hairline, skin
+texture.
+
+Measured effect on a reaction render: ArcFace similarity **0.039 → 0.884**.
+
+### The identity gate
+
+Verified with ArcFace (`insightface`, buffalo_l) against the reference headshot,
+on the RENDER, before anything is composited — so a stranger never reaches an
+image we might publish.
+
+> **This is not a theoretical risk.** A reaction render scored **cosine 0.039**
+> — statistically a different man — while looking merely "slightly idealised" to
+> the eye. It would have gone out with someone else's face on the agent's own
+> marketing. Eyeballing does not catch this; only the number does.
+
+**The threshold scales with face size**, because the score tracks how much face
+there is to judge, not identity alone. A man bent over a pool table shows a
+small, angled, downcast face; a fixed bar would false-reject him there and
+false-accept a near-stranger in close-up.
+
+| Face height (of frame) | Minimum cosine |
+|---|---|
+| > 14% — a portrait | 0.45 |
+| 7–14% | 0.34 |
+| < 7% — small or angled | 0.22 (gross substitution only) |
+
+A failed take is retried, not published.
+
+> **Known trade-off:** the face plate anchors identity so strongly that it can
+> pull the headshot's *expression* along with it — a `wow` reaction came back
+> smiling. Expression variety and identity fidelity pull against each other
+> here; watch for it on reaction shots.
 
 ---
 
@@ -245,6 +284,7 @@ outside the figure ever gets brighter.
 | Scale ratio 0.70–1.32× | Giants and dolls, judged against the body mode |
 | Largest component only | **Hallucinated extra people** — segmentation labels every person in frame, so a second invented figure would otherwise be composited into a client's listing photo |
 | Room drift | Shadow transfer skipped if the frames no longer align |
+| **Identity (ArcFace)** | **A face that is not his � threshold keyed to face size, see �8** |
 | Reaction: edge / height / width / feature overlap | Figure that wandered off the edge, shrank to full body, or covered the feature |
 
 **Occluded legs are not missing legs.** Leaning on an island puts the lower body
