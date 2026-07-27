@@ -57,7 +57,7 @@ NL = "\n"
 # The BODY MODE is bounded, because physics is. Only four modes change how tall
 # a person stands on screen, and the scale gate must know which one it judges -
 # a man bent over a pool table is not a failed standing man.
-# THE SECOND TIER. Not every photograph contains something worth using — a
+# THE SECOND TIER. Not every photograph contains something worth using ï¿½ a
 # handsome empty room, a view, a volume of space. Forcing an action there is
 # what produced the man standing in the middle of a room with his arm out.
 # Instead he comes to the EDGE of frame, close to the lens, waist-up, and
@@ -75,6 +75,20 @@ REACTIONS = {
     "approving": "arms loosely folded, head tilted in a small satisfied nod, "
                  "an unforced half-smile",
 }
+
+# ArcFace cosine against the reference headshot, keyed to HOW BIG THE FACE IS.
+#
+# Measured on real renders: a stranger landed at 0.04, genuine matches at
+# 0.30-0.88. The spread is not all identity - it tracks face size. A man bent
+# over a pool table shows a small, angled, downcast face and ArcFace has little
+# to work with, so a fixed threshold would both false-reject him there and
+# false-accept a near-stranger in close-up. Judge strictly where the face is
+# large enough to judge, and treat the small-face case as a sanity check only.
+FACE_MIN_BY_SIZE = [
+    (0.14, 0.45),   # face taller than 14% of frame - a portrait, be strict
+    (0.07, 0.34),   # mid
+    (0.00, 0.22),   # small/angled - weak signal, only catch gross substitutions
+]
 
 BODY_MODES = {
     "standing":  1.00,
@@ -117,6 +131,74 @@ def semantic(img):
     up = torch.nn.functional.interpolate(
         logits, size=img.size[::-1], mode="bilinear", align_corners=False)
     return up.argmax(1)[0].cpu().numpy()
+
+
+# --------------------------------------------------------------- identity --
+# THE FACE HAS TO BE HIS. Measured with ArcFace against the real headshot, a
+# reaction render scored cosine 0.039 - statistically a STRANGER - while action
+# renders, where the face is small, sat at 0.34-0.59. Eyeballing called it
+# "slightly idealised"; the number called it a different man. Publishing that
+# would put someone else's face on the agent's own marketing, so identity is a
+# GATE with a threshold, not a line of hopeful prompt text.
+_FACE_APP = None
+_REF_EMB = None
+
+
+def _face_app():
+    global _FACE_APP
+    if _FACE_APP is None:
+        from insightface.app import FaceAnalysis
+        a = FaceAnalysis(name="buffalo_l",
+                         providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+        a.prepare(ctx_id=0, det_size=(640, 640))
+        _FACE_APP = a
+    return _FACE_APP
+
+
+def _largest_face(img):
+    im = np.array(img.convert("RGB"))[:, :, ::-1]
+    faces = _face_app().get(im)
+    if not faces:
+        return None
+    return max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+
+
+def face_ref(headshot):
+    """Cache the reference embedding once per run."""
+    global _REF_EMB
+    if _REF_EMB is None:
+        f = _largest_face(headshot)
+        if f is None:
+            raise RuntimeError("no face found in the reference headshot")
+        _REF_EMB = f.normed_embedding
+    return _REF_EMB
+
+
+def face_similarity(img, ref):
+    f = _largest_face(img)
+    if f is None:
+        return None
+    return float(np.dot(ref, f.normed_embedding))
+
+
+def face_plate(headshot, size=768):
+    """A tight, upscaled crop of the reference face.
+
+    The full headshot is mostly shoulders and background; when the render puts
+    the face large in frame the model has little facial detail to work from and
+    drifts toward a generic handsome face. Handing it the face big and sharp
+    gives it something to actually copy."""
+    f = _largest_face(headshot)
+    if f is None:
+        return headshot
+    x0, y0, x1, y1 = f.bbox
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    half = max(x1 - x0, y1 - y0) * 0.85
+    W, H = headshot.size
+    box = (max(0, int(cx - half)), max(0, int(cy - half * 1.15)),
+           min(W, int(cx + half)), min(H, int(cy + half * 1.15)))
+    return headshot.crop(box).resize((size, int(size * (box[3] - box[1]) / max(1, box[2] - box[0]))),
+                                     Image.LANCZOS)
 
 
 # ------------------------------------------------------------------- read --
@@ -736,8 +818,11 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
         + "WHAT HE IS DOING: " + reaction + NL
         + "It must look like a real reaction caught by a camera, not a stock pose - "
           "slightly off-centre, shoulders uneven, weight on one foot." + NL + NL
-        + "IDENTITY: the face must match IMAGE 3 exactly - hair colour and texture, face "
-          "shape, jawline, skin tone. Do not idealize, smooth or slim him." + NL
+        + "IDENTITY - CRITICAL, his face is large in this framing: IMAGE 3 is the agent "
+          "and IMAGE 4 is a close crop of his face. Match IMAGE 4 feature for feature - "
+          "nose shape, eye set and spacing, eyebrows, jawline, chin, hairline, skin tone "
+          "and texture. Do NOT idealize, smooth, slim or beautify him, and do not "
+          "substitute a generically handsome face. It must be recognisably THIS man." + NL
         + "WARDROBE: " + wardrobe + NL + NL
         + "Light him with THIS ROOM's light - being nearer the lens he catches more of "
           "it - and keep him sharp against the room behind."
@@ -750,6 +835,7 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
             {"inline_data": {"mime_type": "image/png", "data": b64(img)}},
             {"inline_data": {"mime_type": "image/png", "data": b64(mark)}},
             {"inline_data": {"mime_type": "image/png", "data": b64(headshot)}},
+            {"inline_data": {"mime_type": "image/png", "data": b64(face_plate(headshot))}},
             {"text": prompt}]}],
               "generationConfig": {"imageConfig": {"aspectRatio": "4:5", "imageSize": "2K"}}},
         timeout=180)
@@ -762,11 +848,30 @@ def render_reaction(img, mark, headshot, reaction, wardrobe, feature):
     raise RuntimeError("no image returned")
 
 
-def compose_reaction(base, gen, pm, side, feat_box=None):
+def check_identity(gen, ref, tier):
+    """Reject a take whose face is not his. Runs on the RENDER, before anything
+    is composited, so a stranger never reaches an image we might publish."""
+    if ref is None:
+        return None
+    f = _largest_face(gen)
+    if f is None:
+        raise RuntimeError("no face detected in the render")
+    sim = float(np.dot(ref, f.normed_embedding))
+    frac = (f.bbox[3] - f.bbox[1]) / OUT_H
+    need = next(t for lo, t in FACE_MIN_BY_SIZE if frac >= lo)
+    print("  face match         cos {:.3f} (need {:.2f}; face is {:.0%} of frame)".format(
+        sim, need, frac))
+    if sim < need:
+        raise RuntimeError("face is not him (cos {:.3f} < {:.2f})".format(sim, need))
+    return sim
+
+
+def compose_reaction(base, gen, pm, side, feat_box=None, ref=None):
     """Gates for an edge reaction. Deliberately NOT the standing gates: there
     are no feet to put on a floor and no full height to measure, so checking
     for them would reject every correct frame. What matters instead is that he
     stayed at the edge, stayed big, and left the room visible."""
+    sim = check_identity(gen, ref, "reaction")
     ys, xs = np.where(pm)
     if len(ys) < 500:
         raise RuntimeError("segmentation found no person")
@@ -801,7 +906,8 @@ def compose_reaction(base, gen, pm, side, feat_box=None):
     drift = float(np.abs(b[~pm] - g[~pm]).mean())
     print("  room drift         {:.1f}/255 outside the figure".format(drift))
     return (Image.fromarray(np.clip(comp, 0, 255).astype(np.uint8)),
-            {"tier": "reaction", "height_frac": round(hfrac, 3), "drift": round(drift, 1)})
+            {"tier": "reaction", "height_frac": round(hfrac, 3), "drift": round(drift, 1),
+             "face": round(sim, 3) if sim else None})
 
 
 def marker(img, x, y, h, pose_key, mode="standing"):
@@ -919,8 +1025,12 @@ def render(img, mark, headshot, pose, wardrobe):
           "action means his back or profile is to the lens, that is correct and good. "
           "Show real physical contact with whatever he is using - hands actually on it, "
           "weight actually through it." + NL + NL
-        + "IDENTITY: the face must match IMAGE 3 exactly - hair colour and texture, face "
-          "shape, jawline, skin tone. Do not idealize, smooth or slim him." + NL + NL
+        + "IDENTITY: IMAGE 3 is the agent and IMAGE 4 is a close crop of his face. The "
+          "rendered face must match IMAGE 4 feature for feature - the shape of the nose, "
+          "the set and spacing of the eyes, the eyebrows, the jawline and chin, the "
+          "hairline, the skin tone and texture. Do NOT idealize, smooth, slim or "
+          "beautify him, and do not substitute a generically handsome face. It must be "
+          "recognisably THIS man to someone who knows him." + NL + NL
         + "WARDROBE: " + wardrobe + NL + NL
         + "Light him with THIS ROOM's light - the same direction, colour temperature "
           "and softness as everything else in frame - and give him a believable "
@@ -932,6 +1042,7 @@ def render(img, mark, headshot, pose, wardrobe):
             {"inline_data": {"mime_type": "image/png", "data": b64(img)}},
             {"inline_data": {"mime_type": "image/png", "data": b64(mark)}},
             {"inline_data": {"mime_type": "image/png", "data": b64(headshot)}},
+            {"inline_data": {"mime_type": "image/png", "data": b64(face_plate(headshot))}},
             {"text": prompt},
         ]}],
         "generationConfig": {"imageConfig": {"aspectRatio": "4:5", "imageSize": "2K"}},
@@ -948,8 +1059,9 @@ def render(img, mark, headshot, pose, wardrobe):
 
 
 # --------------------------------------------------------------- composite --
-def compose(base, gen, pm, floor, depth, f, mode="standing", sem=None, standable=None):
+def compose(base, gen, pm, floor, depth, f, mode="standing", sem=None, standable=None, ref=None):
     """Keep only the person; transfer their shadow as darken-only."""
+    sim = check_identity(gen, ref, "action")
     ys, xs = np.where(pm)
     if len(ys) < 500:
         raise RuntimeError("segmentation found no person")
@@ -1048,7 +1160,7 @@ def compose(base, gen, pm, floor, depth, f, mode="standing", sem=None, standable
 
     return (Image.fromarray(np.clip(comp, 0, 255).astype(np.uint8)),
             {"feet_on_floor": round(frac, 3), "scale_ratio": round(ratio, 3),
-             "drift": round(drift, 1)})
+             "drift": round(drift, 1), "face": round(sim, 3) if sim else None})
 
 
 HEADSHOT = ("https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/"
@@ -1104,11 +1216,12 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
             fbc = ((fb[1] - cl_y) * sc, (fb[0] - cl_x) * sc,
                    (fb[3] - cl_y) * sc, (fb[2] - cl_x) * sc)
         hs = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
+        ref = face_ref(hs)
         for take in range(1, takes + 1):
             print("take {} (reaction)...".format(take))
             g = render_reaction(base, mark, hs, REACTIONS[rk], wd, plan.get("feature"))
             try:
-                o, st = compose_reaction(base, g, person_mask(g), side, fbc)
+                o, st = compose_reaction(base, g, person_mask(g), side, fbc, ref)
             except RuntimeError as e:
                 print("  rejected: {}".format(e)); continue
             o.save(src.with_name(out_name))
@@ -1168,6 +1281,7 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
     mark.save(src.with_name("marker_" + out_name))
 
     headshot = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
+    ref = face_ref(headshot)
     contact = plan.get("contact_object")
     pose = "{}{} He is looking {}. Do not block or crowd the {}.".format(
         plan.get("action", POSES[pose_key]["desc"]),
@@ -1178,7 +1292,8 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
         print("take {}...".format(take))
         gen = render(base, mark, headshot, pose, wardrobe)
         try:
-            out, stats = compose(base, gen, person_mask(gen), floor, depth, f, mode, sem, standable)
+            out, stats = compose(base, gen, person_mask(gen), floor, depth, f, mode, sem,
+                                 standable, ref)
         except RuntimeError as e:
             print("  rejected: {}".format(e))
             continue
