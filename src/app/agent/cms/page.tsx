@@ -25,6 +25,7 @@ import {
   LandingPageGrid,
 } from './cms-page/components';
 import CMSModal from './cms-page/components/CMSModal';
+import InstagramContent from './components/InstagramContent';
 
 type ContentTab = 'blog' | 'landing';
 
@@ -129,6 +130,11 @@ export default function CMSPage() {
           isLight={isLight}
           onNewArticle={handleNewArticle}
         />
+
+        {/* Instagram carousels awaiting approval. Above the blog/landing tabs
+            because it's time-sensitive — an unapproved post rolls to the next
+            slot — and it renders nothing when the queue is empty. */}
+        <InstagramContent isLight={isLight} />
 
         {/* Tab Switcher */}
         <div className={`flex gap-1 mb-4 p-1 rounded-xl ${isLight ? 'bg-gray-100' : 'bg-gray-800/60'}`}>

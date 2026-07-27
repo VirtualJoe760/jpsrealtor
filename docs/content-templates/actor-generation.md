@@ -56,6 +56,36 @@ template. The batch should feel like one continuous walkthrough of a home.
 
 ---
 
+## 2b. A gesture needs a subject
+
+**If the actor is presenting, there must be something in frame worth presenting
+to.** This is separate from whether the composite is technically good, and it
+is the failure that is easiest to miss.
+
+A generated entry-hall shot passed every physical check — correct scale, both
+feet on the tile, lighting matched, natural posture — and was still unusable,
+because he was gesturing at a *closed front door*. It looked like a real
+photograph of a meaningless moment. Reviewed on technique alone it reads as the
+best image in the batch; reviewed on meaning it is the worst.
+
+So, before accepting a frame:
+
+- **Name the subject of the gesture out loud.** "Presenting the kitchen
+  island." "Showing the fairway through the glass." If the honest answer is
+  "a wall", "a door", or "nothing", the frame fails.
+- **The subject must be the thing the slide is selling** — a view, an island, a
+  fireplace, the pool. Not circulation space.
+- **No empty corners.** A person standing in a space whose only features are
+  walls, doors and floor has nothing to do, and the image says nothing about
+  the home.
+- If the room is genuinely worth showing but offers no subject to gesture at,
+  use a **non-presenting** placement — seated, leaning, mid-stride — rather
+  than forcing an outstretched arm.
+
+**Entries, foyers and landings usually fail this test.** They are circulation,
+not living space; there is rarely anything in them to show. Prefer rooms that
+contain the feature being sold.
+
 ## 3. Never place the actor here
 
 - **Bathrooms or showers.** Ever. Regardless of how good the room looks.

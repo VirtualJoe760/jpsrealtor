@@ -42,8 +42,16 @@ export interface PhotoAssessment {
   reason: string;
 }
 
-/** Rooms the agent is never placed in, per actor-generation.md §3. */
-const BANNED_ROOMS: RoomKind[] = ["bathroom", "hallway", "detail", "aerial"];
+/**
+ * Rooms the agent is never placed in, per actor-generation.md §3.
+ *
+ * `entry` is here for the reason in §2b: entries are circulation, not living
+ * space, and contain nothing worth gesturing at. The image that proved it
+ * passed every physical check — correct scale, feet on the tile, lighting
+ * matched — and was still unusable, because he was presenting a closed front
+ * door. Technically perfect, semantically empty.
+ */
+const BANNED_ROOMS: RoomKind[] = ["bathroom", "hallway", "detail", "aerial", "entry"];
 
 /**
  * Rooms where only SOME placements are acceptable.
@@ -93,6 +101,9 @@ stageable MUST be false when:
 - it is a narrow hallway, a corner, or a staircase
 - the only open space is a doorway facing a closed door
 - a person would have to stand where they'd hide the main subject
+
+- it is an entry, foyer or landing — circulation space, nothing in it worth showing
+- the person would be gesturing at a wall, a door, or nothing at all. Name the thing they would be presenting; if you cannot, or it is not the feature this photo is selling, it is NOT stageable. A technically perfect composite of someone presenting a closed door is still a failure.
 
 placement must be one of these when stageable, else null:
 - seated_chair       (a visible armchair or accent chair with clear space)
