@@ -85,6 +85,29 @@ agent's own name must always be included.
 > (team name + roster, or "my own listings"). Joseph is tenant one, not the
 > only tenant.
 
+## Gotchas when querying the pool
+
+**The API derives fields the documents don't store.** Querying
+`unifiedlistings` directly is not the same as reading a tool response. Three
+found in one session:
+
+| You want | Tool response calls it | The document has |
+|---|---|---|
+| photo count | `photoCount` | **`photosCount`** (and `media[]`) |
+| days on market | `daysOnMarket` | nothing — derive from `onMarketDate` |
+| lot size in acres | `lotSizeAcres` | often only `lotSizeSqft` |
+
+Filtering on `photoCount` silently matches **zero** documents — not an error, an
+empty result that reads like "no listing has photos". Verify a field exists on a
+real document before filtering a pool on it.
+
+**Filter to sales.** `propertyType` is a single letter: `A` sale, `B` rental,
+`C` multifamily, `D` land. The pool sorted newest-first leads with rentals —
+$2,900 and $3,200 a month — and the simple-luxury template is an editorial
+luxury format. Selection must filter to `A`, require enough photos to stage
+(`photosCount >= 12`), and apply a price floor. "Newest" alone picks the wrong
+listing.
+
 ## Pipeline
 
 ```
