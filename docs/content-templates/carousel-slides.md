@@ -4,7 +4,7 @@ status: current
 last_verified: 2026-07-26
 last_verified_note: Builders moved to src/ and exposed via create_carousel_slide; plan_listing_carousel added as the gathering step.
 owner: content
-related: [./README.md, ./cover-slide.md]
+related: [./README.md, ./cover-slide.md, ./actor-generation.md]
 ---
 
 # Carousel slides 2-10
@@ -41,6 +41,8 @@ implementation of each layout. Edit it in `src/`.
 | 7-9 | Copy slides | `create_carousel_slide` `kind:"text"` |
 | 10 | Closing CTA | `create_carousel_slide` `kind:"cta"` |
 | — | Publish | `post_instagram_carousel` (`social:post`) |
+
+**Placing the agent in a photo has its own contract — see [actor-generation.md](./actor-generation.md).** Read it before any Gemini call; photo selection is part of it.
 
 **Staging generates no text.** `stage_listing_with_agent`'s prompt ends
 `"no text overlays"` — correct, because image models render type badly. The
