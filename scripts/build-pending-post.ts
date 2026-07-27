@@ -216,8 +216,15 @@ function code() {
     // Caption is looked up by room, falling back to any spare line rather than
     // to whatever happened to sit at this index.
     const key = norm(st.room);
+    // `r.label === ROOM_LABELS[st.room]` was the real caption bug, not the
+    // vocabulary mismatch: config rows carry no `label`, and an unmapped room
+    // gives no label either, so the comparison was `undefined === undefined`
+    // and matched the FIRST row every time. A balcony and a garage both
+    // inherited the living room's line while looking like a successful lookup.
     const byRoom = (CFG.rooms || []).find(
-      (r: any) => norm(r.room) === key || r.label === ROOM_LABELS[st.room]
+      (r: any) =>
+        norm(r.room) === key ||
+        (r.label != null && ROOM_LABELS[st.room] != null && r.label === ROOM_LABELS[st.room])
     );
     const label = ROOM_LABELS[st.room] || ROOM_LABELS[key] || "INSIDE";
     const caption = byRoom?.caption || CFG.fallbackCaption || "";

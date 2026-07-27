@@ -236,7 +236,10 @@ def read_photo(img):
         + "First decide whether this frame should be used AT ALL. Reject it if it is a "
           "bathroom, a close-up or detail shot, an aerial or drone shot, a corridor or "
           "empty circulation space, or anything with no clear floor for a person to "
-          "stand on. There are always other photos; a forced one is worse than none." + NL + NL
+          "stand on. Reject UTILITY SPACE too - a garage, a laundry, a store cupboard, "
+          "a mechanical room: nobody scrolling wants to be sold a garage, and a slide "
+          "of one drags down the whole carousel however well composed it is. There are "
+          "always other photos; a forced one is worse than none." + NL + NL
         + "If it is usable, decide what this room is SELLING - the one thing that makes "
           "the photo worth posting - and then decide what the agent is DOING." + NL + NL
         + "THE ACTION IS THE POINT. Do not have him present, gesture at, point toward or "
