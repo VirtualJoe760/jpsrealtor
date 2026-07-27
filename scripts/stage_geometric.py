@@ -1229,9 +1229,18 @@ def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=No
     # the action path cannot find anywhere valid to stand. Both end up here,
     # which is why no geometry failure needs to be fatal any more.
     def _reaction(reason):
+        # Record what actually happened. The batch result was reporting the
+        # PLANNED tier, so a bedroom that fell back to a reaction was logged as
+        # a seated action - the log said one thing and the slide showed another.
+        plan["tier"] = "reaction"
         side = plan.get("side") if plan.get("side") in ("left", "right") else "right"
-        rk = plan.get("reaction") if plan.get("reaction") in REACTIONS else (
-            "wow" if plan.get("luxury") else "open_hand")
+        # A reader that planned an ACTION never chose a reaction, so falling
+        # back must not invent an extreme one: a wide-eyed "wow" fired in a
+        # BEDROOM this way. Astonishment has to be earned by an explicit
+        # reader decision, never reached by default.
+        rk = plan.get("reaction") if plan.get("reaction") in REACTIONS else "approving"
+        if reason != "nothing here worth using" and rk == "wow":
+            rk = "approving"
         print("  TIER reaction      {} on the {} ({})".format(rk, side, reason))
         mark = reaction_marker(base, side)
         mark.save(src.with_name("marker_" + out_name))

@@ -197,14 +197,31 @@ function code() {
     other: "INSIDE",
   };
 
+  // The photo reader and the hand-written configs use different vocabularies
+  // for the same rooms, so room-keyed lookup silently missed and fell through
+  // to the spare line: an outdoor deck and a great room both shipped captioned
+  // "Beamed ceilings, arched windows". Keying by room only works if both sides
+  // agree what a room is called.
+  const ROOM_ALIASES: Record<string, string> = {
+    great_room: "living",
+    outdoor: "pool",
+    outdoor_living: "pool",
+    bedroom: "primary_bedroom",
+    office: "living",
+    other: "living",
+  };
+  const norm = (r: string) => ROOM_ALIASES[r] || r;
+
   const roomSlides = staged.map((st) => {
-    // Caption is looked up by room too, falling back to any spare line rather
-    // than to whatever happened to sit at this index.
+    // Caption is looked up by room, falling back to any spare line rather than
+    // to whatever happened to sit at this index.
+    const key = norm(st.room);
     const byRoom = (CFG.rooms || []).find(
-      (r: any) => r.room === st.room || r.label === ROOM_LABELS[st.room]
+      (r: any) => norm(r.room) === key || r.label === ROOM_LABELS[st.room]
     );
-    const label = ROOM_LABELS[st.room] || "INSIDE";
+    const label = ROOM_LABELS[st.room] || ROOM_LABELS[key] || "INSIDE";
     const caption = byRoom?.caption || CFG.fallbackCaption || "";
+    if (!byRoom) console.log(`   note: no caption written for "${st.room}" — using the spare line`);
     return {
       url: cloudinary.url(st.publicId, { transformation: buildBannerTransform(label, caption) }),
       publicId: st.publicId,
