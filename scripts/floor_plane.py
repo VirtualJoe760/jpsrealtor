@@ -44,7 +44,7 @@ def fit_floor(pts, h, w, iters=600, tol=0.05, seed=0):
     if len(band) < 100:
         raise SystemExit("not enough points to fit a floor")
 
-    best_n, best_d, best_inl = None, None, -1
+    cands = []
     for _ in range(iters):
         p = band[rng.choice(len(band), 3, replace=False)]
         n = np.cross(p[1] - p[0], p[2] - p[0])
@@ -53,17 +53,32 @@ def fit_floor(pts, h, w, iters=600, tol=0.05, seed=0):
             continue
         n = n / norm
         # A floor's normal points mostly along the camera's Y axis (up/down).
-        if abs(n[1]) < 0.85:
+        if abs(n[1]) < 0.90:
             continue
         d = -n.dot(p[0])
         inl = int((np.abs(band @ n + d) < tol).sum())
-        if inl > best_inl:
-            best_n, best_d, best_inl = n, d, inl
+        cands.append((inl, abs(d), n, d))
 
-    if best_n is None:
+    if not cands:
         raise SystemExit("no plausible floor plane found")
+
+    # THE FLOOR IS THE LOWEST BIG HORIZONTAL SURFACE, NOT THE MOST POPULOUS ONE.
+    # Maximising inliers alone fit the COUNTERTOP in a galley kitchen: it read
+    # 0.64m below the camera (i.e. counter height for a 1.5m tripod) with a
+    # tilted normal and 19% inliers, and the scale calibration downstream then
+    # multiplied depth by 2.27 and no candidate spot could survive.
+    #
+    # Counters, islands and tables all sit ABOVE the floor, so they are all
+    # NEARER the camera. Among horizontal planes with a decent following, the
+    # floor is the one FARTHEST below - so take the largest |d|, not the most
+    # votes.
+    top = max(c[0] for c in cands)
+    strong = [c for c in cands if c[0] >= 0.45 * top]
+    inl, _, best_n, best_d = max(strong, key=lambda c: c[1])
+
     print(f"floor plane  normal=({best_n[0]:+.2f},{best_n[1]:+.2f},{best_n[2]:+.2f})  "
-          f"inliers={best_inl}/{len(band)} ({100*best_inl/len(band):.0f}% of lower band)")
+          f"inliers={inl}/{len(band)} ({100*inl/len(band):.0f}% of lower band)  "
+          f"lowest of {len(strong)} strong horizontal planes")
     return best_n, best_d
 
 

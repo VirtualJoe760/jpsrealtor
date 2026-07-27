@@ -78,6 +78,125 @@ def semantic(img):
     return up.argmax(1)[0].cpu().numpy()
 
 
+# ------------------------------------------------------------------- read --
+def read_photo(img):
+    """UNDERSTAND THE PHOTOGRAPH FIRST, on the full uncropped original.
+
+    Everything downstream used to run in the wrong order: the crop went first
+    and scored feature pixels blindly, so a 4:5 window could discard the pool
+    table and the bar and leave a slide captioned "the game room" showing a
+    brick chimney. A crop is a composition decision, and it cannot be made
+    before anything knows what the photograph is OF or what it is FOR.
+
+    So this runs on the original, at full width, before a single pixel is
+    thrown away. It decides whether the frame is worth staging at all, what the
+    room is selling, and roughly where a person belongs to show that off.
+    Geometry then proves a spot inside that region; the crop serves the plan
+    instead of constraining it."""
+    import requests
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=90)
+    prompt = (
+        "You are art-directing one photograph for a real-estate carousel on Instagram." + NL
+        + "A real-estate agent will be composited into it." + NL + NL
+        + "First decide whether this frame should be used AT ALL. Reject it if it is a "
+          "bathroom, a close-up or detail shot, an aerial or drone shot, a corridor or "
+          "empty circulation space, or anything with no clear floor for a person to "
+          "stand on. There are always other photos; a forced one is worse than none." + NL + NL
+        + "If it is usable, decide what this room is SELLING - the one thing that makes "
+          "the photo worth posting - and where a person should stand to show that off "
+          "WITHOUT blocking or crowding it." + NL + NL
+        + "Reply ONLY with JSON, all coordinates normalised 0-1000 as [ymin,xmin,ymax,xmax] "
+          "on this image:" + NL
+        + '{"usable": true|false, "reject_reason": "<short, or null>", '
+          '"room": "<kitchen|living|great_room|dining|bedroom|game_room|pool|outdoor|office|other>", '
+          '"feature": "<the one thing this room is selling, concrete>", '
+          '"feature_box": [y,x,y,x], '
+          '"stand_region": [y,x,y,x], '
+          '"facing": "<what he turns toward or looks at>", '
+          '"doing": "<one concrete action, under 15 words>", '
+          '"formality": "sharp"|"casual", '
+          '"why": "<one clause: why that spot flatters this room>"}' + NL + NL
+        + "stand_region must be OPEN FLOOR wide enough for a whole standing person, "
+          "in the middle ground rather than jammed against the lens, and must not "
+          "overlap feature_box."
+    )
+    r = requests.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-2.5-flash:generateContent",
+        params={"key": os.environ["GEMINI_API_KEY"]},
+        json={"contents": [{"role": "user", "parts": [
+            {"inline_data": {"mime_type": "image/jpeg",
+                             "data": base64.b64encode(buf.getvalue()).decode()}},
+            {"text": prompt}]}]},
+        timeout=120)
+    r.raise_for_status()
+    txt = "".join(p.get("text", "") for p in r.json()["candidates"][0]["content"]["parts"])
+    m = re.search(r"\{[\s\S]*\}", txt)
+    if not m:
+        raise RuntimeError("photo reader returned no JSON")
+    plan = json.loads(m.group(0))
+
+    if not plan.get("usable", True):
+        raise RuntimeError("frame rejected: {}".format(plan.get("reject_reason", "unusable")))
+    print("  room               {}".format(plan.get("room")))
+    print("  selling            {}".format(plan.get("feature")))
+    print("  stand              {} | facing {}".format(
+        plan.get("stand_region"), plan.get("facing")))
+    print("  why                {}".format(plan.get("why")))
+    return plan
+
+
+def _box_px(box, W, H):
+    """[ymin,xmin,ymax,xmax] normalised 0-1000 -> pixel rect on a W x H image."""
+    try:
+        y0, x0, y1, x1 = [float(v) for v in box]
+    except Exception:
+        return None
+    r = (x0 / 1000 * W, y0 / 1000 * H, x1 / 1000 * W, y1 / 1000 * H)
+    if r[2] <= r[0] or r[3] <= r[1]:
+        return None
+    return r
+
+
+def crop_for_plan(img, plan):
+    """Crop 4:5 to SERVE the plan: keep the feature whole and the standing
+    region inside. The crop is chosen last among these three, not first."""
+    W, H = img.size
+    f_orig, _, _ = intrinsics(W, H)
+    cw = min(W, int(round(H * 4 / 5)))
+    ch = min(H, int(round(cw * 5 / 4)))
+    top = (H - ch) // 2
+    if cw >= W:
+        out = img.crop((0, top, cw, top + ch)).resize((OUT_W, OUT_H), Image.LANCZOS)
+        return out, f_orig * (OUT_W / cw), 0, top, cw
+
+    feat = _box_px(plan.get("feature_box"), W, H)
+    stand = _box_px(plan.get("stand_region"), W, H)
+
+    def covered(rect, left):
+        if not rect:
+            return 1.0
+        x0, _, x1, _ = rect
+        inter = max(0.0, min(x1, left + cw) - max(x0, left))
+        return inter / max(1.0, x1 - x0)
+
+    best_left, best = (W - cw) // 2, -1e9
+    for left in range(0, W - cw + 1, 8):
+        # The feature must survive WHOLE - a clipped pool table is the failure
+        # this ordering exists to prevent - and the actor needs somewhere to be.
+        s = 3.0 * covered(feat, left) + 1.6 * covered(stand, left)
+        s -= 0.00004 * abs((left + cw / 2) - W / 2)
+        if s > best:
+            best_left, best = left, s
+
+    out = img.crop((best_left, top, best_left + cw, top + ch)).resize(
+        (OUT_W, OUT_H), Image.LANCZOS)
+    print("  crop x={} of {}   feature kept {:.0%}, stand region kept {:.0%}".format(
+        best_left, W - cw, covered(feat, best_left), covered(stand, best_left)))
+    return out, f_orig * (OUT_W / cw), best_left, top, cw
+
+
 # ---------------------------------------------------------------- geometry --
 def crop_45_feature(img):
     """Choose the 4:5 window that KEEPS what makes the room that room.
@@ -266,7 +385,7 @@ def clearance(floor, depth, x, y, deg, max_px=520):
     return last
 
 
-def candidates(floor, depth, f, sem, n=4):
+def candidates(floor, depth, f, sem, n=4, region=None):
     """Emit several spots that are ALL physically valid, well separated.
 
     Geometry's job is to guarantee validity - real floor, whole body in frame,
@@ -294,6 +413,11 @@ def candidates(floor, depth, f, sem, n=4):
         # where the "walking into a brick wall" frame came from.
         cl = {a: clearance(floor, depth, x, y, a) for a in (0, 45, 90, 135, 180)}
         openness = sum(sorted(cl.values())[-3:])
+        # Spots inside the region the photo-reader nominated rank first; the
+        # region is advisory, so a geometrically better spot outside it can
+        # still surface if the reader's box was poor.
+        if region and region[0] <= x <= region[2] and region[1] <= y <= region[3]:
+            openness += 4.0
         pool.append((openness, x, y, h, cl))
 
     pool.sort(key=lambda p: -p[0])
@@ -631,39 +755,71 @@ HEADSHOT = ("https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/"
 SHARP_ROOMS = {"living", "great_room", "dining", "primary_bedroom", "office", "exterior"}
 
 
-def stage_one(src, room_kind, out_name="staged.png", takes=3):
+def stage_one(src, out_name="staged.png", takes=3, room_hint=None, used_poses=None):
     import requests
-    print("geometry...")
-    base, f = crop_45_feature(Image.open(src).convert("RGB"))
-    base.save(src.with_name("base_" + out_name))
-    headshot = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
+    orig = Image.open(src).convert("RGB")
 
+    # 1. READ the photograph, full frame, before anything is discarded.
+    print("reading photo...")
+    plan = read_photo(orig)
+    room_kind = room_hint or plan.get("room", "living")
+
+    # 2. CROP to serve that decision.
+    base, f, cl_x, cl_y, cw = crop_for_plan(orig, plan)
+    base.save(src.with_name("base_" + out_name))
+
+    # 3. GEOMETRY proves which spots are physically real.
+    print("geometry...")
     floor, depth = analyse(base, f)
     sem = semantic(base)
-    cands = candidates(floor, depth, f, sem)
+
+    region = None
+    r = _box_px(plan.get("stand_region"), *orig.size)
+    if r:
+        sc = OUT_W / cw
+        region = ((r[0] - cl_x) * sc, (r[1] - cl_y) * sc,
+                  (r[2] - cl_x) * sc, (r[3] - cl_y) * sc)
+    cands = candidates(floor, depth, f, sem, region=region)
     print("  candidates         {} valid spots".format(len(cands)))
-    (_, x, y, h, cl), plan = choose_spot(base, cands, room_kind)
 
-    # A walking pose needs somewhere to walk. Pick the pose to fit the SPOT
-    # rather than assigning it up front - which is how a stride ended up
-    # aimed at a brick chimney.
+    # 4. VISION picks among valid options, seeded with the plan's intent.
+    (_, x, y, h, cl), pick = choose_spot(base, cands, room_kind)
+    for k in ("feature", "facing", "doing"):
+        if pick.get(k):
+            plan[k] = pick[k]
+
+    # 5. POSE: the reader's INTENT chooses, clearance only vetoes, and a pose
+    # already used in this batch is skipped. An earlier version selected purely
+    # on clearance ("more than 1.1m ahead -> walk"), which fired on all four
+    # rooms and produced four near-identical mid-strides - the samey-pose
+    # problem, reintroduced by the fix for the brick-wall problem.
     best_dir = max(cl, key=cl.get)
-    room_ahead = cl[best_dir]
-    if room_ahead > 1.1:
-        pose_key = "walk_look_back"
-    elif any(k in str(plan.get("facing", "")).lower()
-             for k in ("island", "counter", "fireplace", "window", "view", "table", "bar")):
-        pose_key = "gesture_to_feature"
+    ahead = cl[best_dir]
+    intent = (str(plan.get("doing", "")) + " " + str(plan.get("facing", ""))).lower()
+    if any(w in intent for w in ("gestur", "present", "point", "showing", "highlight",
+                                 "toward", "towards")):
+        order = ["gesture_to_feature", "mid_sentence", "hand_pocket_angle", "walk_look_back"]
+    elif any(w in intent for w in ("walk", "stride", "stepping", "entering", "moving")):
+        order = ["walk_look_back", "mid_sentence", "gesture_to_feature", "hand_pocket_angle"]
+    elif any(w in intent for w in ("talk", "convers", "explain", "laugh", "welcom")):
+        order = ["mid_sentence", "gesture_to_feature", "hand_pocket_angle", "walk_look_back"]
     else:
-        pose_key = "mid_sentence" if room_ahead > 0.6 else "hand_pocket_angle"
-    print("  clearance          best {:.2f}m at {} deg -> pose {}".format(
-        room_ahead, best_dir, pose_key))
+        order = ["hand_pocket_angle", "mid_sentence", "gesture_to_feature", "walk_look_back"]
 
-    wardrobe = pick_wardrobe(base, x, y, h,
-                             "sharp" if room_kind in SHARP_ROOMS else "casual")
+    used = used_poses if used_poses is not None else set()
+    feasible = [k for k in order if k != "walk_look_back" or ahead > 1.1]
+    pose_key = next((k for k in feasible if k not in used), feasible[0])
+    used.add(pose_key)
+    print("  clearance          {:.2f}m ahead at {} deg".format(ahead, best_dir))
+    print("  pose               {} (intent-led, {} already used)".format(
+        pose_key, len(used) - 1))
+
+    formal = "sharp" if plan.get("formality") == "sharp" or room_kind in SHARP_ROOMS else "casual"
+    wardrobe = pick_wardrobe(base, x, y, h, formal)
     mark = marker(base, x, y, h, pose_key)
     mark.save(src.with_name("marker_" + out_name))
 
+    headshot = Image.open(io.BytesIO(requests.get(HEADSHOT, timeout=60).content)).convert("RGB")
     pose = "{} He is {}. He faces {}. Do not block or crowd the {}.".format(
         POSES[pose_key]["desc"], plan.get("doing", "showing the room"),
         plan.get("facing", "into the open room"), plan.get("feature", "room's feature"))
@@ -677,16 +833,17 @@ def stage_one(src, room_kind, out_name="staged.png", takes=3):
             print("  rejected: {}".format(e))
             continue
         out.save(src.with_name(out_name))
+        stats["room"] = room_kind
+        stats["feature"] = plan.get("feature")
         print("OK -> {} {}".format(out_name, json.dumps(stats)))
-        return out
+        return out, plan
     print("all takes rejected")
-    return None
+    return None, plan
 
 
 def main():
     src = pathlib.Path(sys.argv[1])
-    room_kind = sys.argv[2] if len(sys.argv) > 2 else "living"
-    stage_one(src, room_kind)
+    stage_one(src, sys.argv[2] if len(sys.argv) > 2 else "staged.png")
 
 
 if __name__ == "__main__":
