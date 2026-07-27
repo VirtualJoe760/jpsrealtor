@@ -109,7 +109,8 @@ async function generateFigure(
   ai: GoogleGenAI,
   lighting: string,
   headshot: Buffer,
-  direction: string
+  direction: string,
+  wardrobe: string
 ): Promise<Buffer> {
   const res: any = await ai.models.generateContent({
     model: "gemini-2.5-flash-image",
@@ -124,9 +125,10 @@ async function generateFigure(
               `on a COMPLETELY FLAT, VIVID MAGENTA background (RGB 255,0,255). Nothing else in the frame: no floor, ` +
               `no shadow on the background, no props, no text.\n\n` +
               `LIGHTING: ${lighting}\n\n` +
-              `POSE: ${direction}\n\n` +
+              `POSE: ${direction}\n` +
+              `Make it CANDID — a frame pulled from documentary footage, not a catalog shot: weight clearly on one hip, shoulders relaxed and slightly uneven, caught mid-moment (mid-step, mid-turn, or a breath into a laugh). Never perfectly symmetrical, never squared to the camera, arms never mirroring each other.\n\n` +
               `IDENTITY: match the face exactly — hair colour and texture, face shape, jawline, skin tone. Do not ` +
-              `idealize, smooth or slim them. Dark grey suit jacket over a light blue collared shirt, no tie.\n\n` +
+              `idealize, smooth or slim them.\nWARDROBE: ${wardrobe}\n\n` +
               `The person must be fully inside the frame with margin on all sides, feet fully visible.`,
           },
         ],
@@ -235,11 +237,24 @@ async function keyGreen(figure: Buffer): Promise<{ cutout: Buffer; trim: sharp.R
   };
 }
 
+export type Wardrobe = "business_professional" | "business_casual";
+
+// Reviewer's rule: business casual or business professional, nothing more
+// casual — no shorts, whatever the scene. Poolside gets business casual.
+const WARDROBE_TEXT: Record<Wardrobe, string> = {
+  business_professional:
+    "Dark grey suit jacket over a light blue collared shirt, no tie — exactly the look in the reference headshot.",
+  business_casual:
+    "Light blue collared shirt with sleeves rolled once, no jacket, dark tailored chinos, brown leather loafers. Polished but relaxed.",
+};
+
 export async function stageByComposite(opts: {
   photoUrl: string;
   headshotUrl: string;
   placement: string;
   poseDirection: string;
+  /** Scene-appropriate outfit; defaults to the suit. Poolside in a suit reads wrong. */
+  wardrobe?: Wardrobe;
 }): Promise<CompositeResult> {
   if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -293,7 +308,7 @@ export async function stageByComposite(opts: {
   let lastErr = "";
   for (let take = 1; take <= 3; take++) {
     try {
-      return await attemptComposite(ai, base, headshot, box, opts);
+      return await attemptComposite(ai, base, headshot, box, opts, WARDROBE_TEXT[opts.wardrobe || "business_professional"]);
     } catch (e: any) { lastErr = e.message; }
   }
   throw new Error("composite failed after 3 takes: " + lastErr);
@@ -304,7 +319,8 @@ async function attemptComposite(
   base: Buffer,
   headshot: Buffer,
   box: { ymin: number; xmin: number; ymax: number; xmax: number; lighting: string },
-  opts: { placement: string; poseDirection: string }
+  opts: { placement: string; poseDirection: string },
+  wardrobe: string
 ): Promise<CompositeResult> {
   // CONTACT POSES ARE NOT COMPOSITABLE. "Resting", "leaning", "seated" make
   // the figure model fabricate the furniture being touched — measured twice: a
@@ -321,7 +337,7 @@ async function attemptComposite(
     .replace(/(at|behind|beside|near|on|against)s+(thes+)?(kitchens+)?(counter(top)?|island|rail(ing)?|bar|table|sofa|couch|chair|fireplace|mantel|desk|bed|lounger|deck)[^.,;]*/gi, "")
     .replace(/s{2,}/g, " ")
     .trim() || "standing relaxed, weight on one leg, hands at their sides";
-  const figureRaw = await generateFigure(ai, box.lighting, headshot, bodyOnlyPose);
+  const figureRaw = await generateFigure(ai, box.lighting, headshot, bodyOnlyPose, wardrobe);
   // Purpose-built person matting first (hair-accurate, backdrop-agnostic);
   // the flood-fill keyer stays as fallback if the model can't load.
   let cutout: Buffer, trim: sharp.Region;
@@ -358,12 +374,15 @@ async function attemptComposite(
     w: Math.round(((box.xmax - box.xmin) / 1000) * OUT_W),
     h: Math.round(((box.ymax - box.ymin) / 1000) * OUT_H),
   };
-  // The vision model sometimes returns a foreground-scale box (986px on the
-  // first live run — a ten-foot agent). Clamp to the range a mid-ground adult
-  // actually occupies in a 1350px interior shot, keeping the FEET anchored to
-  // the box bottom, which is the part the model gets right.
-  const clampedH = Math.min(Math.max(boxPx.h, Math.round(OUT_H * 0.3)), Math.round(OUT_H * 0.52));
-  const scale = clampedH / trim.height;
+  // HEIGHT FROM DEPTH, not from the vision box. The feet line encodes
+  // distance — feet lower in frame means closer to camera means taller in
+  // frame. The box height both over-shot (a ten-foot agent) and under-shot
+  // ("a little short" in review); this mapping is monotonic and stable:
+  // feet at 62% of frame height → ~0.38·H, feet at the bottom edge → ~0.62·H.
+  const feetFrac = (boxPx.y + boxPx.h) / OUT_H;
+  const t = Math.min(Math.max((feetFrac - 0.62) / 0.38, 0), 1);
+  const depthH = Math.round(OUT_H * (0.38 + 0.24 * t));
+  const scale = depthH / trim.height;
   const figW = Math.max(1, Math.round(trim.width * scale));
   const figH = Math.max(1, Math.round(trim.height * scale));
   const left = Math.min(Math.max(0, boxPx.x + Math.round((boxPx.w - figW) / 2)), OUT_W - figW);

@@ -155,6 +155,33 @@ has appeared.
 Also reject: duplicated limbs, a second partial person, hands with wrong finger
 counts, and text or watermarks the model invented.
 
+## 3e. Wardrobe follows the scene — within business bounds
+
+Two modes only, chosen by the room being staged. Nothing more casual than
+business casual, ever — no shorts, no t-shirts, whatever the scene:
+
+| Scene | Wardrobe |
+|---|---|
+| Living, dining, primary, office, exteriors | **Business professional** — dark grey suit over a light blue collared shirt, no tie (the headshot look) |
+| Kitchen, game room, pool, outdoor living | **Business casual** — collared shirt, sleeves rolled once, dark chinos, leather loafers |
+
+## 3f. Candid, not catalog
+
+Reviewer's words: the poses looked robotic. Every figure generation now carries
+the candid clause — weight clearly on one hip, shoulders relaxed and uneven,
+caught mid-moment (mid-step, mid-turn, a breath into a laugh), never
+symmetrical, never squared to the camera, arms never mirroring each other. A
+pose that would pass in a clothing catalog fails here.
+
+## 3g. Scale comes from depth, not from a box
+
+Feet position in frame encodes distance: feet lower means closer means taller
+in frame. Figure height maps monotonically from the FEET LINE (~0.38 of frame
+height when feet sit at 62%, up to ~0.62 at the bottom edge). The vision
+model's box height both over-shot (a ten-foot agent) and under-shot ("a little
+short" in review); the feet anchor is the part it gets right, so that is the
+only part trusted.
+
 ## 4. Physical realism — non-negotiable
 
 Each of these counters an observed failure. Do not soften them.

@@ -30,7 +30,16 @@ import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 import { selectStagingPhotos } from "../src/lib/content/select-staging-photos";
 import { verifyStagedPhoto, describeImage } from "../src/lib/content/verify-staged-photo";
-import { stageByComposite } from "../src/lib/content/stage-composite";
+import { stageByComposite, type Wardrobe } from "../src/lib/content/stage-composite";
+
+// Wardrobe follows the scene. A dark suit by the pool reads wrong; shorts in
+// the formal living room reads wrong the other way.
+const ROOM_WARDROBE: Record<string, Wardrobe> = {
+  pool: "business_casual",
+  outdoor_living: "business_casual",
+  game_room: "business_casual",
+  kitchen: "business_casual",
+};
 import { buildSimpleLuxuryTransformations } from "../src/lib/cover-templates/simple-luxury";
 
 const {
@@ -155,6 +164,7 @@ function code() {
         headshotUrl: HEADSHOT_URL,
         placement: s.placementDetail,
         poseDirection: COMPOSITE_POSES[staged.length % COMPOSITE_POSES.length],
+        wardrobe: ROOM_WARDROBE[s.room] || "business_professional",
       });
       const up = await cloudinary.uploader.upload(
         "data:image/png;base64," + comp.png.toString("base64"),
