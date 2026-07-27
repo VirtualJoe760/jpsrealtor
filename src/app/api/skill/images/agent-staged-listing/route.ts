@@ -49,18 +49,47 @@ const DEFAULT_PHOTOS = 5;
 //
 // Each clause below counters a specific observed failure. Do not soften them
 // into "position them realistically" — that is what produced the sticker look.
-const BASE_PROMPT = `Re-render the person from the second image as a full-length human being standing inside the scene from the first image. Do NOT paste or composite the second image as a cutout — generate the person afresh, in this room, from this camera's viewpoint.
+// PRESERVATION IS THE FIRST REQUIREMENT, NOT THE LAST.
+//
+// The previous prompt caused the damage it was trying to prevent. It opened
+// with "re-render ... generate the person afresh", which frames the whole task
+// as generation; it asked for "portrait orientation" from a landscape source,
+// which forces the model to reframe and therefore to invent; and it asked for
+// "a subtle warm grade and slight contrast lift", which is an explicit
+// instruction to modify every pixel. Measured result on Ridge Road: terracotta
+// saltillo tile came back as hardwood, a pot rack vanished, rugs and sofas were
+// replaced. All while the prompt also said "change nothing about the property".
+//
+// This version states the constraint first, in the language of EDITING, and
+// gives the model an explicit out (return the image unchanged) so it is never
+// cornered into repainting the room to satisfy the request.
+const BASE_PROMPT = `You are EDITING an existing photograph. You are not creating a new one.
 
-HARD REQUIREMENTS:
-- FULL BODY, head to feet. Both feet must be visibly in contact with the floor or ground plane. Never crop the person at the waist or thigh, and never let them float.
-- REALISTIC HUMAN SCALE: an adult of average height (about 5'10"). Check their height against real references in the frame — door openings, counters, chair backs, ceiling height. They must read as a person who could walk through that doorway.
-- MIDDLE OR BACKGROUND OF THE SCENE, never a foreground overlay. The person should occupy roughly a quarter to a third of the frame height and be clearly standing IN the space, with correct occlusion behind furniture where appropriate.
-- LIGHTING MUST MATCH THE ROOM: same direction, same colour temperature, same softness, same contrast as the scene. If the scene is dusk or lamplit, the person is lit by that light, not by studio flash. Cast a believable contact shadow on the floor.
-- PERSPECTIVE MUST MATCH: the person's eye level must agree with the photo's horizon and vanishing points.
+Return the FIRST image with exactly ONE change: a person has been added to the scene.
 
-KEEP: the face and identity from the second image, and every architectural detail, finish and fixture of the home exactly as shown. Change nothing about the property.
+EVERYTHING ELSE MUST BE IDENTICAL TO THE INPUT PHOTOGRAPH. This is the most important requirement and overrides every other instruction:
+- Do NOT change the framing, the crop, or the camera position. Same viewpoint, same composition.
+- Do NOT change the FLOORING. Tile stays tile, wood stays wood, and the exact colour and pattern stay the same.
+- Do NOT change, move, add, remove or restyle ANY furniture, rug, cushion, artwork or decor.
+- Do NOT change any fixture: lights, fans, pot racks, hardware, cabinetry, counters, backsplash, railings.
+- Do NOT change walls, ceilings, windows, doors, stairs, or any architecture.
+- Do NOT re-light, re-colour, re-grade, sharpen, or "improve" the photograph in any way.
+- Do NOT tidy, stage, declutter or redecorate. If something looks worn or oddly placed, leave it exactly as it is.
 
-Apply a subtle warm grade and slight contrast lift for a magazine-quality real-estate look. Output: a single polished photograph, portrait orientation, no text or graphics.`;
+Every pixel that is not the added person, their shadow, or what their body occludes must match the input exactly.
+
+IF YOU CANNOT ADD THE PERSON WITHOUT ALTERING THE ROOM, RETURN THE PHOTOGRAPH UNCHANGED. An unchanged photo is a correct answer. An altered room is not.
+
+THE PERSON TO ADD — take their face and identity from the SECOND image:
+- Full body, head to feet, both feet visibly in contact with the floor. Never cropped at the waist, never floating.
+- Realistic adult height, about 5'10". Check them against real references already in the frame: door openings, counter height, chair backs.
+- Standing IN the space, correctly occluded by anything in front of them. Not a foreground overlay.
+- Lit by the room's own light — same direction, colour temperature and softness as the scene — with a believable contact shadow on the floor.
+- Eye level consistent with the photograph's existing perspective.
+- Match the face exactly: hair colour and texture, face shape, jawline, skin tone. Do not idealize, smooth or slim them.
+- Dark grey suit jacket over a light blue collared shirt, no tie.
+
+No text, watermarks or graphics.`;
 
 // Per-photo direction. Sending one identical prompt to every photo produced
 // four slides of the same man in the same pose, which reads as a template
@@ -75,9 +104,22 @@ const POSE_VARIATIONS: string[] = [
   "Standing near the far side of the room looking back toward the camera, giving a clear sense of the room's depth and scale.",
 ];
 
-/** Compose the per-photo instruction: base rules + this slot's staging note. */
-function promptForIndex(base: string, i: number): string {
-  return `${base}\n\nSTAGING FOR THIS SHOT: ${POSE_VARIATIONS[i % POSE_VARIATIONS.length]}`;
+/**
+ * Compose the per-photo instruction.
+ *
+ * `placement` is a specific, photo-aware direction decided by looking at THAT
+ * frame — "standing on the rug between the orange armchair and the coffee
+ * table, facing the camera". It names objects that are actually visible, which
+ * both anchors the person somewhere real and gives the model concrete
+ * geometry instead of a generic pose it has to invent a spot for.
+ *
+ * The POSE_VARIATIONS rotation is only the fallback for callers that did not
+ * look first. It cycles so a batch does not repeat one stance, but it cannot
+ * know what is in the frame.
+ */
+function promptForIndex(base: string, placement: string | undefined, i: number): string {
+  const direction = placement?.trim() || POSE_VARIATIONS[i % POSE_VARIATIONS.length];
+  return `${base}\n\nWHERE TO PUT THEM IN THIS SPECIFIC PHOTOGRAPH: ${direction}`;
 }
 
 const DEFAULT_PROMPT = BASE_PROMPT;
@@ -209,6 +251,14 @@ export async function POST(req: NextRequest) {
         .filter((n: number) => Number.isInteger(n) && n >= 0)
         .slice(0, MAX_PHOTOS)
     : null;
+
+  // Per-photo placement, positionally aligned with photoIndexes. The caller is
+  // expected to have LOOKED at each frame and said where the person belongs in
+  // it, naming things actually visible there. Without this the route falls back
+  // to a generic pose rotation that knows nothing about the picture.
+  const placements: string[] = Array.isArray(body.placements)
+    ? body.placements.map((p: any) => String(p || "").trim())
+    : [];
   if (photoIndexes && photoIndexes.length === 0) {
     return bad("validation_failed", "photoIndexes must contain at least one non-negative integer index.");
   }
@@ -259,9 +309,17 @@ export async function POST(req: NextRequest) {
       );
     }
     // Preserve the caller's order — it becomes the carousel's room order.
-    photos = photoIndexes.map((i) => ({ ...allPhotos[i], __index: i }));
+    photos = photoIndexes.map((i, slot) => ({
+      ...allPhotos[i],
+      __index: i,
+      __placement: placements[slot],
+    }));
   } else {
-    photos = allPhotos.slice(0, count).map((p, i) => ({ ...p, __index: i }));
+    photos = allPhotos.slice(0, count).map((p, i) => ({
+      ...p,
+      __index: i,
+      __placement: placements[i],
+    }));
   }
 
   // Download the headshot once — used for every Gemini call.
@@ -292,10 +350,17 @@ export async function POST(req: NextRequest) {
                 { inlineData: { data: headshotImg.base64, mimeType: headshotImg.mimeType } },
                 // Per-photo staging note, so a 4-room batch reads as a
                 // walkthrough rather than the same pose four times.
-                { text: promptForIndex(prompt, i) },
+                { text: promptForIndex(prompt, photo.__placement, i) },
               ],
             },
           ],
+          // Ask the MODEL for Instagram's 4:5 at 2K, rather than generating at
+          // whatever it likes and letting Cloudinary crop-fill to fit.
+          // Cloudinary is storage; a gravity:auto crop there is an uncontrolled
+          // second reframing of a photo we already care about preserving.
+          config: {
+            imageConfig: { aspectRatio: "4:5", imageSize: "2K" },
+          },
         });
 
         // Pull the first image part out of the response.
@@ -310,16 +375,18 @@ export async function POST(req: NextRequest) {
         const generatedBase64 = imagePart.inlineData.data;
         const generatedMime = imagePart.inlineData.mimeType || "image/png";
 
-        // Upload to Cloudinary at 4:5 portrait (IG carousel-optimal).
+        // STORE AS GENERATED. Cloudinary is storage here, nothing more.
+        //
+        // This used to crop-fill to 4:5 with gravity:auto on upload, which was
+        // a second, uncontrolled reframing of an image whose whole point is
+        // that it matches the source photograph. The model is now asked for 4:5
+        // directly, so there is nothing left to crop — and re-cropping a
+        // correctly-framed image could only make it wrong.
         const upload = await cloudinary.uploader.upload(
           `data:${generatedMime};base64,${generatedBase64}`,
           {
             folder: `jpsrealtor/ai-staged/${listingKey}`,
             public_id: `${Date.now()}-${i}`,
-            transformation: [
-              { aspect_ratio: "4:5", crop: "fill", gravity: "auto", width: 1080 },
-              { quality: "auto:good", fetch_format: "auto" },
-            ],
           }
         );
 

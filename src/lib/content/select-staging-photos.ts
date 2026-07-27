@@ -37,6 +37,12 @@ export interface PhotoAssessment {
   stageable: boolean;
   /** Best placement for THIS frame, or null when it can't host anyone. */
   placement: Placement | null;
+  /**
+   * Where exactly in THIS frame the person goes, naming visible objects. This
+   * is what actually gets sent to the image model — a generic pose leaves it
+   * to invent a spot, which is how you get someone floating in a doorway.
+   */
+  placementDetail: string;
   /** 0-1. How good a marketing frame this is, independent of staging. */
   appeal: number;
   reason: string;
@@ -88,7 +94,9 @@ const PROMPT = `You are selecting real-estate photos to composite a real-estate 
 
 Classify THIS ONE photo and reply with ONLY a JSON object, no markdown fence:
 
-{"room":"<kind>","stageable":<bool>,"placement":<string|null>,"appeal":<0-1>,"reason":"<short>"}
+{"room":"<kind>","stageable":<bool>,"placement":<string|null>,"placementDetail":"<see below>","appeal":<0-1>,"reason":"<short>"}
+
+"placementDetail": one sentence saying exactly WHERE IN THIS FRAME the person should be, naming objects that are actually visible in this photo — e.g. "standing on the rug between the orange armchair and the round coffee table, facing the camera" or "seated on the left end of the peach sofa, turned toward the pool table". Say where they stand, what is beside them, and which way they face. Empty string when not stageable.
 
 room must be one of: living, kitchen, dining, primary_bedroom, bedroom, outdoor_living, pool, entry, office, game_room, bathroom, hallway, detail, exterior, aerial, other
 
@@ -165,6 +173,7 @@ async function assessOne(
       room,
       stageable,
       placement: stageable ? placement : null,
+      placementDetail: stageable ? String(j.placementDetail || "").slice(0, 300) : "",
       appeal: typeof j.appeal === "number" ? Math.max(0, Math.min(1, j.appeal)) : 0.5,
       reason: String(j.reason || "").slice(0, 200),
     };

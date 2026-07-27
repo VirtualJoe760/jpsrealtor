@@ -24,8 +24,14 @@
  * — misrepresents the home. It is a compliance problem, and it is another
  * agent's listing.
  *
- * Instructing the model harder does not fix it; the failure is architectural.
- * So we verify and reject.
+ * UPDATE 2026-07-27: instructing the model better DOES largely fix it. The old
+ * prompt was causing the damage — it asked for "portrait orientation" from a
+ * landscape source (forcing a reframe, therefore invention), asked for a "warm
+ * grade and contrast lift" (an explicit instruction to change every pixel), and
+ * opened with "re-render ... generate afresh". Rewritten as an EDIT with
+ * preservation stated first and an explicit out, the same rooms now come back
+ * intact. This check stays regardless: prompts are not guarantees, and the cost
+ * of one altered photo of someone else's listing is far higher than a check.
  */
 import { GoogleGenAI } from "@google/genai";
 
@@ -38,6 +44,8 @@ export interface StagingVerdict {
   confidence: number;
   /** Set when the check itself failed — treated as a FAIL, never a pass. */
   error?: string;
+  /** Non-blocking observations — worth a glance, never a rejection. */
+  notes?: string[];
   /** Both descriptions, for showing the agent WHY something was rejected. */
   details?: { original: any; staged: any };
 }
@@ -189,20 +197,23 @@ export async function verifyStagedPhoto(opts: {
           .flatMap((s: any) => String(s).toLowerCase().split(/[^a-z]+/))
           .filter((w) => w.length > 3)
       );
-    // Deliberately loose: this fires on phrasing differences as well as real
-    // ones, so it needs a high bar and is reported last. The flooring and
-    // furniture checks above are the ones to trust.
+    // NOTE, not a gate. This fired on both images of a run where the room was
+    // demonstrably preserved, listing "island, window, black" as missing —
+    // they had simply fallen outside the tighter 4:5 crop. A check that
+    // rejects correct output is worse than no check, because it trains you to
+    // ignore rejections. Reported for a human to glance at; never fails the
+    // image on its own.
     const stagedWords = words(staged?.notable_features);
     const lostFeatures = [...words(orig?.notable_features)].filter((w) => !stagedWords.has(w));
-    if (lostFeatures.length >= 4) {
-      changes.push(
-        `possible missing features (low confidence): ${lostFeatures.slice(0, 5).join(", ")}`
-      );
-    }
+    const notes: string[] =
+      lostFeatures.length >= 4
+        ? [`outside the crop, or possibly missing: ${lostFeatures.slice(0, 5).join(", ")}`]
+        : [];
 
     return {
       pass: changes.length === 0,
       changes,
+      notes,
       confidence: changes.length === 0 ? 1 : 0,
       details: { original: orig, staged },
     };
