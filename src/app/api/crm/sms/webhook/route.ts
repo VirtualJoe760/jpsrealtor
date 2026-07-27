@@ -16,6 +16,15 @@ import User from '@/models/User';
 import { emitNewMessage, getIO } from '@/server/socket';
 import { sendSMSNotification } from '@/services/pushNotificationService';
 import { handleInboundQuery } from '@/lib/messaging/inbound-ai';
+import { handlePostApproval } from '@/lib/messaging/post-approval-sms';
+
+/** TwiML is XML — any reply text has to be escaped before it goes in a body. */
+function escapeXml(s: string): string {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 /**
  * Reconstruct the exact public URL Twilio signed the request against.
@@ -100,6 +109,30 @@ export async function POST(request: NextRequest) {
       );
     }
     const userId = ownerUser._id.toString();
+
+    // --- Post approval ("POST A4") from the AGENT's own phone ---------------
+    // MUST run before the contact lookup below, which is find-or-CREATE: the
+    // agent texting their own platform number would otherwise get an "Unknown
+    // Contact" created for their personal cell in their own CRM every time
+    // they approved a post. This is the agent talking to the platform about
+    // their own content, not a client conversation.
+    try {
+      const approval = await handlePostApproval({
+        agent: ownerUser,
+        from: twilioData.From,
+        body: twilioData.Body || '',
+      });
+      if (approval.handled) {
+        return new NextResponse(
+          `<?xml version="1.0" encoding="UTF-8"?>\n<Response><Message>${escapeXml(approval.reply)}</Message></Response>`,
+          { status: 200, headers: { 'Content-Type': 'text/xml' } }
+        );
+      }
+    } catch (err) {
+      // Never let an approval failure swallow a real inbound message — fall
+      // through to normal handling.
+      console.error('[Twilio Webhook] post approval failed:', err);
+    }
 
     // Find the contact for THIS agent (supports phones[] + legacy phone).
     let contact = await Contact.findOne({
@@ -265,7 +298,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Return TwiML — auto-reply for STOP/HELP/START keywords, else just acknowledge.
-    const escaped = replyBody.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escaped = escapeXml(replyBody);
     const twiml = replyBody
       ? `<?xml version="1.0" encoding="UTF-8"?>\n<Response><Message>${escaped}</Message></Response>`
       : `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`;
