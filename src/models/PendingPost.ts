@@ -110,6 +110,9 @@ export interface IPendingPost extends Document {
   igPostId?: string | null;
   permalink?: string | null;
   error?: string | null;
+  /** Publish attempts that threw. Caps retries so a permanently broken post
+   *  stops being retried every morning forever. */
+  failedAttempts?: number;
 
   /** True once the Cloudinary slide assets have been swept. */
   assetsDeletedAt?: Date | null;
@@ -201,6 +204,7 @@ const PendingPostSchema = new Schema<IPendingPost>(
     igPostId: { type: String, default: null },
     permalink: { type: String, default: null },
     error: { type: String, default: null },
+    failedAttempts: { type: Number, default: 0 },
 
     assetsDeletedAt: { type: Date, default: null },
 

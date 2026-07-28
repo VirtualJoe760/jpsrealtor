@@ -25,6 +25,47 @@ function bad(error: string, message: string, status = 400) {
   return NextResponse.json({ error, message }, { status, headers: NO_STORE });
 }
 
+/** Automated posts go out at 9am Pacific; see /api/cron/publish-pending. */
+const POST_HOUR = 9;
+const TZ = "America/Los_Angeles";
+
+/**
+ * The next 9am in the agent's timezone, as a UTC instant.
+ *
+ * Computed by asking Intl what the offset is on the day in question rather
+ * than hard-coding one, so the slot stays at 9am through DST instead of
+ * sliding an hour twice a year.
+ */
+function nextPostSlot(from = new Date()): Date {
+  const offsetMs = (at: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(at).reduce<Record<string, string>>((a, p) => {
+      if (p.type !== "literal") a[p.type] = p.value;
+      return a;
+    }, {});
+    const asUTC = Date.UTC(
+      +parts.year, +parts.month - 1, +parts.day,
+      +parts.hour % 24, +parts.minute, +parts.second
+    );
+    return asUTC - at.getTime();
+  };
+
+  for (let addDays = 0; addDays < 3; addDays++) {
+    const probe = new Date(from.getTime() + addDays * 86400000);
+    const off = offsetMs(probe);
+    const local = new Date(probe.getTime() + off);
+    const slotLocal = Date.UTC(
+      local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), POST_HOUR, 0, 0
+    );
+    const slotUtc = new Date(slotLocal - off);
+    if (slotUtc.getTime() > from.getTime()) return slotUtc;
+  }
+  return new Date(from.getTime() + 86400000);
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -76,12 +117,18 @@ export async function PATCH(
     post.declinedAt = null;
     post.declineReason = null;
 
-    // Approving without naming a slot means "next available"; the publish job
-    // assigns it. Don't invent a time here — slot policy lives in one place.
     if (body.scheduledFor) {
       const when = new Date(body.scheduledFor);
       if (isNaN(when.getTime())) return bad("validation_failed", "scheduledFor is not a valid date.");
       post.scheduledFor = when;
+    } else {
+      // Approving without naming a slot means the NEXT 9am. This used to be
+      // left null on the theory that "slot policy lives in one place" — but
+      // the place it supposedly lived did not exist, so approving a post set a
+      // status and nothing ever acted on it. An approved post with no slot is
+      // indistinguishable from a forgotten one; give it a real time the agent
+      // can see in the dashboard.
+      post.scheduledFor = nextPostSlot();
     }
   }
 

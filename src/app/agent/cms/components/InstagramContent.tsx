@@ -297,6 +297,10 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
   const [posts, setPosts] = useState<PendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  // A native alert() is the wrong surface for this: it is unstyled, it blocks
+  // the tab, and it cannot show WHEN a post is now scheduled for — which is
+  // the whole result of approving one.
+  const [notice, setNotice] = useState<{ ok: boolean; title: string; body?: string } | null>(null);
   const [openCaption, setOpenCaption] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ slides: Slide[]; index: number; postId: string } | null>(null);
 
@@ -327,9 +331,28 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...extra }),
       });
+      const j = await r.json().catch(() => ({}));
       if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        alert(j.message || "That didn't go through.");
+        setNotice({
+          ok: false,
+          title: action === "approve" ? "Couldn't schedule that post" : "That didn't go through",
+          body: j.message || `The server returned ${r.status}.`,
+        });
+      } else if (action === "approve") {
+        const when = j.scheduledFor
+          ? new Date(j.scheduledFor).toLocaleString("en-US", {
+              timeZone: "America/Los_Angeles",
+              weekday: "long", month: "short", day: "numeric",
+              hour: "numeric", minute: "2-digit",
+            })
+          : null;
+        setNotice({
+          ok: true,
+          title: "Scheduled",
+          body: when
+            ? `This carousel goes out ${when} Pacific. Nothing else to do — you can still decline it before then.`
+            : "Approved. It will go out at the next 9am slot.",
+        });
       }
       await load();
     } finally {
@@ -347,6 +370,46 @@ export default function InstagramContent({ isLight }: { isLight: boolean }) {
 
   return (
     <div className={`${panel} p-5`}>
+      {notice && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setNotice(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`w-full max-w-md rounded-xl border p-5 shadow-2xl ${
+              isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-700"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className={`mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
+                  notice.ok ? "bg-emerald-500" : "bg-red-500"
+                }`}
+              />
+              <div className="min-w-0">
+                <div className={`font-semibold ${textPrimary}`}>{notice.title}</div>
+                {notice.body && (
+                  <p className={`mt-1 text-sm leading-relaxed ${textMuted}`}>{notice.body}</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setNotice(null)}
+              autoFocus
+              className={`mt-5 w-full rounded-lg px-4 py-2 text-sm font-medium ${
+                isLight
+                  ? "bg-gray-900 text-white hover:bg-gray-800"
+                  : "bg-gray-100 text-gray-900 hover:bg-white"
+              }`}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-4">
         <Instagram className="w-4 h-4 text-pink-500" />
         <h2 className={`font-semibold ${textPrimary}`}>Instagram Content</h2>
