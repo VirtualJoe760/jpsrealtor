@@ -41,6 +41,54 @@
   /* Rhythm — vertical space between homepage sections. Tight (2.5rem) reads
      dense/data-forward; airy (6rem) reads luxury/editorial. */
   --section-gap: 3rem;
+
+  /* Page shell — the width and padding every route sits inside. */
+  --page-max: 72rem;
+  --page-pad: 1rem;
+
+  /* Basemap treatment (components/ListingMap.tsx). Leaflet's OSM tiles are
+     full-colour and fight a restrained palette — in a near-monochrome build
+     the map reads as a foreign object pasted in. This filter applies to the
+     TILE PANE only, so markers, popups and controls keep their brand colour,
+     and the tile source and its required attribution are untouched.
+     Try: grayscale(1) contrast(.86) brightness(1.08) */
+  --map-filter: none;
+
+  /* Status hues. These exist so a restyle catches success/error/warning
+     states, which only appear transiently (post-submit, validation failure,
+     mid-swipe) and are therefore the easiest thing to leave behind as stray
+     colour after an otherwise complete rebrand. */
+  --success: #047857;
+  --warning: #b45309;
+  --danger: #b91c1c;
+}
+
+/* The page shell. Applied by <main> in app/layout.tsx.
+   FULL-BLEED ESCAPE HATCH: a hero that runs edge-to-edge cannot live inside a
+   max-width container, and unwrapping <main> strips padding from every OTHER
+   route — which is exactly what happened on the first real build of this
+   template. Instead, wrap the bleeding section in .cr-bleed and this rule
+   stands the shell down for that route only. No other page needs touching. */
+main.cr-shell {
+  margin-inline: auto;
+  max-width: var(--page-max);
+  padding-inline: var(--page-pad);
+  padding-block: 2rem;
+}
+main.cr-shell:has(> .cr-bleed) {
+  max-width: none;
+  padding-inline: 0;
+  padding-block: 0;
+}
+/* ...and for the sections of that page which should stay contained. */
+.cr-page {
+  margin-inline: auto;
+  max-width: var(--page-max);
+  padding-inline: var(--page-pad);
+}
+
+.leaflet-tile-pane {
+  filter: var(--map-filter);
 }
 
 /* Map price markers (components/ListingMap.tsx). A rounded price pill with a

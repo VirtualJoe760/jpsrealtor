@@ -74,7 +74,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        {/* Width and padding live in .cr-shell (app/globals.css), not in
+            utilities here, so a full-bleed hero can stand the container down
+            for its own route by wrapping itself in .cr-bleed — without any
+            other route losing its padding. */}
+        <main className="cr-shell">{children}</main>
         <footer className="mt-16 border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-400">
           {/* COMPLIANCE — always visible, never remove: license number,
               brokerage, and team (when one exists). Contact info (phone/email)

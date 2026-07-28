@@ -37,8 +37,11 @@ export default function ListingCard({
               alt={listing.address || "Listing photo"}
               className="h-full w-full object-cover transition group-hover:scale-[1.02]"
               loading={priority ? "eager" : "lazy"}
-              // @ts-expect-error fetchPriority is valid HTML but not yet in React's img types
-              fetchpriority={priority ? "high" : undefined}
+              // React 19 added fetchPriority to the img types and warns on the
+              // lowercase DOM spelling, so a brand-new site logged console
+              // errors on its very first page. Camel case is both correct for
+              // React and no longer needs a ts-expect-error.
+              fetchPriority={priority ? "high" : undefined}
               decoding="async"
             />
           ) : (
