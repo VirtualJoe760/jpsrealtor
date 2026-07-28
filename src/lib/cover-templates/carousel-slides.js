@@ -164,6 +164,34 @@ function buildTextPostTransformation(post, handle) {
  *          paragraphs:string[], italicLast:string, handle:string,
  *          headshotPublicId:string, brokerLogoPublicId:string}} cta
  */
+/**
+ * Place the pre-baked circular headshot.
+ *
+ * THE CIRCLE IS NOT MADE HERE, AND THAT IS THE POINT. This slide once shipped
+ * with a HOLE where the agent should be, from a single-step overlay:
+ *
+ *   { overlay: id, width: 200, height: 200, crop: "thumb", gravity: "face",
+ *     radius: "max", y: 170 }
+ *
+ * which the SDK flattens to `c_thumb,g_face,h_200,l_<id>,r_max,w_200,y_170`.
+ * In one component Cloudinary reads `g_face` as where to POSITION the layer
+ * rather than what to centre its crop on, and the layer renders as nothing —
+ * no error, just a plausible card with the agent missing. Splitting it with
+ * `fl_layer_apply` brought the headshot back but square, and reset the
+ * positioning context so every overlay below it moved; several `r_max`
+ * spellings then filled the square instead of masking it.
+ *
+ * So the circle is baked into its own asset by
+ * `scripts/make-circle-headshot.js`, which verifies the mask before uploading.
+ * This function only does the thing Cloudinary is dependable at — placing a
+ * finished PNG — and falls back to the raw headshot if the circle asset is
+ * missing, so a fresh agent without one gets a square photo rather than a hole.
+ */
+function circleOverlay(publicId, size, y, gravity = "north") {
+  const circleId = /-circle$/.test(publicId) ? publicId : `${publicId}-circle`;
+  return [{ overlay: circleId, width: size, crop: "scale", gravity, y }];
+}
+
 function buildCtaTransformation(cta) {
   const BG = cta.color;
   
@@ -177,6 +205,7 @@ function buildCtaTransformation(cta) {
   const headshot = oid(cta.headshotPublicId);
 
   // Pick the logo variant that can actually be SEEN on this background.
+  // (see circleOverlay above for why the headshot is two steps, not one)
   // A black eXp mark on a light champagne card is invisible-ish and reads as a
   // smudge; the same card also carried near-white body text, so the slide had
   // dark and light marks fighting each other. Choose by luminance instead of
@@ -200,7 +229,7 @@ function buildCtaTransformation(cta) {
       color: BODY_DIM, gravity: "north", y: 100 },
     { overlay: "sample", effect: "colorize:100", color: BODY,
       width: 50, height: 1, crop: "scale", gravity: "north", y: 132 },
-    { overlay: headshot, width: 200, height: 200, crop: "thumb", gravity: "face", radius: "max", y: 170 },
+    ...circleOverlay(headshot, 200, 170),
     { overlay: { font_family: FONT, font_size: 30, font_weight: "light", text: cta.agentName, letter_spacing: 6 },
       color: BODY, gravity: "north", y: 410 },
     { overlay: { font_family: FONT, font_size: 16, font_weight: "light", text: cta.agentLicense, letter_spacing: 4 },
