@@ -57,11 +57,58 @@ export async function GET(request: NextRequest) {
   const fonts = await loadWordmarkFonts(baseUrl);
 
   if (!subdomain) {
+    // The PLATFORM card (chatrealty.io itself). Same treatment the agent cards
+    // already use when they have a background photo, and for the same reason
+    // the owner gave there: full-strength image with a dark scrim over it, not
+    // a faded photo. A wordmark on flat white reads as a placeholder in a feed;
+    // a dark photographic card reads as a product.
+    const platformBg = `${baseUrl}/images/brand/chatrealty-og-bg.jpg`;
     return new ImageResponse(
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: "white" }}>
-        <WordmarkRow fontSize={92} color="#16181d" />
-        <div style={{ display: "flex", fontFamily: "Jost", fontWeight: 200, fontSize: 30, color: "#6b7280", marginTop: 28, letterSpacing: 3 }}>
-          AI-Powered Real Estate
+      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={platformBg}
+          alt=""
+          width={1200}
+          height={630}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        {/* Scrim: heavier at the base so the wordmark keeps contrast wherever
+            the underlying photo happens to be bright. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            background:
+              "linear-gradient(160deg, rgba(10,12,18,0.72) 0%, rgba(10,12,18,0.80) 45%, rgba(10,12,18,0.92) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <WordmarkRow fontSize={92} color="#f7f7f5" />
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Jost",
+              fontWeight: 200,
+              fontSize: 30,
+              color: "#c9cdd2",
+              marginTop: 28,
+              letterSpacing: 3,
+            }}
+          >
+            AI-Powered Real Estate
+          </div>
         </div>
       </div>,
       { width: 1200, height: 630, ...(fonts && { fonts }) }
