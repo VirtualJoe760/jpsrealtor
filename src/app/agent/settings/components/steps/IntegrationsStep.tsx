@@ -108,6 +108,17 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   const [presets, setPresets] = useState<Record<string, Preset>>({});
   // Which preset the user picked for the next-minted token. "website" is the
   // universal default (it exists on every tier — Free only gets this one).
+  // WHAT THE KEY IS FOR — the distinction this card kept losing.
+  //
+  // Both purposes mint the same KIND of credential (a crt_live_ token), which
+  // is precisely why the UI has to name them apart: a tester filed a critical
+  // blocker saying no token could be obtained, because the only minter sat
+  // under a heading that said "Connect Claude" and they needed one for their
+  // WEBSITE. Same key, two unrelated jobs.
+  //
+  //   mcp     → Claude acts as your agent (the MCP connector wraps this)
+  //   website → a site built with create-chatrealty-site, via .env.local
+  const [purpose, setPurpose] = useState<"mcp" | "website">("website");
   const [selectedPreset, setSelectedPreset] = useState<PresetId>("website");
   // When preset=custom, which scopes are checked
   const [customScopes, setCustomScopes] = useState<Set<string>>(new Set());
@@ -146,6 +157,13 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   }, []);
 
   // Effective scopes for the next-minted token
+  // The website answer is fixed; only Claude access has a real choice to make.
+  const PURPOSE_PRESETS: Record<"mcp" | "website", PresetId[]> = {
+    website: ["website"],
+    mcp: ["content_drafting", "lead_aware", "full_workspace", "client_research"],
+  };
+  const purposePresets = PURPOSE_PRESETS[purpose].filter((id) => presets[id]);
+
   const effectiveScopes: string[] =
     selectedPreset === "custom"
       ? Array.from(customScopes)
@@ -461,7 +479,10 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                   Copy this token now — it will not be shown again.
                 </p>
                 <p className={`text-xs mt-0.5 ${isLight ? "text-amber-800" : "text-amber-400"}`}>
-                  Save it somewhere safe. If you lose it, revoke and create a new one.
+                  {purpose === "website"
+                    ? "Paste it into your site's .env.local as CHATREALTY_API_TOKEN, then restart the dev server."
+                    : "Paste it once when connecting Claude — after that Claude remembers it."}{" "}
+                  If you lose it, revoke and create a new one.
                 </p>
               </div>
             </div>
@@ -471,10 +492,14 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                   isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
                 } ${textPrimary}`}
               >
-                {revealedToken}
+                {purpose === "website" ? `CHATREALTY_API_TOKEN=${revealedToken}` : revealedToken}
               </code>
               <button
-                onClick={() => copyToClipboard(revealedToken)}
+                onClick={() =>
+                  copyToClipboard(
+                    purpose === "website" ? `CHATREALTY_API_TOKEN=${revealedToken}` : revealedToken
+                  )
+                }
                 className={`px-3 py-2 rounded-md text-xs font-medium flex items-center gap-1.5 ${
                   isLight
                     ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
@@ -485,7 +510,9 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                 Copy
               </button>
             </div>
-            {/* Install commands — pick a target client */}
+            {/* Install commands — pick a target client. Claude-only: after a
+                WEBSITE mint these would be answering a question nobody asked. */}
+            {purpose === "mcp" && (
             <div className="mt-4">
               <p className={`text-xs font-semibold mb-2 ${isLight ? "text-amber-900" : "text-amber-300"}`}>
                 Install in your Claude client
@@ -629,6 +656,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                 </div>
               )}
             </div>
+            )}
             <button
               onClick={() => setRevealedToken(null)}
               className={`mt-3 text-xs px-3 py-1.5 rounded-md ${
@@ -642,6 +670,55 @@ export default function IntegrationsStep({ isLight }: StepProps) {
 
         {/* Create token */}
         <div className="space-y-3">
+          {/* WHAT IS THIS KEY FOR? Asked first, because everything below it
+              depends on the answer — and because not asking it is what made a
+              tester conclude the feature did not exist. */}
+          <div>
+            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
+              What is this key for?
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                {
+                  id: "website" as const,
+                  title: "Website API token",
+                  desc: "Powers a site built with create-chatrealty-site. Goes in its .env.local.",
+                },
+                {
+                  id: "mcp" as const,
+                  title: "Claude access (MCP)",
+                  desc: "Lets Claude act as your agent — search listings, draft content, work your CRM.",
+                },
+              ]).map((o) => {
+                const on = purpose === o.id;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      setPurpose(o.id);
+                      const first = PURPOSE_PRESETS[o.id].filter((x) => presets[x])[0];
+                      if (first) setSelectedPreset(first);
+                      setCustomScopes(new Set());
+                    }}
+                    className={`text-left p-3 rounded-lg border transition ${
+                      on
+                        ? isLight
+                          ? "border-purple-500 ring-1 ring-purple-500 bg-purple-50"
+                          : "border-purple-500 ring-1 ring-purple-500 bg-purple-950/20"
+                        : isLight
+                        ? "border-gray-200 hover:border-gray-300"
+                        : "border-gray-700 hover:border-gray-600"
+                    }`}
+                  >
+                    <div className={`text-sm font-semibold ${textPrimary}`}>{o.title}</div>
+                    <div className={`text-xs mt-0.5 ${textMuted}`}>{o.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <input
             type="text"
             value={newTokenName}
@@ -655,13 +732,14 @@ export default function IntegrationsStep({ isLight }: StepProps) {
             }`}
           />
 
-          {/* Preset / scope picker */}
-          <div>
+          {/* Preset / scope picker — hidden for the website purpose, which has
+              exactly one correct answer and so is not worth a question. */}
+          <div className={purposePresets.length > 1 ? "" : "hidden"}>
             <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
               What can this token do?
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(Object.keys(presets) as Array<Exclude<PresetId, "custom">>).map((id) => {
+              {(purposePresets as Array<Exclude<PresetId, "custom">>).map((id) => {
                 const p = presets[id];
                 if (!p) return null;
                 const isSelected = selectedPreset === id;
