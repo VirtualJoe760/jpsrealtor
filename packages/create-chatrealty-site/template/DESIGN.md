@@ -27,9 +27,24 @@ This site is a **framework, not a template**. Two layers:
 Pick per the agent's market and feel; don't default to the scaffold's choice.
 
 - **Hero:** full-bleed photo · split (copy + image) · video · search-bar-in-hero · minimal type-only.
+  - *Full-bleed:* wrap the hero in `.cr-bleed` and `main.cr-shell` stands its
+    max-width and padding down for that route alone. Do **not** unwrap `<main>`
+    in `app/layout.tsx` — that strips padding from every other route. Contain
+    the rest of the page's sections with `.cr-page`.
+  - *Search-bar-in-hero:* `components/HeroSearch.tsx` hands the query to
+    `/search?q=…`, which pairs with the full-page CHAP presentation below.
 - **Homepage sections + order:** featured listings, market-stats strip, about/credibility, testimonials, blog rail, CTA — include what the agent checked, in an order that fits their positioning (luxury leads with photography; investment leads with stats).
 - **Listing cards:** image-top · horizontal · photo-overlay text. Every variant keeps the "Listed by {office} — {agent}" attribution (IDX).
 - **CHAP presentation:** floating chat widget · inline panel on a page · full-page search experience.
+  All three ship as components over one shared hook (`lib/use-chap.ts`) and one
+  shared conversation renderer (`components/ChapMessages.tsx`, which carries the
+  IDX attribution). **Mount one, delete the others:**
+
+  | Choice | Component | Wiring |
+  |---|---|---|
+  | Floating widget *(default)* | `ChapWidget` | already mounted in `app/layout.tsx` |
+  | Inline panel | `ChapPanel` | drop `<ChapPanel />` into any page; remove `<ChapWidget />` from the layout |
+  | Full-page search | `ChapSearch` | `/search` ships wired but **unlinked** — add it to the nav, remove `<ChapWidget />` from the layout, and optionally put `<HeroSearch />` in the hero |
 - **Map:** pin style (pill / dot / teardrop), tile theme, cluster behavior.
 - **Nav:** the hamburger drawer is standard on all breakpoints — restyle it, don't replace it with a link row.
 

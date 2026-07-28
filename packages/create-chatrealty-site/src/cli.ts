@@ -116,6 +116,9 @@ async function main(): Promise<void> {
     --api-base <url>     API base (default ${API_BASE_DEFAULT}; or env CHATREALTY_API_BASE)
     --chat-key <key>     Enable CHAP AI chat with this Groq/OpenAI-compatible key (or env CHAT_API_KEY)
     --no-chap            Skip the CHAP prompt entirely
+    --agent-name <name>  Test-data mode: whose site this is (from the interview)
+    --brokerage <name>   Test-data mode: their brokerage
+    --market <place>     Test-data mode: the market they work
     --yes, -y            Non-interactive: accept defaults, never prompt
     --help, -h           This help
 
@@ -228,10 +231,48 @@ async function main(): Promise<void> {
   const n = copyTemplate(TEMPLATE_DIR, dest);
   console.log(`\n  ✓ Wrote ${n} files to ${dest}`);
 
+  // 5b. Make the sample persona THE AGENT'S.
+  //
+  // In test-data mode the site hydrates data/test-agent.json into the header,
+  // footer, About page and <title>. That file ships a stock persona ("Jordan
+  // Avery, Oasis Grove Realty"), so the reveal — which is supposed to be "this
+  // is already YOUR site, not a neutral wireframe" — showed the agent a
+  // stranger's name. The first real build fixed it by hand-overwriting the
+  // file, which is the right outcome by the wrong route.
+  const agentName = getFlag(args, "--agent-name") || "";
+  const brokerage = getFlag(args, "--brokerage") || "";
+  const market = getFlag(args, "--market") || "";
+  if (testMode && (agentName || brokerage || market)) {
+    const personaPath = path.join(dest, "data", "test-agent.json");
+    try {
+      const persona = JSON.parse(fs.readFileSync(personaPath, "utf8"));
+      if (agentName) persona.name = agentName;
+      if (brokerage) persona.brokerageName = brokerage;
+      if (market) {
+        persona.tagline = `${market} real estate`;
+        persona.headline = `Homes in ${market}`;
+        persona.serviceAreas = [market];
+      }
+      fs.writeFileSync(personaPath, JSON.stringify(persona, null, 2) + "\n");
+      console.log(`  ✓ Sample persona set to ${[agentName, brokerage].filter(Boolean).join(" · ") || market}`);
+    } catch {
+      console.log("  ! Could not personalize data/test-agent.json — edit it by hand.");
+    }
+  }
+
+  // The bundled sample listings are Coachella Valley. Say so out loud when the
+  // agent works somewhere else, so they hear it from the tool at the moment of
+  // the reveal rather than from whoever is walking them through the build.
+  if (testMode && market && !/coachella|palm (desert|springs)|la quinta|rancho mirage|indian wells|indio|desert/i.test(market)) {
+    console.log(`  ! Sample listings are Coachella Valley homes, not ${market}. The layout,`);
+    console.log(`    map and stat band are real; the inventory is placeholder until your`);
+    console.log(`    MLS feed is connected.`);
+  }
+
   // 6. .env.local — the token lives here (git-ignored), server-side only.
   const chapBlock = chapKey.trim()
-    ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). Widget is LIVE.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
-    : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# The chat widget appears automatically once you set a key here.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+    ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). LIVE.\n# WHICH presentation appears is a design choice, not a default: ChapWidget\n# (floating), ChapPanel (inline), or ChapSearch + /search (full page).\n# Mount one, delete the others.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
+    : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# Set a key here and CHAP switches on. WHICH presentation appears is a design\n# choice, not a default: ChapWidget (floating), ChapPanel (inline), or\n# ChapSearch + /search (full page). Mount one, delete the others.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
   const authSecret = require("crypto").randomBytes(32).toString("base64url");
   const authBlock = `
 # Auth.js session secret (generated at scaffold time). Social login: add your
@@ -256,7 +297,9 @@ AUTH_SECRET=${authSecret}
   if (chapKey.trim()) {
     console.log("  ✓ CHAP AI listing chat is ENABLED — the chat bubble appears bottom-right. Try “3 beds under $800k with a pool”.\n");
   } else {
-    console.log("  ℹ CHAP AI listing chat is off. Add CHAT_API_KEY to .env.local (a free Groq key from console.groq.com) to switch it on.\n");
+    console.log("  ℹ CHAP AI listing chat is off. Put CHAT_API_KEY in .env.local YOURSELF");
+    console.log("    (a free Groq key from console.groq.com) — never paste a key into chat.");
+    console.log("    Then pick a presentation: floating widget, inline panel, or full-page /search.\n");
   }
   if (testMode) {
     console.log("  Then open http://localhost:3000 — the full site runs on SAMPLE listings (banner shown on every page).");
