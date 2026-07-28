@@ -128,13 +128,13 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
             )}
             {/* Drag hint overlays */}
             <div
-              className="pointer-events-none absolute left-4 top-4 rounded-md border-2 border-emerald-500 px-3 py-1 text-lg font-extrabold text-emerald-500"
+              className="pointer-events-none absolute left-4 top-4 rounded-md border-2 cr-border-success px-3 py-1 text-lg font-extrabold cr-text-success"
               style={{ opacity: Math.min(1, Math.max(0, dx / SWIPE_THRESHOLD)) }}
             >
               SAVE
             </div>
             <div
-              className="pointer-events-none absolute right-4 top-4 rounded-md border-2 border-rose-500 px-3 py-1 text-lg font-extrabold text-rose-500"
+              className="pointer-events-none absolute right-4 top-4 rounded-md border-2 cr-border-danger px-3 py-1 text-lg font-extrabold cr-text-danger"
               style={{ opacity: Math.min(1, Math.max(0, -dx / SWIPE_THRESHOLD)) }}
             >
               PASS
@@ -178,7 +178,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
         <button
           onClick={() => commit("left")}
           aria-label="Pass"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-rose-200 bg-white text-2xl text-rose-500 shadow-sm transition hover:scale-105 hover:border-rose-400"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-danger bg-white text-2xl cr-text-danger shadow-sm transition hover:scale-105 hover:cr-border-danger"
         >
           ✕
         </button>
@@ -188,7 +188,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
         <button
           onClick={() => commit("right")}
           aria-label="Save"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-emerald-200 bg-white text-2xl text-emerald-500 shadow-sm transition hover:scale-105 hover:border-emerald-400"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-success bg-white text-2xl cr-text-success shadow-sm transition hover:scale-105 hover:cr-border-success"
         >
           ♥
         </button>

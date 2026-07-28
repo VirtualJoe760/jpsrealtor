@@ -4,6 +4,12 @@
 // inventory would misrepresent the market and violate MLS/IDX display rules.
 // It disappears on its own once you switch to real data (set
 // CHATREALTY_API_TOKEN and remove CHATREALTY_TEST_DATA from .env.local).
+//
+// DELIBERATELY OUTSIDE THE TOKEN SYSTEM. Every other status colour in this
+// template now derives from --success/--warning/--danger so a rebrand catches
+// it. This banner keeps hardcoded amber on purpose: it is a warning ABOUT the
+// site rather than part of it, and a restrained palette must not be able to
+// tone it down until it stops being noticed. Leave the amber alone.
 
 import { isTestDataMode } from "@/lib/test-data";
 

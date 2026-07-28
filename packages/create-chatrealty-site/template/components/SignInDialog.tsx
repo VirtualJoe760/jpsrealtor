@@ -51,11 +51,11 @@ export default function SignInDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         {phase === "sent" ? (
-          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="cr-note cr-note-success mt-4 p-4 text-sm">
             Check your email — we sent a sign-in link to <strong>{email}</strong>.
           </div>
         ) : phase === "unavailable" ? (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="cr-note cr-note-warning mt-4 p-4 text-sm">
             Accounts aren&apos;t switched on for this site yet. Your favorites are
             saved <strong>on this device</strong> in the meantime — nothing is lost.
           </div>
@@ -111,7 +111,7 @@ export default function SignInDialog({ onClose }: { onClose: () => void }) {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
               />
               {phase === "error" && (
-                <p className="text-sm text-red-600">Something went wrong. Try again.</p>
+                <p className="cr-text-danger text-sm">Something went wrong. Try again.</p>
               )}
               <button
                 type="submit"

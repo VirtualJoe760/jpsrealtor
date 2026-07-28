@@ -52,7 +52,7 @@ export default function InquiryForm({ listingKey, source }: { listingKey?: strin
 
   if (state === "done") {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+      <div className="cr-note cr-note-success p-4 text-sm">
         Thanks — we&apos;ll be in touch.
       </div>
     );
@@ -87,7 +87,7 @@ export default function InquiryForm({ listingKey, source }: { listingKey?: strin
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
       />
       <Turnstile onToken={setTurnstileToken} />
-      {state === "error" && <p className="text-sm text-red-600">{error}</p>}
+      {state === "error" && <p className="cr-text-danger text-sm">{error}</p>}
       <button
         type="submit"
         disabled={state === "sending" || (TURNSTILE_ON && !turnstileToken)}

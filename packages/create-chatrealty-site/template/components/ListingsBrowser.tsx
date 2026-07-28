@@ -162,7 +162,7 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
         </div>
       </div>
 
-      {error && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && <p className="cr-note cr-note-danger mb-4 p-3 text-sm">{error}</p>}
 
       {/* FULL-BLEED map: breaks out of the page container (100vw at the
           viewport edge) and fills the space under the header. A map boxed in

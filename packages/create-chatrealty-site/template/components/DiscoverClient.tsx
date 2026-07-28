@@ -110,7 +110,7 @@ export default function DiscoverClient({ initial }: { initial: ListingSummary[] 
               Has a pool
             </label>
           </div>
-          {note && <p className="mt-3 text-xs text-amber-700">{note}</p>}
+          {note && <p className="cr-text-warning mt-3 text-xs">{note}</p>}
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => apply(filters)}

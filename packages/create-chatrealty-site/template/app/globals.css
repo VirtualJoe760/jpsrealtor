@@ -91,6 +91,30 @@ main.cr-shell:has(> .cr-bleed) {
   filter: var(--map-filter);
 }
 
+/* Status surfaces. Use these instead of Tailwind's green-/amber-/red- scales
+   so a rebrand catches them. They appear only in transient states — post-
+   submit, validation failure, mid-swipe — which is exactly why hardcoded hues
+   survived an otherwise complete restyle on the first real build and left four
+   stray colours in a near-monochrome site.
+
+   `color-mix` gives the tint and border from the same token, so restyling
+   means changing --success / --warning / --danger once. */
+.cr-note {
+  border: 1px solid color-mix(in srgb, var(--cr-status) 28%, transparent);
+  background: color-mix(in srgb, var(--cr-status) 8%, transparent);
+  color: color-mix(in srgb, var(--cr-status) 82%, black);
+  border-radius: var(--radius);
+}
+.cr-note-success { --cr-status: var(--success); }
+.cr-note-warning { --cr-status: var(--warning); }
+.cr-note-danger  { --cr-status: var(--danger); }
+
+.cr-text-success { color: var(--success); }
+.cr-text-warning { color: var(--warning); }
+.cr-text-danger  { color: var(--danger); }
+.cr-border-success { border-color: var(--success); }
+.cr-border-danger  { border-color: var(--danger); }
+
 /* Map price markers (components/ListingMap.tsx). A rounded price pill with a
    pointer tail whose tip sits exactly on the listing's coordinate. The wrapper
    self-centers via transform, so Leaflet's anchor is [0,0]. */
