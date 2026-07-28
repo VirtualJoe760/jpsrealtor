@@ -72,6 +72,22 @@ export interface IPendingPost extends Document {
     sqft?: number;
     listAgentName?: string;
     listOfficeName?: string;
+    /**
+     * Who the post credits. Up to two listing agents — a co-listing is a
+     * courtesy that costs nothing and is noticed when it's missing.
+     *
+     * `secondaryIsTeam` marks the case where the MLS put a TEAM in the
+     * co-list slot rather than a person; `teamCandidates` are the agents who
+     * list under that team, offered so a human can name the right one. The
+     * pipeline never picks for them — the MLS did not record which member
+     * co-listed. See src/lib/spark-roster.ts.
+     */
+    credits?: {
+      primary?: { sparkId?: string; name?: string } | null;
+      secondary?: { sparkId?: string; name?: string } | null;
+      secondaryIsTeam?: boolean;
+      teamCandidates?: Array<{ sparkId?: string; name?: string; listings?: number }>;
+    };
   };
 
   // --- content ---------------------------------------------------------
@@ -188,6 +204,12 @@ const PendingPostSchema = new Schema<IPendingPost>(
       sqft: Number,
       listAgentName: String,
       listOfficeName: String,
+      credits: {
+        primary: { sparkId: String, name: String },
+        secondary: { sparkId: String, name: String },
+        secondaryIsTeam: { type: Boolean, default: false },
+        teamCandidates: [{ sparkId: String, name: String, listings: Number }],
+      },
     },
 
     slides: { type: [SlideSchema], default: [] },

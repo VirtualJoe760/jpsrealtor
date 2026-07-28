@@ -30,6 +30,7 @@ import { GoogleGenAI } from "@google/genai";
 import { v2 as cloudinary } from "cloudinary";
 import { selectStagingPhotos } from "../src/lib/content/select-staging-photos";
 import { stageGeometric } from "../src/lib/content/stage-geometric";
+import { listingCredits } from "../src/lib/spark-roster";
 import { buildSimpleLuxuryTransformations } from "../src/lib/cover-templates/simple-luxury";
 
 const {
@@ -245,8 +246,28 @@ function code() {
   const baths = listing.bathroomsTotalInteger ?? listing.bathsTotal;
   const specs = [beds && `${beds} BD`, baths && `${baths} BA`, listing.livingArea && `${Number(listing.livingArea).toLocaleString()} SQFT`]
     .filter(Boolean).join("  |  ");
-  const credit = listing.listAgentName && listing.listOfficeName
-    ? `Listed by ${listing.listAgentName}  ·  ${listing.listOfficeName}` : "";
+  // CREDIT BOTH LISTING AGENTS, one after the other. A co-listing on someone
+  // else's inventory is a courtesy that costs nothing and is noticed when it's
+  // missing — 53806 Ridge Road went out crediting only Peyson Robertson when
+  // there was a second agent.
+  //
+  // The second name comes from the MLS when it names a PERSON (15,432 of the
+  // 15,635 active co-listings). When the co-list slot holds a TEAM instead —
+  // Ridge Road's says "The Obsidian Group" — the MLS never recorded which
+  // member co-listed, so the team's own name is credited rather than a guess,
+  // and the review queue carries the candidate members for a human to correct.
+  // See src/lib/spark-roster.ts.
+  const credits = await listingCredits(db, listing);
+  const names = [credits.primary?.name, credits.secondary?.name].filter(Boolean);
+  const credit = names.length && listing.listOfficeName
+    ? `Listed by ${names.join("  &  ")}  ·  ${listing.listOfficeName}`
+    : "";
+  if (credits.secondaryIsTeam) {
+    console.log(`   co-list is a TEAM (${credits.secondary?.name}) — crediting the team.`);
+    console.log(`   members who list under it: ${credits.teamCandidates.slice(0, 6).map((t) => t.name).join(", ")}`);
+  } else if (credits.secondary) {
+    console.log(`   crediting two agents: ${names.join(" & ")}`);
+  }
   const coverUrl = cloudinary.url(coverSrc.public_id, {
     transformation: buildSimpleLuxuryTransformations({
       basePhotoPublicId: coverSrc.public_id,
@@ -341,6 +362,12 @@ function code() {
       address: addr, city: listing.city, price: money(listing.listPrice),
       beds, baths, sqft: listing.livingArea,
       listAgentName: listing.listAgentName, listOfficeName: listing.listOfficeName,
+      credits: {
+        primary: credits.primary,
+        secondary: credits.secondary,
+        secondaryIsTeam: credits.secondaryIsTeam,
+        teamCandidates: credits.teamCandidates,
+      },
     },
     slides, caption: CFG.caption,
     approvalCode, approvedAt: null, approvedVia: null, declinedAt: null, declineReason: null,
