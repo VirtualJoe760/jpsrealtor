@@ -60,7 +60,12 @@ function nextPostSlot(from = new Date()): Date {
     const slotLocal = Date.UTC(
       local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), POST_HOUR, 0, 0
     );
-    const slotUtc = new Date(slotLocal - off);
+    // Truncate to the minute. `off` carries the sub-second part of `from`, so
+    // an untruncated slot lands on e.g. 16:00:00.256Z — and the publish cron
+    // fires at the TOP of the hour, so a run at 16:00:00.100Z would find the
+    // post "not due yet", and the next run an hour later fails the 9am check.
+    // A quarter of a second of drift would have cost a full day, silently.
+    const slotUtc = new Date(Math.floor((slotLocal - off) / 60000) * 60000);
     if (slotUtc.getTime() > from.getTime()) return slotUtc;
   }
   return new Date(from.getTime() + 86400000);

@@ -1,0 +1,6 @@
+
+# Build artifacts that appear if anyone typechecks the template in place.
+# One of these (218kB) nearly shipped inside a published tarball.
+*.tsbuildinfo
+template/.next/
+template/node_modules/

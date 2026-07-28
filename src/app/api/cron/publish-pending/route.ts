@@ -54,11 +54,21 @@ export async function GET(req: NextRequest) {
 
   // Due = approved, and either scheduled for the past or not scheduled at all
   // (approve without a slot means "next available", which is now).
+  //
+  // The window reaches to the END of this hour, not to `now`. This job fires at
+  // the top of the hour and a slot is stamped at :00, so comparing against the
+  // instant of the run makes the two race — a run at 16:00:00.1 would find a
+  // 16:00:00.3 slot "not due", and since the next run is 10am and fails the
+  // posting-hour check, the post would silently slip a full day. We are already
+  // inside the posting hour by the time we get here; anything slotted for this
+  // hour goes now.
   const now = new Date();
+  const endOfHour = new Date(now);
+  endOfHour.setMinutes(59, 59, 999);
   const due = await PendingPost.find({
     status: "approved",
     approvedAt: { $ne: null },
-    $or: [{ scheduledFor: null }, { scheduledFor: { $lte: now } }],
+    $or: [{ scheduledFor: null }, { scheduledFor: { $lte: endOfHour } }],
   })
     .sort({ scheduledFor: 1, approvedAt: 1 })
     .limit(5);
