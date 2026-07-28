@@ -31,8 +31,18 @@ export type PendingPostTemplate = "simple-luxury-carousel";
 export interface IPendingPostSlide {
   /** Position in the carousel, 1-based. Instagram publishes in this order. */
   n: number;
-  /** Cloudinary public_id — what the cleanup sweep deletes. */
-  publicId: string;
+  /**
+   * Cloudinary public_id — what the cleanup sweep deletes.
+   *
+   * NULL for text and CTA slides. Those are pure transformation URLs over a
+   * built-in sample image, so there is no uploaded asset to own or to sweep.
+   * Requiring it made every post unsaveable through Mongoose: the generator
+   * inserts directly and skips validation, but `post.save()` in the approve
+   * endpoint ran it and threw, so approving ANY post 500'd on
+   * `slides.N.publicId: Path 'publicId' is required` for the text and CTA
+   * slides. Only cover, room and CMA slides upload anything.
+   */
+  publicId: string | null;
   /** Public https URL — what Instagram fetches. */
   url: string;
   /** Which slide type produced it, for the review UI to label. */
@@ -138,7 +148,7 @@ export interface IPendingPost extends Document {
 const SlideSchema = new Schema<IPendingPostSlide>(
   {
     n: { type: Number, required: true },
-    publicId: { type: String, required: true },
+    publicId: { type: String, default: null },
     url: { type: String, required: true },
     kind: {
       type: String,
