@@ -73,17 +73,11 @@ export async function GET(request: NextRequest) {
           height={630}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
-        {/* Scrim: heavier at the base so the wordmark keeps contrast wherever
-            the underlying photo happens to be bright. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            background:
-              "linear-gradient(160deg, rgba(10,12,18,0.72) 0%, rgba(10,12,18,0.80) 45%, rgba(10,12,18,0.92) 100%)",
-          }}
-        />
+        {/* Scrim as a FLAT fill, not a gradient. Satori rendered a multi-stop
+            rgba gradient far weaker than specified and the card came back with
+            the mark washed out over a bright sky — a plain rgba layer is the
+            one thing it composites predictably. */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "rgba(9,11,16,0.82)" }} />
         <div
           style={{
             position: "relative",
@@ -95,16 +89,26 @@ export async function GET(request: NextRequest) {
             justifyContent: "center",
           }}
         >
-          <WordmarkRow fontSize={92} color="#f7f7f5" />
+          {/* The LOGO, not the text wordmark: the house-in-a-speech-bubble mark
+              is what makes the card recognisable at feed size, and its blue is
+              the only colour on an otherwise monochrome card. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${baseUrl}/images/brand/chatrealty-logo-light-1436x356.png`}
+            alt="chatRealty"
+            width={660}
+            height={164}
+            style={{ objectFit: "contain" }}
+          />
           <div
             style={{
               display: "flex",
               fontFamily: "Jost",
               fontWeight: 200,
-              fontSize: 30,
-              color: "#c9cdd2",
-              marginTop: 28,
-              letterSpacing: 3,
+              fontSize: 28,
+              color: "#e8eaed",
+              marginTop: 34,
+              letterSpacing: 4,
             }}
           >
             AI-Powered Real Estate
