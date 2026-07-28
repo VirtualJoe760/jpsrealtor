@@ -5,18 +5,8 @@
 // Two cards:
 //   1. Anthropic API key — bring-your-own-key for the in-CMS Claude chat builder
 //      (POST /api/integrations/anthropic).
-//   2. Website API token — the crt_live_ token a scaffolded site needs in its
-//      .env.local (components/steps/TokenCard.tsx, variant "website").
-//   3. Connect Claude — the same kind of token, but for the MCP connector
-//      (TokenCard variant "claude"), plus the install commands.
-//   4. Active tokens — one shared list; a token is a token whichever card
-//      minted it.
-//
-// (2) and (3) used to be a SINGLE minter living inside the "Connect Claude"
-// card. An agent looking for the API token their website needed read that
-// heading, concluded it was Claude setup, and filed a critical blocker — the
-// feature had been there all along. Same credential, two unrelated jobs, so
-// now two cards.
+//   2. ChatRealty Desktop Skill — mint API tokens for the Claude Code / Claude
+//      Desktop skill (POST /api/integrations/api-tokens). Token is shown ONCE.
 
 import { useEffect, useState } from "react";
 import {
@@ -32,7 +22,6 @@ import {
   Smartphone,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import TokenCard from "./TokenCard";
 
 interface StepProps {
   formData: any;
@@ -109,6 +98,9 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   // ---- API tokens state ----
   const [tokens, setTokens] = useState<ApiToken[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
+  const [newTokenName, setNewTokenName] = useState("");
+  const [creatingToken, setCreatingToken] = useState(false);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [installTab, setInstallTab] = useState<"claude_remote" | "claude_code" | "claude_desktop" | "skill">("claude_remote");
 
   // Scope catalog + presets loaded from the API on mount
@@ -116,7 +108,9 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   const [presets, setPresets] = useState<Record<string, Preset>>({});
   // Which preset the user picked for the next-minted token. "website" is the
   // universal default (it exists on every tier — Free only gets this one).
+  const [selectedPreset, setSelectedPreset] = useState<PresetId>("website");
   // When preset=custom, which scopes are checked
+  const [customScopes, setCustomScopes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -135,10 +129,14 @@ export default function IntegrationsStep({ isLight }: StepProps) {
           setTokens(data.tokens || []);
           if (Array.isArray(data.catalog)) setScopeCatalog(data.catalog);
           if (data.presets && typeof data.presets === "object") {
-            // The API tier-filters these (Free → website only). Each
-            // TokenCard picks its own default from what it is handed, so no
-            // selection has to be reconciled here any more.
             setPresets(data.presets);
+            // The API tier-filters presets (Free → website only). If the
+            // current selection isn't in the returned set, snap to the first
+            // available so the mint button is never dead on load.
+            const ids = Object.keys(data.presets);
+            if (ids.length > 0 && !ids.includes("website")) {
+              setSelectedPreset(ids[0] as PresetId);
+            }
           }
         }
       } finally {
@@ -148,6 +146,10 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   }, []);
 
   // Effective scopes for the next-minted token
+  const effectiveScopes: string[] =
+    selectedPreset === "custom"
+      ? Array.from(customScopes)
+      : presets[selectedPreset]?.scopes || [];
 
   // ---- Anthropic handlers ----
   const handleTest = async () => {
@@ -222,14 +224,37 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   };
 
   // ---- API token handlers ----
-
-  /** Re-read the token list. Both TokenCards call this after minting. */
-  const refreshTokens = async () => {
+  const handleCreateToken = async () => {
+    const name = newTokenName.trim();
+    if (!name) {
+      toast.error("Give this token a name (e.g. 'MacBook')");
+      return;
+    }
+    if (effectiveScopes.length === 0) {
+      toast.error("Pick at least one scope (or choose a preset)");
+      return;
+    }
+    setCreatingToken(true);
     try {
-      const list = await fetch("/api/integrations/api-tokens");
-      if (list.ok) setTokens((await list.json()).tokens || []);
+      const res = await fetch("/api/integrations/api-tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, scopes: effectiveScopes }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        setRevealedToken(data.token);
+        setNewTokenName("");
+        // Refresh list
+        const list = await fetch("/api/integrations/api-tokens");
+        if (list.ok) setTokens((await list.json()).tokens || []);
+      } else {
+        toast.error(data.error || "Failed to create token");
+      }
     } catch {
-      /* the list is cosmetic; a failed refresh must not eat the new token */
+      toast.error("Network error");
+    } finally {
+      setCreatingToken(false);
     }
   };
 
@@ -398,24 +423,6 @@ export default function IntegrationsStep({ isLight }: StepProps) {
       </div>
 
       {/* ============================================================ */}
-      {/* API tokens — one card per JOB, not one card for both              */}
-      {/* ============================================================ */}
-      <TokenCard
-        variant="website"
-        presets={presets}
-        scopeCatalog={scopeCatalog}
-        isLight={isLight}
-        onCreated={refreshTokens}
-      />
-      <TokenCard
-        variant="claude"
-        presets={presets}
-        scopeCatalog={scopeCatalog}
-        isLight={isLight}
-        onCreated={refreshTokens}
-      />
-
-      {/* ============================================================ */}
       {/* ChatRealty Desktop Skill */}
       {/* ============================================================ */}
       <div className={cardClass}>
@@ -438,11 +445,46 @@ export default function IntegrationsStep({ isLight }: StepProps) {
           </div>
         </div>
 
-        {/* The token itself is minted and revealed by the "Connect Claude"
-            card above. These install steps are no longer gated behind having
-            just minted one — you can read them BEFORE deciding to, which is
-            the order people actually want them in. */}
-
+        {/* Revealed-token modal-ish panel (shown only once) */}
+        {revealedToken && (
+          <div
+            className={`mb-4 p-4 rounded-lg border ${
+              isLight ? "bg-amber-50 border-amber-300" : "bg-amber-950/20 border-amber-800"
+            }`}
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <AlertCircle
+                className={`w-5 h-5 mt-0.5 ${isLight ? "text-amber-700" : "text-amber-400"}`}
+              />
+              <div>
+                <p className={`text-sm font-bold ${isLight ? "text-amber-900" : "text-amber-300"}`}>
+                  Copy this token now — it will not be shown again.
+                </p>
+                <p className={`text-xs mt-0.5 ${isLight ? "text-amber-800" : "text-amber-400"}`}>
+                  Save it somewhere safe. If you lose it, revoke and create a new one.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <code
+                className={`flex-1 px-3 py-2 rounded-md text-xs font-mono break-all ${
+                  isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
+                } ${textPrimary}`}
+              >
+                {revealedToken}
+              </code>
+              <button
+                onClick={() => copyToClipboard(revealedToken)}
+                className={`px-3 py-2 rounded-md text-xs font-medium flex items-center gap-1.5 ${
+                  isLight
+                    ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
+                    : "bg-amber-900/40 text-amber-200 hover:bg-amber-900/60"
+                }`}
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy
+              </button>
+            </div>
             {/* Install commands — pick a target client */}
             <div className="mt-4">
               <p className={`text-xs font-semibold mb-2 ${isLight ? "text-amber-900" : "text-amber-300"}`}>
@@ -548,7 +590,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                       isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
                     } ${textPrimary}`}
                   >
-                    claude mcp add-env chatrealty CHATREALTY_API_TOKEN=crt_live_…
+                    claude mcp add-env chatrealty CHATREALTY_API_TOKEN={revealedToken.slice(0, 18)}…
                   </code>
                   <p>Restart Claude Code. The ChatRealty tools (whoami, search_listings, create_landing_page, …) will appear in the tool tray.</p>
                 </div>
@@ -566,7 +608,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
     "command": "npx",
     "args": ["-y", "@chatrealty/mcp-server"],
     "env": {
-      "CHATREALTY_API_TOKEN": "crt_live_…"
+      "CHATREALTY_API_TOKEN": "${revealedToken}"
     }
   }
 }`}</code>
@@ -582,18 +624,151 @@ export default function IntegrationsStep({ isLight }: StepProps) {
                       isLight ? "bg-white border border-amber-200" : "bg-gray-900 border border-amber-900"
                     } ${textPrimary}`}
                   >
-                    npx @chatrealty/install-skill crt_live_…
+                    npx @chatrealty/install-skill {revealedToken.slice(0, 18)}…
                   </code>
                 </div>
               )}
             </div>
+            <button
+              onClick={() => setRevealedToken(null)}
+              className={`mt-3 text-xs px-3 py-1.5 rounded-md ${
+                isLight ? "text-amber-900 hover:bg-amber-100" : "text-amber-300 hover:bg-amber-900/30"
+              }`}
+            >
+              I&apos;ve saved it — dismiss
+            </button>
+          </div>
+        )}
 
-        {/* The minter used to live here, inside this "Connect Claude" card —
-            which is why an agent looking for their WEBSITE token read the
-            heading, decided it wasn't for them, and filed a blocker. Both
-            token kinds now have their own card above; this card keeps only
-            what is genuinely Claude-specific: how to install it. */}
+        {/* Create token */}
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={newTokenName}
+            onChange={(e) => setNewTokenName(e.target.value)}
+            placeholder="Name this token (e.g. MacBook, Office Desktop)"
+            maxLength={60}
+            className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+              isLight
+                ? "bg-white border-gray-300 text-gray-900 focus:ring-blue-500"
+                : "bg-gray-800 border-gray-700 text-white focus:ring-emerald-500"
+            }`}
+          />
 
+          {/* Preset / scope picker */}
+          <div>
+            <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>
+              What can this token do?
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(Object.keys(presets) as Array<Exclude<PresetId, "custom">>).map((id) => {
+                const p = presets[id];
+                if (!p) return null;
+                const isSelected = selectedPreset === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSelectedPreset(id)}
+                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                      isSelected
+                        ? isLight
+                          ? "border-purple-500 bg-purple-50"
+                          : "border-purple-400 bg-purple-950/30"
+                        : isLight
+                          ? "border-gray-200 hover:border-gray-300"
+                          : "border-gray-700 hover:border-gray-600"
+                    }`}
+                  >
+                    <div className={`text-sm font-semibold ${textPrimary}`}>{p.label}</div>
+                    <div className={`text-xs mt-0.5 ${textMuted}`}>{p.description}</div>
+                    <div className={`text-xs mt-1 ${textMuted}`}>{p.scopes.length} scopes</div>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setSelectedPreset("custom")}
+                className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                  selectedPreset === "custom"
+                    ? isLight
+                      ? "border-purple-500 bg-purple-50"
+                      : "border-purple-400 bg-purple-950/30"
+                    : isLight
+                      ? "border-gray-200 hover:border-gray-300"
+                      : "border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <div className={`text-sm font-semibold ${textPrimary}`}>Custom</div>
+                <div className={`text-xs mt-0.5 ${textMuted}`}>Pick individual scopes — including high-risk ones like campaign send.</div>
+                <div className={`text-xs mt-1 ${textMuted}`}>{customScopes.size} selected</div>
+              </button>
+            </div>
+
+            {/* Custom scope checkboxes */}
+            {selectedPreset === "custom" && scopeCatalog.length > 0 && (
+              <div className={`mt-3 p-3 rounded-lg border ${isLight ? "bg-gray-50 border-gray-200" : "bg-gray-800/40 border-gray-700"}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {scopeCatalog.map((scope) => {
+                    // Irreversible, outward-facing scopes. These take effect in
+                    // the real world the moment Claude calls them — money leaves
+                    // an account, or a post appears on a public profile. Both
+                    // deserve the same treatment; only campaigns:send used to
+                    // get it, which read as "social posting is the safe one".
+                    const isSend = scope in HIGH_RISK_SCOPES;
+                    const checked = customScopes.has(scope);
+                    return (
+                      <label
+                        key={scope}
+                        className={`flex items-start gap-2 text-xs cursor-pointer p-1.5 rounded ${
+                          isSend && checked
+                            ? isLight ? "bg-red-50" : "bg-red-950/20"
+                            : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set(customScopes);
+                            if (e.target.checked) {
+                              next.add(scope);
+                              if (isSend) {
+                                alert(HIGH_RISK_SCOPES[scope]);
+                              }
+                            } else {
+                              next.delete(scope);
+                            }
+                            setCustomScopes(next);
+                          }}
+                          className="mt-0.5"
+                        />
+                        <code className={`font-mono ${isSend ? (isLight ? "text-red-700" : "text-red-400") : textPrimary}`}>
+                          {scope}
+                        </code>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleCreateToken}
+            disabled={!newTokenName.trim() || creatingToken || effectiveScopes.length === 0}
+            className={`w-full px-4 py-2.5 rounded-lg text-sm font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+              isLight ? "bg-purple-600 hover:bg-purple-700" : "bg-purple-600 hover:bg-purple-700"
+            }`}
+          >
+            {creatingToken ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Generate token with {effectiveScopes.length} scope{effectiveScopes.length === 1 ? "" : "s"}
+          </button>
+        </div>
 
         {/* Token list */}
         {tokensLoading ? (
@@ -663,7 +838,7 @@ export default function IntegrationsStep({ isLight }: StepProps) {
           </div>
         ) : (
           <div className={`mt-4 text-sm ${textMuted}`}>
-            No tokens yet. Create one with a card above.
+            No tokens yet. Generate one to install the desktop skill.
           </div>
         )}
       </div>
