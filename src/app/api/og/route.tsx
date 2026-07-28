@@ -71,13 +71,23 @@ export async function GET(request: NextRequest) {
           alt=""
           width={1200}
           height={630}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover" }}
         />
         {/* Scrim as a FLAT fill, not a gradient. Satori rendered a multi-stop
             rgba gradient far weaker than specified and the card came back with
             the mark washed out over a bright sky — a plain rgba layer is the
             one thing it composites predictably. */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "rgba(9,11,16,0.82)" }} />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 1200,
+            height: 630,
+            display: "flex",
+            backgroundColor: "rgba(9,11,16,0.82)",
+          }}
+        />
         <div
           style={{
             position: "relative",
