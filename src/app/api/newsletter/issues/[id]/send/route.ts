@@ -74,7 +74,8 @@ export async function POST(
   await issue.save();
 
   const resend = new Resend(apiKey);
-  const fromEmail = process.env.EMAIL_FROM || "newsletter@jpsrealtor.com";
+  // EMAIL_FROM is unset in every environment, so this fallback IS the sender.
+  const fromEmail = process.env.EMAIL_FROM || `newsletter@${process.env.EMAIL_FROM_DOMAIN || "chatrealty.io"}`;
   const fromName = session.user.name || "ChatRealty";
   const origin =
     process.env.NEXTAUTH_URL ||

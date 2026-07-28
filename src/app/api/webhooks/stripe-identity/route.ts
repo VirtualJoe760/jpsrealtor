@@ -12,6 +12,7 @@ import Stripe from "stripe";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { Resend } from "resend";
+import { platformFrom } from "@/lib/email-brand";
 
 // Lazy initialization to avoid build-time errors
 function getStripe() {
@@ -78,9 +79,9 @@ export async function POST(request: NextRequest) {
           try {
             const resend = getResend();
             await resend.emails.send({
-              from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
+              from: platformFrom(),
               to: [user.email],
-              subject: "Identity Verified - Final Review - JPSRealtor.com",
+              subject: "Identity Verified - Final Review - ChatRealty",
               html: `
                 <!DOCTYPE html>
                 <html>
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
                         The JPSRealtor Team</p>
                       </div>
                       <div class="footer">
-                        <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
+                        <p>Questions? Reply to this email or contact us at support@chatrealty.io</p>
                       </div>
                     </div>
                   </body>
@@ -179,9 +180,9 @@ export async function POST(request: NextRequest) {
           try {
             const resend = getResend();
             await resend.emails.send({
-              from: "Joey Sardella Real Estate <noreply@jpsrealtor.com>",
+              from: platformFrom(),
               to: [user.email],
-              subject: "Identity Verification Issue - JPSRealtor.com",
+              subject: "Identity Verification Issue - ChatRealty",
               html: `
                 <!DOCTYPE html>
                 <html>
@@ -239,13 +240,13 @@ export async function POST(request: NextRequest) {
 
                         <p>Please check your email for instructions to retry the verification process, or visit your dashboard to continue.</p>
 
-                        <p>If you continue to have issues, please contact us at support@jpsrealtor.com.</p>
+                        <p>If you continue to have issues, please contact us at support@chatrealty.io.</p>
 
                         <p>Best regards,<br>
                         The JPSRealtor Team</p>
                       </div>
                       <div class="footer">
-                        <p>Questions? Reply to this email or contact us at support@jpsrealtor.com</p>
+                        <p>Questions? Reply to this email or contact us at support@chatrealty.io</p>
                       </div>
                     </div>
                   </body>

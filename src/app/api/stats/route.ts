@@ -91,7 +91,7 @@ export async function GET() {
     endpoints,
     propertyTypeCodes,
     support: {
-      email: 'support@jpsrealtor.com',
+      email: 'support@chatrealty.io',
       documentation: `${baseUrl}/docs/api/stats`
     },
     metadata: {
