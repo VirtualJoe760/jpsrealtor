@@ -28,6 +28,21 @@ const NO_STORE = { "Cache-Control": "no-store" };
 const POST_HOUR = 9;
 const TZ = "America/Los_Angeles";
 
+/**
+ * Carousels post Tue / Thu / Sun only — docs/content-templates/auto-posting.md.
+ *
+ * THIS GATE WAS MISSING and it reposted a listing on a Wednesday. The cron
+ * runs hourly and only ever checked the HOUR, so every day was a posting day.
+ * The slot maths had the same hole: it handed out "the next 9am" rather than
+ * the next 9am that is actually a slot.
+ */
+const POST_DAYS = new Set([0, 2, 4]); // Sun, Tue, Thu
+
+function weekdayIn(tz: string, at = new Date()): number {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(at);
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
+}
+
 function hourIn(tz: string, at = new Date()): number {
   return Number(
     new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(at)
@@ -43,6 +58,14 @@ export async function GET(req: NextRequest) {
 
   const force = req.nextUrl.searchParams.get("force") === "1";
   const hour = hourIn(TZ);
+  const day = weekdayIn(TZ);
+  const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day];
+  if (!force && !POST_DAYS.has(day)) {
+    return NextResponse.json(
+      { skipped: `${dayName} is not a posting day (Tue/Thu/Sun)` },
+      { headers: NO_STORE }
+    );
+  }
   if (!force && hour !== POST_HOUR) {
     return NextResponse.json(
       { skipped: `it is ${hour}:00 in ${TZ}, posting hour is ${POST_HOUR}:00` },
@@ -68,6 +91,7 @@ export async function GET(req: NextRequest) {
   const due = await PendingPost.find({
     status: "approved",
     approvedAt: { $ne: null },
+    archivedAt: null,
     $or: [{ scheduledFor: null }, { scheduledFor: { $lte: endOfHour } }],
   })
     .sort({ scheduledFor: 1, approvedAt: 1 })
@@ -76,6 +100,29 @@ export async function GET(req: NextRequest) {
   const results: any[] = [];
   for (const post of due) {
     try {
+      // ALREADY-POSTED GUARD. A listing that has gone out must never go out
+      // again, whatever route queued it. This is the failure the incident was
+      // really about: the same property was published twice — once outside
+      // this system entirely (no PendingPost record exists for it), once by
+      // this job — and nothing connected the two. Checking the LISTING rather
+      // than this record catches a duplicate regardless of which path created
+      // it, as long as one of them left a record.
+      const already = await PendingPost.findOne({
+        _id: { $ne: post._id },
+        listingKey: post.listingKey,
+        status: "posted",
+      }).select("approvalCode postedAt igPostId").lean();
+      if (already) {
+        post.status = "expired";
+        post.archivedAt = new Date();
+        post.error =
+          `duplicate: listing already posted by ${(already as any).approvalCode} on ` +
+          `${new Date((already as any).postedAt).toISOString().slice(0, 10)}`;
+        await post.save();
+        results.push({ code: post.approvalCode, ok: false, skipped: post.error });
+        continue;
+      }
+
       const imageUrls = (post.slides || []).map((s: any) => s.url).filter(Boolean);
       if (imageUrls.length < 2) throw new Error(`only ${imageUrls.length} slides`);
 
@@ -92,6 +139,9 @@ export async function GET(req: NextRequest) {
       // would have recorded a successful post with no id and no permalink.
       post.status = "posted";
       post.postedAt = new Date();
+      // One-way latch. Excluded from every publish query from here on, and
+      // nothing in the codebase clears it.
+      post.archivedAt = new Date();
       post.igPostId = out.mediaId;
       post.permalink = out.permalink || null;
       post.error = null;

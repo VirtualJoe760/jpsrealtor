@@ -135,6 +135,15 @@ export interface IPendingPost extends Document {
   postedAt?: Date | null;
   igPostId?: string | null;
   permalink?: string | null;
+  /**
+   * Set the moment a post goes live. A record with this set is DONE — it is
+   * excluded from every publish query and can never be re-approved.
+   *
+   * `status: "posted"` alone already excluded it, but a single status field is
+   * one edit away from being flipped back by a well-meaning retry or a manual
+   * fix. This is a second, one-way latch: nothing in the codebase clears it.
+   */
+  archivedAt?: Date | null;
   error?: string | null;
   /** Publish attempts that threw. Caps retries so a permanently broken post
    *  stops being retried every morning forever. */
@@ -235,6 +244,7 @@ const PendingPostSchema = new Schema<IPendingPost>(
     postedAt: { type: Date, default: null },
     igPostId: { type: String, default: null },
     permalink: { type: String, default: null },
+    archivedAt: { type: Date, default: null, index: true },
     error: { type: String, default: null },
     failedAttempts: { type: Number, default: 0 },
 

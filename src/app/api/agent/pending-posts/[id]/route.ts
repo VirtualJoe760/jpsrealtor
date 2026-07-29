@@ -28,6 +28,14 @@ function bad(error: string, message: string, status = 400) {
 /** Automated posts go out at 9am Pacific; see /api/cron/publish-pending. */
 const POST_HOUR = 9;
 const TZ = "America/Los_Angeles";
+/**
+ * Carousel slots are Tue / Thu / Sun (docs/content-templates/auto-posting.md).
+ *
+ * Omitting this is half of why a listing reposted on a Wednesday: approving a
+ * post stamped "the next 9am" regardless of weekday, and the cron then had no
+ * day gate to catch it. Both ends now agree on which days are slots.
+ */
+const POST_DAYS = new Set([0, 2, 4]); // Sun, Tue, Thu
 
 /**
  * The next 9am in the agent's timezone, as a UTC instant.
@@ -53,7 +61,8 @@ function nextPostSlot(from = new Date()): Date {
     return asUTC - at.getTime();
   };
 
-  for (let addDays = 0; addDays < 3; addDays++) {
+  // Look far enough ahead to clear the longest gap between slots (Thu -> Sun).
+  for (let addDays = 0; addDays < 8; addDays++) {
     const probe = new Date(from.getTime() + addDays * 86400000);
     const off = offsetMs(probe);
     const local = new Date(probe.getTime() + off);
@@ -66,7 +75,11 @@ function nextPostSlot(from = new Date()): Date {
     // post "not due yet", and the next run an hour later fails the 9am check.
     // A quarter of a second of drift would have cost a full day, silently.
     const slotUtc = new Date(Math.floor((slotLocal - off) / 60000) * 60000);
-    if (slotUtc.getTime() > from.getTime()) return slotUtc;
+    if (slotUtc.getTime() <= from.getTime()) continue;
+    // Must be a POSTING day in the agent's timezone, not merely the next 9am.
+    const weekday = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(slotUtc);
+    const idx = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
+    if (POST_DAYS.has(idx)) return slotUtc;
   }
   return new Date(from.getTime() + 86400000);
 }
