@@ -39,7 +39,8 @@ export async function GET() {
       createdAt: t.createdAt,
       lastUsedAt: t.lastUsedAt || null,
     }));
-  // Tier-gate the mintable surface: Free sees only the "Website & listings"
+  // Tier-gate the mintable surface: Free sees only the "Website: CHAP,
+  // listings & blog"
   // preset + read scopes (ship-strategy §5). The UI renders whatever this
   // returns, so no separate client-side gating is needed.
   const free = await isFreeTier(session.user.id);

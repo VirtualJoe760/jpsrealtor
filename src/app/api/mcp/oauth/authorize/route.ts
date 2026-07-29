@@ -76,7 +76,7 @@ function renderPage(p: AuthParams, opts: { error?: string } = {}): string {
     <label for="crt_token">Your ChatRealty API token</label>
     <input id="crt_token" name="crt_token" type="password" autocomplete="off"
       placeholder="crt_live_…" required />
-    <p class="hint">Mint or copy a token at <code>Settings → Integrations</code>.
+    <p class="hint">Mint or copy a token at <a href="https://www.chatrealty.io/agent/settings" target="_blank" rel="noopener">chatrealty.io/agent/settings</a> → Integrations, choosing <strong>Claude access (MCP)</strong>.
       The token's scopes control what Claude can do.</p>
     ${hidden("client_id", p.clientId)}
     ${hidden("redirect_uri", p.redirectUri)}
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveCrtToken(crtToken);
   if (!resolved) {
     return new NextResponse(
-      renderPage(p, { error: "That token isn't valid (or was revoked). Check Settings → Integrations and try again." }),
+      renderPage(p, { error: "That token isn't valid (or was revoked). Mint a new one at chatrealty.io/agent/settings → Integrations (choose \"Claude access (MCP)\") and try again." }),
       { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...NO_STORE } }
     );
   }

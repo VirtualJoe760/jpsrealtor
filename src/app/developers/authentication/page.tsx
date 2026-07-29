@@ -34,7 +34,7 @@ export default function AuthenticationPage() {
         <Callout variant="info" title="Tokens are credentials">
           Treat a <code>crt_live_*</code> token like a password. Anyone holding it can read
           your tenant&apos;s data within the token&apos;s scopes. Revoke a leaked token from
-          Settings → Integrations to kill access immediately.
+          chatrealty.io/agent/settings → Integrations to kill access immediately.
         </Callout>
       </DocsSection>
 
