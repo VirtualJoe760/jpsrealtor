@@ -92,6 +92,12 @@ export interface IPendingPost extends Document {
 
   // --- content ---------------------------------------------------------
   slides: IPendingPostSlide[];
+  /**
+   * How many slides went out. `slides` is emptied once a post publishes — the
+   * images live on Instagram from then on and the Cloudinary originals are
+   * swept — so this preserves the one fact the archive list still wants.
+   */
+  slideCount?: number;
   caption: string;
 
   // --- approval --------------------------------------------------------
@@ -222,6 +228,7 @@ const PendingPostSchema = new Schema<IPendingPost>(
     },
 
     slides: { type: [SlideSchema], default: [] },
+    slideCount: { type: Number, default: null },
     caption: { type: String, default: "" },
 
     approvalCode: { type: String, required: true },

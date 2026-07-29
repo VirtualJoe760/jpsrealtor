@@ -18,6 +18,13 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import PendingPost from "@/models/PendingPost";
 import { publishCarousel, resolveIgAccount } from "@/lib/instagram-publish";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -94,11 +101,21 @@ export async function GET(req: NextRequest) {
     archivedAt: null,
     $or: [{ scheduledFor: null }, { scheduledFor: { $lte: endOfHour } }],
   })
-    .sort({ scheduledFor: 1, approvedAt: 1 })
+    // FIRST APPROVED, FIRST POSTED. The slot decides WHETHER anything goes
+    // out; approval order decides WHICH. Sorting by scheduledFor instead would
+    // let a post approved today jump one approved last week simply because it
+    // was given an earlier slot.
+    .sort({ approvedAt: 1 })
     .limit(5);
 
+  // ONE CAROUSEL PER SLOT. Three slots a week is the schedule; draining the
+  // whole approved queue into a single morning would post three carousels
+  // back to back. Duplicates and failures do NOT consume the slot — the loop
+  // keeps going until something actually publishes.
   const results: any[] = [];
+  let published = 0;
   for (const post of due) {
+    if (published >= 1) break;
     try {
       // ALREADY-POSTED GUARD. A listing that has gone out must never go out
       // again, whatever route queued it. This is the failure the incident was
@@ -145,8 +162,34 @@ export async function GET(req: NextRequest) {
       post.igPostId = out.mediaId;
       post.permalink = out.permalink || null;
       post.error = null;
+
+      // RETENTION. Instagram now holds the images, so ours are dead weight.
+      // Drop the Cloudinary assets and empty the slide array, keeping only
+      // what an archive list needs: the listing, when it went out, and where
+      // it lives. A posted record shrinks from ~10 slides to a few hundred
+      // bytes and can never be re-staged anyway.
+      const publicIds = (post.slides || []).map((sl: any) => sl.publicId).filter(Boolean);
+      let swept = 0;
+      for (const pid of publicIds) {
+        try {
+          await cloudinary.uploader.destroy(pid);
+          swept++;
+        } catch {
+          /* a leftover asset is cosmetic; never fail a published post over it */
+        }
+      }
+      post.slideCount = (post.slides || []).length;
+      post.slides = [] as any;
+      post.assetsDeletedAt = new Date();
+
       await post.save();
-      results.push({ code: post.approvalCode, ok: true, permalink: out.permalink });
+      published++;
+      results.push({
+        code: post.approvalCode,
+        ok: true,
+        permalink: out.permalink,
+        assetsSwept: `${swept}/${publicIds.length}`,
+      });
     } catch (e: any) {
       // Leave it APPROVED so the next run retries. A transient Graph error
       // should not silently consume a post the agent already signed off.

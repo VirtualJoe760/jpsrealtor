@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import PendingPost from "@/models/PendingPost";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -90,6 +91,9 @@ export async function POST(req: NextRequest) {
 
   const imageUrls: unknown = body.imageUrls;
   const caption = String(body.caption ?? "").trim();
+  // Optional, but supply it whenever the carousel is about a listing: it is
+  // what lets the publish cron refuse to post the same property twice.
+  const listingKey = String(body.listingKey ?? "").trim();
 
   if (!Array.isArray(imageUrls)) {
     return bad("validation_failed", "imageUrls must be an array.");
@@ -217,6 +221,37 @@ export async function POST(req: NextRequest) {
     permalink = r?.permalink || null;
   } catch {
     // ignore — post is already published successfully
+  }
+
+  // LEAVE A RECORD. This route used to publish and remember nothing, so a
+  // carousel sent this way was invisible to the rest of the system. On
+  // 2026-07-28 a listing went out here at 09:01, and the publish cron — with
+  // no way to know — posted the same property again the next morning. The
+  // duplicate guard checks PendingPost by listingKey, so a post that leaves no
+  // PendingPost cannot be guarded against.
+  //
+  // Written as already-posted and already-archived: it is history the moment
+  // it exists, and must never be treated as something to publish.
+  try {
+    await PendingPost.create({
+      agentId: auth.user._id,
+      listingKey: listingKey || `adhoc-${postId}`,
+      listingSnapshot: {},
+      slides: [],
+      slideCount: childIds.length,
+      caption,
+      status: "posted",
+      approvalCode: "MCP",
+      approvedAt: new Date(),
+      approvedVia: "dashboard",
+      postedAt: new Date(),
+      archivedAt: new Date(),
+      assetsDeletedAt: new Date(),
+      igPostId: postId,
+      permalink,
+    });
+  } catch {
+    // Never fail a published post over bookkeeping — the carousel is live.
   }
 
   return NextResponse.json(
