@@ -7,6 +7,11 @@ audience: Claude Code sessions + contributors
 
 # Documentation policy for jpsrealtor / ChatRealty
 
+> Scoped to `docs/`. The repo-wide rules and the project map live in the root
+> `AGENTS.md`. Renamed from `CLAUDE.md` so every instruction file in this repo
+> uses one convention — see the note in the root `CLAUDE.md` for why the root
+> keeps a two-line Claude Code shim.
+
 When you work in `/docs/` — or update any architecture-affecting code — follow these rules.
 
 ## Frontmatter (required on every .md)

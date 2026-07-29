@@ -1,10 +1,17 @@
-# Operating rules for Claude Code in jpsrealtor (ChatRealty platform)
+# CLAUDE.md
 
-1. **Full Windows absolute paths for every file op.**
-   Form: `F:\web-clients\joseph-sardella\jpsrealtor\...`. There's a Claude Code bug with relative paths on Windows.
+@AGENTS.md
 
-2. **Before any non-trivial task — read `docs/ARCHITECTURE.md`**, then the relevant area's README under `docs/{area}/`. State back what you understand before writing code.
+<!--
+  Deliberately thin.
 
-3. **After completing the task — update the docs you read** in the same commit. Bump `last_verified` to today. If no doc existed for the area you touched, create one per `docs/CLAUDE.md`.
+  AGENTS.md is the open standard (Linux Foundation's Agentic AI Foundation,
+  alongside MCP) and is read natively by Codex, Cursor, Copilot, Gemini CLI,
+  Aider, Windsurf and Zed. Claude Code is the exception: as of mid-2026 it does
+  NOT read AGENTS.md, so a repo carrying only that file hands Claude Code zero
+  project instructions. The @AGENTS.md line above imports it.
 
-4. **Doc drift is a bug.** If a doc contradicts code, the doc is wrong. Fix it in the same session.
+  One source of truth (AGENTS.md), one import (here). Do not copy rules into
+  this file — two copies is how they start disagreeing, which is the problem
+  this layout was adopted to fix.
+-->
