@@ -1,5 +1,4 @@
-# Source a post — daily carousel
-# /daily-carousel — one post a day, queued for review
+# Source a post — one carousel a day, queued for review
 
 Builds a single carousel and puts it in the review queue. **This skill never
 publishes anything.** Publishing is a separate cron that fires Tue/Thu/Sun at
