@@ -13,6 +13,7 @@ import {
   Globe,
   UserCog,
   Home,
+  FlaskConical,
   Menu,
   X,
   ChevronLeft,
@@ -26,6 +27,7 @@ const sidebarItems = [
   { href: "/admin/domains", label: "Domains", icon: Globe },
   { href: "/admin/users", label: "Users", icon: UserCog },
   { href: "/admin/homepage-builder", label: "Homepage Builder", icon: Home },
+  { href: "/admin/agent-feedback", label: "Agent Feedback", icon: FlaskConical },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
