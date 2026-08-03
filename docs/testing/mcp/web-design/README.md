@@ -2,14 +2,15 @@
 title: Web-Design Judge Loop — full operational reference
 status: current
 last_verified: 2026-07-31
-related: [../README.md, ../../content-templates/copy-voice.md, ../../AGENTS.md]
+related: [create-agent.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
 ---
 
 # The web-design feedback loop, end to end
 
 Automated QA for ChatRealty test sites, spanning three actors on two machines.
 `docs/testing/README.md` is the overview; this is the complete operational
-reference — every endpoint, the report format, the judging standard, and how to
+reference. `create-agent.md` beside this file is the self-contained bootstrap
+prompt for the OTHER machine — every endpoint, the report format, the judging standard, and how to
 unstick the loop.
 
 ## Actors

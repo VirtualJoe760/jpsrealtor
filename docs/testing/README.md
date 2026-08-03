@@ -2,12 +2,12 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-07-31
-related: [mcp/web-design.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
 
-> Deep dive: `mcp/web-design.md` — every endpoint with examples, the report
+> Deep dive: `mcp/web-design/README.md` — every endpoint with examples, the report
 > format, the judging rubric, and the failure-mode table. This README is the
 > orientation; that file is the reference.
 
