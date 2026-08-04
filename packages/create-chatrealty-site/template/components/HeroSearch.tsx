@@ -3,12 +3,18 @@
 // A search box that hands its query to the full-page CHAP experience.
 //
 // Companion to components/ChapSearch.tsx: drop it in a hero, the visitor types
-// a sentence, and /search picks the query up and answers it on arrival. Only
-// useful when the site has chosen the full-page presentation — with the
-// floating widget the visitor just opens the widget instead.
+// a sentence, and /search picks the query up and answers it on arrival.
+//
+// It hands off to /search, so it only works when the site has chosen the
+// full-page presentation (CHAP_PRESENTATION = "search"). Under any other
+// choice /search 404s, so this box would send visitors to a dead end — it
+// renders nothing instead, and says why in dev. A build once shipped this in
+// the hero with the floating widget still mounted, giving one site two CHAP
+// front doors; picking the constant is now the whole decision.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CHAP_PRESENTATION, warnWrongPresentation } from "@/lib/chap-presentation";
 
 export default function HeroSearch({
   placeholder = "Ask about homes — “3 beds under $800k with a pool”",
@@ -19,6 +25,12 @@ export default function HeroSearch({
 }) {
   const [q, setQ] = useState("");
   const router = useRouter();
+
+  // Nothing to hand off to — /search only exists under the full-page choice.
+  if (CHAP_PRESENTATION !== "search") {
+    warnWrongPresentation("HeroSearch", "search");
+    return null;
+  }
 
   return (
     <form

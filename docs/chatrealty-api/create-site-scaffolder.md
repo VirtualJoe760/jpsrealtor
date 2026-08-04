@@ -1,6 +1,6 @@
 ---
 title: create-chatrealty-site (frontend scaffolder)
-last_verified: 2026-07-23
+last_verified: 2026-08-04
 owner: platform
 status: shipped — PUBLISHED to npm as create-chatrealty-site@0.1.0 (2026-07-10)
 ---
@@ -32,6 +32,24 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.9.0 (2026-08-04) — one CHAP presentation, enforced in code.** Choosing a
+CHAP presentation used to be a deletion ("mount one, delete the others"), and
+the widget shipped pre-mounted in `app/layout.tsx` — so choosing anything else
+meant remembering to go remove it. A judged test build put `<HeroSearch />` in
+the hero (which routes to `/search`, the full-page presentation) and left the
+widget mounted: one site, two live CHAP front doors. The choice is now a single
+constant, `CHAP_PRESENTATION` in `template/lib/chap-presentation.ts`
+(`"widget" | "panel" | "search"`). Presentations that are not the choice render
+nothing, `/search` `notFound()`s unless it *is* the choice, and `<HeroSearch />`
+refuses to render without a `/search` to hand off to (dev-only console warning
+explains why). `<ChapWidget />` now stays in the layout under every choice.
+Same release fixes the scaffolder writing `persona.serviceAreas = [market]` —
+a bare string against a `{ name, type? }[]` type, which rendered an **empty**
+chip on `/about`, logged a React duplicate-key warning, and silently dropped the
+market name from the homepage CTA. The CLI now writes the object form, and
+`getAgentProfile()` — the one door every consumer comes through — normalizes
+both shapes and drops nameless entries.
 
 **v0.3.0 (2026-07-23) — the flagship release:** **CHAP on-site** (floating chat
 widget + `/api/chat` tool loop; BYOK OpenAI-compatible, Groq default; tools call

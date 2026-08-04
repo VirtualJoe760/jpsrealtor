@@ -8,6 +8,9 @@
 //
 // See components/ChapWidget.tsx (floating) and components/ChapPanel.tsx
 // (inline). All three share lib/use-chap.ts and components/ChapMessages.tsx.
+// Using this one means CHAP_PRESENTATION = "search" in lib/chap-presentation.ts
+// — the route gate lives in app/search/page.tsx, which 404s otherwise, so this
+// component never needs its own check.
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";

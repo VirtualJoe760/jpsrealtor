@@ -32,19 +32,33 @@ Pick per the agent's market and feel; don't default to the scaffold's choice.
     in `app/layout.tsx` — that strips padding from every other route. Contain
     the rest of the page's sections with `.cr-page`.
   - *Search-bar-in-hero:* `components/HeroSearch.tsx` hands the query to
-    `/search?q=…`, which pairs with the full-page CHAP presentation below.
+    `/search?q=…`. It is **not** a standalone hero option — it only renders when
+    the CHAP presentation below is set to `"search"`, because that is the only
+    setting under which `/search` exists.
 - **Homepage sections + order:** featured listings, market-stats strip, about/credibility, testimonials, blog rail, CTA — include what the agent checked, in an order that fits their positioning (luxury leads with photography; investment leads with stats).
 - **Listing cards:** image-top · horizontal · photo-overlay text. Every variant keeps the "Listed by {office} — {agent}" attribution (IDX).
 - **CHAP presentation:** floating chat widget · inline panel on a page · full-page search experience.
   All three ship as components over one shared hook (`lib/use-chap.ts`) and one
   shared conversation renderer (`components/ChapMessages.tsx`, which carries the
-  IDX attribution). **Mount one, delete the others:**
+  IDX attribution).
 
-  | Choice | Component | Wiring |
+  **Exactly one may be reachable, and you choose it by setting one constant** —
+  `CHAP_PRESENTATION` in `lib/chap-presentation.ts`. There is nothing to delete:
+  the presentations you did not choose render nothing, and `/search` 404s unless
+  it *is* the choice.
+
+  | Choice | `CHAP_PRESENTATION` | Then |
   |---|---|---|
-  | Floating widget *(default)* | `ChapWidget` | already mounted in `app/layout.tsx` |
-  | Inline panel | `ChapPanel` | drop `<ChapPanel />` into any page; remove `<ChapWidget />` from the layout |
-  | Full-page search | `ChapSearch` | `/search` ships wired but **unlinked** — add it to the nav, remove `<ChapWidget />` from the layout, and optionally put `<HeroSearch />` in the hero |
+  | Floating widget *(default)* | `"widget"` | nothing — it is already mounted in `app/layout.tsx` |
+  | Inline panel | `"panel"` | drop `<ChapPanel />` into any page |
+  | Full-page search | `"search"` | add `/search` to the nav; optionally put `<HeroSearch />` in the hero |
+
+  Leave `<ChapWidget />` in the layout regardless — it stands itself down when
+  it is not the choice. This replaces an earlier "mount one, delete the others"
+  instruction that a build followed halfway: `<HeroSearch />` went in the hero
+  (which routes to the full-page `/search`) while the widget stayed mounted, and
+  the site shipped with two live CHAP front doors. The constant makes that
+  unreachable.
 - **Map:** pin style (pill / dot / teardrop), tile theme, cluster behavior.
 - **Nav:** the hamburger drawer is standard on all breakpoints — restyle it, don't replace it with a link row.
 

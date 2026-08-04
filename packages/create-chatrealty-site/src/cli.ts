@@ -251,7 +251,13 @@ async function main(): Promise<void> {
       if (market) {
         persona.tagline = `${market} real estate`;
         persona.headline = `Homes in ${market}`;
-        persona.serviceAreas = [market];
+        // Objects, not bare strings: AgentProfile types serviceAreas as
+        // { name, type? }[] and every consumer reads `.name`. Writing [market]
+        // here type-checked fine (the JSON is parsed as any) and then rendered
+        // an EMPTY pill on /about plus a React key warning, while the homepage
+        // CTA silently fell back to "Ready when you are" instead of naming the
+        // market. Shape it the way the type says.
+        persona.serviceAreas = [{ name: market, type: "city" }];
       }
       fs.writeFileSync(personaPath, JSON.stringify(persona, null, 2) + "\n");
       console.log(`  ✓ Sample persona set to ${[agentName, brokerage].filter(Boolean).join(" · ") || market}`);

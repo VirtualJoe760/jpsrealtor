@@ -7,17 +7,28 @@
 //
 // The other two presentations are components/ChapPanel.tsx (inline in a page)
 // and components/ChapSearch.tsx (a full-page /search experience). All three
-// share lib/use-chap.ts and components/ChapMessages.tsx — pick ONE, mount it,
-// and delete the others.
+// share lib/use-chap.ts and components/ChapMessages.tsx — pick ONE by setting
+// CHAP_PRESENTATION in lib/chap-presentation.ts.
+//
+// This stays mounted in app/layout.tsx no matter which you pick: when the
+// choice is not "widget" it renders nothing, so you do not have to remember to
+// remove it. That forgotten removal is exactly how a site once shipped with a
+// floating widget AND a full-page search both reachable.
 
 import { useState } from "react";
 import { useChap } from "@/lib/use-chap";
 import ChapMessages from "@/components/ChapMessages";
+import { CHAP_PRESENTATION } from "@/lib/chap-presentation";
 
 export default function ChapWidget() {
   const { enabled, busy, msgs, send, scrollRef } = useChap();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+
+  // Not the chosen presentation — stand down silently. No warning: the widget
+  // ships pre-mounted in the layout, so a site using the panel or full-page
+  // search reaches this on every render by design, not by mistake.
+  if (CHAP_PRESENTATION !== "widget") return null;
 
   // A floating button is decoration when chat is off, so it simply does not
   // appear — unlike the full-page presentation, which owes the visitor an

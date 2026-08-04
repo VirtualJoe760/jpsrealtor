@@ -172,8 +172,26 @@ export async function submitLead(input: {
 // Agent identity — hydrates the header, footer, About, and Contact pages from
 // the agent's ChatRealty profile. Update your profile on chatrealty.io and the
 // site updates with it.
+// Service areas are typed { name, type? }[] and every consumer reads `.name`,
+// but the field is easy to write as a bare string list — the scaffolder itself
+// did, and `data/test-agent.json` is hand-editable, so it will happen again.
+// A string entry rendered an EMPTY pill on /about (plus a React duplicate-key
+// warning, since `.name` was undefined for all of them) and quietly dropped the
+// market name out of the homepage CTA. Neither surfaced as an error. Accept
+// both shapes here — this is the one door every consumer comes through — and
+// drop entries that carry no name at all rather than rendering a blank chip.
+function normalizeServiceAreas(raw: unknown): AgentProfile["serviceAreas"] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((a) => (typeof a === "string" ? { name: a } : a))
+    .filter((a): a is { name: string; type?: string } => !!a && typeof a.name === "string" && a.name.length > 0);
+}
+
 export async function getAgentProfile(): Promise<AgentProfile> {
-  if (isTestDataMode()) return testAgentProfile();
+  if (isTestDataMode()) {
+    const t = testAgentProfile();
+    return { ...t, serviceAreas: normalizeServiceAreas(t.serviceAreas) };
+  }
   const res = await skillFetch(`/api/skill/me/profile`, undefined, { revalidate: REVALIDATE.profile });
   if (!res.ok) {
     // Identity should never take the site down — fall back to minimal.
@@ -196,7 +214,7 @@ export async function getAgentProfile(): Promise<AgentProfile> {
     tagline: p.tagline ?? null,
     headshot: p.headshot ?? null,
     heroPhoto: p.heroPhoto ?? null,
-    serviceAreas: Array.isArray(p.serviceAreas) ? p.serviceAreas : [],
+    serviceAreas: normalizeServiceAreas(p.serviceAreas),
     specializations: Array.isArray(p.specializations) ? p.specializations : [],
   };
 }

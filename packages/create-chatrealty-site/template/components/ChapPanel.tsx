@@ -10,10 +10,12 @@
 //
 // See components/ChapWidget.tsx (floating) and components/ChapSearch.tsx
 // (full page). All three share lib/use-chap.ts and components/ChapMessages.tsx.
+// Using this one means CHAP_PRESENTATION = "panel" in lib/chap-presentation.ts.
 
 import { useState } from "react";
 import { useChap } from "@/lib/use-chap";
 import ChapMessages from "@/components/ChapMessages";
+import { CHAP_PRESENTATION, warnWrongPresentation } from "@/lib/chap-presentation";
 
 export default function ChapPanel({
   title = "Ask about homes",
@@ -26,6 +28,14 @@ export default function ChapPanel({
 }) {
   const { enabled, busy, msgs, send, scrollRef } = useChap();
   const [input, setInput] = useState("");
+
+  // Not the chosen presentation. Unlike the widget this is never pre-mounted,
+  // so reaching here means someone dropped <ChapPanel /> into a page without
+  // setting the constant — worth saying out loud in dev.
+  if (CHAP_PRESENTATION !== "panel") {
+    warnWrongPresentation("ChapPanel", "panel");
+    return null;
+  }
 
   // Inline, so it holds a slot in the page's layout. Rendering nothing would
   // leave a gap mid-page; rendering an error would be noise next to real
