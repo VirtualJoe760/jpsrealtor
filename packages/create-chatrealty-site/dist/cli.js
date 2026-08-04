@@ -292,8 +292,8 @@ async function main() {
     }
     // 6. .env.local — the token lives here (git-ignored), server-side only.
     const chapBlock = chapKey.trim()
-        ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). LIVE.\n# WHICH presentation appears is a design choice, not a default: ChapWidget\n# (floating), ChapPanel (inline), or ChapSearch + /search (full page).\n# Mount one, delete the others.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
-        : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# Set a key here and CHAP switches on. WHICH presentation appears is a design\n# choice, not a default: ChapWidget (floating), ChapPanel (inline), or\n# ChapSearch + /search (full page). Mount one, delete the others.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+        ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). LIVE.\n# WHICH presentation appears is a design choice, not a default. Set ONE\n# constant — CHAP_PRESENTATION in lib/chap-presentation.ts — to "widget"\n# (floating), "panel" (inline), or "search" (full-page /search). The ones you\n# don't pick render nothing and /search 404s unless it IS the pick, so there\n# is nothing to delete and no way to leave two presentations live at once.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
+        : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# Set a key here and CHAP switches on. WHICH presentation appears is a design\n# choice, not a default. Set ONE constant — CHAP_PRESENTATION in\n# lib/chap-presentation.ts — to "widget" (floating), "panel" (inline), or\n# "search" (full-page /search). The ones you don't pick render nothing and\n# /search 404s unless it IS the pick, so there is nothing to delete and no way\n# to leave two presentations live at once.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
     const authSecret = require("crypto").randomBytes(32).toString("base64url");
     const authBlock = `
 # Auth.js session secret (generated at scaffold time). Social login: add your
@@ -320,7 +320,8 @@ AUTH_SECRET=${authSecret}
     else {
         console.log("  ℹ CHAP AI listing chat is off. Put CHAT_API_KEY in .env.local YOURSELF");
         console.log("    (a free Groq key from console.groq.com) — never paste a key into chat.");
-        console.log("    Then pick a presentation: floating widget, inline panel, or full-page /search.\n");
+        console.log("    Then pick a presentation: set CHAP_PRESENTATION in lib/chap-presentation.ts");
+        console.log("    to \"widget\" (floating), \"panel\" (inline), or \"search\" (full-page /search).\n");
     }
     if (testMode) {
         console.log("  Then open http://localhost:3000 — the full site runs on SAMPLE listings (banner shown on every page).");
