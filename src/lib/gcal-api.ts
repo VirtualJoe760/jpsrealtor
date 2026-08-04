@@ -313,10 +313,12 @@ export async function getAvailableSlots(
 
   if (!dayHours || dayHours.closed) return [];
 
-  // Parse open/close times
-  const timezone = cal?.calendarId ? "America/Los_Angeles" : "America/Los_Angeles";
-  const openTime = parseTimeString(dayHours.open, dateStr);
-  const closeTime = parseTimeString(dayHours.close, dateStr);
+  // Business hours are wall-clock in the agent's timezone. This must be
+  // passed into the parse: without it the hours land in the SERVER's zone,
+  // which is UTC on Vercel — see zonedDate() for the AM-only wall that caused.
+  const timezone = cal?.timeZone || "America/Los_Angeles";
+  const openTime = parseTimeString(dayHours.open, dateStr, timezone);
+  const closeTime = parseTimeString(dayHours.close, dateStr, timezone);
 
   if (!openTime || !closeTime) return [];
 
@@ -366,7 +368,7 @@ export async function getAvailableSlots(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseTimeString(timeStr: string, dateStr: string): Date | null {
+function parseTimeString(timeStr: string, dateStr: string, timeZone: string): Date | null {
   if (!timeStr) return null;
 
   // Parse "9:00 AM" or "6:00 PM" format
@@ -380,6 +382,45 @@ function parseTimeString(timeStr: string, dateStr: string): Date | null {
   if (period === "PM" && hours !== 12) hours += 12;
   if (period === "AM" && hours === 12) hours = 0;
 
-  const date = new Date(`${dateStr}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
-  return isNaN(date.getTime()) ? null : date;
+  return zonedDate(dateStr, hours, minutes, timeZone);
+}
+
+/**
+ * The UTC instant at which a wall-clock time occurs in a timezone.
+ *
+ * Business hours are wall-clock times in the AGENT'S timezone, and this used
+ * to build `new Date("YYYY-MM-DDTHH:mm:00")` — no zone suffix, so parsed in
+ * the SERVER'S timezone. Locally (Pacific) that was accidentally right; on
+ * Vercel the server runs UTC, so "9:00 AM–5:00 PM" became 09:00–17:00 UTC =
+ * 2:00 AM–10:00 AM Pacific, and the booking page offered a wall of AM slots.
+ *
+ * Offsets come from Intl at the instant in question (two passes for DST
+ * boundaries), the same technique as the posting-slot maths — never a
+ * hard-coded -7/-8.
+ */
+function zonedDate(dateStr: string, hours: number, minutes: number, timeZone: string): Date | null {
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+  const utcGuess = new Date(`${dateStr}T${hh}:${mm}:00Z`);
+  if (isNaN(utcGuess.getTime())) return null;
+
+  const offsetAt = (at: Date): number => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(at).reduce<Record<string, string>>((a, p) => {
+      if (p.type !== "literal") a[p.type] = p.value;
+      return a;
+    }, {});
+    const asUTC = Date.UTC(
+      +parts.year, +parts.month - 1, +parts.day,
+      +parts.hour % 24, +parts.minute, +parts.second
+    );
+    return asUTC - at.getTime();
+  };
+
+  const first = new Date(utcGuess.getTime() - offsetAt(utcGuess));
+  const second = new Date(utcGuess.getTime() - offsetAt(first));
+  return second;
 }
