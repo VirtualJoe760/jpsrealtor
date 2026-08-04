@@ -32,6 +32,13 @@
 
   /* Shape + type — the fastest way to change a site's whole personality.
      --radius: 0 = sharp/editorial, 0.75rem = friendly, 1.25rem = soft/luxury.
+     Tailwind's entire `rounded-*` scale is mapped to this token in
+     tailwind.config.ts, so setting it here restyles every surface — including
+     ones you write later. Do NOT reach for arbitrary values (`rounded-[14px]`)
+     or inline borderRadius to shape a card; that is how a build ends up sharp
+     everywhere except the four places someone hand-rounded. `rounded-full`
+     is deliberately exempt (circles and capsules stay circles at any radius)
+     and `rounded-none` is the escape hatch for a square corner in a soft theme.
      Fonts are wired via next/font in app/layout.tsx; point these at those
      CSS variables (e.g. var(--font-display)) after you load them. */
   --radius: 0.75rem;
@@ -89,6 +96,29 @@ main.cr-shell:has(> .cr-bleed) {
 
 .leaflet-tile-pane {
   filter: var(--map-filter);
+}
+
+/* Leaflet ships its own hardcoded radii on the zoom buttons and popup shell
+   (4px / 2px / 12px). They survive a rebrand untouched, so a sharp build ends
+   up square everywhere except three small map chrome elements — the same
+   failure the --radius token exists to prevent, just in vendor CSS. Scaled at
+   a third of the token so the controls stay proportionate: ~4px at the default
+   0.75rem, square at 0.
+
+   The doubled `.leaflet-container.leaflet-container` prefix is load-bearing,
+   not a typo: leaflet.css is imported inside components/ListingMap.tsx and so
+   lands AFTER this file in the cascade, and its zoom-button rules are already
+   two classes deep (`.leaflet-touch .leaflet-bar a:first-child`). A single
+   prefix ties on specificity, loses on order, and leaves the buttons rounded
+   — which is exactly what the first attempt at this override did. */
+.leaflet-container.leaflet-container .leaflet-bar,
+.leaflet-container.leaflet-container .leaflet-bar a,
+.leaflet-container.leaflet-container .leaflet-bar a:first-child,
+.leaflet-container.leaflet-container .leaflet-bar a:last-child,
+.leaflet-container.leaflet-container .leaflet-control-layers,
+.leaflet-container.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container.leaflet-container .leaflet-tooltip {
+  border-radius: calc(var(--radius) * 0.333);
 }
 
 /* Status surfaces. Use these instead of Tailwind's green-/amber-/red- scales

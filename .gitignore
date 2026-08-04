@@ -82,3 +82,11 @@ gsc-credentials.json
 
 temp-images/
 .dev-server.log
+
+# GCP service-account keys — credentials, never committed
+.gcp/
+
+# Scratch space for scaffolding a create-chatrealty-site build and driving it in
+# the browser. The preview tooling refuses a cwd outside the project root, so a
+# generated site has to live here to be verified rather than merely built.
+/.local-preview/

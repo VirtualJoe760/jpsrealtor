@@ -22,18 +22,16 @@ export function ChapResultCard({ l, size = "sm" }: { l: ChapCard; size?: "sm" | 
   return (
     <a
       href={l.detailUrl}
-      className={`flex gap-3 border border-gray-200 p-2 transition hover:border-brand ${
-        big ? "rounded-xl p-3" : "rounded-lg"
+      className={`flex gap-3 rounded-xl border border-gray-200 p-2 transition hover:border-brand ${
+        big ? "p-3" : ""
       }`}
-      style={{ borderRadius: "var(--radius)" }}
     >
       {l.thumbUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={l.thumbUrl}
           alt=""
-          className={`object-cover ${big ? "h-24 w-32" : "h-14 w-20"}`}
-          style={{ borderRadius: "calc(var(--radius) * 0.6)" }}
+          className={`rounded-md object-cover ${big ? "h-24 w-32" : "h-14 w-20"}`}
         />
       )}
       <div className={`min-w-0 ${big ? "text-sm" : "text-xs"}`}>

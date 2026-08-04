@@ -18,7 +18,7 @@ This site is a **framework, not a template**. Two layers:
 | Brand scale | `--brand` / `--brand-600/700` in `globals.css` **+** `brand` in `tailwind.config.ts` | buttons, links, map pins, accents |
 | Surfaces | `--surface`, `--surface-2`, `--border` | page bg, cards, fills |
 | Text ramp | `--text`, `--text-muted` | copy contrast |
-| Shape | `--radius` | 0 = editorial/sharp · 0.75rem = friendly · 1.25rem = soft/luxury |
+| Shape | `--radius` | 0 = editorial/sharp · 0.75rem = friendly · 1.25rem = soft/luxury. Tailwind's whole `rounded-*` scale is mapped to it, so this one value shapes every surface — including the ones you write. `rounded-full` is exempt (circles stay circles); `rounded-none` is the per-element escape hatch. **Never** shape a container with `rounded-[14px]` or an inline `borderRadius` — that is precisely how a build ships sharp everywhere except the four places someone hand-rounded. |
 | Type | `--font-display`, `--font-body` (load via `next/font` in `layout.tsx`) | whole personality |
 | Rhythm | `--section-gap` | tight = data-forward · airy = luxury |
 
@@ -59,6 +59,16 @@ Pick per the agent's market and feel; don't default to the scaffold's choice.
   (which routes to the full-page `/search`) while the widget stayed mounted, and
   the site shipped with two live CHAP front doors. The constant makes that
   unreachable.
+- **Named markets:** naming the agent's specific areas on the homepage is good
+  copy — but every name you print has to be a working link. Link it to
+  `/neighborhoods/<slug>` (the slug route resolves any name against the feed and
+  renders stats + active homes, with an honest empty state if the feed has none
+  under that name). `/neighborhoods?q=<name>` also works as a fallback filter,
+  but it is the safety net, not the destination. What is *not* acceptable is a
+  named tile whose link discards the name: one build shipped
+  "Balboa Peninsula → Explore" pointing at `/neighborhoods?q=Balboa Peninsula`
+  back when the index ignored `q`, and every tile landed on the same
+  undifferentiated page. Click each one before you call the homepage done.
 - **Map:** pin style (pill / dot / teardrop), tile theme, cluster behavior.
 - **Nav:** the hamburger drawer is standard on all breakpoints — restyle it, don't replace it with a link row.
 

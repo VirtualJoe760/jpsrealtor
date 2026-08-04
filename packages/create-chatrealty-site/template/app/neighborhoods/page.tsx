@@ -10,7 +10,19 @@ const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 // Derived from live data — no hardcoded city list. Whatever markets the
 // data source actually covers become the neighborhood index.
-export default async function NeighborhoodsIndexPage() {
+//
+// `?q=` is honored so that a homepage tile naming a specific market lands
+// somewhere that acknowledges the name. It used to be accepted and silently
+// dropped: a build linked its hero tiles to `/neighborhoods?q=Balboa
+// Peninsula` and visitors got the undifferentiated index with no sign the
+// click had meant anything. Prefer linking straight to `/neighborhoods/<slug>`
+// (see DESIGN.md); this filter is the safety net, not the intended path.
+export default async function NeighborhoodsIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const q = ((await searchParams).q || "").trim();
   const { items } = await searchListings({ limit: 50 });
   const byCity = new Map<string, { count: number; prices: number[] }>();
   for (const l of items) {
@@ -20,14 +32,39 @@ export default async function NeighborhoodsIndexPage() {
     if (l.listPrice) e.prices.push(l.listPrice);
     byCity.set(l.city, e);
   }
-  const cities = [...byCity.entries()].sort((a, b) => b[1].count - a[1].count);
+  const all = [...byCity.entries()].sort((a, b) => b[1].count - a[1].count);
+
+  // A named market with no inventory in the feed is a real, ordinary outcome
+  // (a neighborhood inside a city the feed lists by city name, a market the
+  // agent serves but has no active listings in today). Say that plainly and
+  // still show the index, rather than rendering an empty page.
+  const matched = q
+    ? all.filter(([city]) => city.toLowerCase().includes(q.toLowerCase()))
+    : all;
+  const cities = matched.length > 0 ? matched : all;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Neighborhoods</h1>
+      <h1 className="text-2xl font-bold text-gray-900">
+        {q && matched.length > 0 ? q : "Neighborhoods"}
+      </h1>
       <p className="mt-1 text-sm text-gray-500">
         Explore market data and active homes by area.
       </p>
+
+      {q && matched.length === 0 && all.length > 0 && (
+        <p className="mt-6 text-sm text-gray-500">
+          No active listings are coming back for “{q}” right now. Here is every
+          market currently in the feed.
+        </p>
+      )}
+      {q && matched.length > 0 && (
+        <p className="mt-6 text-sm">
+          <Link href="/neighborhoods" className="font-medium text-brand">
+            ← All markets
+          </Link>
+        </p>
+      )}
 
       {cities.length === 0 ? (
         <p className="mt-10 text-sm text-gray-500">No market areas found yet.</p>

@@ -33,6 +33,32 @@ verifies the token against `GET /api/skill/me` (warns + continues on failure so 
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
 
+**v0.10.0 (2026-08-04) — `--radius` stops being a decoy, named markets stop
+being dead ends.** `DESIGN.md` advertised `--radius` as *the* shape knob, but
+every surface in the template shaped itself with a hardcoded Tailwind class
+(`rounded-xl`, `rounded-2xl`), which ignores the token entirely. A judged build
+set `--radius: 0` for an architectural look and shipped sharp everywhere except
+the listing-detail hero, the spec box, the inquiry sidebar and the CHAP result
+cards — the knob moved nothing on the surfaces nobody had hand-edited. Fixed at
+the source: `template/tailwind.config.ts` now maps the whole `borderRadius`
+scale onto `calc(var(--radius) * n)`, with ratios chosen so the default token
+(`0.75rem`) reproduces stock Tailwind to the pixel — so `rounded-*` anywhere,
+including code a builder writes later, follows the token. `rounded-full` stays
+`9999px` (circles are shape, not theme) and `rounded-none` is the escape hatch.
+Leaflet's own hardcoded control/popup radii are overridden too, at
+`.leaflet-container.leaflet-container` specificity — leaflet.css is imported
+inside `ListingMap.tsx` and lands after `globals.css`, so a single-class
+override ties and loses, which is exactly what the first attempt did.
+
+Same release: `/neighborhoods` now honors `?q=`. The judged build linked its
+homepage tiles ("Balboa Peninsula → Explore") at `/neighborhoods?q=…` and the
+index silently discarded the param, landing every named market on the same
+undifferentiated page. The index filters on `q`, and when nothing in the feed
+matches the name it says so plainly and still shows the full index rather than
+rendering empty. `DESIGN.md` and the build guide now state the rule: link a
+named market to `/neighborhoods/<slug>`; the `q` filter is the safety net, not
+the destination.
+
 **v0.9.0 (2026-08-04) — one CHAP presentation, enforced in code.** Choosing a
 CHAP presentation used to be a deletion ("mount one, delete the others"), and
 the widget shipped pre-mounted in `app/layout.tsx` — so choosing anything else
