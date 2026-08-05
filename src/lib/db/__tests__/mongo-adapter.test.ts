@@ -89,7 +89,12 @@ test("listing query — onMarketDate LEXICAL string range (native .collection by
   const expected = {
     standardStatus: "Active",
     subdivisionName: "Ironwood Country Club",
-    propertyType: "A",
+    // A bucket now matches the code OR the RESO labels that mean it. Mongo
+    // stores the code, so the $in is redundant HERE — it exists because the
+    // Postgres side reads tenant rows written straight off the RESO wire,
+    // where an equality test on "A" matched zero of 500 good rows. Both
+    // adapters answer the same filter identically on purpose.
+    propertyType: { $in: ["A", "Residential", "Manufactured In Park", "Manufactured Home"] },
     onMarketDate: { $gte: isoMin, $lte: isoMax },
     $and: [{ poolFeatures: { $exists: true, $nin: [null, "", "None", "none"] } }],
   };

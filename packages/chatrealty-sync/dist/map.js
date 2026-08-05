@@ -31,6 +31,45 @@
 // PURE: no DB, no network. Unit-tested in __tests__/map.test.ts.
 import { RESOURCES, } from "./vendor/data-dictionary.js";
 const ATTRIBUTION_PLACEHOLDER = "Information Not Available";
+// -----------------------------------------------------------------------------
+// PropertyType → A/B/C/D bucket
+// -----------------------------------------------------------------------------
+//
+// The catalog documents property_type as "Normalized bucket A=sale, B=rental,
+// C=multifamily, D=land" — but the mapper used to copy the RESO wire value
+// through verbatim, so the column held "Residential" / "Land" / "Residential
+// Lease" and never a bucket code. Everything downstream filters on the code:
+// the search API defaults to `A`, and neighborhoods-builder.ts counts
+// `property_type = 'A'`. Result: a tenant with 500 perfectly-seeded rows served
+// an empty catalog and all-zero neighborhood stats. The column now holds what
+// its own catalog entry always claimed it held.
+//
+// Canonical table: src/lib/property-type.ts (the platform read side, which also
+// accepts the raw labels so tenants seeded before this fix still resolve).
+// Residential-only on purpose: commercial / business-opportunity / farm get NO
+// bucket, so they stay out of an agent site's default browse. The raw wire
+// value is preserved in extras.propertyTypeRaw — normalizing must not lose it.
+const PROPERTY_TYPE_BUCKETS = {
+    a: "A",
+    residential: "A",
+    "manufactured in park": "A",
+    "manufactured home": "A",
+    b: "B",
+    "residential lease": "B",
+    c: "C",
+    "residential income": "C",
+    d: "D",
+    land: "D",
+};
+/** RESO PropertyType label (or an already-bucketed code) → bucket code. */
+export function normalizePropertyType(value) {
+    if (isBlank(value))
+        return null;
+    const raw = String(value).trim();
+    // Unbucketed types (Commercial Sale, Farm, …) keep their label rather than
+    // being forced into a residential bucket they don't belong in.
+    return PROPERTY_TYPE_BUCKETS[raw.toLowerCase()] ?? raw;
+}
 // Build resoName → field index from the catalog (the source of truth).
 const PROPERTY_FIELDS = RESOURCES.Property.fields;
 const BY_RESO_NAME = new Map(PROPERTY_FIELDS.map((f) => [f.resoName, f]));
@@ -123,6 +162,17 @@ export function mapResoProperty(record, opts = {}) {
             continue; // handled below
         const wireVal = record[field.resoName];
         row[field.pgColumn] = coerce(field, wireVal);
+    }
+    // 2b) property_type must be the A/B/C/D bucket the platform filters on, not
+    //     the RESO label the wire carries. Keep the original in extras so the
+    //     normalization is never lossy and a feed's own vocabulary stays visible.
+    const rawPropertyType = record.PropertyType;
+    if (!isBlank(rawPropertyType)) {
+        const bucket = normalizePropertyType(rawPropertyType);
+        row["property_type"] = bucket;
+        if (bucket !== String(rawPropertyType).trim()) {
+            extras["propertyTypeRaw"] = rawPropertyType;
+        }
     }
     // 3) Geometry: derive geom from longitude/latitude when both present. The
     //    Postgres adapter does spatial math in raw SQL; here we hand the writer a

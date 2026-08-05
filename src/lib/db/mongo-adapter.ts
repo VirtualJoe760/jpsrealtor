@@ -50,6 +50,7 @@ import type {
   SortSpec,
 } from "./adapter";
 import { toListingDTO, toContactDTO } from "./to-dto";
+import { resolvePropertyType, propertyTypeStoredValues } from "@/lib/property-type";
 
 // -----------------------------------------------------------------------------
 // Minimal structural types for the Mongo connection handle
@@ -148,11 +149,17 @@ export function buildListingMongoQuery(
   else if (filter.cities && filter.cities.length > 0) query.city = { $in: [...filter.cities] };
   if (filter.subdivision) query.subdivisionName = filter.subdivision;
 
-  // propertyType: skip the clause for the wildcard buckets, else exact code.
+  // propertyType: skip the clause for the wildcard buckets, else match the
+  // bucket code OR any RESO label that means it. Mongo's UnifiedListing stores
+  // the code, so the $in is a no-op here today — it exists so both adapters
+  // answer the same filter identically (the Postgres side genuinely needs it;
+  // see the note in src/lib/property-type.ts).
   if (filter.propertyType !== undefined) {
     const pt = String(filter.propertyType).trim();
     if (!PROPERTY_TYPE_SKIP.has(pt.toLowerCase())) {
-      query.propertyType = pt;
+      const code = resolvePropertyType(pt);
+      if (code === null) query.propertyType = pt;
+      else if (code !== "all") query.propertyType = { $in: [...propertyTypeStoredValues(code)] };
     }
   }
 

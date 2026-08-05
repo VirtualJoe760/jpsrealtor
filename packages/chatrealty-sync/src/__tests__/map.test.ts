@@ -70,6 +70,41 @@ test("maps core RESO fields to their snake_case columns", () => {
   assert.equal(row!.postal_code, "92260");
 });
 
+test("PropertyType normalizes to the A/B/C/D bucket, raw label kept in extras", () => {
+  // The wire carries RESO labels; the column must carry the bucket code the
+  // platform filters on. Storing "Residential" made `property_type = 'A'`
+  // match nothing and served a tenant an empty catalog off 500 good rows.
+  const cases: [string, string][] = [
+    ["Residential", "A"],
+    ["Manufactured In Park", "A"],
+    ["Residential Lease", "B"],
+    ["Residential Income", "C"],
+    ["Land", "D"],
+  ];
+  for (const [wire, bucket] of cases) {
+    const row = mapResoProperty({ ...SAMPLE, PropertyType: wire })!;
+    assert.equal(row.property_type, bucket, `${wire} → ${bucket}`);
+    assert.equal(
+      (row.extras as Record<string, unknown>).propertyTypeRaw,
+      wire,
+      "raw RESO label preserved in extras",
+    );
+  }
+});
+
+test("an already-bucketed PropertyType passes through without an extras entry", () => {
+  const row = mapResoProperty(SAMPLE)!; // SAMPLE.PropertyType === "A"
+  assert.equal(row.property_type, "A");
+  assert.equal((row.extras as Record<string, unknown>).propertyTypeRaw, undefined);
+});
+
+test("an unbucketed PropertyType keeps its label rather than being forced", () => {
+  // Commercial/farm get no residential bucket — they stay out of the default
+  // browse instead of being miscategorized into one.
+  const row = mapResoProperty({ ...SAMPLE, PropertyType: "Commercial Sale" })!;
+  assert.equal(row.property_type, "Commercial Sale");
+});
+
 test("ATTRIBUTION (§3.8): agent + office name/phone/mls-id map correctly", () => {
   const row = mapResoProperty(SAMPLE)!;
   assert.equal(row.list_agent_name, "Joseph Sardella");

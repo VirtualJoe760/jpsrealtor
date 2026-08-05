@@ -171,10 +171,52 @@ program
         const t = await client.query(
           `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='property') AS ok;`,
         );
-        const c = await client.query(`SELECT count(*)::int AS n FROM property;`);
-        await client.end();
-        if (t.rows[0]?.ok) okMark(`connected — property table present, ${c.rows[0]?.n} rows`);
-        else bad("connected, but the property table is missing (re-run init).");
+        if (!t.rows[0]?.ok) {
+          await client.end();
+          bad("connected, but the property table is missing (re-run init).");
+        } else {
+          // A bare row count is the most misleading number this tool prints.
+          // A judged session ran `run --once`, saw "500 rows", concluded the
+          // data step was DONE, and filed a critical API bug when the site
+          // showed nothing — but 499 of those 500 were Closed archival records
+          // and the seed was 0.6% complete. The count was true and the
+          // conclusion was wrong, so report what actually determines whether
+          // the site has anything to show: ACTIVE rows, and whether the seed
+          // pass is still in flight.
+          const c = await client.query(`SELECT count(*)::int AS n FROM property;`);
+          const a = await client.query(
+            `SELECT count(*)::int AS n FROM property WHERE standard_status = 'Active';`,
+          );
+          const s = await client
+            .query(`SELECT cursor, pass_mode, pass_upserted FROM sync_state WHERE id = 1;`)
+            .catch(() => ({ rows: [] as any[] }));
+          await client.end();
+
+          const total = c.rows[0]?.n ?? 0;
+          const active = a.rows[0]?.n ?? 0;
+          const st = s.rows[0];
+          const seedInFlight = Boolean(st?.cursor);
+
+          okMark(`connected — property table present, ${total} rows`);
+          if (active > 0) {
+            okMark(`${active} Active listings — this is what your site can show`);
+          } else {
+            bad(
+              `0 Active listings (${total} rows, all non-Active). Your site will show an\n` +
+                "    empty catalog: Active is what a browse displays. Closed records are\n" +
+                "    comps, not inventory. This is a SEEDING gap, not an API failure.",
+            );
+          }
+          if (seedInFlight) {
+            bad(
+              `the seed is INCOMPLETE — pass "${st?.pass_mode ?? "seed"}" is still in flight\n` +
+                `    (${st?.pass_upserted ?? 0} rows written so far, a saved cursor is waiting).\n` +
+                "    The feed is walked oldest-first, so an unfinished seed holds mostly old\n" +
+                "    archival records. Finish it: `npx chatrealty-sync run` (no --once, no --max),\n" +
+                "    or let the deployed hourly Vercel cron finish it over a few ticks.",
+            );
+          }
+        }
       } catch (err) {
         bad(`connection failed: ${(err as Error).message}`);
       }
@@ -197,7 +239,9 @@ program
           got++;
           break;
         }
-        if (got > 0) okMark("feed reachable — pulled a sample record");
+        // "pulled a sample record" reads as jargon to an agent, who then can't
+        // tell whether it means the setup is finished. Say what it proves.
+        if (got > 0) okMark("your MLS credentials work — we fetched one test listing from your feed");
         else bad("feed authenticated but returned no records.");
       } catch (err) {
         bad(`feed check failed: ${(err as Error).message}`);

@@ -12,7 +12,7 @@ import { Resend } from "resend";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, skillRateLimit } from "@/lib/skill-auth";
 import { platformFrom } from "@/lib/email-brand";
-import BugReport, { BUG_AREAS } from "@/models/BugReport";
+import BugReport, { BUG_AREAS, bugFingerprint } from "@/models/BugReport";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_OPEN_PER_USER_PER_DAY = 20;
@@ -53,17 +53,58 @@ export async function POST(req: NextRequest) {
 
   await dbConnect();
 
-  // Per-user daily cap — a stuck agent loop shouldn't flood the queue.
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const recent = await BugReport.countDocuments({
-    "reporter.userId": auth.user._id,
-    createdAt: { $gte: dayAgo },
-  });
-  if (recent >= MAX_OPEN_PER_USER_PER_DAY) {
+  // DEDUPE BEFORE THE CAP. Every test session authenticates as the same judge
+  // account, so a session that files one defect three times (a retry, or the
+  // same 404 hit from three pages) used to burn three of twenty daily slots and
+  // leave the queue holding literal triplicates. A repeat of an already-open
+  // defect is EVIDENCE, not a new report: bump the count, refresh the
+  // timestamp, and charge it nothing.
+  const fingerprint = bugFingerprint(area, title);
+  const existing = await BugReport.findOneAndUpdate(
+    { fingerprint, status: { $in: ["new", "triaged"] } },
+    { $inc: { duplicateCount: 1 }, $set: { lastReportedAt: new Date() } },
+    { new: true }
+  );
+  if (existing) {
     return NextResponse.json(
-      { error: "rate_limited", message: "Daily bug-report limit reached — thank you, we have plenty to work through." },
-      { status: 429, headers: NO_STORE }
+      {
+        bugId: String(existing._id),
+        deduplicated: true,
+        duplicateCount: existing.duplicateCount,
+        message:
+          "Already filed and still open — recorded as another occurrence. " +
+          "No need to re-file this one; it did not count against your daily limit.",
+      },
+      { headers: NO_STORE }
     );
+  }
+
+  // Per-user daily cap — a stuck agent loop shouldn't flood the queue.
+  //
+  // CRITICAL REPORTS ARE NEVER CAPPED. The cap exists to bound noise, and a
+  // budget spent on low/medium noise must not swallow the one finding that
+  // actually blocks a build. A session hit exactly that: it found a critical
+  // serving bug, got a 429, and the report reached us only as prose in a
+  // session summary. Losing that is far worse than one extra row here.
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (severity !== "critical") {
+    const recent = await BugReport.countDocuments({
+      "reporter.userId": auth.user._id,
+      severity: { $ne: "critical" },
+      createdAt: { $gte: dayAgo },
+    });
+    if (recent >= MAX_OPEN_PER_USER_PER_DAY) {
+      return NextResponse.json(
+        {
+          error: "rate_limited",
+          message:
+            "Daily bug-report limit reached for low/medium/high reports — thank you, we have plenty " +
+            "to work through. Reports filed with severity \"critical\" are still accepted; if this one " +
+            "blocks the build, re-file it as critical.",
+        },
+        { status: 429, headers: NO_STORE }
+      );
+    }
   }
 
   const doc = await BugReport.create({
@@ -75,6 +116,9 @@ export async function POST(req: NextRequest) {
     expected: clip(body.expected, 2000),
     actual: clip(body.actual, 4000),
     environment: clip(body.environment, 2000),
+    fingerprint,
+    duplicateCount: 1,
+    lastReportedAt: new Date(),
     reporter: {
       userId: auth.user._id,
       email: auth.user.email || undefined,

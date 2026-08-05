@@ -1,7 +1,7 @@
 ---
 title: RESO Data Dictionary — Field Catalog
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-08-05
 related: [./build_plan.md, ./db-adapter.md, ./architecture.md]
 ---
 
@@ -131,6 +131,18 @@ Notes: `view` is a reserved word — quoted `"view"` in DDL. `poolYN` is the
 soup into this one column at sync time (build_plan §6.5 — the Beverly Hills
 0%-vs-73% under-reporting defect). For `propertyType` `B` (rental), `listPrice`
 doubles as monthly rent — there is no separate rent column.
+
+`property_type` holds the **bucket code, not the RESO label**: `A`=sale,
+`B`=rental, `C`=multifamily, `D`=land. The wire carries `PropertyType:
+"Residential"` / `"Land"` / `"Residential Lease"`; `mapResoProperty()` buckets it
+on write and preserves the original in `extras.propertyTypeRaw`. This column
+entry always *claimed* to be a normalized bucket while the mapper copied the
+label through verbatim — so `property_type = 'A'` matched 0 of 500 seeded rows,
+a tenant site served an empty catalog, and every `neighborhoods` property-type
+stat was zero. Reads accept **both** spellings (`propertyTypeStoredValues()` in
+`src/lib/property-type.ts`) because tenants seeded before the fix still hold raw
+labels. Commercial / Business Opportunity / Farm get **no** bucket on purpose —
+they keep their label and stay out of a residential site's default browse.
 
 ## Resource: Member (agent identity) — `member`
 

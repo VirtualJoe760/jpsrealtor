@@ -235,8 +235,15 @@ export default function ListingsBrowser({
       ) : (
         <>
           {items.length === 0 && !loading ? (
+            // Two different emptinesses, two different messages. "Try widening
+            // your search" is advice a visitor cannot act on when NO filters
+            // are set — there is nothing to widen, the market simply has no
+            // listings to show. Telling them to adjust filters that aren't
+            // there reads as a broken site.
             <p className="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-500">
-              No homes match these filters. Try widening your search.
+              {toQuery(applied, "grid") === ""
+                ? `No homes are available${marketCities.length > 0 ? ` in ${marketCities.join(" · ")}` : ""} right now. Check back soon — or get in touch and I'll watch the market for you.`
+                : "No homes match these filters. Try widening your search."}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

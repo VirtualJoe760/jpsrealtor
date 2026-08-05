@@ -12,6 +12,8 @@ export interface MapOptions {
     /** Retain the raw record in the `raw` jsonb column. Default true. */
     readonly keepRaw?: boolean;
 }
+/** RESO PropertyType label (or an already-bucketed code) → bucket code. */
+export declare function normalizePropertyType(value: unknown): string | null;
 /**
  * Map one RESO Property record to the snake_case `property` row shape.
  *

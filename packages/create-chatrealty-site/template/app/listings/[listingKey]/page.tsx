@@ -33,9 +33,38 @@ export async function generateMetadata({
   const { listingKey } = await params;
   const l = await getListing(listingKey).catch(() => null);
   if (!l) return { title: "Listing" };
+  const title = `${l.address ?? "Home"} — ${money(l.currentPrice ?? l.listPrice)}`;
+  // A listing link is the single most-shared URL on an agent's site, and it
+  // was previewing as a bare URL — no title, no blurb, no photo — because
+  // openGraph was never set. Build the card from the listing itself: the
+  // headline stat line beats truncated remarks when remarks are missing.
+  const description =
+    l.publicRemarks?.slice(0, 160) ||
+    [
+      l.beds ? `${l.beds} bed` : null,
+      l.baths ? `${l.baths} bath` : null,
+      l.sqft ? `${num(l.sqft)} sqft` : null,
+      l.city,
+    ]
+      .filter(Boolean)
+      .join(" · ") ||
+    undefined;
+  const image = l.primaryPhotoUrl || l.thumbUrl || null;
   return {
-    title: `${l.address ?? "Home"} — ${money(l.currentPrice ?? l.listPrice)}`,
-    description: l.publicRemarks?.slice(0, 160) ?? undefined,
+    title,
+    description,
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
   };
 }
 

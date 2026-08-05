@@ -53,6 +53,7 @@ import type {
   SortSpec,
 } from "./adapter";
 import { toListingDTO, toContactDTO } from "./to-dto";
+import { resolvePropertyType, propertyTypeStoredValues } from "@/lib/property-type";
 
 // -----------------------------------------------------------------------------
 // Tunables (mirror the Mongo adapter)
@@ -161,10 +162,25 @@ function buildListingWhere(filter: ListingFilter): SQL {
     clauses.push(sql`city IN (${sql.join(filter.cities.map((c) => sql`${c}`), sql`, `)})`);
   if (filter.subdivision) clauses.push(sql`subdivision_name = ${filter.subdivision}`);
 
+  // propertyType — match the bucket code OR any RESO label that means it.
+  // A tenant's rows are written from the RESO wire, where PropertyType is a
+  // label ("Residential"), not this platform's A/B/C/D code. An equality test
+  // on the code matched zero of 500 correctly-seeded rows and served an empty
+  // catalog. `resolvePropertyType` accepts either spelling from the caller;
+  // `propertyTypeStoredValues` covers either spelling in the column.
   if (filter.propertyType !== undefined) {
     const pt = String(filter.propertyType).trim();
     if (!PROPERTY_TYPE_SKIP.has(pt.toLowerCase())) {
-      clauses.push(sql`property_type = ${pt}`);
+      const code = resolvePropertyType(pt);
+      if (code === null) {
+        // Unrecognized — fall back to exact match rather than silently widening.
+        clauses.push(sql`property_type = ${pt}`);
+      } else if (code !== "all") {
+        const values = propertyTypeStoredValues(code);
+        clauses.push(
+          sql`property_type IN (${sql.join(values.map((v) => sql`${v}`), sql`, `)})`,
+        );
+      }
     }
   }
 

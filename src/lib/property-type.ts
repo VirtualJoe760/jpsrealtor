@@ -73,6 +73,42 @@ const NORMALIZED_MAP: Record<string, PropertyTypeCode | "all"> = {
   "*": "all",
 };
 
+// ---------------------------------------------------------------------------
+// Stored-value aliases — what a bucket can actually look like IN THE DATABASE
+// ---------------------------------------------------------------------------
+//
+// The map above answers "what did the CALLER mean". This one answers the other
+// half: "what values are STORED that belong to this bucket". They are not the
+// same question, and conflating them cost a tenant its entire catalog.
+//
+// A BYOD tenant's Postgres `property.property_type` is written by
+// @chatrealty/sync straight off the RESO wire, where PropertyType is a label
+// ("Residential", "Land", "Residential Lease") — NOT the A/B/C/D bucket code
+// this platform filters on. So `property_type = 'A'` matched ZERO of 500
+// correctly-seeded rows and the site served an empty catalog while the data sat
+// right there. The sync now normalizes on write (see packages/chatrealty-sync/
+// src/map.ts), but tenants seeded before that fix still hold RESO labels, so
+// every read must accept BOTH spellings. Reading tolerantly is permanent;
+// normalizing on write is what keeps new rows tidy.
+//
+// Deliberately residential-only: Commercial Sale / Commercial Lease / Business
+// Opportunity / Farm get no bucket, so they never surface in an agent site's
+// default browse. An unbucketed value is invisible, not miscategorized.
+const STORED_ALIASES: Record<PropertyTypeCode, readonly string[]> = {
+  A: ["A", "Residential", "Manufactured In Park", "Manufactured Home"],
+  B: ["B", "Residential Lease"],
+  C: ["C", "Residential Income"],
+  D: ["D", "Land"],
+};
+
+/**
+ * Every stored `property_type` / `propertyType` value that means `code`.
+ * Use for an IN (...) / $in filter instead of an equality test on the code.
+ */
+export function propertyTypeStoredValues(code: PropertyTypeCode): readonly string[] {
+  return STORED_ALIASES[code];
+}
+
 export function resolvePropertyType(input: string | null | undefined): PropertyTypeCode | "all" | null {
   if (input === null || input === undefined) return null;
   const key = input.trim().toLowerCase();

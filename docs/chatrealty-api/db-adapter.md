@@ -1,7 +1,7 @@
 ---
 title: DB-Agnostic Adapter — Interface, DTOs & Mappers
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-08-05
 related: [./build_plan.md, ./architecture.md]
 ---
 
@@ -51,13 +51,33 @@ across dialects. Design:
   carries positional params or is a mutating statement; `close()` ends that pool
   if it was opened (the HTTP reader needs no close).
 - **`ListingFilter` → SQL**, clause-for-clause with the Mongo builder: `status`
-  defaults Active; `propertyType` wildcard-skip; price/yearBuilt ranges;
+  defaults Active; `propertyType` wildcard-skip, then **`IN (bucket code + RESO
+  labels)`**, never `=` (see below); price/yearBuilt ranges;
   **dual-column bed/bath OR**; `onMarketDate` as a real `timestamptz` range (no
   string trap on Postgres); `hasPool` reads the **typed `pool_yn` column OR the
   `extras` fallback** (build_plan §6.5 — avoids the amenity under-report);
   registered `extras` fields → parameterized `extras->>'k' = $n` equality; `bbox`
   → PostGIS `ST_Contains(ST_MakeEnvelope(…,4326), geom)` with a lat/lng-box
   fallback for null-geom rows.
+- **`propertyType` is TWO vocabularies, and reads must accept both.** This
+  platform filters on the bucket code `A`/`B`/`C`/`D` (A=sale, B=rental,
+  C=multifamily, D=land), and the search API *defaults* to `A`. A BYOD tenant's
+  `property.property_type`, however, is written by `@chatrealty/sync` straight
+  off the RESO wire, where `PropertyType` is a **label** — `"Residential"`,
+  `"Land"`, `"Residential Lease"`. So `property_type = 'A'` matched **0 of 500**
+  correctly-seeded rows and a tenant site served an empty catalog while its data
+  sat right there (session-12 report, filed as a critical API bug). Two halves to
+  the fix, and both are load-bearing:
+  - **Read tolerantly, permanently.** `propertyTypeStoredValues()` in
+    `src/lib/property-type.ts` is the canonical bucket → stored-values table;
+    both adapters emit `IN (...)` over it. Tenants seeded before the write fix
+    still hold raw labels, so this can never be narrowed back to `=`.
+  - **Normalize on write.** `mapResoProperty()` now buckets the label and keeps
+    the original in `extras.propertyTypeRaw`. `neighborhoods-builder.ts` counts
+    `property_type = 'A'`, so its stats were all-zero for the same reason.
+  Deliberately **residential-only**: Commercial Sale / Commercial Lease /
+  Business Opportunity / Farm get no bucket and stay out of an agent site's
+  default browse. An unbucketed value is invisible, not miscategorized.
 - **Casing bridge.** Postgres returns snake_case; `to-dto.ts` reads camelCase, so
   every SELECT aliases columns (`list_agent_name AS "listAgentName"`). The `pool`
   signal is projected as `COALESCE(pool_yn, (extras->>'poolYN')::boolean, false)`

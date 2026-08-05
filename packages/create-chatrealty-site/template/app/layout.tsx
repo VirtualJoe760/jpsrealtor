@@ -12,19 +12,57 @@ import { assetUrl } from "@/lib/asset-url";
 import { getAgentProfile } from "@/lib/chatrealty";
 import { license } from "@/lib/format";
 
+// The site's own origin, for absolute URLs in social previews. On Vercel this
+// resolves automatically; NEXT_PUBLIC_ASSET_ORIGIN overrides it for a custom
+// domain. Without a metadataBase, Next emits RELATIVE og:image URLs, which
+// every social scraper ignores — so a shared link previews with no picture.
+export function siteOrigin(): string | undefined {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_ASSET_ORIGIN;
+  if (explicit) return explicit.replace(/\/+$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return undefined;
+}
+
 // Identity flows from the agent's ChatRealty profile (or the bundled sample in
 // test-data mode) — update the profile on chatrealty.io and the site follows.
+//
+// SOCIAL PREVIEWS: og:* and twitter:* were absent entirely, so every link an
+// agent shared — the whole point of a listing site — previewed as a bare URL
+// with no title, no blurb, and no image. They are generated from the same
+// profile the rest of the page uses, so they can never drift from it.
 export async function generateMetadata(): Promise<Metadata> {
   const agent = await getAgentProfile();
   const name = agent.name || "Real Estate";
+  const title = agent.headline ? `${name} — ${agent.headline}` : `${name} — Real Estate`;
+  const description =
+    agent.tagline ||
+    "Search homes for sale, explore neighborhoods, and save your favorites.";
+  const origin = siteOrigin();
+  // Best available preview image, in order: a hand-placed public/og.png (a
+  // purpose-built 1200×630 always wins), then the landscape hero photo, then
+  // the headshot. Profile images are already absolute URLs.
+  const ogImage = fs.existsSync(path.join(process.cwd(), "public", "og.png"))
+    ? "/og.png"
+    : agent.heroPhoto || agent.headshot || null;
+
   return {
-    title: {
-      default: agent.headline ? `${name} — ${agent.headline}` : `${name} — Real Estate`,
-      template: `%s — ${name}`,
+    ...(origin ? { metadataBase: new URL(origin) } : {}),
+    title: { default: title, template: `%s — ${name}` },
+    description,
+    openGraph: {
+      type: "website",
+      siteName: name,
+      title,
+      description,
+      ...(origin ? { url: origin } : {}),
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
     },
-    description:
-      agent.tagline ||
-      "Search homes for sale, explore neighborhoods, and save your favorites.",
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   };
 }
 
