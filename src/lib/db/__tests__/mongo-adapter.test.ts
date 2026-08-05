@@ -52,6 +52,25 @@ test("listing query — city + price + beds (dual-column $or, default Active sta
   assert.deepEqual(buildListingMongoQuery(filter), expected);
 });
 
+// ---- Sample A2: multi-city market scope --------------------------------------
+// The default browse on a single-market site sends every city it serves. Same
+// shape the search route emits for `?cities=A,B,C`, and `city` still wins when
+// both are present (an explicit search is never widened by the scope).
+test("listing query — cities market scope becomes city:$in, and city wins over it", () => {
+  assert.deepEqual(buildListingMongoQuery({ cities: ["Rancho Mirage", "Indian Wells"] }), {
+    standardStatus: "Active",
+    city: { $in: ["Rancho Mirage", "Indian Wells"] },
+  });
+
+  assert.deepEqual(buildListingMongoQuery({ city: "Palm Desert", cities: ["Indian Wells"] }), {
+    standardStatus: "Active",
+    city: "Palm Desert",
+  });
+
+  // No scope set → no city clause at all (whole feed, as before).
+  assert.deepEqual(buildListingMongoQuery({ cities: [] }), { standardStatus: "Active" });
+});
+
 // ---- Sample B: the onMarketDate string-vs-Date native bypass ----------------
 test("listing query — onMarketDate LEXICAL string range (native .collection bypass)", () => {
   // A real ISO-8601 string cutoff — must be carried VERBATIM (never cast to a

@@ -10,16 +10,30 @@
 // everything else. The model never sees your ChatRealty token.
 
 import { NextRequest, NextResponse } from "next/server";
-import { searchListings, getMarketStats, getListing } from "@/lib/chatrealty";
+import { searchListings, getMarketStats, getListing, getMarketCities } from "@/lib/chatrealty";
 
 const KEY = process.env.CHAT_API_KEY || "";
 const BASE = (process.env.CHAT_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/+$/, "");
 const MODEL = process.env.CHAT_MODEL || "llama-3.3-70b-versatile";
 const MAX_ROUNDS = 4;
 
+// The prompt carries three rules that came out of a judged session where CHAP
+// answered a market question by replaying the previous listing search verbatim,
+// and answered an off-topic question with a rate-limit error:
+//   • not every message is a property search — market questions get stats,
+//     conversation gets conversation;
+//   • answer THE MESSAGE IN FRONT OF YOU, never repeat the last answer;
+//   • off-topic gets a one-line redirect, not a tool call and not an error.
 const SYSTEM = [
   "You are the property-search assistant on a real-estate agent's website, powered by ChatRealty.",
   "Answer questions about homes for sale and local market data using ONLY the tools — never invent listings, prices, or stats.",
+  "Choose the tool that fits the question actually being asked:",
+  "search_listings only when the visitor wants to SEE PROPERTIES;",
+  "get_market_stats for questions about a market, area, or trend ('what's the market like', 'how's inventory', 'are prices up');",
+  "get_listing for a specific home already mentioned.",
+  "Answer the newest message on its own terms. NEVER repeat a previous reply or re-show the previous search's listings when the visitor has moved on to a different question.",
+  "If a question needs no data — small talk, how the process works, what you can do — just answer it in a sentence. Do not call a tool.",
+  "If the question is not about real estate at all (restaurants, weather, sports), say in one friendly line that you only cover homes, neighborhoods and the market here, and offer an example of what to ask. Do not call a tool and do not apologize at length.",
   "Keep replies short and conversational. When you mention specific listings, end the reply with a LISTINGS: line containing their listingKeys separated by commas (e.g. LISTINGS: ABC123,DEF456) so the site can render cards.",
   "Report metrics as plain facts. Never call a listing stale, overpriced, or distressed; days-on-market is a neutral metric.",
   "If the visitor wants to see a home or talk to the agent, point them to the listing page's inquiry form or the Contact page.",
@@ -108,8 +122,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
   const history = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
+  // Tell the model which markets this site is for, so a market question with no
+  // city named ("how's the market right now?") is answered about the agent's
+  // area rather than about nothing. Searches are scoped to these regardless —
+  // see MARKET SCOPE in lib/chatrealty.ts.
+  const markets = await getMarketCities().catch(() => [] as string[]);
   const messages: any[] = [
-    { role: "system", content: SYSTEM },
+    {
+      role: "system",
+      content:
+        markets.length > 0
+          ? `${SYSTEM} This site serves ${markets.join(", ")}. When the visitor doesn't name a place, assume these markets and say which one you used.`
+          : SYSTEM,
+    },
     ...history
       .filter((m: any) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
       .map((m: any) => ({ role: m.role, content: m.content.slice(0, 2000) })),
@@ -117,10 +142,23 @@ export async function POST(req: NextRequest) {
 
   const usedKeys = new Set<string>();
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    // On the LAST round, forbid tool calls so the model has to answer in words
+    // (tools stay declared — providers reject a history containing tool_calls
+    // when the tool list disappears). Without this, a model that kept calling
+    // tools ran out of rounds and the visitor got the "I hit my lookup limit"
+    // fallback — which a judged session saw for an ordinary off-topic question,
+    // reading as if the visitor had broken something.
+    const lastRound = round === MAX_ROUNDS - 1;
     const res = await fetch(`${BASE}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-      body: JSON.stringify({ model: MODEL, messages, tools: TOOLS, tool_choice: "auto", temperature: 0.4 }),
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        tools: TOOLS,
+        tool_choice: lastRound ? "none" : "auto",
+        temperature: 0.4,
+      }),
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
@@ -156,9 +194,17 @@ export async function POST(req: NextRequest) {
     const cards = [];
     for (const k of keys.slice(0, 4)) {
       const l = await getListing(k);
-      if (l) cards.push({ listingKey: l.listingKey, address: l.address, city: l.city, price: l.listPrice, beds: l.beds, baths: l.baths, sqft: l.sqft, thumbUrl: l.thumbUrl, detailUrl: l.detailUrl, listAgentName: l.listAgentName ?? null, listOfficeName: l.listOfficeName ?? null });
+      // No detailUrl in the card payload on purpose: it points at the
+      // ChatRealty hub, and the UI builds its own /listings/{key} link.
+      if (l) cards.push({ listingKey: l.listingKey, address: l.address, city: l.city, price: l.listPrice, beds: l.beds, baths: l.baths, sqft: l.sqft, thumbUrl: l.thumbUrl, listAgentName: l.listAgentName ?? null, listOfficeName: l.listOfficeName ?? null });
     }
     return NextResponse.json({ reply: text, listings: cards }, { headers: { "Cache-Control": "no-store" } });
   }
-  return NextResponse.json({ reply: "I hit my lookup limit on that one — try narrowing the question.", listings: [] });
+  // Only reachable if the model still emitted tool calls under tool_choice
+  // "none". Say something a visitor can act on — never surface it as an error.
+  return NextResponse.json({
+    reply:
+      "I couldn't pull that one together. I can help with homes for sale, neighborhoods, and market numbers — try asking about a city, a price range, or a specific home.",
+    listings: [],
+  });
 }

@@ -154,6 +154,11 @@ function buildListingWhere(filter: ListingFilter): SQL {
   clauses.push(sql`standard_status = ${filter.status ?? "Active"}`);
 
   if (filter.city) clauses.push(sql`city = ${filter.city}`);
+  else if (filter.cities && filter.cities.length > 0)
+    // IN (...) with one bound param per city rather than `= ANY($1)`: an
+    // untyped array parameter over the HTTP driver can fail type inference,
+    // and every value here still binds as a parameter.
+    clauses.push(sql`city IN (${sql.join(filter.cities.map((c) => sql`${c}`), sql`, `)})`);
   if (filter.subdivision) clauses.push(sql`subdivision_name = ${filter.subdivision}`);
 
   if (filter.propertyType !== undefined) {

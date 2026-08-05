@@ -17,7 +17,11 @@ export async function POST() {
   const session = await auth();
   const email = session?.user?.email;
   if (!email) {
-    return NextResponse.json({ ok: false, reason: "no_oauth_session" }, { status: 401, headers: NO_STORE });
+    // 200, not 401. "Nobody is signed in with Google/Facebook" is the ORDINARY
+    // outcome for a visitor, not a failed request — and as a 401 it painted a
+    // red console error on every page load of every route for every guest.
+    // The caller reads `ok`.
+    return NextResponse.json({ ok: false, reason: "no_oauth_session" }, { headers: NO_STORE });
   }
 
   const result = await upsertOAuthUser(email, session.user?.name ?? undefined);

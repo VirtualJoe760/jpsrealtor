@@ -1,4 +1,5 @@
 import { getAgentProfile } from "@/lib/chatrealty";
+import { license } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,8 @@ export default async function AboutPage() {
             <p className="mt-1 text-sm text-gray-500">{agent.brokerageName}</p>
           )}
           {agent.licenseNumber && (
-            <p className="text-xs text-gray-400">{agent.licenseNumber}</p>
+            // Labeled, not a bare number — see license() in lib/format.
+            <p className="text-xs text-gray-400">{license(agent.licenseNumber)}</p>
           )}
         </div>
       </div>

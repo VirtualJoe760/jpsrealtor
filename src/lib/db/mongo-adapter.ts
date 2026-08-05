@@ -145,6 +145,7 @@ export function buildListingMongoQuery(
   };
 
   if (filter.city) query.city = filter.city;
+  else if (filter.cities && filter.cities.length > 0) query.city = { $in: [...filter.cities] };
   if (filter.subdivision) query.subdivisionName = filter.subdivision;
 
   // propertyType: skip the clause for the wildcard buckets, else exact code.

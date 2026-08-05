@@ -106,6 +106,15 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
 
   const city = sp.get("city")?.trim();
+  // `cities=Rancho Mirage,Indian Wells,Palm Desert` — match ANY of them. This
+  // exists because the feed is wider than one agent's market: a site with no
+  // city filter was browsing the whole state, so a Coachella Valley site
+  // opened on Oakland and Stockton listings. A single-market site sends its
+  // service areas here on the DEFAULT browse. `city` wins when both are set.
+  const cities = (sp.get("cities") || "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
   const subdivision = sp.get("subdivision")?.trim();
   const propertyType = sp.get("propertyType")?.trim();
   const status = (sp.get("status")?.trim() || "Active");
@@ -139,6 +148,7 @@ export async function GET(req: NextRequest) {
 
   const query: Record<string, any> = { standardStatus: status };
   if (city) query.city = city;
+  else if (cities.length > 0) query.city = { $in: cities };
   if (subdivision) query.subdivisionName = subdivision;
 
   // Default to "A" (Residential sale) when caller omits propertyType so

@@ -15,7 +15,7 @@
 // openSignIn() is exposed so ANY component (heart button, swipe deck) can
 // summon the sign-in dialog — the dialog itself renders here, globally.
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { signOut as oauthSignOut } from "next-auth/react";
 import SignInDialog from "@/components/SignInDialog";
 
@@ -40,11 +40,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AccountStatus>("loading");
   const [user, setUser] = useState<AccountUser | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Set by /api/account/me: the visitor has a Google/Facebook session that
+  // hasn't been exchanged for a ChatRealty one yet. Only then is the bridge
+  // worth calling.
+  const oauthPending = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/account/me", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
+      oauthPending.current = !!data?.oauthPending;
       if (data?.available === false) {
         setStatus("unavailable");
         setUser(null);
@@ -65,13 +70,15 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // On mount: check the session; if we're a guest, try the OAuth bridge once —
-  // a visitor returning from a Google/Facebook redirect has a NextAuth session
-  // but no ChatRealty session yet. The bridge converts one into the other.
+  // On mount: check the session. A visitor returning from a Google/Facebook
+  // redirect has a NextAuth session but no ChatRealty session yet — the bridge
+  // converts one into the other. /api/account/me tells us when that's the case;
+  // firing the bridge unconditionally meant a rejected POST on every page load
+  // for every ordinary guest.
   useEffect(() => {
     (async () => {
       const s = await refresh();
-      if (s !== "guest") return;
+      if (s !== "guest" || !oauthPending.current) return;
       try {
         const res = await fetch("/api/account/oauth-bridge", { method: "POST" });
         const data = await res.json().catch(() => ({}));

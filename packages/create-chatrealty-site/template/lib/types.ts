@@ -22,6 +22,11 @@ export interface ListingSummary {
   /** Render-ready optimized thumbnail — safe for a plain <img>. */
   thumbUrl: string | null;
   slug: string;
+  /**
+   * The listing on the ChatRealty HUB (chatrealty.io) — NOT this site.
+   * Do not link visitors here: use `listingHref(listingKey)` from lib/links.
+   * Three surfaces once linked to it and sent buyers off the agent's site.
+   */
   detailUrl: string;
   distanceMiles?: number;
   // IDX attribution — display "Listed by {office} — {agent}". Search and
@@ -65,6 +70,14 @@ export interface ListingDetail extends ListingSummary {
   publicRemarks: string | null;
   photoCount: number;
   hasOpenHouses: boolean;
+}
+
+/** One photo from GET /api/skill/listings/{key}/photos. */
+export interface ListingPhoto {
+  url: string;
+  thumbUrl: string | null;
+  caption: string | null;
+  order: number | null;
 }
 
 export interface MarketStats {
@@ -111,6 +124,14 @@ export interface BlogPost extends BlogPostSummary {
 
 export interface ListingFilters {
   city?: string;
+  /** Match ANY of these cities. `city` wins when both are set. */
+  cities?: string[];
+  /**
+   * Skip the automatic market scope (see MARKET SCOPE in lib/chatrealty.ts).
+   * Only for a deliberate whole-feed search — the default browse must stay
+   * scoped to the markets this site serves.
+   */
+  unscoped?: boolean;
   subdivision?: string;
   propertyType?: string;
   minPrice?: number;

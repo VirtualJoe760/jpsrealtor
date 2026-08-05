@@ -24,6 +24,16 @@ describe("buildTenantListingFilter", () => {
     assert.equal(f.hasPool, undefined);
   });
 
+  it("parses the cities market scope, trimming and dropping empties", () => {
+    const f = buildTenantListingFilter(
+      new URLSearchParams("cities=Rancho Mirage, Indian Wells ,,Palm Desert"),
+    );
+    assert.deepEqual(f.cities, ["Rancho Mirage", "Indian Wells", "Palm Desert"]);
+    // Absent / all-empty stays undefined so the adapter adds no city clause.
+    assert.equal(buildTenantListingFilter(new URLSearchParams("")).cities, undefined);
+    assert.equal(buildTenantListingFilter(new URLSearchParams("cities=, ,")).cities, undefined);
+  });
+
   it("parses hasPool true / false / absent", () => {
     assert.equal(buildTenantListingFilter(new URLSearchParams("hasPool=true")).hasPool, true);
     assert.equal(buildTenantListingFilter(new URLSearchParams("hasPool=no")).hasPool, false);

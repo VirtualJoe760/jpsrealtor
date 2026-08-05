@@ -11,6 +11,7 @@ import type { ListingSummary } from "@/lib/types";
 import { useFavorites } from "@/lib/favorites";
 import { useAccount } from "@/lib/account";
 import { money, num } from "@/lib/format";
+import { listingHref } from "@/lib/links";
 
 const SWIPE_THRESHOLD = 90; // px past which a release commits the swipe
 
@@ -163,7 +164,8 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
               </p>
             )}
             <Link
-              href={current.detailUrl}
+              // This site's detail page — `detailUrl` is the ChatRealty hub.
+              href={listingHref(current.listingKey)}
               className="mt-3 inline-block text-sm font-semibold text-brand"
               onPointerDown={(e) => e.stopPropagation()}
             >

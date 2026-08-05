@@ -22,6 +22,15 @@ function median(nums: number[]): number | null {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+// Days on market from the listing's on-market date. Accepts the ISO string the
+// feed actually stores as well as a real Date.
+function domFrom(onMarketDate: unknown): number | null {
+  if (!onMarketDate) return null;
+  const t = onMarketDate instanceof Date ? onMarketDate.getTime() : Date.parse(String(onMarketDate));
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+
 export async function GET(req: NextRequest) {
   const auth = await authenticateSkillRequest(req);
   const denied = requireScope(auth, "market:read");
@@ -78,11 +87,18 @@ export async function GET(req: NextRequest) {
 
   await dbConnect();
   const docs: any[] = await UnifiedListing.find(query)
-    .select("listPrice daysOnMarket bedroomsTotal bathroomsTotalInteger livingArea")
+    .select("listPrice daysOnMarket onMarketDate bedroomsTotal bathroomsTotalInteger livingArea")
     .lean();
 
   const prices = docs.map((d) => d.listPrice).filter((p) => typeof p === "number") as number[];
-  const dom = docs.map((d) => d.daysOnMarket).filter((d) => typeof d === "number") as number[];
+  // daysOnMarket is essentially never sync'd into the doc, so this used to be
+  // an empty array on every city and every consumer rendered "Median days on
+  // market: —". Derive it from onMarketDate exactly as the search and detail
+  // routes already do. onMarketDate is stored as an ISO string but declared as
+  // a Date, so accept either shape.
+  const dom = docs
+    .map((d) => (typeof d.daysOnMarket === "number" ? d.daysOnMarket : domFrom(d.onMarketDate)))
+    .filter((d): d is number => typeof d === "number");
 
   return NextResponse.json(
     {

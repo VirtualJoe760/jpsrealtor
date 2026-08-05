@@ -88,7 +88,9 @@ Pick per the agent's market and feel; don't default to the scaffold's choice.
 
 ## Never remove (compliance / plumbing)
 
-- License number, brokerage, and team name — displayed and easily viewable, including the footer, on every page.
+- License number, brokerage, and team name — displayed and easily viewable, including the footer, on every page. Run it through `license()` (`lib/format.ts`) so it reads "License #01234567", not a bare number nobody recognizes.
+- **The market scope.** The unfiltered `/listings` browse and the homepage's featured homes are scoped to the agent's cities (`MARKET_CITIES`, else `AGENT_SERVICE_AREAS`, else the profile's service areas — see MARKET SCOPE in `lib/chatrealty.ts`). The feed is wider than the market: a judged Coachella Valley build opened on Camarillo, Oakland and Stockton listings because the default browse had no scope. Restyle the browse freely; don't remove the scope.
+- **Every listing link stays on this site.** Use `listingHref(listingKey)` (`lib/links.ts`), never `listing.detailUrl` — that field is the ChatRealty hub URL. CHAP result cards, the swipe deck and the photo gallery all used to send buyers to chatrealty.io.
 - "Listed by {office} — {agent}" attribution on every card, detail, and map popup (IDX).
 - The test-data banner while in test-data mode.
 - Favorites, lead capture (honeypot + rate limit), and the server-side token boundary (`lib/`, `app/api/`).

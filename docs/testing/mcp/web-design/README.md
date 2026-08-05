@@ -1,7 +1,7 @@
 ---
 title: Web-Design Judge Loop — full operational reference
 status: current
-last_verified: 2026-08-04
+last_verified: 2026-08-05
 related: [../../agents/tom.md, create-agent.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
 ---
 
@@ -40,6 +40,17 @@ report format, the judging standard, and how to unstick the loop.
    credentials cover. A documented failure to connect real data is a *good*
    session and leads the report; a silent fallback to sample listings is a
    wasted one.
+
+   **There are no `SPARK_*` env vars — don't write briefs that ask for them.**
+   The build guide's real-data path is `npx @chatrealty/sync init --token
+   crt_live_…` (provisions the tenant DB) plus feed credentials in `.env.local`
+   under RESO names: a Spark access token goes in as `RESO_BEARER_TOKEN` with
+   `RESO_BASE_URL=https://replication.sparkapi.com/Reso/OData`, or RESO OAuth as
+   `RESO_TOKEN_URL` / `RESO_CLIENT_ID` / `RESO_CLIENT_SECRET`. Session 8's brief
+   told Test Claude to set `SPARK_OAUTH_KEY` / `SPARK_ACCESS_TOKEN`; nothing
+   reads those. And `CHATREALTY_API_TOKEN` alone is **not** a connected feed —
+   it authenticates the site to the API and reads the shared dataset, which is
+   what that build shipped on.
 
 ## The cycle
 
@@ -173,7 +184,14 @@ produced it; the operative version:
 
 1. IDX attribution everywhere listings render (cards, detail, map popups, CHAP results)
 2. License + brokerage on every route, never gated (distinct from the contact-gating choice)
-3. Right person, right market — zero sample-persona remnants anywhere
+3. Right person, right market — zero sample-persona remnants anywhere, **and
+   the UNFILTERED `/listings` plus the homepage's featured homes show cities
+   the agent serves.** Session 8 passed every identity check and failed here:
+   the city filter worked, so nobody looked at the default, which was serving
+   the newest listings statewide. Check the default, not the filter. Since
+   create-chatrealty-site@0.12.0 the template scopes the default browse to
+   `MARKET_CITIES` / `AGENT_SERVICE_AREAS` / the profile's service areas, and
+   shows a dev-only notice when it has nothing to scope by.
 4. Mode honesty — test data never deployed; real mode serves the agent's own feed
 5. Token boundary — no `crt_live_` in page source or browser-originated calls
 6. Neutral listing copy — nothing implying another agent's listing is stale/overpriced

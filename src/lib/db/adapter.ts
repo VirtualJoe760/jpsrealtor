@@ -108,6 +108,14 @@ export interface BBox {
 export interface ListingFilter {
   /** Exact city match (`city`). */
   readonly city?: string;
+  /**
+   * Exact match against ANY of several cities — the market scope a
+   * single-market site browses by default. `city` wins when both are set.
+   * A site whose feed reaches further than its agent's market had no way to
+   * say "these are my cities" in one query, so its unfiltered browse served
+   * the whole feed (a Coachella Valley site opened on Oakland listings).
+   */
+  readonly cities?: readonly string[];
   /** Exact subdivision match (`subdivisionName`). */
   readonly subdivision?: string;
   /**

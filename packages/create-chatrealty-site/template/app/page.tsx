@@ -10,12 +10,14 @@ export const dynamic = "force-dynamic";
 // listings, market strip, agent intro, CTA. The build guide's design step
 // restyles all of it to the agent's brand; the sections give it real bones.
 export default async function Home() {
-  const [agent, featured, stats] = await Promise.all([
-    getAgentProfile(),
-    searchListings({ limit: 3 }),
-    getMarketStats({}).catch(() => null),
-  ]);
+  // Featured homes come from the scoped browse (see MARKET SCOPE in
+  // lib/chatrealty.ts) — this section used to show whatever the feed listed
+  // most recently, which on a Coachella Valley site meant Camarillo and Oxnard.
+  const [agent, featured] = await Promise.all([getAgentProfile(), searchListings({ limit: 3 })]);
   const firstArea = agent.serviceAreas[0]?.name;
+  // The stats endpoint needs a place: `{}` is a 400 and the strip silently
+  // never rendered. Ask about the agent's primary market.
+  const stats = firstArea ? await getMarketStats({ city: firstArea }).catch(() => null) : null;
 
   return (
     <div>
@@ -71,7 +73,7 @@ export default async function Home() {
         <section className="mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-white p-6 sm:grid-cols-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{num(stats.activeCount)}</p>
-            <p className="text-sm text-gray-500">Active listings</p>
+            <p className="text-sm text-gray-500">Active listings{firstArea ? ` in ${firstArea}` : ""}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">

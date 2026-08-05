@@ -1,4 +1,5 @@
 import { getAgentProfile } from "@/lib/chatrealty";
+import { license } from "@/lib/format";
 import InquiryForm from "@/components/InquiryForm";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export default async function ContactPage() {
           {agent.brokerageName && (
             <p><span className="font-medium">Brokerage:</span> {agent.brokerageName}</p>
           )}
-          {agent.licenseNumber && <p className="text-gray-400">{agent.licenseNumber}</p>}
+          {/* Labeled, not a bare number — see license() in lib/format. */}
+          {agent.licenseNumber && <p className="text-gray-400">{license(agent.licenseNumber)}</p>}
         </div>
       </div>
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

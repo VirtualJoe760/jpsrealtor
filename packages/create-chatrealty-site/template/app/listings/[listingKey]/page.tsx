@@ -1,12 +1,29 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getListing } from "@/lib/chatrealty";
+import { getListing, getListingPhotos } from "@/lib/chatrealty";
 import { money, num } from "@/lib/format";
 import Attribution from "@/components/Attribution";
 import FavoriteButton from "@/components/FavoriteButton";
 import InquiryForm from "@/components/InquiryForm";
 import ListingMapClient from "@/components/ListingMapClient";
+import PhotoGallery from "@/components/PhotoGallery";
+
+// Where "← Back to listings" goes. Cards carry the visitor's search in `?back=`
+// so returning from a detail page lands on the search they built, not the
+// unfiltered browse. Only same-site paths under /listings are honored — an
+// attacker-supplied `back` must never turn this into an off-site redirect.
+function safeBackHref(back: string | undefined): string {
+  if (!back) return "/listings";
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(back);
+    } catch {
+      return "";
+    }
+  })();
+  return /^\/listings(\?|$)/.test(decoded) ? decoded : "/listings";
+}
 
 export async function generateMetadata({
   params,
@@ -24,12 +41,16 @@ export async function generateMetadata({
 
 export default async function ListingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ listingKey: string }>;
+  searchParams: Promise<{ back?: string }>;
 }) {
-  const { listingKey } = await params;
+  const [{ listingKey }, { back }] = await Promise.all([params, searchParams]);
   const l = await getListing(listingKey);
   if (!l) notFound();
+  const photos = await getListingPhotos(l.listingKey);
+  const backHref = safeBackHref(back);
 
   const facts: [string, string][] = [
     ["Beds", num(l.beds)],
@@ -45,30 +66,22 @@ export default async function ListingDetailPage({
 
   return (
     <div>
-      <Link href="/listings" className="text-sm text-brand hover:underline">← Back to listings</Link>
+      <Link href={backHref} className="text-sm text-brand hover:underline">← Back to listings</Link>
 
       <div className="mt-4 grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <div className="relative overflow-hidden rounded-2xl bg-gray-100">
+          <div className="relative">
             <div className="absolute right-4 top-4 z-10">
               <FavoriteButton listing={l} />
             </div>
-            {l.thumbUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={l.thumbUrl} alt={l.address ?? "Listing photo"} className="aspect-[16/10] w-full object-cover" />
-            ) : (
-              <div className="flex aspect-[16/10] items-center justify-center text-gray-400">No photo available</div>
-            )}
-            {l.photoCount > 1 && (
-              <a
-                href={l.detailUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute bottom-4 right-4 rounded-lg bg-black/60 px-3 py-1.5 text-xs font-medium text-white"
-              >
-                View all {l.photoCount} photos
-              </a>
-            )}
+            {/* Every photo, ON THIS SITE. The old "View all N photos" button
+                linked to chatrealty.io — never send the buyer off-site to see
+                the rest of a home they're already looking at. */}
+            <PhotoGallery
+              photos={photos}
+              fallbackUrl={l.thumbUrl}
+              alt={l.address ?? "Listing photo"}
+            />
           </div>
 
           <div className="mt-6">

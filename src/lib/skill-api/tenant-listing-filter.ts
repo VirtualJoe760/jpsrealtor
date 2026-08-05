@@ -39,8 +39,16 @@ export function buildTenantListingFilter(sp: URLSearchParams): ListingFilter {
     : hasPoolRaw === "false" || hasPoolRaw === "0" || hasPoolRaw === "no" ? false
     : undefined;
 
+  // `cities=A,B,C` — the market scope a single-market site browses by default.
+  // `city` still wins when both are present (adapter-side).
+  const cities = (sp.get("cities") || "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+
   return {
     city: sp.get("city")?.trim() || undefined,
+    cities: cities.length > 0 ? cities : undefined,
     subdivision: sp.get("subdivision")?.trim() || undefined,
     propertyType: sp.get("propertyType")?.trim() || "A",
     status: sp.get("status")?.trim() || "Active",

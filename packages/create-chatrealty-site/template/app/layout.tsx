@@ -10,6 +10,7 @@ import HamburgerNav from "@/components/HamburgerNav";
 import { AccountProvider } from "@/lib/account";
 import { assetUrl } from "@/lib/asset-url";
 import { getAgentProfile } from "@/lib/chatrealty";
+import { license } from "@/lib/format";
 
 // Identity flows from the agent's ChatRealty profile (or the bundled sample in
 // test-data mode) — update the profile on chatrealty.io and the site follows.
@@ -88,7 +89,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {agent.brokerageName ? ` · ${agent.brokerageName}` : ""}
           </p>
           {agent.licenseNumber && (
-            <p className="mt-1 font-medium text-gray-500">License #{agent.licenseNumber}</p>
+            // license() so an agent who already typed "DRE #…" doesn't get
+            // "License #DRE #…" — same helper /about and /contact use.
+            <p className="mt-1 font-medium text-gray-500">{license(agent.licenseNumber)}</p>
           )}
           <p className="mt-1">
             {[agent.phone, agent.email].filter(Boolean).join(" · ")}

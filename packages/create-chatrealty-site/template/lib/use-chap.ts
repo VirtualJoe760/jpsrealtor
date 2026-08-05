@@ -25,7 +25,6 @@ export type ChapCard = {
   baths: number | null;
   sqft: number | null;
   thumbUrl: string | null;
-  detailUrl: string;
   listAgentName: string | null;
   listOfficeName: string | null;
 };

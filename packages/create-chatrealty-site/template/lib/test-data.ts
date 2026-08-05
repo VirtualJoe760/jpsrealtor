@@ -41,6 +41,10 @@ export function searchTestListings(filters: ListingFilters = {}): SearchResult {
   let rows = load();
   const ci = (s: string | null | undefined) => (s || "").toLowerCase();
   if (filters.city) rows = rows.filter((l) => ci(l.city) === ci(filters.city));
+  else if (filters.cities?.length) {
+    const want = new Set(filters.cities.map(ci));
+    rows = rows.filter((l) => want.has(ci(l.city)));
+  }
   if (filters.subdivision) rows = rows.filter((l) => ci(l.subdivision) === ci(filters.subdivision));
   if (filters.propertyType) rows = rows.filter((l) => l.propertyType === filters.propertyType);
   if (filters.minPrice != null) rows = rows.filter((l) => (l.listPrice ?? 0) >= filters.minPrice!);

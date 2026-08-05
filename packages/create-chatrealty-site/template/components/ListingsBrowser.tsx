@@ -18,7 +18,29 @@ type Filters = {
 
 const EMPTY: Filters = { city: "", minPrice: "", maxPrice: "", minBeds: "", minBaths: "", hasPool: false };
 
-export default function ListingsBrowser({ initialCity = "" }: { initialCity?: string }) {
+// The applied filters as a query string — used both for the browser URL (so a
+// search is shareable and survives reload) and for the `back` link carried into
+// each listing detail page. Clicking into a home and back used to dump the
+// visitor on the unfiltered browse, losing the search they had just built.
+function toQuery(f: Filters): string {
+  const p = new URLSearchParams();
+  if (f.city) p.set("city", f.city);
+  if (f.minPrice) p.set("minPrice", f.minPrice);
+  if (f.maxPrice) p.set("maxPrice", f.maxPrice);
+  if (f.minBeds) p.set("minBeds", f.minBeds);
+  if (f.minBaths) p.set("minBaths", f.minBaths);
+  if (f.hasPool) p.set("hasPool", "true");
+  return p.toString();
+}
+
+export default function ListingsBrowser({
+  initialCity = "",
+  marketCities = [],
+}: {
+  initialCity?: string;
+  /** Cities the unfiltered browse is scoped to — shown so the scope is visible. */
+  marketCities?: string[];
+}) {
   const [draft, setDraft] = useState<Filters>({ ...EMPTY, city: initialCity });
   const [applied, setApplied] = useState<Filters>({ ...EMPTY, city: initialCity });
   const [items, setItems] = useState<ListingSummary[]>([]);
@@ -58,6 +80,15 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
   useEffect(() => {
     load(applied, 0, false);
   }, [applied, load]);
+
+  // Keep the URL in step with the applied filters (replace, not push — the back
+  // button should leave the page, not walk back through every filter tweak).
+  const query = toQuery(applied);
+  useEffect(() => {
+    const url = query ? `/listings?${query}` : "/listings";
+    window.history.replaceState(null, "", url);
+  }, [query]);
+  const backHref = query ? `/listings?${query}` : "/listings";
 
   const input = "rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand";
 
@@ -145,6 +176,9 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
             : total != null
               ? `${total} home${total === 1 ? "" : "s"}`
               : `${items.length}${hasMore ? "+" : ""} homes`}
+          {!applied.city && marketCities.length > 0 && (
+            <span className="text-gray-400"> in {marketCities.join(" · ")}</span>
+          )}
         </p>
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-300 text-sm">
           <button
@@ -182,7 +216,7 @@ export default function ListingsBrowser({ initialCity = "" }: { initialCity?: st
               {items.map((l, i) => (
                 // First row (up to 3 across) loads eagerly — no blank boxes on
                 // first paint; the rest lazy-load as they scroll into view.
-                <ListingCard key={l.listingKey} listing={l} priority={i < 3} />
+                <ListingCard key={l.listingKey} listing={l} priority={i < 3} backHref={backHref} />
               ))}
             </div>
           )}

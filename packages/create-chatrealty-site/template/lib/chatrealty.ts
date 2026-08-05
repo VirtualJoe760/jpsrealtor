@@ -14,6 +14,7 @@ import type {
   AgentProfile,
   BlogPost,
   BlogPostSummary,
+  ListingPhoto,
 } from "./types";
 import {
   isTestDataMode,
@@ -84,6 +85,7 @@ function qs(filters: ListingFilters): string {
     if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
   };
   set("city", filters.city);
+  if (filters.cities && filters.cities.length > 0) set("cities", filters.cities.join(","));
   set("subdivision", filters.subdivision);
   set("propertyType", filters.propertyType);
   set("minPrice", filters.minPrice);
@@ -98,9 +100,80 @@ function qs(filters: ListingFilters): string {
   return p.toString();
 }
 
+// MARKET SCOPE — the cities this site is *for*.
+//
+// The feed a token can see is almost always wider than the agent's market: the
+// dogfood dataset is statewide, and a real MLS reaches every city its
+// association covers. A search with no city filter therefore returned the whole
+// feed sorted by newest, which is how a judged Coachella Valley build opened on
+// Camarillo, Oxnard, Oakland, Los Angeles and Stockton — 22 of the first 23
+// homes were outside the market the site claims to serve. The city filter
+// worked the whole time; the DEFAULT was the bug, and the default is what a
+// visitor sees first.
+//
+// So an unfiltered search is scoped to the agent's markets, in this order:
+//   1. MARKET_CITIES in .env.local — explicit, wins over everything.
+//      MARKET_CITIES=off (or `all`) turns scoping off and browses the whole feed.
+//   2. AGENT_SERVICE_AREAS in .env.local.
+//   3. serviceAreas on the ChatRealty profile.
+// None of those set → no scope, whole feed, and a warning in the server log
+// (silently serving the wrong market is the failure mode this replaces).
+//
+// Any search that already names a place (city / cities / subdivision / near)
+// is left alone — an explicit search is never narrowed behind the caller's back.
+const MAX_SCOPE_CITIES = 25;
+let warnedNoScope = false;
+
+async function marketScopeCities(): Promise<string[]> {
+  const explicit = env("MARKET_CITIES");
+  if (explicit && /^(off|none|all)$/i.test(explicit)) return [];
+  const fromEnv = envList("MARKET_CITIES") ?? envList("AGENT_SERVICE_AREAS");
+  if (fromEnv) return fromEnv.slice(0, MAX_SCOPE_CITIES);
+  try {
+    const p = await getAgentProfile();
+    return p.serviceAreas
+      // A service area typed as something other than a city (a county, a
+      // region) won't match the feed's `city` column — scoping to it would
+      // empty the page. Keep untyped and city-ish entries.
+      .filter((a) => !a.type || /city|town|market|area/i.test(a.type))
+      .map((a) => a.name)
+      .slice(0, MAX_SCOPE_CITIES);
+  } catch {
+    return [];
+  }
+}
+
+async function withMarketScope(filters: ListingFilters): Promise<ListingFilters> {
+  if (filters.unscoped) return filters;
+  if (filters.city || filters.subdivision || filters.near || (filters.cities && filters.cities.length > 0)) {
+    return filters;
+  }
+  const cities = await marketScopeCities();
+  if (cities.length === 0) {
+    if (!warnedNoScope) {
+      warnedNoScope = true;
+      console.warn(
+        "[chatrealty] No market scope: the unfiltered listing browse will serve the ENTIRE feed, " +
+          "including cities this site does not serve. Set MARKET_CITIES (or AGENT_SERVICE_AREAS) in .env.local."
+      );
+    }
+    return filters;
+  }
+  return { ...filters, cities };
+}
+
+/** The cities the default browse is scoped to — for UI that says so. */
+export async function getMarketCities(): Promise<string[]> {
+  if (isTestDataMode()) return [];
+  return marketScopeCities();
+}
+
 export async function searchListings(filters: ListingFilters = {}): Promise<SearchResult> {
+  // Test data is its own small fictitious world — scoping it to the agent's
+  // real markets would empty every page.
   if (isTestDataMode()) return searchTestListings(filters);
-  const res = await skillFetch(`/api/skill/listings/search?${qs(filters)}`, undefined, { revalidate: REVALIDATE.listings });
+  const scoped = await withMarketScope(filters);
+  const res = await skillFetch(`/api/skill/listings/search?${qs(scoped)}`, undefined, { revalidate: REVALIDATE.listings });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ChatRealtyError(body?.message || `Listing search failed (HTTP ${res.status})`, res.status);
@@ -117,6 +190,40 @@ export async function getListing(listingKey: string): Promise<ListingDetail | nu
     throw new ChatRealtyError(body?.message || `Listing fetch failed (HTTP ${res.status})`, res.status);
   }
   return res.json();
+}
+
+// Every photo for one listing — the detail page's gallery.
+//
+// This exists because "View all N photos" used to link to
+// chatrealty.io/mls-listings/{key}: the one moment a visitor is most engaged
+// with a home, and the site handed them to another site to look at the rest of
+// the pictures. Never send a buyer off the agent's site to see the inventory
+// the agent is showing them.
+//
+// Returns [] on any failure (including a tenant token whose photo endpoint
+// isn't ported yet) — the page falls back to the primary photo alone.
+export async function getListingPhotos(listingKey: string, limit = 30): Promise<ListingPhoto[]> {
+  if (isTestDataMode()) return [];
+  try {
+    const res = await skillFetch(
+      `/api/skill/listings/${encodeURIComponent(listingKey)}/photos?limit=${limit}`,
+      undefined,
+      { revalidate: REVALIDATE.listings }
+    );
+    if (!res.ok) return [];
+    const body = await res.json();
+    const photos = Array.isArray(body?.photos) ? body.photos : [];
+    return photos
+      .filter((p: any) => typeof p?.url === "string" && p.url)
+      .map((p: any) => ({
+        url: p.url,
+        thumbUrl: p.thumbUrl || p.url,
+        caption: p.caption ?? null,
+        order: typeof p.order === "number" ? p.order : null,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getMarketStats(opts: {

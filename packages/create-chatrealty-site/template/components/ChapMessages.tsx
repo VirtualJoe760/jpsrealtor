@@ -11,6 +11,7 @@
 // reads correctly in a 380px widget and a full-width search page.
 
 import type { ChapCard, ChapMsg } from "@/lib/use-chap";
+import { listingHref } from "@/lib/links";
 
 const fmt = (n: number | null) =>
   n == null
@@ -21,7 +22,9 @@ export function ChapResultCard({ l, size = "sm" }: { l: ChapCard; size?: "sm" | 
   const big = size === "md";
   return (
     <a
-      href={l.detailUrl}
+      // THIS site's detail page — never l.detailUrl, which is the ChatRealty
+      // hub. A CHAP result that leaves the site ends the conversation.
+      href={listingHref(l.listingKey)}
       className={`flex gap-3 rounded-xl border border-gray-200 p-2 transition hover:border-brand ${
         big ? "p-3" : ""
       }`}

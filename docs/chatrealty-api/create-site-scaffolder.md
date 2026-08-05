@@ -1,8 +1,8 @@
 ---
 title: create-chatrealty-site (frontend scaffolder)
-last_verified: 2026-08-04
+last_verified: 2026-08-05
 owner: platform
-status: shipped — PUBLISHED to npm as create-chatrealty-site@0.1.0 (2026-07-10)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.12.0 (2026-08-05)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,53 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.12.0 (2026-08-05) — the default browse is the agent's market, and every
+listing link stays on the agent's site.** Session-8 judge run: identity,
+neighborhood index and card attribution were all confirmed fixed, and the build
+failed its market gate anyway — on the one surface nobody had scoped.
+
+*The unfiltered browse (the gate failure).* `/listings` with no filter, and the
+homepage's featured homes, served the newest listings in the **whole feed**: 22
+of the first 23 homes on a Coachella Valley site were Camarillo, Oxnard, Oakland,
+Los Angeles, Stockton and similar. The city filter had worked the whole time —
+the *default* was wrong, and the default is what a visitor sees first. The feed
+is always wider than the market (the shared dataset is statewide; a real MLS
+covers its whole association), so `searchListings()` now scopes any search that
+names no place to the agent's cities: `MARKET_CITIES` in `.env.local`, else
+`AGENT_SERVICE_AREAS`, else the profile's service areas (`MARKET_CITIES=off`
+browses everything). A search that names a city, subdivision or `near` point is
+never narrowed behind the caller's back. With nothing to scope by, the site logs
+a warning and `/listings` shows a **dev-only** notice — the previous behavior was
+to serve the wrong market silently. New API param: `GET
+/api/skill/listings/search?cities=A,B,C` (legacy Mongo path and the tenant
+adapter both; `city` still wins when both are sent).
+
+*Listing links left the site.* CHAP result cards, the swipe deck's "View
+details" and the detail page's "View all N photos" all linked to
+`chatrealty.io/mls-listings/{key}` — the API's `detailUrl`, which is meant for
+listings rendered inside a chat artifact, not for the agent's own site. All three
+now go through `listingHref()` (`lib/links.ts`) to `/listings/{key}`, and the
+detail page ships a real on-site `<PhotoGallery />` (hero + thumbnail strip +
+full-screen viewer, `getListingPhotos()` → `/api/skill/listings/{key}/photos`)
+instead of a link to someone else's gallery. `detailUrl` is now documented in
+`lib/types.ts` as the hub URL, not this site's.
+
+Same release: **"← Back to listings" keeps the search** (the browse syncs its
+filters to the URL and passes them to each card as `?back=`, validated
+same-site on read); **the license number is labeled** on `/about` and `/contact`
+(`license()` in `lib/format.ts` — "License #02189476", passing through a value
+that already says DRE/License; bug `6a7285d1`); **CHAP answers the question it
+was asked** (the prompt now routes market questions to `get_market_stats`,
+forbids replaying a previous answer, and handles off-topic in one line; the last
+tool round runs with `tool_choice: "none"` so a visitor gets an answer instead of
+"I hit my lookup limit"); **no more 401 on every page load** —
+`/api/account/oauth-bridge` returned 401 for the ordinary "nobody signed in with
+Google" case and the client called it on every load, so every route logged a
+console error. `/api/account/me` now reports `oauthPending` and the client only
+bridges when there is something to bridge. Platform-side, `/api/skill/market/
+stats` derives `medianDaysOnMarket` from `onMarketDate` (the DB doesn't populate
+`daysOnMarket`, so every neighborhood page rendered "Median days on market: —").
 
 **v0.11.0 (2026-08-04) — the site shows the right agent, and the neighborhood
 index is about the agent instead of the feed.** Three findings from the session-7

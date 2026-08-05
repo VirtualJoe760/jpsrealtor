@@ -302,14 +302,19 @@ AUTH_SECRET=${authSecret}
 # Identity overrides (optional). Uncomment any line to make it win over the
 # ChatRealty profile for that field alone. Use when the site is for someone
 # other than the token holder, or for details the profile doesn't have yet.
-# AGENT_SERVICE_AREAS drives the /neighborhoods index — set it for a
-# single-market site whose feed reaches beyond that market.
+# AGENT_SERVICE_AREAS drives the /neighborhoods index AND the default listing
+# browse — set it for a single-market site whose feed reaches beyond that
+# market, or the unfiltered /listings serves the whole feed (a judged build
+# opened on Oakland and Stockton homes on a Coachella Valley site).
+# MARKET_CITIES overrides just the browse scope when it differs from the
+# service areas; set it to "off" to browse the whole feed.
 # Note: set_site_live checks the license on your ChatRealty PROFILE, so an
 # override here shows on the site but does not unblock going live.
 # AGENT_NAME=${agentName}
 # AGENT_LICENSE=
 # AGENT_BROKERAGE=${brokerage}
 # AGENT_SERVICE_AREAS=${market}
+# MARKET_CITIES=${market}
 # AGENT_PHONE=
 # AGENT_EMAIL=
 # AGENT_HEADLINE=

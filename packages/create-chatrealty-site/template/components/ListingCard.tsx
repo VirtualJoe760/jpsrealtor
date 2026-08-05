@@ -7,13 +7,21 @@ import FavoriteButton from "./FavoriteButton";
 export default function ListingCard({
   listing,
   priority = false,
+  backHref,
 }: {
   listing: ListingSummary;
   // Above-the-fold cards (featured homes, first listings row) pass priority so
   // their photo loads eagerly — lazy-loading them left blank gray boxes on
   // first paint (tester find). Off-screen cards stay lazy.
   priority?: boolean;
+  // Where "← Back to listings" should return to from the detail page. Carries
+  // the visitor's search with them; without it, clicking a result and coming
+  // back dropped them on the unfiltered browse.
+  backHref?: string;
 }) {
+  const href =
+    `/listings/${encodeURIComponent(listing.listingKey)}` +
+    (backHref ? `?back=${encodeURIComponent(backHref)}` : "");
   const specs = [
     listing.beds != null ? `${num(listing.beds)} bd` : null,
     listing.baths != null ? `${num(listing.baths)} ba` : null,
@@ -28,7 +36,7 @@ export default function ListingCard({
         <FavoriteButton listing={listing} />
       </div>
 
-      <Link href={`/listings/${encodeURIComponent(listing.listingKey)}`} className="block">
+      <Link href={href} className="block">
         <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100">
           {listing.thumbUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
