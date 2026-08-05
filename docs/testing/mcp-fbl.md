@@ -63,43 +63,64 @@ evaluate it is also a model. That constraint produces everything below.
 
 ---
 
-## 2. Roles
+## 2. The complete architecture
 
-Three autonomous roles inside the system — plus an unbounded population of
-reporters outside it. The separation between roles is a correctness property,
-not an organisational convenience.
+Three autonomous roles inside the system, one human beside it, and an unbounded
+population of reporters outside it. The separation between roles is a
+correctness property, not an organisational convenience.
 
 ```
-        ┌──────────────────────────────────────────────────────────────┐
-        │                                                              │
-        │   ┌───────────┐    brief    ┌──────────────┐                 │
-        │   │           │────────────►│              │                 │
-        │   │   JUDGE   │             │   BUILDER    │                 │
-        │   │           │◄────────────│              │                 │
-        │   └───┬───┬───┘  questions  └──────┬───────┘                 │
-        │       │   │      + result          │                         │
-        │       │   │                        │ executes the            │
-        │       │   │ evaluates the          │ build guide             │
-        │       │   │ running system         ▼                         │
-        │       │   │                 ┌─────────────┐                  │
-        │  triages  │                 │ THE ARTIFACT│                  │
-        │  tickets  │ structured      └─────────────┘                  │
-        │  into     │ report                                           │
-        │  goals    ▼                                                  │
-        │   ┌─────────────┐      repairs       ┌─────────────────┐     │
-        │   │   CONTROL   │───────────────────►│    REPAIRER     │     │
-        │   │    PLANE    │◄───────────────────│                 │     │
-        │   └──────▲──────┘  completion +      └─────────────────┘     │
-        │          │         resolution notes                          │
-        └──────────┼───────────────────────────────────────────────────┘
-                   │  structured tickets, fingerprinted + clustered
-                   │  on arrival (report_data_issue)
-          ┌────────┴─────────┐
-          │  FIELD REPORTERS │   customers' AI assistants, mid-build,
-          │  (outside the    │   at the moment a data or instruction
-          │   system)        │   failure is actually hit
-          └──────────────────┘
+                     ┌──────────────────────────────────────────────┐
+                     │              PRODUCT UNDER TEST              │
+                     │   build guide (MCP) · published packages ·   │
+                     │      platform API · multi-tenant edge        │
+                     └────────▲───────────────────────┬─────────────┘
+                              │ repairs, doc fixes,   │ instructs
+                              │ releases              ▼
+ ┌─────────────────┐          │               ┌───────────────┐
+ │ COVERAGE MATRIX │          │               │    BUILDER    │
+ │  every not-yet- │          │               │ ephemeral, one│
+ │  verified cell  │          │               │  per session  │
+ └────────┬────────┘          │               └───┬─────▲─────┘
+          │ next target       │      spawns +     │     │ questions,
+          ▼                   │      brief        │     │ answered from
+    ┌───────────┐             │       ┌───────────┘     │ the brief
+    │   JUDGE   │─────────────┼───────┘                 │
+    │   (Tom)   │◄────────────┼─────────────────────────┘
+    └─┬───▲───┬─┘             │
+      │   │   │ evaluates the RUNNING artifact —
+      │   │   │ real browser, hard gates first,
+      │   │   ▼ then scored dimensions
+      │   │  ┌────────────────────────────────────────┐
+      │   │  │ THE ARTIFACT                           │
+      │   │  │ built site + its own provisioned data  │
+      │   │  │ plane, served at {slug} on the edge    │
+      │   │  └────────────────────────────────────────┘
+      │   │
+      │   │ polls: armed? open report? tickets? mail?
+      │   ▼
+      │  ┌────────────────────────┐  claim · verify · fix  ┌────────────┐
+report│  │      CONTROL PLANE     │◄──────────────────────►│  REPAIRER  │
+   +  └─►│ armed flag · reports · │  complete + resolution │ persistent,│
+disarm   │ ticket queue · mailbox │  notes (re-arms; also  │   event-   │
+         └───▲──────────────▲─────┘  resolves fingerprints)│   driven   │
+             │              │                              └────────────┘
+   tickets:  │              │ console: live stage, queues,
+   structured,│              │ reports, async mailbox to both
+   finger-   │              ▼ agents (the reply is the receipt)
+   printed,  │       ┌──────────────┐
+   clustered │       │   OPERATOR   │
+   on arrival│       │   (human)    │
+             │       └──────────────┘
+   ┌─────────┴────────┐
+   │  FIELD REPORTERS │   customers' AI assistants, mid-build,
+   │ (outside, many)  │   filing a structured ticket at the moment
+   └──────────────────┘   a data or instruction failure is hit
 ```
+
+The cycle closes at the top: repairs land in the product, and the next
+session — briefed with the resolution notes — re-verifies them against the
+running artifact rather than believing them.
 
 | Role | Lifetime | Responsibility |
 |---|---|---|
@@ -107,6 +128,7 @@ not an organisational convenience.
 | **Judge** | Persistent, scheduled | Selects what to test, provisions the scenario, spawns the builder, evaluates the running system, emits the report. **Triages inbound tickets into goals — field failures outrank scheduled coverage.** |
 | **Repairer** | Persistent, event-driven | Verifies each claim against source, repairs, updates documentation, closes the report — which resolves every ticket clustered under the fixed fingerprint — and re-arms the system. |
 | **Field reporter** | Unbounded — any customer's AI assistant | Files a structured ticket the moment a data/pipeline failure is hit, with the failing step and verbatim error in hand. Writes into the queue; never reads across it, never triages, never repairs. |
+| **Operator** | One human | Watches the live console (stage, queues, reports); holds an async mailbox to each agent. Intervenes only when the loop jams — never in the critical path. |
 
 **No role evaluates its own output.** The builder does not grade, the judge does
 not repair, the repairer does not test. Each boundary is a place where
