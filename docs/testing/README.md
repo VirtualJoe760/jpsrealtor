@@ -1,8 +1,8 @@
 ---
 title: Judge Loop — automated test-site feedback
 status: current
-last_verified: 2026-08-04
-related: [agents/tom.md, loops.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+last_verified: 2026-08-05
+related: [agents/tom/README.md, loops.md, evidence.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -17,12 +17,15 @@ what it names, and re-arms the loop.
 > survives the collapse intact because the API enforces it server-side, not
 > because the machines were separate.
 
-- **`agents/tom.md`** — the judge as built: his files, tools, cron, dispatch
+- **`agents/tom/`** — the judge as built: his files, tools, cron, dispatch
   mechanism, and the environment facts that cost a night to learn. Start here.
 - **`mcp/web-design/README.md`** — the reference: every endpoint with examples,
   the report format, the judging standard, failure-mode table.
 - **`loops.md`** — the architecture, written for readers outside the project:
   the invariants, the in-flight marker, and the observed failure modes.
+- **`evidence.md`** — what the loop has actually produced: every session's
+  score and findings count, the finding→release→re-verified trail, cycle times,
+  and an explicit list of what the data does *not* establish.
 
 ## What this loop is actually for
 
@@ -52,7 +55,7 @@ Two rules follow from that, and they're the ones most easily lost:
   Spark test credentials cover; any other market yields a site with no listings.
 - The routine's schedule runs **only while the Claude Code app is open**.
   Nothing is lost when it's closed — reports queue in Mongo — but fixes wait.
-- **A marker file proves dispatch, never liveness.** See `agents/tom.md`.
+- **A marker file proves dispatch, never liveness.** See `agents/tom/`.
 
 ## The state machine
 
@@ -191,4 +194,4 @@ ids named in the report against `scripts/cr-bugs.mjs`.
 
 Until 2026-08-04 those tools were unreachable from a spawned subagent, so bugs
 lived only in Tom's markdown and nothing reached the bug system. Fixed by
-registering `@chatrealty/mcp-server` with OpenClaw — see `agents/tom.md`.
+registering `@chatrealty/mcp-server` with OpenClaw — see `agents/tom/`.
