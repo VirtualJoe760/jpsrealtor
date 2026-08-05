@@ -1,26 +1,45 @@
 ---
 title: Web-Design Judge Loop — full operational reference
 status: current
-last_verified: 2026-07-31
-related: [create-agent.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
+last_verified: 2026-08-04
+related: [../../agents/tom.md, create-agent.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
 ---
 
 # The web-design feedback loop, end to end
 
-Automated QA for ChatRealty test sites, spanning three actors on two machines.
-`docs/testing/README.md` is the overview; this is the complete operational
-reference. `create-agent.md` beside this file is the self-contained bootstrap
-prompt for the OTHER machine — every endpoint, the report format, the judging standard, and how to
-unstick the loop.
+Automated QA for ChatRealty test sites. `docs/testing/README.md` is the
+overview; this is the complete operational reference — every endpoint, the
+report format, the judging standard, and how to unstick the loop.
+
+> **All three actors run on Joe's Mac.** This document was written for a
+> two-machine split and the framing survives in places. What made it race-free
+> was never the machine boundary — it's the two API invariants below, enforced
+> server-side.
+>
+> The judge is now a real agent: **`docs/testing/agents/tom.md`** covers his
+> tools, dispatch mechanism, and the in-flight marker this design doesn't
+> account for. Read it alongside this file.
 
 ## Actors
 
-| Actor | Runs where | Does |
+| Actor | What it is | Does |
 |---|---|---|
-| **Test Claude** | other machine | Builds a site with the ChatRealty MCP (`get_build_guide` flow), files `report_bug` / `give_feedback` as it goes |
-| **The judge** | other machine, *not* a Claude session | Scores the finished site against the rubric below, coaches Test Claude, submits the session report here, turns testing off |
-| **The routine** | this machine, scheduled task `judge-loop-check`, every 5 min | Reads the report, verifies + fixes what it names, updates docs, commits, completes the report (which re-arms testing) |
-| **Joseph** | `/admin/agent-feedback` | Watches the loop; manual overrides when either machine is down |
+| **Test Claude** | a Claude Code child session, spawned by Tom via `sessions_spawn` | Builds a site with the ChatRealty MCP (`get_build_guide` flow), files `report_bug` / `give_feedback` as it goes |
+| **Tom** | an OpenClaw agent, cron `*/15` | Invents the persona, writes the brief, spawns the builder, scores the finished site against the rubric below, coaches, submits the report, turns testing off |
+| **The routine** | scheduled task `judge-loop-check`, every 5 min | Reads the report, verifies + fixes what it names, updates docs, commits, completes the report (which re-arms testing) |
+| **Joseph** | `/admin/agent-feedback` | Watches the loop; manual overrides when either half is down |
+
+## Two standing rules that outrank everything below
+
+1. **Tom's job is to break the product, not to please Joe.** A session that
+   found nothing is a session that didn't look hard enough. A 92 that missed a
+   broken data hookup is worse than a 54 that found it. Softening a finding or
+   rounding a score up is a failure mode, not diplomacy.
+2. **Real listing data is mandatory and assumed broken.** The market is **GPS
+   MLS only** (Greater Palm Springs) because that's the only MLS the Spark test
+   credentials cover. A documented failure to connect real data is a *good*
+   session and leads the report; a silent fallback to sample listings is a
+   wasted one.
 
 ## The cycle
 
@@ -28,25 +47,30 @@ unstick the loop.
  [testingOn = true]
         │
         ▼
- judge → dispatches Test Claude ──► site gets built, bugs filed via MCP
+ Tom → sessions_spawn's Test Claude ──► site gets built, bugs filed via MCP
+        │   (marker written same turn; child reports its own completion)
+        ▼
+ Tom scores the RENDERED site in a browser (rubric below), coaches Test Claude
         │
         ▼
- judge scores the site (rubric below), coaches Test Claude
-        │
-        ▼
- judge POST /api/skill/testing {title, markdown, testingOff:true}
-        │                                 [testingOn = false]
+ Tom POST /api/skill/testing {title, markdown, testingOff:true}
+        │                                 [testingOn = false, marker cleared]
         ▼
  routine (≤5 min later): claim → read → verify each claim → fix →
  update docs → commit/push → complete + "resolution notes"
         │                                 [testingOn = true]
         ▼
- judge polls GET /api/skill/testing:
+ Tom polls GET /api/skill/testing:
    latestReport.status == "complete" && testingOn == true  → next test,
-   relaying resolutionNotes to Test Claude as build guidance
+   relaying resolutionNotes verbatim as "recently fixed, please re-verify"
 ```
 
-Two invariants make this race-free across machines that share nothing:
+**What this cycle omits:** the dispatch condition stays true for a build's
+entire duration, since it only clears at the POST. Tom therefore keeps an
+in-flight marker on disk — otherwise he dispatches a fresh persona every 15
+minutes on top of a running build. See `../../agents/tom.md`.
+
+Two invariants make this race-free:
 
 1. **Each side writes one toggle direction only.** Judge → OFF (its PATCH
    rejects `true` with 403). Routine → ON (as a side effect of `complete`).
