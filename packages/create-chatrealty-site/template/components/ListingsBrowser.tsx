@@ -35,14 +35,24 @@ function toQuery(f: Filters): string {
 
 export default function ListingsBrowser({
   initialCity = "",
+  initialFilters,
   marketCities = [],
 }: {
+  /** @deprecated pass the whole search via `initialFilters` — city alone drops the rest. */
   initialCity?: string;
+  /** The search the page was opened with, parsed from the URL by app/listings/page.tsx. */
+  initialFilters?: Partial<Filters>;
   /** Cities the unfiltered browse is scoped to — shown so the scope is visible. */
   marketCities?: string[];
 }) {
-  const [draft, setDraft] = useState<Filters>({ ...EMPTY, city: initialCity });
-  const [applied, setApplied] = useState<Filters>({ ...EMPTY, city: initialCity });
+  // Seed BOTH the form and the applied search from the URL. The effect below
+  // rewrites the address bar to match `applied`, so seeding only `city` (as
+  // this used to) actively erased the rest of the query on arrival: a correct
+  // `?back=/listings?minBeds=3&maxPrice=600000` href landed on a bare
+  // /listings with empty inputs. The href was never the broken part.
+  const initial: Filters = { ...EMPTY, city: initialCity, ...initialFilters };
+  const [draft, setDraft] = useState<Filters>(initial);
+  const [applied, setApplied] = useState<Filters>(initial);
   const [items, setItems] = useState<ListingSummary[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -159,8 +169,10 @@ export default function ListingsBrowser({
         <button
           type="button"
           onClick={() => {
-            setDraft({ ...EMPTY, city: initialCity });
-            setApplied({ ...EMPTY, city: initialCity });
+            // Back to the search the page was opened at, not to whatever the
+            // visitor last typed — city stays because it's the page's scope.
+            setDraft({ ...EMPTY, city: initial.city });
+            setApplied({ ...EMPTY, city: initial.city });
           }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
         >

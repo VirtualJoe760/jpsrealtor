@@ -68,8 +68,14 @@ export default async function ListingDetailPage({
     <div>
       <Link href={backHref} className="text-sm text-brand hover:underline">← Back to listings</Link>
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* MOBILE: `grid-cols-1` and the base `col-span-1` are load-bearing, not
+          noise. A grid with no explicit columns still honors a child's
+          `col-span-2`, so it invents two IMPLICIT auto-sized columns and sizes
+          them to content — the main column measured 3,112px wide in a 375px
+          viewport and the whole detail page scrolled sideways. Pinning one
+          column and one span below `lg` is what stops that. */}
+      <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="col-span-1 min-w-0 lg:col-span-2">
           <div className="relative">
             <div className="absolute right-4 top-4 z-10">
               <FavoriteButton listing={l} />
@@ -121,7 +127,7 @@ export default async function ListingDetailPage({
         </div>
 
         {/* Inquiry sidebar */}
-        <aside>
+        <aside className="col-span-1 min-w-0">
           <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-1 text-lg font-semibold text-gray-900">Interested?</h2>
             <p className="mb-4 text-sm text-gray-500">Send a quick note and we&apos;ll follow up.</p>

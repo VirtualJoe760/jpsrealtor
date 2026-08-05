@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-05
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.12.0 (2026-08-05)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.13.0 (2026-08-05)
 ---
 
 # create-chatrealty-site
@@ -33,6 +33,49 @@ verifies the token against `GET /api/skill/me` (warns + continues on failure so 
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
 
+**v0.13.0 (2026-08-05) — the detail page fits a phone, and the back link
+actually carries the search.** Session-9 judge run (Sandra Okafor, Cathedral
+City / Desert Hot Springs) failed gate 7 on a 375px viewport. It also confirmed
+the first real-data render of the loop: `RESO_BEARER_TOKEN` +
+`RESO_BASE_URL` + `npx @chatrealty/sync init` put live GPS listings on a
+scaffolded site, so the corrected RESO path in the guide is right.
+
+*The detail page scrolled sideways on a phone (the gate failure).* The layout
+was `grid gap-8 lg:grid-cols-3` with a `lg:col-span-2` child. The columns are
+declared only at `lg:`, but the **span is not** — and CSS Grid honors a span
+regardless, inventing two implicit columns and sizing them to content. The main
+column measured **3,112px inside a 375px viewport**. It is now
+`grid-cols-1 lg:grid-cols-3` / `col-span-1 lg:col-span-2`, plus `min-w-0` on
+both children so a long word or the map can't push them wider. Verified on a
+scaffolded site: document `scrollWidth` 375, main column 343px. The rule for
+anything added here later: a base span goes with every breakpoint span.
+
+*"Back to listings" lost the search — and the href was never the problem.* Fixed
+in v0.12.0 by the card's account and still broken in the browser's. The card
+encoded `?back=/listings?maxPrice=600000&minBeds=3` correctly; `app/listings/
+page.tsx` read only `city` out of its own URL, so `ListingsBrowser` mounted with
+empty filters and its URL-sync effect immediately `replaceState`'d the address
+bar down to a bare `/listings`. The destination erased the search on arrival.
+The page now parses all six filters (numerics stripped to digits, bed/bath
+counts constrained to the values the selects offer) and seeds **both** the form
+and the applied search through a new `initialFilters` prop; `initialCity` stays
+for compatibility but is deprecated — city alone drops the rest. Verified as a
+round trip, not by reading the DOM: filter → open a listing → click back → URL
+keeps `?city=Palm+Desert&maxPrice=900000&minBeds=2`, inputs repopulate, 10
+results. Inspecting an `href` cannot detect this class of bug; only the click
+can.
+
+*"View all N photos" is gone on purpose.* The judge went looking for it in the
+swipe deck and filed its absence. It never lived there — it was on the detail
+page, it linked to the hub's gallery, and v0.12.0 replaced it with the on-site
+`<PhotoGallery />`. No code change; the v0.12.0 note below and the build guide
+(step 6a-2) both described a link that no longer exists, and both now say so.
+
+Guide changes in `@chatrealty/mcp-server` (0.20.9): 6a-2 drops the dead link and
+names `PhotoGallery`; new **6a-3** (open the detail page at 375px and explain
+the implicit-column trap) and **6a-4** (test the back link by clicking it and
+reading the address bar, never by inspecting the href).
+
 **v0.12.0 (2026-08-05) — the default browse is the agent's market, and every
 listing link stays on the agent's site.** Session-8 judge run: identity,
 neighborhood index and card attribution were all confirmed fixed, and the build
@@ -57,12 +100,16 @@ adapter both; `city` still wins when both are sent).
 *Listing links left the site.* CHAP result cards, the swipe deck's "View
 details" and the detail page's "View all N photos" all linked to
 `chatrealty.io/mls-listings/{key}` — the API's `detailUrl`, which is meant for
-listings rendered inside a chat artifact, not for the agent's own site. All three
-now go through `listingHref()` (`lib/links.ts`) to `/listings/{key}`, and the
+listings rendered inside a chat artifact, not for the agent's own site. **Two**
+were rerouted through `listingHref()` (`lib/links.ts`) to `/listings/{key}`; the
+photos button was **deleted**, not rerouted, because the
 detail page ships a real on-site `<PhotoGallery />` (hero + thumbnail strip +
 full-screen viewer, `getListingPhotos()` → `/api/skill/listings/{key}/photos`)
 instead of a link to someone else's gallery. `detailUrl` is now documented in
-`lib/types.ts` as the hub URL, not this site's.
+`lib/types.ts` as the hub URL, not this site's. (Wording corrected in v0.13.0:
+"all three now go through `listingHref()`" sent the session-9 judge hunting for
+a "View all N photos" link that had been removed. A note that says *rerouted*
+when the change was *removed* costs someone a bug report.)
 
 Same release: **"← Back to listings" keeps the search** (the browse syncs its
 filters to the URL and passes them to each card as `?back=`, validated
