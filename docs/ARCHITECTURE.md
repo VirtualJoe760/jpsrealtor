@@ -1,7 +1,7 @@
 ---
 title: Architecture Index
 status: current
-last_verified: 2026-07-26
+last_verified: 2026-08-05
 ---
 
 # Architecture Index
@@ -23,7 +23,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 
 | Area | Linchpin file | Deep dive |
 |---|---|---|
-| Routing | `src/proxy.ts` | [routing/](./routing/) |
+| Routing | `src/proxy.ts` | [routing/](./routing/) — subdomains serve EITHER the platform-rendered page OR a proxy-rewrite onto the agent's own MCP-built deployment; see [chatrealty-api/external-site.md](./chatrealty-api/external-site.md) |
 | Theming (system-pref default, Dynamic Island sync) | `src/app/contexts/ThemeContext.tsx` | [theming/](./theming/) |
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
 | Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |

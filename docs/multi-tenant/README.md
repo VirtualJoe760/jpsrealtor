@@ -1,8 +1,8 @@
 ---
 title: Multi-tenant scoping (resolveDomainOwner)
 status: current
-last_verified: 2026-07-25
-related: [../routing/README.md, ../auth/README.md]
+last_verified: 2026-08-05
+related: [../routing/README.md, ../auth/README.md, ../chatrealty-api/external-site.md]
 supersedes: docs/multi-tenant/index.md
 ---
 
@@ -16,6 +16,15 @@ branded sites. Every public-facing endpoint that displays content scoped to
 and filter by that — not by `session.user.id`. The helper that does this is
 `src/lib/resolveDomainOwner.ts`. Forgetting this rule is the single most
 common bug in this codebase.
+
+**Everything below applies to the platform-rendered path only.** Since
+2026-07-24 a subdomain can instead carry an agent's **own MCP-built
+deployment**: when `agentProfile.externalSite` is connected and live (or
+previewed via signed link), `src/proxy.ts` rewrites the subdomain's pages AND
+its entire `/api` surface onto that deployment *before* any of this scoping
+runs — the external site owns the hostname outright. That is the primary
+tenancy path going forward; this document governs the fallback. Full model:
+`../chatrealty-api/external-site.md`.
 
 ## Gotchas
 

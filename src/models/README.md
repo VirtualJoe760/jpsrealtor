@@ -103,7 +103,7 @@ tier: { type: String, enum: ["free", "beginner", "experienced", "topagent"] }
 | AgentSubscription.ts | agentsubscriptions | Agent subscription tiers |
 | PointsLedger.ts | pointsledgers | Credit balance and transactions |
 | Partnership.ts | partnerships | Agent-partner relationships |
-| PlatformConfig.ts | platform_config | Platform homepage config |
+| PlatformConfig.ts | platform_config | Moderation config (partner/tenant auto-approve). Homepage fields are orphaned — the admin Homepage Builder was deleted 2026-08-05 |
 | Article.ts | articles | Blog/CMS articles |
 | DomainMapping.ts | domain_mappings | Community domain mappings |
 | DomainRegistry.ts | domain_registry | Centralized domain registry (all services) |

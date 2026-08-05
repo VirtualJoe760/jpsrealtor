@@ -27,7 +27,7 @@ report format, the judging standard, and how to unstick the loop.
 | **Test Claude** | a Claude Code child session, spawned by Tom via `sessions_spawn` | Builds a site with the ChatRealty MCP (`get_build_guide` flow), files `report_bug` / `give_feedback` as it goes |
 | **Tom** | an OpenClaw agent, cron `*/15` | Invents the persona, writes the brief, spawns the builder, scores the finished site against the rubric below, coaches, submits the report, turns testing off |
 | **The routine** | scheduled task `judge-loop-check`, every 5 min | Reads the report, verifies + fixes what it names, updates docs, commits, completes the report (which re-arms testing) |
-| **Joseph** | `/admin/agent-feedback` | Watches the loop; manual overrides when either half is down |
+| **Joseph** | `/admin/loop` | Watches the loop; manual overrides when either half is down |
 
 ## Two standing rules that outrank everything below
 
@@ -217,8 +217,8 @@ dimension.
 |---|---|
 | Models | `src/models/AgentTesting.ts` — `AgentTestReport`, `TestingState` (singleton; helpers `getTestingState` / `setTestingOn`) |
 | Judge API | `src/app/api/skill/testing/route.ts` |
-| Admin API | `src/app/api/admin/agent-feedback/route.ts` (session + `isAdmin`) |
-| Admin page | `/admin/agent-feedback` — toggle + who flipped it, reports w/ verbatim markdown, manual status controls |
+| Admin API | `src/app/api/admin/loop/route.ts` (session + `isAdmin`) |
+| Admin page | `/admin/loop` — toggle + who flipped it, reports w/ verbatim markdown, manual status controls |
 | CLI | `scripts/agent-feedback.mjs` — `check` (exit 3 = nothing new) · `show` · `claim` · `complete <id> "notes"` (also sets testingOn=true) · `toggle on\|off` |
 | Routine | scheduled task `judge-loop-check`, `*/5 * * * *`; prompt lives at `~/.claude/scheduled-tasks/judge-loop-check/SKILL.md` |
 | Storage | Mongo `agenttestreports`, `testingstates` |
@@ -234,7 +234,7 @@ the guide) → fix → cross-resolve any `report_bug` ids via `scripts/cr-bugs.m
 
 | Symptom | Meaning | Fix |
 |---|---|---|
-| Judge gets `409 report_pending` | Routine hasn't processed the open report | Wait; if >1h, Joseph checks `/admin/agent-feedback` — the routine machine is probably closed (it only runs while the app is open) |
+| Judge gets `409 report_pending` | Routine hasn't processed the open report | Wait; if >1h, Joseph checks `/admin/loop` — the routine machine is probably closed (it only runs while the app is open) |
 | `testingOn` stuck false, report complete | `complete` ran but toggle write failed (they're one command — rare) | Toggle from the admin page, or `node scripts/agent-feedback.mjs toggle on` |
 | Report `in_progress` for hours | Routine claimed it then died mid-fix | Read the report; finish by hand or `complete` with honest notes; the next `check` resumes normal service |
 | Judge sees `401` | Token revoked/expired | Mint a new one at chatrealty.io/agent/settings → Integrations |

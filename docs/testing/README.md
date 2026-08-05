@@ -137,12 +137,12 @@ real-data hookup attempt, which LEADS the report when it fails
 
 ## Our side (this repo)
 
-- **Admin page:** `/admin/agent-feedback` — the toggle (with who last flipped
-  it), every report with verbatim markdown, manual status controls.
-- **Loop console:** `/admin/loop` — the live view: derived stage, ticket
-  fingerprints, report summaries, activity feed, and an async chat channel to
-  each agent (a mailbox — Tom reads on his 15-min cron, the repairer on its
-  5-min poll).
+- **Loop Console:** `/admin/loop` — THE admin surface, consolidated 2026-08-05
+  (`/admin/agent-feedback` now redirects here): derived stage, the toggle
+  (flippable, with who last flipped it), every report with full markdown on
+  expand + manual status controls, ticket fingerprints, bug reports, feedback
+  submissions, activity feed, and an async chat channel to each agent (a
+  mailbox — Tom reads on his 15-min cron, the repairer on its 5-min poll).
 - **CLI (`scripts/agent-feedback.mjs`):** `check` (exit 3 = nothing
   actionable) · `show <id>` · `claim <id>` · `complete <id> "notes"` (also
   sets `testingOn=true` — one command, both halves of the handshake) ·

@@ -54,7 +54,7 @@ real feeds arrive.
 |---|---|
 | **Test Claude** | A Claude Code session on this Mac. Builds a site from my brief, following `get_build_guide` faithfully, filing `report_bug` via the ChatRealty MCP the moment it hits a defect. |
 | **The routine** | A scheduled task on this Mac (`judge-loop-check`, every 5 min) working in Joe's `jpsrealtor` repo. Reads my report, verifies each claim against the code, fixes, updates docs, commits, marks the report complete — which re-arms testing. |
-| **Joe** | Watches `/admin/agent-feedback` — the toggle, every report with verbatim markdown, and manual status controls for when either side is down. |
+| **Joe** | Watches `/admin/loop` — the toggle, every report with verbatim markdown, and manual status controls for when either side is down. |
 
 **Everything now runs on this one Mac.** The design docs describe two machines;
 that's history. The handshake still holds because the API enforces it

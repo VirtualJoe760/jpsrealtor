@@ -40,6 +40,9 @@ Smallest possible surface to confirm auth works and orient Claude.
 | `report_bug` | (any token) | `POST /api/skill/bugs` | File a defect with the ChatRealty team: title, severity, area, repro, exact errors verbatim (never tokens). Testing-phase reports drive same-day fixes. |
 | `give_feedback` | (any token) | `POST /api/skill/feedback` | Hand a whole session's results over: returns a one-time upload URL for a source-only zip (no `.env`, no `node_modules`). |
 | `report_data_issue` | (any token) | `POST /api/skill/tickets` | File a **structured data-pipeline failure** at the moment it's hit: association, failing step, verbatim error, how far the pipeline got, payload SHAPE. Clusters by fingerprint server-side — duplicates from many machines become one work item with a population count, triaged by the judge loop ahead of scheduled test work. Redaction is structural: names and shapes only, never values; the route rejects `envVarNames` containing `=`. Full pipeline: `docs/testing/tickets.md`. |
+| `site_status` | `site:manage` | `GET /api/skill/site/status` | External-site lifecycle state: `status` (none/preview/live), deployment URL, subdomain URL, `licenseOnFile`. |
+| `connect_site` | `site:manage` | `POST /api/skill/site/connect` | Point `{subdomain}.chatrealty.io` at the agent's own deployment ("Option A: point, don't host"). Sets status `preview` (agent + admins only, signed link) and **registers the subdomain on the Vercel edge** — response carries `subdomainRegistered`. See `docs/chatrealty-api/external-site.md`. |
+| `set_site_live` | `site:manage` | `POST /api/skill/site/go-live` | Flip preview → live (public). **License-gated server-side** — 409 `license_required` without a license number on file. |
 
 ### 2. MLS / Listings · `Phase 1`
 

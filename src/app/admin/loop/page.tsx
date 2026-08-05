@@ -1,24 +1,29 @@
-// /admin/loop — the loop console.
+// /admin/loop — the loop console. THE one admin surface for the feedback
+// system (/admin/agent-feedback was merged in and redirects here).
 //
 // One screen answering "what is the loop doing right now": the derived stage,
-// the handshake toggle, ticket fingerprints from the field, report summaries,
-// a merged activity feed, and an async chat channel to each agent.
+// the handshake toggle (flippable), ticket fingerprints from the field,
+// reports with full markdown on expand + lifecycle controls, bug reports and
+// feedback submissions, a merged activity feed, and an async chat channel to
+// each agent.
 //
 // The chat is a MAILBOX, not a stream — Tom polls every ~15 minutes (openclaw
 // cron), the repairer every ~5 (scheduled task, only while the desktop app is
 // open). The UI says so under the composer, because a chat box implies
 // liveness this system deliberately doesn't have.
-//
-// Full report markdown stays on /admin/agent-feedback; this page links there.
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
   Activity,
+  Bug,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Circle,
   Fingerprint,
+  Inbox,
   Loader2,
   MessageSquare,
   RefreshCw,
@@ -41,23 +46,44 @@ type Cluster = {
 
 type ChatMsg = { id: string; from: "admin" | "agent"; body: string; at: string; readAt: string | null };
 
+type Report = {
+  id: string;
+  title: string;
+  status: "new" | "in_progress" | "complete";
+  reporterTokenName: string | null;
+  submittedAt: string;
+  completedAt: string | null;
+  resolutionNotes: string | null;
+};
+
 type Payload = {
   testingOn: boolean;
   toggleUpdatedBy: string;
   toggleUpdatedAt: string;
   stage: string;
   detail: string;
-  reports: Array<{
-    id: string;
-    title: string;
-    status: "new" | "in_progress" | "complete";
-    reporterTokenName: string | null;
-    submittedAt: string;
-    completedAt: string | null;
-    resolutionNotes: string | null;
-  }>;
+  reports: Report[];
   fingerprints: Cluster[];
   chat: { tom: ChatMsg[]; repairer: ChatMsg[] };
+  bugs: Array<{
+    id: string;
+    title: string;
+    severity: "low" | "medium" | "high" | "critical";
+    area: string;
+    status: "new" | "triaged" | "fixed" | "wont_fix";
+    reporterTokenName: string | null;
+    createdAt: string;
+    resolutionNotes: string | null;
+  }>;
+  feedback: Array<{
+    id: string;
+    summary: string;
+    kind: string;
+    status: "awaiting_upload" | "uploaded" | "reviewed";
+    reporterTokenName: string | null;
+    fileBytes: number | null;
+    createdAt: string;
+  }>;
   events: Array<{ at: string; kind: string; text: string }>;
 };
 
@@ -98,13 +124,45 @@ export default function LoopConsolePage() {
   const [channel, setChannel] = useState<"tom" | "repairer">("tom");
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [openFp, setOpenFp] = useState<string | null>(null);
+  const [openReport, setOpenReport] = useState<string | null>(null);
+  const [reportMd, setReportMd] = useState<Record<string, string>>({});
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/admin/loop");
     if (r.ok) setData(await r.json());
   }, []);
+
+  // Full markdown is fetched lazily per report — 20 full reports would bloat
+  // the 15s poll for text that is rarely open.
+  async function toggleReport(id: string) {
+    if (openReport === id) {
+      setOpenReport(null);
+      return;
+    }
+    setOpenReport(id);
+    if (!reportMd[id]) {
+      try {
+        const r = await fetch(`/api/admin/loop?report=${id}`);
+        if (!r.ok) throw new Error(String(r.status));
+        const full = await r.json();
+        setReportMd((m) => ({ ...m, [id]: full.markdown || "(empty)" }));
+      } catch {
+        setReportMd((m) => ({
+          ...m,
+          [id]: "(failed to load — collapse and re-expand to retry)",
+        }));
+        // A failed load must not stick as cached "content": clear it so the
+        // next expand refetches.
+        setTimeout(() => setReportMd((m) => {
+          const { [id]: _, ...rest } = m;
+          return rest;
+        }), 4000);
+      }
+    }
+  }
 
   // "View the loop in progress" means the page keeps itself current: poll
   // every 15s. Cheap — the GET is a handful of indexed reads.
@@ -147,19 +205,32 @@ export default function LoopConsolePage() {
     }
   }
 
-  async function setFpStatus(fingerprint: string, status: Cluster["status"]) {
+  // One helper for every PATCH shape the route accepts: {fingerprint,status},
+  // {reportId,status,resolutionNotes?}, {testingOn}. Failures surface — a
+  // silent no-op on the TOGGLE would misrepresent the loop's armed state,
+  // which is the one lie this console must never tell.
+  async function patch(body: Record<string, unknown>) {
     setBusy(true);
+    setActionError(null);
     try {
-      await fetch("/api/admin/loop", {
+      const r = await fetch("/api/admin/loop", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint, status }),
+        body: JSON.stringify(body),
       });
+      if (!r.ok) {
+        setActionError(`Update failed (${r.status}) — nothing was changed.`);
+        return;
+      }
       await load();
+    } catch {
+      setActionError("Update failed (network) — nothing was changed.");
     } finally {
       setBusy(false);
     }
   }
+  const setFpStatus = (fingerprint: string, status: Cluster["status"]) =>
+    patch({ fingerprint, status });
 
   const cardClass = `rounded-xl p-5 ${isLight ? "bg-white border border-gray-200" : "bg-white/5 border border-white/10"}`;
   const textPrimary = isLight ? "text-gray-900" : "text-white";
@@ -206,8 +277,23 @@ export default function LoopConsolePage() {
                 toggle {data.testingOn ? "ON" : "OFF"} · flipped by {data.toggleUpdatedBy} ·{" "}
                 {new Date(data.toggleUpdatedAt).toLocaleString()}
               </span>
+              <button
+                onClick={() => patch({ testingOn: !data.testingOn })}
+                disabled={busy}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-50 ${
+                  data.testingOn ? "bg-emerald-600" : isLight ? "bg-gray-300" : "bg-white/20"
+                }`}
+                title={data.testingOn ? "Turn testing off" : "Turn testing on"}
+              >
+                <span
+                  className={`h-4 w-4 rounded-full bg-white transition ${
+                    data.testingOn ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
             <p className={`text-sm mt-2 ${textMuted}`}>{data.detail}</p>
+            {actionError && <p className="text-[11px] mt-2 text-red-500">{actionError}</p>}
 
             {/* Pipeline strip. "building" is never reported by the API — the
                 control plane cannot see a build in flight (that is the whole
@@ -314,36 +400,198 @@ export default function LoopConsolePage() {
               </div>
             </div>
 
-            {/* ── Reports ─────────────────────────────────────────────── */}
+            {/* ── Reports — full markdown on expand + lifecycle controls ── */}
             <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <h2 className={`text-base font-semibold ${textPrimary}`}>Recent reports</h2>
-                <Link href="/admin/agent-feedback" className="text-xs text-blue-500 hover:underline">
-                  full markdown →
-                </Link>
-              </div>
+              <h2 className={`text-base font-semibold ${textPrimary}`}>Session reports</h2>
               <div className="mt-3 space-y-2">
                 {data.reports.length === 0 && <p className={`text-sm ${textMuted}`}>No reports yet.</p>}
-                {data.reports.slice(0, 8).map((r) => {
+                {data.reports.slice(0, 10).map((r) => {
                   const meta = REPORT_STATUS_META[r.status];
+                  const expanded = openReport === r.id;
                   return (
                     <div
                       key={r.id}
                       className={`rounded-lg border p-3 ${isLight ? "border-gray-200" : "border-white/10"}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm font-medium truncate ${textPrimary}`}>{r.title}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${meta.cls}`}>
-                          {meta.label}
-                        </span>
-                      </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>
-                        {new Date(r.submittedAt).toLocaleString()}
-                        {r.completedAt ? ` · completed ${new Date(r.completedAt).toLocaleString()}` : ""}
-                      </p>
+                      <button className="w-full text-left" onClick={() => toggleReport(r.id)}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-sm font-medium truncate ${textPrimary}`}>{r.title}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${meta.cls}`}>
+                              {meta.label}
+                            </span>
+                            {expanded ? (
+                              <ChevronUp className={`w-4 h-4 ${textMuted}`} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${textMuted}`} />
+                            )}
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-1 ${textMuted}`}>
+                          {new Date(r.submittedAt).toLocaleString()}
+                          {r.completedAt ? ` · completed ${new Date(r.completedAt).toLocaleString()}` : ""}
+                          {r.reporterTokenName ? ` · via ${r.reporterTokenName}` : ""}
+                        </p>
+                      </button>
+                      {expanded && (
+                        <div className="mt-3 space-y-3">
+                          {reportMd[r.id] === undefined ? (
+                            <p className={`flex items-center gap-2 text-xs ${textMuted}`}>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading report…
+                            </p>
+                          ) : (
+                            <pre
+                              className={`whitespace-pre-wrap rounded-lg border p-4 text-[13px] leading-relaxed overflow-x-auto max-h-96 overflow-y-auto ${
+                                isLight
+                                  ? "bg-gray-50 border-gray-200 text-gray-800"
+                                  : "bg-black/30 border-white/10 text-gray-200"
+                              }`}
+                            >
+                              {reportMd[r.id]}
+                            </pre>
+                          )}
+                          {r.resolutionNotes && (
+                            <div
+                              className={`rounded-lg border p-3 text-xs ${
+                                isLight
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+                              }`}
+                            >
+                              <p className="font-semibold mb-1">Resolution</p>
+                              <p className="whitespace-pre-wrap">{r.resolutionNotes}</p>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            {r.status === "new" && (
+                              <button
+                                disabled={busy}
+                                onClick={() => patch({ reportId: r.id, status: "in_progress" })}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                              >
+                                <Circle className="w-3.5 h-3.5" /> Mark in progress
+                              </button>
+                            )}
+                            {r.status !== "complete" && (
+                              <button
+                                disabled={busy}
+                                onClick={() => patch({ reportId: r.id, status: "complete" })}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Mark complete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* ── Bug reports (report_bug) ───────────────────────────── */}
+            <div className={cardClass}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
+                  <Bug className="w-4 h-4" /> Bug reports
+                </h2>
+                <span className={`text-xs ${textMuted}`}>
+                  {data.bugs.filter((b) => b.status === "new").length} new
+                </span>
+              </div>
+              <p className={`text-xs mt-1 ${textMuted}`}>
+                Filed by builders via the MCP <code>report_bug</code> tool. Triage lives in{" "}
+                <code>scripts/cr-bugs.mjs</code>.
+              </p>
+              <div className="mt-3 space-y-2 max-h-80 overflow-y-auto">
+                {data.bugs.length === 0 && <p className={`text-sm ${textMuted}`}>No bug reports.</p>}
+                {data.bugs.map((b) => (
+                  <div
+                    key={b.id}
+                    className={`rounded-lg border p-3 ${isLight ? "border-gray-200" : "border-white/10"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm truncate ${textPrimary}`}>{b.title}</span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                            b.severity === "critical"
+                              ? "bg-red-500/15 text-red-500 border-red-500/30"
+                              : b.severity === "high"
+                                ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                : "bg-gray-500/15 text-gray-400 border-gray-500/30"
+                          }`}
+                        >
+                          {b.severity}
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                            b.status === "fixed"
+                              ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                              : b.status === "new"
+                                ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                : "bg-gray-500/15 text-gray-400 border-gray-500/30"
+                          }`}
+                        >
+                          {b.status}
+                        </span>
+                      </span>
+                    </div>
+                    <p className={`text-[11px] mt-1 ${textMuted}`}>
+                      {b.area} · {new Date(b.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Feedback submissions (give_feedback) ───────────────── */}
+            <div className={cardClass}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
+                  <Inbox className="w-4 h-4" /> Feedback submissions
+                </h2>
+                <span className={`text-xs ${textMuted}`}>
+                  {data.feedback.filter((f) => f.status === "uploaded").length} awaiting review
+                </span>
+              </div>
+              <p className={`text-xs mt-1 ${textMuted}`}>
+                Session zips via the MCP <code>give_feedback</code> tool. Review lives in{" "}
+                <code>scripts/cr-feedback.mjs</code>.
+              </p>
+              <div className="mt-3 space-y-2 max-h-80 overflow-y-auto">
+                {data.feedback.length === 0 && (
+                  <p className={`text-sm ${textMuted}`}>No feedback submissions.</p>
+                )}
+                {data.feedback.map((f) => (
+                  <div
+                    key={f.id}
+                    className={`rounded-lg border p-3 ${isLight ? "border-gray-200" : "border-white/10"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm truncate ${textPrimary}`}>{f.summary}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${
+                          f.status === "reviewed"
+                            ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                            : f.status === "uploaded"
+                              ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                              : "bg-gray-500/15 text-gray-400 border-gray-500/30"
+                        }`}
+                      >
+                        {f.status}
+                      </span>
+                    </div>
+                    <p className={`text-[11px] mt-1 ${textMuted}`}>
+                      {f.kind}
+                      {f.fileBytes ? ` · ${(f.fileBytes / 1024).toFixed(0)} KB` : ""} ·{" "}
+                      {new Date(f.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

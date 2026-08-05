@@ -4,19 +4,29 @@
 // same pattern as /api/admin/agent-feedback.
 //
 //   GET   → one composite payload: toggle state, the loop's current stage
-//           (derived), recent reports (summaries — full markdown stays on
-//           /admin/agent-feedback), ticket fingerprints, both chat threads,
-//           and a merged activity feed composed from those collections'
-//           timestamps. No new event collection — the state IS the log.
+//           (derived), recent reports (summaries), ticket fingerprints, both
+//           chat threads, bug reports, feedback submissions, and a merged
+//           activity feed composed from those collections' timestamps. No new
+//           event collection — the state IS the log.
+//   GET ?report=<id> → one report's full markdown + resolution notes,
+//           fetched lazily on expand (20 full reports × 15k would bloat the
+//           15s poll).
 //   POST  → { channel: "tom"|"repairer", body } — an admin chat message.
-//   PATCH → { fingerprint, status } — manual override on a ticket cluster.
+//   PATCH → { fingerprint, status } — ticket cluster override
+//         | { reportId, status, resolutionNotes? } — report lifecycle
+//         | { testingOn } — the toggle.
+//
+// This is the ONE admin surface for the loop — /admin/agent-feedback was
+// merged in and now redirects here.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { AgentTestReport, getTestingState } from "@/models/AgentTesting";
+import { AgentTestReport, getTestingState, setTestingOn } from "@/models/AgentTesting";
+import BugReport from "@/models/BugReport";
+import FeedbackSubmission from "@/models/FeedbackSubmission";
 import {
   TicketFingerprint,
   LoopTicket,
@@ -64,17 +74,47 @@ function deriveStage(testingOn: boolean, latest: any): { stage: string; detail: 
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "forbidden" }, { status: 403, headers: NO_STORE });
+  }
+
+  // Lazy single-report read — full markdown on expand only.
+  const reportId = new URL(req.url).searchParams.get("report");
+  if (reportId) {
+    const r: any = await AgentTestReport.findById(reportId).lean();
+    if (!r) return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
+    return NextResponse.json(
+      {
+        id: String(r._id),
+        title: r.title,
+        status: r.status,
+        markdown: r.markdown,
+        resolutionNotes: r.resolutionNotes,
+        reporterTokenName: r.reporterTokenName,
+        submittedAt: r.createdAt,
+        completedAt: r.completedAt,
+      },
+      { headers: NO_STORE }
+    );
   }
 
   const state = await getTestingState();
   const reports = await AgentTestReport.find({})
     .sort({ createdAt: -1 })
     .limit(20)
-    .select("-markdown") // summaries; the full text lives on /admin/agent-feedback
+    .select("-markdown") // summaries; full text via ?report=<id> on expand
+    .lean();
+  const bugs = await BugReport.find({})
+    .sort({ createdAt: -1 })
+    .limit(25)
+    .select("title severity area status reporter.tokenName createdAt resolutionNotes")
+    .lean();
+  const feedback = await FeedbackSubmission.find({})
+    .sort({ createdAt: -1 })
+    .limit(25)
+    .select("summary kind status reporter.tokenName fileBytes createdAt")
     .lean();
   const fingerprints = await TicketFingerprint.find({})
     .sort({ population: -1, lastSeenAt: -1 })
@@ -155,6 +195,25 @@ export async function GET() {
           .reverse()
           .map((m) => ({ id: String(m._id), from: m.from, body: m.body, at: m.createdAt, readAt: m.readAt })),
       },
+      bugs: (bugs as any[]).map((b) => ({
+        id: String(b._id),
+        title: b.title,
+        severity: b.severity,
+        area: b.area,
+        status: b.status,
+        reporterTokenName: b.reporter?.tokenName || null,
+        createdAt: b.createdAt,
+        resolutionNotes: b.resolutionNotes || null,
+      })),
+      feedback: (feedback as any[]).map((f) => ({
+        id: String(f._id),
+        summary: f.summary,
+        kind: f.kind,
+        status: f.status,
+        reporterTokenName: f.reporter?.tokenName || null,
+        fileBytes: f.fileBytes || null,
+        createdAt: f.createdAt,
+      })),
       events: events.slice(0, 30),
     },
     { headers: NO_STORE }
@@ -219,8 +278,37 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  // Report lifecycle — absorbed from /api/admin/agent-feedback at consolidation.
+  if (typeof body.reportId === "string" && body.reportId && body.status) {
+    if (!["new", "in_progress", "complete"].includes(body.status)) {
+      return NextResponse.json({ error: "bad_status" }, { status: 400, headers: NO_STORE });
+    }
+    const update: any = { status: body.status };
+    if (body.status === "complete") {
+      update.completedAt = new Date();
+      if (typeof body.resolutionNotes === "string") {
+        update.resolutionNotes = body.resolutionNotes.slice(0, 20_000);
+      }
+    }
+    const report = await AgentTestReport.findByIdAndUpdate(body.reportId, update, { new: true });
+    if (!report) return NextResponse.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
+    return NextResponse.json(
+      { ok: true, id: String(report._id), status: report.status },
+      { headers: NO_STORE }
+    );
+  }
+
+  // The toggle — same absorption. Manual override half of the handshake.
+  if (typeof body.testingOn === "boolean") {
+    const state = await setTestingOn(body.testingOn, "admin");
+    return NextResponse.json({ ok: true, testingOn: state.testingOn }, { headers: NO_STORE });
+  }
+
   return NextResponse.json(
-    { error: "validation_failed", message: "Send { fingerprint, status }." },
+    {
+      error: "validation_failed",
+      message: "Send { fingerprint, status }, { reportId, status }, or { testingOn }.",
+    },
     { status: 400, headers: NO_STORE }
   );
 }

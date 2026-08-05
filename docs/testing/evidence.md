@@ -212,5 +212,5 @@ resolved item carries a `← RESOLVED in vX.Y.Z (confirmed session N)` marker
 that the judge maintains across sessions. Released versions are verifiable
 against the public npm registry.
 
-`/admin/agent-feedback` renders every report's verbatim markdown, the current
+`/admin/loop` renders every report's verbatim markdown, the current
 toggle state, and who last flipped it.

@@ -62,7 +62,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/map-clusters", "/api/map", "/api/geo", "/api/geocode", "/api/geocoding",
   "/api/stats", "/api/california-stats", "/api/market-stats", "/api/analytics",
   "/api/neighborhoods", "/api/cities", "/api/subdivisions", "/api/regions",
-  "/api/schools", "/api/schoolImage", "/api/search", "/api/agents", "/api/platform",
+  "/api/schools", "/api/schoolImage", "/api/search", "/api/agents",
   "/api/yelp-search", "/api/chat", "/api/chat-v2", "/api/chat-v3", "/api/swipes",
   "/api/activity", "/api/photos",
 ];
@@ -287,8 +287,15 @@ export async function proxy(request: NextRequest) {
 
     // Must be admin
     if (!token.isAdmin && !token.impersonatedBy) {
-      // Redirect non-admins to the platform homepage
-      return NextResponse.redirect(new URL("http://localhost:3000/", request.url));
+      // Redirect non-admins OFF the admin-only host. The destination must
+      // change hosts: a same-host "/" re-enters this branch on the next
+      // request and loops forever (ERR_TOO_MANY_REDIRECTS) — and the
+      // original code hardcoded http://localhost:3000/, sending production
+      // visitors to localhost. Both wrong, differently.
+      const dest = bareHost.includes("chatrealty")
+        ? "https://www.chatrealty.io/"
+        : `http://localhost:${hostname.split(":")[1] || "3000"}/`;
+      return NextResponse.redirect(new URL(dest));
     }
 
     // Admin sees the site with admin banner header

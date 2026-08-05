@@ -1,7 +1,7 @@
 ---
 title: Routing (src/proxy.ts)
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-08-05
 related: [../auth/README.md, ../multi-tenant/README.md]
 ---
 
@@ -19,7 +19,7 @@ whether to rewrite the URL, whether to enforce admin-only access, etc.
 | Host | Behavior |
 |---|---|
 | `chatrealty.io` / `www.chatrealty.io` | Rewrites `/` → `/chat-landing` (platform marketing page) |
-| `{slug}.chatrealty.io` (e.g. `bethanyklier.chatrealty.io`) | Sets `x-agent-subdomain: {slug}` header; pages read it and rebrand. Sub-paths (`/chap`, `/insights`, etc.) pass through normally. |
+| `{slug}.chatrealty.io` (e.g. `bethanyklier.chatrealty.io`) | **Two serving models** (see `../chatrealty-api/external-site.md`). If the agent has a connected external site (`agentProfile.externalSite`, status `live` — or `preview` with a signed link), the proxy REWRITES pages **and the whole `/api` surface** onto their deployment. Otherwise: sets `x-agent-subdomain: {slug}` and the platform routes render (or `/coming-soon` if the profile checklist is incomplete). Sub-paths pass through normally. The subdomain must also be REGISTERED on the Vercel project (wildcard DNS alone 404s at the edge) — registration is automatic at mint + connect since 2026-08-05. |
 | `agent.chatrealty.io` | **Admin-only owner preview.** Requires `token.isAdmin`. Sets `x-admin-preview: true` + `x-owner-domain: jpsrealtor.com`. Non-admins get redirected. |
 | `jpsrealtor.com` / `www.jpsrealtor.com` | Owner apex (Joseph). Pass-through; resolveDomainOwner falls back to PRIMARY_AGENT_EMAIL. |
 | `josephsardella.com` / `www.josephsardella.com` | Same as jpsrealtor.com — owner apex for Joseph. |

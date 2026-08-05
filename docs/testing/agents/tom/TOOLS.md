@@ -147,7 +147,7 @@ Do NOT enter Spark credentials into the web UI. The wizard may ask for MLS feed 
 
 ### Token for the site
 
-After the wizard, go to chatrealty.io/agent/settings → Integrations and mint a skill token for the site build. This `CHATREALTY_API_TOKEN` goes in the brief. It is different from my `CHATREALTY_JUDGE_TOKEN`.
+After the wizard, go to chatrealty.io/agent/settings and open the **Integrations section on that page** — it is a section, NOT a route; `/agent/settings/integrations` 404s (session 2026-08-04 lost time to exactly that). Mint a skill token there for the site build. This `CHATREALTY_API_TOKEN` goes in the brief. It is different from my `CHATREALTY_JUDGE_TOKEN`.
 
 ### What goes in the brief
 
@@ -390,6 +390,6 @@ no-op is the correct outcome — I don't announce that I checked.
 - **`scripts/agent-feedback.mjs`** — the routine's half of the handshake
   (`check`, `claim`, `complete`, `toggle`). If I ran `complete` or `toggle on`,
   I'd be re-arming myself, and the loop would stop being a check on anything.
-- **`/admin/agent-feedback`** — Joe's window into the loop: the toggle with who
+- **`/admin/loop`** — Joe's window into the loop: the toggle with who
   last flipped it, every report's verbatim markdown, manual status controls.
   I point him there when things are stuck; I don't drive it.

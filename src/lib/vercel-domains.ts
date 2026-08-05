@@ -4,6 +4,24 @@
 
 const VERCEL_API_BASE = "https://api.vercel.com";
 
+/**
+ * Typed error preserving the HTTP status and Vercel's error code as data.
+ * Callers that classify outcomes (ensureSubdomainRegistered treats 409 as
+ * "already registered") must branch on THESE, never regex the prose message —
+ * Vercel messages echo the domain name, so a subdomain containing "409"
+ * (mike409@gmail.com -> mike409) made every failure look like a conflict.
+ */
+export class VercelApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string | undefined,
+    message: string
+  ) {
+    super(message);
+    this.name = "VercelApiError";
+  }
+}
+
 function getToken(): string {
   const token = process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error("VERCEL_API_TOKEN environment variable is not set");
@@ -131,15 +149,24 @@ export async function purchaseDomain(domain: string): Promise<DomainPurchaseResu
 export async function addDomainToProject(domain: string): Promise<ProjectDomain> {
   const projectId = getProjectId();
   const url = `${VERCEL_API_BASE}/v10/projects/${encodeURIComponent(projectId)}/domains`;
+  // Bounded: connect_site AWAITS this inside a serverless route after the DB
+  // write has already landed — an unbounded stall would turn a successful
+  // connect into a 504. A timeout throws here, the caller records
+  // "registration failed", and the response stays consistent with the DB.
   const res = await fetch(url, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ name: domain }),
+    signal: AbortSignal.timeout(5000),
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(`Vercel API error (${res.status}): ${body?.error?.message || res.statusText}`);
+    throw new VercelApiError(
+      res.status,
+      body?.error?.code,
+      `Vercel API error (${res.status}): ${body?.error?.message || res.statusText}`
+    );
   }
 
   return await res.json();
@@ -169,14 +196,25 @@ export async function removeDomainFromProject(domain: string): Promise<void> {
  */
 export async function listProjectDomains(): Promise<ProjectDomain[]> {
   const projectId = getProjectId();
-  const url = `${VERCEL_API_BASE}/v10/projects/${encodeURIComponent(projectId)}/domains`;
-  const res = await fetch(url, { headers: headers() });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(`Vercel API error (${res.status}): ${body?.error?.message || res.statusText}`);
-  }
-
-  const data = await res.json();
-  return data.domains || [];
+  // Follow the cursor: the default page is 20 domains, and a truncated list
+  // makes the subdomain backfill think attached domains are missing (harmless
+  // — the add is idempotent) or, worse under --dry-run, report wrong numbers.
+  const domains: ProjectDomain[] = [];
+  let until: number | undefined;
+  do {
+    const url = `${VERCEL_API_BASE}/v10/projects/${encodeURIComponent(projectId)}/domains?limit=100${until ? `&until=${until}` : ""}`;
+    const res = await fetch(url, { headers: headers(), signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new VercelApiError(
+        res.status,
+        body?.error?.code,
+        `Vercel API error (${res.status}): ${body?.error?.message || res.statusText}`
+      );
+    }
+    const data = await res.json();
+    domains.push(...(data.domains || []));
+    until = data.pagination?.next ?? undefined;
+  } while (until);
+  return domains;
 }

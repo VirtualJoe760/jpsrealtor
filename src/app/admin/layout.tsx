@@ -12,8 +12,6 @@ import {
   CreditCard,
   Globe,
   UserCog,
-  Home,
-  FlaskConical,
   Workflow,
   Menu,
   X,
@@ -27,8 +25,6 @@ const sidebarItems = [
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/admin/domains", label: "Domains", icon: Globe },
   { href: "/admin/users", label: "Users", icon: UserCog },
-  { href: "/admin/homepage-builder", label: "Homepage Builder", icon: Home },
-  { href: "/admin/agent-feedback", label: "Agent Feedback", icon: FlaskConical },
   { href: "/admin/loop", label: "Loop Console", icon: Workflow },
 ];
 

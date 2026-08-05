@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import User from "@/models/User";
 import dbConnect from "@/lib/mongodb";
+import { ensureSubdomainRegistered } from "@/lib/generate-subdomain";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -59,14 +60,27 @@ export async function POST(req: NextRequest) {
     }
   );
 
+  // The moment the deployment is connected is the moment the subdomain has to
+  // actually resolve — and the wildcard DNS alone does not make Vercel's
+  // router accept the hostname (see generate-subdomain.ts). Awaited, because
+  // "connected but your URL 404s at the edge" is exactly the half-truth this
+  // route must not return. Marcus Webb's test site shipped into that gap:
+  // connect_site succeeded, marcuswebb.chatrealty.io was DEPLOYMENT_NOT_FOUND.
+  const registration = subdomain
+    ? await ensureSubdomainRegistered(subdomain)
+    : { registered: false, note: "no subdomain on profile" };
+
   return NextResponse.json(
     {
       ok: true,
       status: "preview",
       deploymentUrl,
       subdomain,
+      subdomainRegistered: registration.registered,
       previewNote: subdomain
-        ? `Preview is private: only you and ChatRealty admins can see the built site at https://${subdomain}.chatrealty.io (use the Preview link from your dashboard). Everyone else still sees your current ChatRealty page until you go live.`
+        ? registration.registered
+          ? `Preview is private: only you and ChatRealty admins can see the built site at https://${subdomain}.chatrealty.io (use the Preview link from your dashboard). Everyone else still sees your current ChatRealty page until you go live.`
+          : `Connected, but https://${subdomain}.chatrealty.io could not be registered with the edge (${registration.note}). The deployment URL itself works; report this with report_bug so the subdomain gets fixed.`
         : "No subdomain set on your profile yet — choose one in Settings so your site has a home.",
     },
     { headers: NO_STORE }
