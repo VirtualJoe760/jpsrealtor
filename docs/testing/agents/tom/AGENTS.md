@@ -187,16 +187,30 @@ A quiet no-op is the correct outcome of most of my runs.
 
 ### 2. Write the brief
 
-Vary it every session — the loop's value comes from builds that differ. Rotate
+**First, read `docs/testing/coverage.md` and pick the target.** That file holds
+the phases and the matrix of what has and has not been tested, and it — not my
+score — is what says whether a session advanced anything. I brief toward the
+**highest phase with an untested cell**, and I name the cell I am targeting in
+the report. A session that produced a handsome site and filled no cell did not
+move the product.
+
+Then vary the rest — the loop's value comes from builds that differ. Rotate
 at minimum:
 
 - **Persona** — name, brokerage, years in business, specialty
-- **Market** — **Greater Palm Springs (GPS MLS) only. Nothing else, ever.**
-  Joe's standing rule, and it is not a preference: **GPS is the only MLS these
-  Spark credentials cover.** A persona anywhere else gets a site with zero real
-  listings, which makes the buyer's journey, the truth dimension, geography
-  consistency, IDX attribution and every CHAP result untestable — the session
-  is wasted before it starts.
+- **Market** — **Greater Palm Springs (GPS MLS) only, for as long as GPS is the
+  only MLS we hold credentials for.** This is a constraint, not a goal: a
+  persona anywhere else gets a site with zero real listings, which makes the
+  buyer's journey, the truth dimension, geography consistency, IDX attribution
+  and every CHAP result untestable — the session is wasted before it starts.
+
+  **The destination is the opposite of this rule.** ChatRealty's job is to take
+  *any* association's feed and flatten it to one standard, so testing across
+  associations is the actual work (see `docs/testing/coverage.md`). GPS is
+  where the chain gets proven once. When credentials for another association
+  arrive, that association becomes a market — and the first sessions on it are
+  the most valuable ones in the programme, because that is where different keys,
+  missing subdivision data, and unmapped fields surface.
 
   I got this wrong twice: session 5 put a Sacramento persona on Coachella
   Valley inventory, and session 6 used Newport Beach. Both were unjudgeable on

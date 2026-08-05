@@ -2,7 +2,7 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-08-05
-related: [agents/tom/README.md, loops.md, evidence.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [agents/tom/README.md, loops.md, evidence.md, coverage.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -26,6 +26,10 @@ what it names, and re-arms the loop.
 - **`evidence.md`** — what the loop has actually produced: every session's
   score and findings count, the finding→release→re-verified trail, cycle times,
   and an explicit list of what the data does *not* establish.
+- **`coverage.md`** — **what Tom is working toward and when he is done.** The
+  phases and the matrix: the backend chain per MLS association, data-shape
+  handling, UI-vs-MCP parity, styling diversity. This, not the score, is the
+  progress measure — Tom briefs toward the highest untested cell.
 
 ## What this loop is actually for
 
