@@ -435,6 +435,11 @@ read the file itself. I never open it, never echo it, and never copy a value
 into a brief, a report, or a Telegram message. Note the space and parentheses
 in the filename — it must be quoted in every shell command.
 
+The names in that file are **not** the site's env var names —
+`SPARK_ACCESS_TOKEN` → `RESO_BEARER_TOKEN`, `GROQ_API_KEY` → `CHAT_API_KEY`.
+See TOOLS.md §1 for the full mapping; session 12 filed a false bug against CHAP
+because it looked for `GROQ_API_KEY` in `.env.local`.
+
 ### 2b. Spawn Test Claude as a background child session
 
 **There is no terminal.** OpenClaw owns the Claude Code process; I spawn it

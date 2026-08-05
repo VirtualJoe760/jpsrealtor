@@ -11,6 +11,25 @@
 // automatically once the env var exists.
 //
 // Check progress anytime: GET /api/sync/cron?status=1
+//
+// TESTING IT LOCALLY. Vercel cannot call localhost, so nothing fires this route
+// in dev — a judged session set CRON_SECRET and then had no way to confirm the
+// route worked at all. Call it yourself, with the same header Vercel sends:
+//
+//   curl -H "Authorization: Bearer $CRON_SECRET" \
+//        "http://localhost:3000/api/sync/cron?status=1"     # cheap: read state
+//   curl -H "Authorization: Bearer $CRON_SECRET" \
+//        "http://localhost:3000/api/sync/cron"              # real: runs a slice
+//
+// (PowerShell: curl.exe, not the `curl` alias, or the -H is ignored.)
+//
+// What you should see:
+//   • {"skipped":"sync not configured"} → CHATREALTY_DB_URL or the RESO_* vars
+//     are missing from .env.local. The route is fine; the config isn't.
+//   • {"error":"unauthorized"} → the header doesn't match CRON_SECRET. Note that
+//     with CRON_SECRET UNSET the route is open — set it before deploying.
+//   • {"seeding":…,"progress":…} → working. That is the whole confirmation.
+// Run the status call before and after the real one: `progress` should move.
 
 import { NextRequest, NextResponse } from "next/server";
 

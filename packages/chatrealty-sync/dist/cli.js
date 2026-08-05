@@ -183,7 +183,20 @@ program
         console.log("[doctor] all green — you're ready: npx chatrealty-sync run");
     }
     else {
-        console.log(`[doctor] ${failures} check(s) failed.`);
+        // ✓/✗ with no next step is a dead end for the person running this, who is
+        // an agent, not an ops engineer. Name which half failed and what to do.
+        console.log(`[doctor] ${failures} check(s) failed. ✓ = working, ✗ = needs fixing.`);
+        console.log("[doctor] What to do next:");
+        console.log("  • Check 1 (database) failed → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
+            "    Re-run `npx chatrealty-sync init --token crt_live_…` to provision the database\n" +
+            "    and write the URL into .env.local.");
+        console.log("  • Check 2 (MLS feed) failed → the problem is your MLS credentials, not the database.\n" +
+            "    'missing env' means the vars aren't set (or aren't loaded — check .env.local).\n" +
+            "    'feed check failed' means they ARE set but your MLS rejected them: confirm the\n" +
+            "    token hasn't expired and RESO_BASE_URL matches your MLS exactly.\n" +
+            "    'returned no records' means the credentials work but your feed is empty —\n" +
+            "    that is an MLS-side permissions question for your association.");
+        console.log("  • Both failed → work top-down: fix the database first, then re-run doctor.");
         process.exitCode = 1;
     }
 });
@@ -216,6 +229,28 @@ program
             `upserted=${result.upserted} skippedKeyless=${result.skippedKeyless} ` +
             `watermark=${result.newWatermark ?? "none"}` +
             (result.dryRun ? " (no writes)" : ""));
+        // The counts alone don't say whether this went well — a judged session
+        // read `pulled=500` off a `--once` smoke test as "the data step is done",
+        // built the whole site on a 500-row slice of one city, and only found out
+        // when the browse didn't match the market. Spell out what happened.
+        console.log(`[chatrealty-sync]   pulled     ${result.pulled} — records your MLS returned this run` +
+            (result.mode === "seed" ? " (first run: everything)" : " (changed since the last run)"));
+        console.log(`[chatrealty-sync]   upserted   ${result.upserted} — rows written to your database`);
+        if (result.skippedKeyless > 0) {
+            console.log(`[chatrealty-sync]   skipped    ${result.skippedKeyless} — records with no listing key,` +
+                ` which cannot be stored. A handful is normal; hundreds means a feed-mapping problem.`);
+        }
+        if (maxRecords && result.pulled >= maxRecords) {
+            console.log(`[chatrealty-sync] ⚠ CAPPED AT ${maxRecords}. This was a SMOKE TEST, not a full seed —` +
+                ` your database now holds an arbitrary ${maxRecords}-record slice of your feed, which` +
+                ` may be mostly one city.\n` +
+                `[chatrealty-sync]   Your site will look wrong until you seed for real:` +
+                ` run \`npx chatrealty-sync run\` with no --once and no --max.`);
+        }
+        else if (!result.dryRun) {
+            console.log(`[chatrealty-sync] Healthy looks like: upserted ≈ pulled, skipped near zero, a watermark set.` +
+                ` Now open /listings and confirm the homes shown are in the cities you serve.`);
+        }
     }
     catch (err) {
         console.error(`[chatrealty-sync] sync failed: ${err.message}`);

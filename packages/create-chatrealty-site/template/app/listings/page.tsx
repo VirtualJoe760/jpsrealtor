@@ -17,6 +17,8 @@ type ListingsSearchParams = {
   minBeds?: string;
   minBaths?: string;
   hasPool?: string;
+  /** grid | map — which presentation the browse opens in. */
+  view?: string;
 };
 
 /** Query values are attacker-controlled text; keep only what the form can show. */
@@ -64,7 +66,11 @@ export default async function ListingsPage({
       {/* The unfiltered browse is scoped to the markets this site serves (see
           MARKET SCOPE in lib/chatrealty.ts). Say so, so nobody has to guess
           whether the grid is "everything" or "our market". */}
-      <ListingsBrowser initialFilters={initialFilters} marketCities={marketCities} />
+      <ListingsBrowser
+        initialFilters={initialFilters}
+        initialView={sp.view === "map" ? "map" : "grid"}
+        marketCities={marketCities}
+      />
     </div>
   );
 }

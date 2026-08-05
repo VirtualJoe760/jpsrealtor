@@ -83,6 +83,20 @@ Pick per the agent's market and feel; don't default to the scaffold's choice.
   a fallback like `agent.name || "Jane Smith"` never fires when the API returns
   a real — and wrong — name, which is exactly how a build shipped with the
   wrong agent on every page.
+
+  **There is one identity function: `getAgentProfile()` in `lib/chatrealty.ts`,
+  and it applies the overrides itself.** Every page calls it. Do not add a
+  second "but with overrides" wrapper next to it — a session did exactly that,
+  used the wrapper on `/contact` only, and shipped a site with one agent in the
+  header and a different agent on the contact page. If a page shows the wrong
+  person, the fix is a `.env.local` value or the token, never a new helper.
+
+  **The overrides cannot save you from the wrong token.** They cover the fields
+  you set; the ones you don't (headshot, bio, service areas, specializations)
+  stay the token holder's, and leads land in the token holder's CRM. Confirm the
+  account with the ChatRealty MCP's `whoami` before building. In development the
+  site now warns on the server console when `AGENT_NAME` and the token's profile
+  name disagree — if you see that line and did not intend it, stop and re-token.
 - **Map:** pin style (pill / dot / teardrop), tile theme, cluster behavior.
 - **Nav:** the hamburger drawer is standard on all breakpoints — restyle it, don't replace it with a link row.
 

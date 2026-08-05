@@ -18,11 +18,19 @@ type Filters = {
 
 const EMPTY: Filters = { city: "", minPrice: "", maxPrice: "", minBeds: "", minBaths: "", hasPool: false };
 
+type View = "grid" | "map";
+
 // The applied filters as a query string — used both for the browser URL (so a
 // search is shareable and survives reload) and for the `back` link carried into
 // each listing detail page. Clicking into a home and back used to dump the
 // visitor on the unfiltered browse, losing the search they had just built.
-function toQuery(f: Filters): string {
+//
+// `view` rides along for the same reason the filters do: the effect below
+// REPLACES the address bar with whatever this returns, so anything missing here
+// is actively erased on arrival. Leaving view out meant `?view=map` was wiped
+// before the map could open, and a visitor who switched to the map could not
+// share or reload the view they were looking at.
+function toQuery(f: Filters, view: View): string {
   const p = new URLSearchParams();
   if (f.city) p.set("city", f.city);
   if (f.minPrice) p.set("minPrice", f.minPrice);
@@ -30,18 +38,22 @@ function toQuery(f: Filters): string {
   if (f.minBeds) p.set("minBeds", f.minBeds);
   if (f.minBaths) p.set("minBaths", f.minBaths);
   if (f.hasPool) p.set("hasPool", "true");
+  if (view === "map") p.set("view", "map");
   return p.toString();
 }
 
 export default function ListingsBrowser({
   initialCity = "",
   initialFilters,
+  initialView = "grid",
   marketCities = [],
 }: {
   /** @deprecated pass the whole search via `initialFilters` — city alone drops the rest. */
   initialCity?: string;
   /** The search the page was opened with, parsed from the URL by app/listings/page.tsx. */
   initialFilters?: Partial<Filters>;
+  /** Which view the URL asked for (`?view=map`), parsed by app/listings/page.tsx. */
+  initialView?: View;
   /** Cities the unfiltered browse is scoped to — shown so the scope is visible. */
   marketCities?: string[];
 }) {
@@ -58,7 +70,7 @@ export default function ListingsBrowser({
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"grid" | "map">("grid");
+  const [view, setView] = useState<View>(initialView);
 
   const load = useCallback(async (f: Filters, skip: number, append: boolean) => {
     setLoading(true);
@@ -93,12 +105,15 @@ export default function ListingsBrowser({
 
   // Keep the URL in step with the applied filters (replace, not push — the back
   // button should leave the page, not walk back through every filter tweak).
-  const query = toQuery(applied);
+  const query = toQuery(applied, view);
   useEffect(() => {
     const url = query ? `/listings?${query}` : "/listings";
     window.history.replaceState(null, "", url);
   }, [query]);
-  const backHref = query ? `/listings?${query}` : "/listings";
+  // The `back` link a card carries returns to the grid, not the map: the
+  // visitor clicked a card, so that is the surface they came from.
+  const backQuery = toQuery(applied, "grid");
+  const backHref = backQuery ? `/listings?${backQuery}` : "/listings";
 
   const input = "rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand";
 

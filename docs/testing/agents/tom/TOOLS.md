@@ -332,6 +332,21 @@ it, and seed it into the ChatRealty-hosted database**. They are not entered into
 any web UI and are not passed to ChatRealty directly. Test Claude reads the file
 and runs the sync tool with these keys.
 
+**The names in this file are not the names the site uses.** Both need mapping,
+and session 12 lost findings to the second one:
+
+| In the file | Goes in `.env.local` as |
+|---|---|
+| `SPARK_ACCESS_TOKEN` | `RESO_BEARER_TOKEN` (+ `RESO_BASE_URL=https://replication.sparkapi.com/Reso/OData`) |
+| `SPARK_OAUTH_KEY` / `SPARK_OAUTH_SECRET` | `RESO_CLIENT_ID` / `RESO_CLIENT_SECRET` — only if not using the bearer token |
+| `GROQ_API_KEY` | **`CHAT_API_KEY`** |
+
+There are no `SPARK_*` or `GROQ_*` variables in the scaffolded site — nothing
+reads those names. CHAP is provider-agnostic, so a Groq `gsk_…` key goes in
+`CHAT_API_KEY`. Session 12 looked for `GROQ_API_KEY`, did not find it, and filed
+the chat widget as broken; the widget was correctly hidden because no key was
+set under the name the site actually reads.
+
 I put the **path** in the brief. I never open it, never echo it, never copy a
 value anywhere. The filename has a space and parentheses — quote it in every
 shell command.

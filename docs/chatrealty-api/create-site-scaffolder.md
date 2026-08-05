@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-05
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.13.0 (2026-08-05)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.14.0 (2026-08-05)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,64 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.14.0 (2026-08-05) — `?view=map` survives the URL, and the wrong token
+now says so out loud.** Session-12 judge run (Diana Marsh, GPS MLS) scored
+42/100 and failed three gates, all downstream of one thing: the build ran on a
+token minted for a *different* agent. Two of the four bugs it filed were already
+fixed and are recorded here so the next report doesn't re-file them.
+
+*Not reproducible — `getAgentProfile()` ignoring `AGENT_*`.* Reported as
+critical: overrides applied only via a `getSiteAgent()` helper, so the homepage
+showed one agent and `/contact` another. `getAgentProfile()` has applied
+`applyIdentityOverrides()` since v0.11.0 (commit `142ec4f6`), and `getSiteAgent`
+exists nowhere in this repo — the tester's site had a hand-written wrapper of
+its own from an earlier session. DESIGN.md now states plainly that
+`getAgentProfile()` is the **one** identity function and applies the overrides
+itself, so nobody adds a second one.
+
+*The real defect the split identity was hiding: the overrides can't save you
+from the wrong token.* They cover the fields you set; headshot, bio, service
+areas and specializations stay the token holder's, and **leads land in the token
+holder's CRM**. Nothing said so. `lib/chatrealty.ts` now logs an IDENTITY
+MISMATCH warning in development when `AGENT_NAME` and the token's profile name
+disagree, naming both and pointing at `whoami`; the build guide gained step
+`0a` — confirm the account *before* the first build command. Verified: scaffold
+with `AGENT_NAME=Diana Marsh` on a Jordan Avery profile and the warning fires.
+
+*`?view=map` was ignored on load, and the map view could not be linked.* Real,
+and the same class of bug as v0.13.0's lost search: `ListingsBrowser` seeded
+`view` from a hardcoded `"grid"`, and its URL-sync effect `replaceState`'d the
+address bar from `toQuery(applied)` — which had no `view` key, so arriving with
+`?view=map` had the param stripped before the map could open, and toggling to
+the map never wrote it back. `view` is now a parsed `initialView` prop and a
+`toQuery` key. The `?back=` href deliberately stays on `grid` (the visitor
+clicked a card, so that is the surface they return to). Verified in a browser:
+`/listings?view=map` opens the map with the Map button active and the param
+intact; toggling Grid→Map rewrites the URL both ways.
+
+*Favicon 404 on every page.* The template shipped no icon, so browsers probed
+`/favicon.ico` and logged a 404 — the only console error the session saw. Added
+`app/icon.svg`; Next serves it and emits `<link rel="icon">`, so browsers stop
+probing. A direct request to `/favicon.ico` still 404s (there is no `.ico`), but
+nothing requests it once the link tag is present.
+
+*Not reproducible — CHAP mounting without a key.* `ChapWidget` already returns
+`null` when `GET /api/chat` reports `{enabled:false}`, which is exactly what a
+missing key produces. The session looked for `GROQ_API_KEY`; the variable is
+`CHAT_API_KEY` (the site is provider-agnostic — a Groq `gsk_…` key goes in
+`CHAT_API_KEY`). `env.example` now says so in the place the tester was looking.
+
+*Unresolved — the browse showed a city outside `MARKET_CITIES`.* Traced the
+whole chain and every link is correct: `marketScopeCities()` reads
+`MARKET_CITIES` first, the route forwards `cities`, `buildTenantListingFilter`
+maps it, and `postgres-adapter` emits `city IN (…)`. Could not reproduce without
+the tester's tenant DB. The two live hypotheses are both now self-diagnosing:
+`lib/chatrealty.ts` logs which source the scope came from and the cities it
+resolved to (with a reminder that Next reads `.env.local` only at **startup** —
+the likely cause, an unrestarted dev server), and `@chatrealty/sync` now warns
+when a run was capped, because the session seeded with `run --once` (500
+arbitrary records, often mostly one city) and read `pulled=500` as done.
 
 **v0.13.0 (2026-08-05) — the detail page fits a phone, and the back link
 actually carries the search.** Session-9 judge run (Sandra Okafor, Cathedral

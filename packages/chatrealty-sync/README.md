@@ -76,6 +76,23 @@ Files:
 
 ## Environment (the only place secrets live)
 
+**What "RESO" means, since nothing else here explains it:** RESO is the industry
+standard every MLS uses to hand out its listing data over the web. The `RESO_*`
+vars below are simply *your MLS feed's address and your password for it* — you
+get them from your MLS or your feed vendor, not from ChatRealty.
+
+- `RESO_BASE_URL` is the web address of your feed. On **Spark** it is
+  `https://replication.sparkapi.com/Reso/OData`. On **Bridge** it is
+  `https://api.bridgedataoutput.com/api/v2/OData`. Your MLS will tell you yours.
+- `RESO_BEARER_TOKEN` is the access token out of your Spark (or equivalent)
+  credentials — one long string. If you have this, you are done; skip the
+  `RESO_CLIENT_ID` / `RESO_CLIENT_SECRET` / `RESO_TOKEN_URL` trio entirely.
+- The client-id/secret trio is the *other* way some MLSs authenticate. You need
+  **either** the bearer token **or** the trio, never both.
+
+If you don't know which you have, run `npx chatrealty-sync doctor` — it says
+which half is missing and what to do about it.
+
 Secrets come **from the environment only** — never a checked-in config file, never
 logged. The CLI auto-loads `.env.local` then `.env`. Set:
 
@@ -115,13 +132,34 @@ npx chatrealty-sync run
 # Dry run — pull + map everything, write NOTHING (safe to inspect).
 npx chatrealty-sync run --dry-run
 
-# Single bounded pass (smoke test): cap records and exit.
+# Single bounded pass (SMOKE TEST ONLY — caps at 500 records): prove the
+# plumbing works, then throw it away and seed for real with `run`.
 npx chatrealty-sync run --once
 npx chatrealty-sync run --once --max 50
 ```
 
-The CLI prints a one-line summary (mode, pulled/mapped/upserted counts, the new
-watermark) and exits non-zero on failure. It never prints secrets.
+**`--once` is not a seed.** It stops at 500 records, and which 500 you get is
+arbitrary — very often mostly one city. A site built on that slice looks broken
+in a way that has nothing to do with the site: a judged session ran `--once`,
+saw `pulled=500`, called the data step done, and then could not work out why
+`/listings` showed the wrong market. Always follow it with a bare
+`npx chatrealty-sync run`.
+
+### Reading the output
+
+The CLI prints a summary and exits non-zero on failure. It never prints secrets.
+
+| Number | What it means | Healthy |
+|---|---|---|
+| `mode` | `seed` = first run, pulling everything; `incremental` = only what changed | either, depending on run |
+| `pulled` | records your MLS returned **this run** | on a seed, your whole active inventory (thousands). On a daily incremental, tens or low hundreds — a small number here is *good*, it means little changed |
+| `mapped` | records that converted to storable rows | should equal `pulled` |
+| `upserted` | rows actually written | should equal `mapped` |
+| `skippedKeyless` | records with no listing key, which cannot be stored | 0, or a handful. Hundreds means a feed-mapping problem — file it |
+| `watermark` | the timestamp the next incremental run starts from | any ISO date. `none` after a real run means the next run will re-seed |
+
+After a seed, **open `/listings` and confirm the homes shown are in the cities
+you serve.** The counts can all look right while the data is wrong for the site.
 
 ### Daily cadence (cron)
 

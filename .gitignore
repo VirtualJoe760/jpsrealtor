@@ -96,3 +96,6 @@ temp-images/
 # the browser. The preview tooling refuses a cwd outside the project root, so a
 # generated site has to live here to be verified rather than merely built.
 /.local-preview/
+
+# Local scaffolder smoke-test site (repairer loop). Never committed.
+.scaffold-check/

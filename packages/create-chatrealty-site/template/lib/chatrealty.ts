@@ -124,20 +124,54 @@ function qs(filters: ListingFilters): string {
 const MAX_SCOPE_CITIES = 25;
 let warnedNoScope = false;
 
+// Which of the three sources actually won, said out loud once in development.
+//
+// A judged session set MARKET_CITIES to five Coachella Valley cities, ran the
+// sync, and still got a browse full of a sixth city — and had no way to tell
+// whether the env var was ignored, the API filter was broken, or the tenant
+// database simply had no homes in those cities. It was none of those: .env.local
+// is read at dev-server START, and the server had been running since before the
+// edit. One line of output would have closed that question in a second.
+let loggedScopeSource = false;
+function logScopeSource(source: string, cities: string[]) {
+  if (loggedScopeSource || process.env.NODE_ENV === "production") return;
+  loggedScopeSource = true;
+  console.log(
+    `[chatrealty] market scope from ${source}: ${cities.length > 0 ? cities.join(", ") : "(none)"}` +
+      `\n[chatrealty] If that is not what you set in .env.local, RESTART the dev server —` +
+      ` Next reads .env.local at startup, not per request.`
+  );
+}
+
 async function marketScopeCities(): Promise<string[]> {
   const explicit = env("MARKET_CITIES");
-  if (explicit && /^(off|none|all)$/i.test(explicit)) return [];
-  const fromEnv = envList("MARKET_CITIES") ?? envList("AGENT_SERVICE_AREAS");
-  if (fromEnv) return fromEnv.slice(0, MAX_SCOPE_CITIES);
+  if (explicit && /^(off|none|all)$/i.test(explicit)) {
+    logScopeSource(`MARKET_CITIES=${explicit} (scoping disabled)`, []);
+    return [];
+  }
+  const fromMarket = envList("MARKET_CITIES");
+  if (fromMarket) {
+    const cities = fromMarket.slice(0, MAX_SCOPE_CITIES);
+    logScopeSource("MARKET_CITIES", cities);
+    return cities;
+  }
+  const fromAreas = envList("AGENT_SERVICE_AREAS");
+  if (fromAreas) {
+    const cities = fromAreas.slice(0, MAX_SCOPE_CITIES);
+    logScopeSource("AGENT_SERVICE_AREAS", cities);
+    return cities;
+  }
   try {
     const p = await getAgentProfile();
-    return p.serviceAreas
+    const cities = p.serviceAreas
       // A service area typed as something other than a city (a county, a
       // region) won't match the feed's `city` column — scoping to it would
       // empty the page. Keep untyped and city-ish entries.
       .filter((a) => !a.type || /city|town|market|area/i.test(a.type))
       .map((a) => a.name)
       .slice(0, MAX_SCOPE_CITIES);
+    logScopeSource("the ChatRealty profile's service areas", cities);
+    return cities;
   } catch {
     return [];
   }
@@ -328,9 +362,33 @@ function envList(name: string): string[] | null {
   return parts.length > 0 ? parts : null;
 }
 
+// Building for someone other than the token holder is supported — set AGENT_*
+// and each field wins over the API. What is NOT supported is doing it by
+// accident, and that is the failure this warning exists for: a judged session
+// built Diana Marsh's site on a token minted for a different agent, and because
+// the overrides quietly did their job the only symptom was the profile fields
+// nobody had overridden (headshot, bio, service areas) still being the token
+// holder's. Say the mismatch out loud, once, in development.
+let warnedIdentityMismatch = false;
+function warnIfWrongToken(apiName: string | null, overrideName: string | null) {
+  if (warnedIdentityMismatch) return;
+  if (process.env.NODE_ENV === "production") return;
+  if (!apiName || !overrideName) return;
+  if (apiName.trim().toLowerCase() === overrideName.trim().toLowerCase()) return;
+  warnedIdentityMismatch = true;
+  console.warn(
+    `[chatrealty] IDENTITY MISMATCH: this site is being built for "${overrideName}" (AGENT_NAME), ` +
+      `but CHATREALTY_API_TOKEN belongs to "${apiName}". That is fine ONLY if it is deliberate — ` +
+      `every profile field you have NOT overridden (headshot, bio, service areas, specializations) ` +
+      `is still ${apiName}'s, and leads land in ${apiName}'s CRM. If this is a surprise, you are ` +
+      `holding the wrong token: check it with the ChatRealty MCP's whoami before building further.`
+  );
+}
+
 function applyIdentityOverrides(p: AgentProfile): AgentProfile {
   const areas = envList("AGENT_SERVICE_AREAS");
   const specs = envList("AGENT_SPECIALIZATIONS");
+  warnIfWrongToken(p.name, env("AGENT_NAME"));
   return {
     ...p,
     name: env("AGENT_NAME") ?? p.name,
