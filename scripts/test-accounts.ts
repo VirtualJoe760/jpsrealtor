@@ -40,8 +40,12 @@
 // the first thing it would get used for is routing around a broken signup —
 // which is the finding, not an obstacle. If signup breaks, that is the report.
 
+import fs from "node:fs";
+import path from "node:path";
 import mongoose from "mongoose";
 import { config } from "dotenv";
+import { generateApiToken } from "../src/lib/secrets";
+import { PRESETS } from "../src/lib/skill-scopes";
 import User from "../src/models/User";
 import AgentSubscription, { type SubscriptionTier } from "../src/models/AgentSubscription";
 import { getSiteReadiness } from "../src/lib/agent-site-readiness";
@@ -430,6 +434,56 @@ async function cmdEnrich(
   return { before, after, dryRun: false, persona: personaKey };
 }
 
+/**
+ * Mint a crt_live token for a test account — the piece `promote` alone does not
+ * give Tom. Without one he cannot scaffold a site or provision a tenant
+ * database, which is the wall every session so far has routed around.
+ *
+ * Mirrors POST /api/integrations/api-tokens exactly: same generator, same
+ * storage shape, same `website` preset a scaffolded build uses. It bypasses the
+ * UI only because the UI needs an interactive session, not to dodge a gate.
+ *
+ * The plaintext is written to a FILE and never printed. A token is a secret
+ * even when it belongs to a throwaway account: echoing it would put it in a
+ * transcript, and the report format treats a leaked `crt_live_` as a gate-5
+ * failure. Only the last four are reported.
+ */
+async function cmdToken(
+  email: string,
+  outPath: string,
+  dry: boolean,
+  session: string | null
+) {
+  const before = await snapshot(email);
+  const user = await User.findOne({ email: email.toLowerCase() });
+  assertNotPrivileged(user);
+  if (dry) return { before, after: before, dryRun: true };
+
+  if (!user!.agentProfile) user!.agentProfile = {} as any;
+  const ap: any = user!.agentProfile;
+  ap.aiIntegrations = ap.aiIntegrations || {};
+  const tokens = (ap.aiIntegrations.apiTokens ||= []);
+
+  const { plaintext, hash, last4 } = generateApiToken();
+  tokens.push({
+    tokenHash: hash,
+    last4,
+    name: `judge-loop${session ? `-${session}` : ""}`,
+    // The preset a scaffolded create-chatrealty-site build runs on.
+    scopes: [...PRESETS.website.scopes],
+    createdAt: new Date(),
+  });
+  user!.markModified("agentProfile.aiIntegrations.apiTokens");
+  await user!.save();
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, `CHATREALTY_API_TOKEN=${plaintext}\n`, { mode: 0o600 });
+
+  await ledgerRecord(email, user!._id, "token", { last4, outPath }, session);
+  const after = await snapshot(email);
+  return { before, after, dryRun: false, last4, outPath };
+}
+
 async function cmdReset(email: string, dry: boolean, session: string | null) {
   const before = await snapshot(email);
   const user = await User.findOne({ email: email.toLowerCase() });
@@ -536,7 +590,7 @@ async function main() {
     return;
   }
 
-  const needsEmail = ["inspect", "promote", "degrade", "enrich", "reset"];
+  const needsEmail = ["inspect", "promote", "degrade", "enrich", "reset", "token"];
   if (!cmd || (needsEmail.includes(cmd) && !email)) {
     console.error(
       [
@@ -546,6 +600,7 @@ async function main() {
         "  inspect  <email>                      current state, no writes",
         "  promote  <email> [--tier=beginner]    add realEstateAgent + subscription",
         "  enrich   <email> [--persona=k] [--partial]   fill the profile",
+        "  token    <email> --out=<path>         mint a crt_live token to a file",
         "  degrade  <email> [--tier=free] [--strip-role]",
         "  reset    <email>                      strip everything the loop added",
         "  list                                  every account in the ledger",
@@ -612,6 +667,17 @@ async function main() {
         session
       );
       break;
+    case "token": {
+      const out = flags.get("out");
+      if (!out) {
+        throw new Refused(
+          "token requires --out=<path>. The plaintext is written to that file and\n" +
+            "never printed — a crt_live_ string in a transcript is a gate-5 failure."
+        );
+      }
+      result = await cmdToken(email, out, dry, session);
+      break;
+    }
     case "reset":
       result = await cmdReset(email, dry, session);
       break;

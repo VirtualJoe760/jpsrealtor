@@ -88,7 +88,7 @@ agent's MLS credentials ─► fetch + flatten ─► SEED the agent's own datab
 
 | Association | Feed | Provision | Seed | Serve | Nightly refresh |
 |---|---|---|---|---|---|
-| GPS MLS (Greater Palm Springs) | Spark RESO | ✗ untested | ✗ untested | ✗ untested | ✗ untested |
+| GPS MLS (Greater Palm Springs) | Spark RESO | ✔ verified by hand 2026-08-05 — awaiting session confirmation | ✗ untested | ✗ untested | ✗ untested |
 | *(next association)* | — | — | — | — | — |
 
 **Nothing in this table has ever passed.** Sessions 5–8 read platform inventory
@@ -98,22 +98,21 @@ bypass every column. See `evidence.md`.
 ### Why it never passed — two blockers, both outside the test loop
 
 Audited 2026-08-05. Neither was findable by building another site, which is why
-ten sessions never surfaced them.
+ten sessions never surfaced them. **Both are now cleared.**
 
-**1. Production cannot provision a Neon database at all.**
-`POST /api/skill/tenant/provision` is deployed and correctly auth-gated (401
-unauthenticated, not 404), and the code is sound. But the two environment
-variables it needs to reach Neon are **absent from Vercel production**:
+**1. Production could not reach Neon.** `POST /api/skill/tenant/provision` was
+deployed and correctly auth-gated (401 unauthenticated, not 404) and the code
+was sound — but `NEON_API_KEY` was absent from Vercel production. It is read
+lazily in `src/lib/neon/client.ts`, so the route authenticated fine and then
+failed at project creation. Tom calls `https://jpsrealtor.com`, so provisioning
+was impossible from where the loop actually runs, regardless of token.
 
-| Var | Local | Production |
-|---|---|---|
-| `MONGODB_URI` | set | set |
-| `SECRETS_ENCRYPTION_KEY` | set | set |
-| `NEON_API_KEY` | set | **missing** |
-| `NEON_POOLED_CONN_URI` | set | **missing** |
+*(`NEON_POOLED_CONN_URI` is **not** a production requirement — every read site
+is a `__tests__` file. It gates the live test suites only.)*
 
-Tom calls `https://jpsrealtor.com`. Provisioning has therefore never been
-possible from where the loop actually runs, regardless of which token was used.
+**Fixed 2026-08-05:** `NEON_API_KEY` added to Vercel production and the
+deployment rebuilt. Env vars only take effect on a new deployment, which is
+worth remembering — adding the variable alone would have changed nothing.
 
 **2. Dogfood tokens are refused by design — correctly.**
 
@@ -121,17 +120,28 @@ possible from where the loop actually runs, regardless of which token was used.
 dataSource = tenantBinding ? "tenant" : user.isAdmin ? "dogfood" : "none"
 ```
 
-and the provision route returns `403 owner_account` when `dataSource` is
-`"dogfood"`, because an owner account serves the internal dataset and must not
-be rebound to a tenant DB. Joe's account is admin, so every session that used
-his token hit this by design.
+The route returns `403 owner_account` on `"dogfood"`, because an owner account
+serves the internal dataset and must not be rebound to a tenant DB. Joe's
+account is admin, so every session using his token hit this by design. A
+**non-admin** account resolves to `"none"`, which the route permits.
 
-A **non-admin** account resolves to `"none"`, which the route permits. So
-`scripts/test-accounts.ts promote` on a `+crtest` address produces exactly the
-account shape provisioning requires.
+**Resolved by tooling:** `scripts/test-accounts.ts promote` on a `+crtest`
+address produces a non-admin agent account, and `… token --out=<file>` mints
+the `crt_live_` token it needs. That token — not Joe's — is what a session uses.
 
-Both must be cleared before a session can pass matrix 1. Until then, gate 8
-fails every dispatch — correctly, and with no new information.
+### Verified end to end, 2026-08-05
+
+Against production, with a promoted non-admin `+crtest` account:
+
+| Check | Result |
+|---|---|
+| `POST /api/skill/tenant/provision` | **201** `created: true`, tenant id returned, Neon database live |
+| Re-POST (idempotency) | **200** `created: false`, same tenant, token bound to it |
+| `GET /api/skill/listings/search` on that token | **200** — tenant-scoped, database empty as expected |
+
+Provisioning is no longer the blocker. The remaining columns — seed, serve,
+nightly refresh — are still untested, and a session confirms them, not a
+by-hand check.
 
 ---
 

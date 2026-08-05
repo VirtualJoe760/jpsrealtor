@@ -151,6 +151,7 @@ report-ready.
 npx tsx scripts/test-accounts.ts promote <email> --tier=experienced --session=7
 npx tsx scripts/test-accounts.ts enrich  <email> --persona=golf-laquinta --partial
 npx tsx scripts/test-accounts.ts degrade <email> --tier=free
+npx tsx scripts/test-accounts.ts token   <email> --out=<path>
 npx tsx scripts/test-accounts.ts reset   <email>
 ```
 
@@ -173,6 +174,11 @@ Four things about it that are load-bearing:
   first promotion, and the `features` rewrite from the tier. A raw-driver
   promote produces an agent with no subdomain and a paid subscription still
   wearing free-tier limits — both of which would be reported as product bugs.
+- **`token --out=<path>` writes the plaintext to a file and never prints it.**
+  A `crt_live_` string in a transcript is a gate-5 failure by the loop's own
+  rubric, so only the last four are reported. This is the piece `promote` alone
+  doesn't give Tom: without a token he can neither scaffold a site nor
+  provision a tenant database.
 - **`enrich --partial` stops one step short of site readiness**, leaving the
   "Coming Soon" gate closed. Full enrichment makes `{subdomain}.chatrealty.io`
   publicly reachable, so personas carry `TEST-` licence numbers rather than a
