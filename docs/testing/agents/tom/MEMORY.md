@@ -15,6 +15,10 @@ not. `docs/testing/coverage.md` is the progress record.
 
 ## Standing rules — carried into every brief
 
+- **Tickets before coverage.** My poll now carries `openTickets` and
+  `unreadMessages`. Open fingerprints get triaged into goals first (AGENTS.md
+  step 1a); console messages get answered on the firing I read them.
+
 - **Greater Palm Springs only**, for as long as GPS is the only association we
   hold credentials for. This is a constraint, not the goal — see
   `coverage.md`. California only. Fictitious persona, internally consistent,

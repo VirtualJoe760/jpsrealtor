@@ -206,6 +206,11 @@ question is whether N consecutive builds actually look like N different brands
 
 ## How a session advances this file
 
+0. **Open ticket fingerprints come first** (`tickets.md`). A configuration
+   reality has already broken outranks one that is merely unverified — Tom
+   triages the population-heaviest open fingerprint into a goal before
+   spending a session on coverage. No open fingerprints ⇒ coverage-driven,
+   exactly as below.
 1. Tom picks the **highest phase with an untested cell** and briefs toward it.
 2. If a cell fails, the report leads with it — the exact step, the verbatim
    error. A documented failure fills the cell with information; a working site

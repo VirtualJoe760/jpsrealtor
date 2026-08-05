@@ -5,8 +5,14 @@
 // (mint one at chatrealty.io/agent/settings → Integrations), same as
 // /api/skill/bugs — any valid token, rate-limited, no extra scope.
 //
-//   GET    → { testingOn, latestReport } — the judge polls this. Its dispatch
-//            condition is: latestReport.status === "complete" && testingOn.
+//   GET    → { testingOn, latestReport, openTickets, unreadMessages } — the
+//            judge polls this. Its dispatch condition is:
+//            latestReport.status === "complete" && testingOn. openTickets is
+//            the reactive-ingress summary (docs/testing/tickets.md): open
+//            fingerprints by population, so the judge triages field failures
+//            before spending a session on coverage. unreadMessages says the
+//            admin console has mail for him — fetched at
+//            /api/skill/testing/messages.
 //   POST   → submit an MD report: { title, markdown, testingOff? }.
 //            Sets the report status "new". Pass testingOff: true to also flip
 //            the toggle off in the same call (the judge's normal move).
@@ -20,6 +26,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { authenticateSkillRequest, skillRateLimit } from "@/lib/skill-auth";
 import { AgentTestReport, getTestingState, setTestingOn } from "@/models/AgentTesting";
+import { TicketFingerprint, LoopMessage } from "@/models/LoopTicket";
 
 export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -36,6 +43,22 @@ export async function GET(req: NextRequest) {
   const state = await getTestingState();
   const latest = await AgentTestReport.findOne({}).sort({ createdAt: -1 }).lean();
 
+  // Reactive ingress: open fingerprints, biggest population first. Tickets a
+  // field failure has already produced outrank coverage cells that are merely
+  // unverified, so the judge sees them in the same poll that gates dispatch.
+  const openClusters = await TicketFingerprint.find({ status: { $in: ["open", "triaged"] } })
+    .sort({ population: -1, lastSeenAt: -1 })
+    .limit(5)
+    .lean();
+  const openTicketCount = await TicketFingerprint.countDocuments({
+    status: { $in: ["open", "triaged", "in_progress"] },
+  });
+  const unreadForTom = await LoopMessage.countDocuments({
+    channel: "tom",
+    from: "admin",
+    readAt: null,
+  });
+
   return NextResponse.json(
     {
       testingOn: state.testingOn,
@@ -50,6 +73,20 @@ export async function GET(req: NextRequest) {
             resolutionNotes: latest.status === "complete" ? latest.resolutionNotes : null,
           }
         : null,
+      openTickets: {
+        count: openTicketCount,
+        fingerprints: openClusters.map((c: any) => ({
+          fingerprint: c.fingerprint,
+          association: c.association,
+          failingStep: c.failingStep,
+          errorClass: c.errorClass,
+          status: c.status,
+          goal: c.goal,
+          population: c.population,
+          lastSeenAt: c.lastSeenAt,
+        })),
+      },
+      unreadMessages: unreadForTom,
     },
     { headers: NO_STORE }
   );

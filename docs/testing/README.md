@@ -2,7 +2,7 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-08-05
-related: [agents/tom/README.md, mcp-fbl.md, evidence.md, coverage.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [agents/tom/README.md, mcp-fbl.md, evidence.md, coverage.md, tickets.md, repairer.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -32,6 +32,12 @@ what it names, and re-arms the loop.
   phases and the matrix: the backend chain per MLS association, data-shape
   handling, UI-vs-MCP parity, styling diversity. This, not the score, is the
   progress measure — Tom briefs toward the highest untested cell.
+- **`tickets.md`** — the loop's second producer: field failures filed by the
+  MCP `report_data_issue` tool, clustered by fingerprint, triaged by Tom into
+  goals. Tickets outrank coverage cells.
+- **`repairer.md`** — where the repairer actually lives (the `judge-loop-check`
+  scheduled task on Joe's Windows machine), its firing sequence, its CLI, and
+  its honest constraints.
 
 ## What this loop is actually for
 
@@ -131,10 +137,16 @@ real-data hookup attempt, which LEADS the report when it fails
 
 - **Admin page:** `/admin/agent-feedback` — the toggle (with who last flipped
   it), every report with verbatim markdown, manual status controls.
-- **CLI (`scripts/agent-feedback.mjs`):** `check` (exit 3 = nothing new) ·
-  `show <id>` · `claim <id>` · `complete <id> "notes"` (also sets
-  `testingOn=true` — one command, both halves of the handshake) ·
-  `toggle on|off`. Needs `npm install` in the repo root to run.
+- **Loop console:** `/admin/loop` — the live view: derived stage, ticket
+  fingerprints, report summaries, activity feed, and an async chat channel to
+  each agent (a mailbox — Tom reads on his 15-min cron, the repairer on its
+  5-min poll).
+- **CLI (`scripts/agent-feedback.mjs`):** `check` (exit 3 = nothing
+  actionable) · `show <id>` · `claim <id>` · `complete <id> "notes"` (also
+  sets `testingOn=true` — one command, both halves of the handshake) ·
+  `toggle on|off` · `messages` / `reply "text"` (the console chat) ·
+  `tickets` / `ticket-resolve <fp> "notes"`. Needs `npm install` in the repo
+  root to run.
 - **Routine:** scheduled task `judge-loop-check`, every 5 minutes. Claims a new
   report, **verifies each claim against the code before fixing** (reports can be
   wrong about root cause), fixes, updates docs in the same commit, then

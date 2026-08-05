@@ -26,7 +26,7 @@ const tiers_js_1 = require("./tiers.js");
 const resource_js_1 = require("./build-guide/resource.js");
 const http_js_1 = require("./http.js");
 const PKG_NAME = "@chatrealty/mcp-server";
-const PKG_VERSION = "0.8.0";
+const PKG_VERSION = "0.21.0";
 async function main() {
     let config;
     try {

@@ -75,12 +75,21 @@ export const TestingState: Model<ITestingState> =
   mongoose.models.TestingState ||
   mongoose.model<ITestingState>("TestingState", TestingStateSchema);
 
-/** Read the toggle, creating the singleton on first touch. */
+/**
+ * Read the toggle, creating the singleton on first touch.
+ *
+ * `timestamps: false` is load-bearing: with schema timestamps on, Mongoose
+ * silently $sets updatedAt on EVERY findOneAndUpdate — including this pure
+ * read — so each poll (the console every 15s, the judge every 15min) was
+ * overwriting the flip time and pinning a fresh "toggle" event atop the
+ * activity feed. A read must not write; only setTestingOn bumps updatedAt.
+ */
 export async function getTestingState() {
+  const now = new Date();
   return TestingState.findOneAndUpdate(
     { key: "testing" },
-    { $setOnInsert: { testingOn: false, updatedBy: "admin" } },
-    { new: true, upsert: true }
+    { $setOnInsert: { testingOn: false, updatedBy: "admin", createdAt: now, updatedAt: now } },
+    { new: true, upsert: true, timestamps: false }
   );
 }
 

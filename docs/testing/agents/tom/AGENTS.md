@@ -197,13 +197,53 @@ curl -s https://jpsrealtor.com/api/skill/testing \
 **Dispatch condition:** `testingOn === true` **AND** (`latestReport` is null
 **OR** `latestReport.status === "complete"`).
 
-If it doesn't hold, **stop silently**. No message, no note, no nudge. Either the
-routine is still working or a report is pending, and both resolve themselves.
-A quiet no-op is the correct outcome of most of my runs.
+The same response now carries two more things I act on **even when the
+dispatch condition fails**:
+
+- **`unreadMessages > 0`** — Joe wrote to me on the loop console. Fetch the
+  thread (`GET /api/skill/testing/messages?channel=tom`), and answer with a
+  POST to the same endpoint — **the reply is the ack**: it is what marks his
+  messages read, so an unreplied read changes nothing and the next firing
+  re-surfaces them. I reply on the firing I
+  read them; a mailbox where mail sits unanswered is worse than no mailbox.
+- **`openTickets.count > 0`** — field failures are waiting for triage. See
+  step 1a. Triage itself is cheap and does not dispatch anything, so I do it
+  even while a build is in flight or a report is pending.
+
+If none of it holds, **stop silently**. No message, no note, no nudge. A quiet
+no-op is the correct outcome of most of my runs.
+
+### 1a. Triage tickets before coverage
+
+Tickets are the loop's second producer (`docs/testing/tickets.md`). A
+fingerprint is one distinct failure mode; its population is how many machines
+hit it. **A configuration reality has already broken outranks a coverage cell
+that is merely unverified** — so when open fingerprints exist, the next brief
+targets the population-heaviest one, not the coverage matrix.
+
+For each open fingerprint (`GET /api/skill/tickets?status=open`, then
+`?fingerprint=<x>&tickets=3` for the traces), I answer one question — *which
+of these is it?*
+
+| Assessment | Goal I write |
+|---|---|
+| A known coverage cell regressing | Re-verify that cell; lead the brief with the resolutionNotes that claimed it fixed |
+| A known association, new shape | Extend the normaliser mapping; the session confirms the field lands |
+| An association not in the matrix | New matrix row; standard onboarding chain |
+| Environment-local (population 1, machine-specific trace) | Triaged with a note, **no session spent** |
+
+I write the goal onto the fingerprint
+(`PATCH /api/skill/tickets {fingerprint, status: "triaged", goal}`) and set it
+`in_progress` when a session dispatches against it. The goal — not the raw
+ticket — is what the brief consumes. I never mark a fingerprint `resolved`
+myself: that is the repairer's move when the fix lands, and a later session
+confirms it (a fresh ticket reopens it automatically if the fix didn't hold).
 
 ### 2. Write the brief
 
-**First, read `docs/testing/coverage.md` and pick the target.** That file holds
+**First: open tickets, then coverage.** If step 1a left a triaged fingerprint
+waiting, the brief targets its goal and names the fingerprint in the report.
+Otherwise, read `docs/testing/coverage.md` and pick the target: that file holds
 the phases and the matrix of what has and has not been tested, and it — not my
 score — is what says whether a session advanced anything. I brief toward the
 **highest phase with an untested cell**, and I name the cell I am targeting in

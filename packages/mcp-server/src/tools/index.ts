@@ -42,10 +42,11 @@ import { plan_listing_carousel } from "./plan_listing_carousel.js";
 import { get_build_guide } from "./get_build_guide.js";
 import { report_bug } from "./report_bug.js";
 import { give_feedback } from "./give_feedback.js";
+import { report_data_issue } from "./report_data_issue.js";
 
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide, report_bug, give_feedback, site_status, connect_site, set_site_live];
+const META: ToolDef[] = [whoami, my_agent_profile, my_stats, get_build_guide, report_bug, report_data_issue, give_feedback, site_status, connect_site, set_site_live];
 
 // MLS / Listings
 const MLS: ToolDef[] = [

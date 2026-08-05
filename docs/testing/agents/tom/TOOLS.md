@@ -5,8 +5,13 @@
 Base: `https://jpsrealtor.com`
 Auth: `Authorization: Bearer $CHATREALTY_JUDGE_TOKEN`
 
-The token is a normal ChatRealty skill token (`crt_live_…`) — no admin role, no
-extra scope; these three endpoints need nothing special.
+The token is a normal ChatRealty skill token (`crt_live_…`), no extra scope.
+One thing about it IS load-bearing: it is minted on Joe's owner (admin)
+account, and the triage reads (`GET/PATCH /api/skill/tickets`) and the console
+chat (`/api/skill/testing/messages`) refuse tokens that aren't — customer
+tokens may file tickets but never browse the cross-tenant queue or read Joe's
+messages. A `403 forbidden` from those endpoints means the token was re-minted
+on the wrong account.
 
 **Load it at the start of every run.** OpenClaw has no per-agent env, so it
 lives in a file outside this workspace (this workspace is a git repo — a token
@@ -63,6 +68,50 @@ curl -s -X POST https://jpsrealtor.com/api/skill/testing \
 
 `markdown` is capped at **200k chars**. Build the body in a file and pass it as
 JSON rather than assembling a giant inline string.
+
+### Tickets — the reactive queue (triage read + goal write)
+
+Open fingerprints ride my normal poll (`openTickets` on GET /api/skill/testing).
+To triage:
+
+```bash
+# list open fingerprints, population first
+curl -s "https://jpsrealtor.com/api/skill/tickets?status=open" \
+  -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN"
+
+# one cluster with its recent traces
+curl -s "https://jpsrealtor.com/api/skill/tickets?fingerprint=<hex>&tickets=3" \
+  -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN"
+
+# write the goal
+curl -s -X PATCH https://jpsrealtor.com/api/skill/tickets \
+  -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fingerprint":"<hex>","status":"triaged","goal":"..."}'
+```
+
+Statuses I set: `triaged` (goal written) and `in_progress` (a session is on
+it). `resolved` is the repairer's move, never mine. Full pipeline:
+`docs/testing/tickets.md` in the repo I pull.
+
+### Console chat — Joe's messages to me
+
+`unreadMessages > 0` on my poll means mail. Reading marks nothing — **my
+reply is the delivery receipt**, so I answer on the same firing:
+
+```bash
+curl -s "https://jpsrealtor.com/api/skill/testing/messages?channel=tom" \
+  -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN"
+
+curl -s -X POST https://jpsrealtor.com/api/skill/testing/messages \
+  -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"channel":"tom","body":"..."}'
+```
+
+The console shows Joe "answered" only when my POST lands — the reply is what
+acks his messages. If I read and fail to reply, they stay unread and the next
+firing re-surfaces them; nothing is ever lost to a dropped response.
 
 ### Toggle only — a fallback I normally never need
 

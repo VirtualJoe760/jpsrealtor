@@ -14,6 +14,7 @@ import {
   UserCog,
   Home,
   FlaskConical,
+  Workflow,
   Menu,
   X,
   ChevronLeft,
@@ -28,6 +29,7 @@ const sidebarItems = [
   { href: "/admin/users", label: "Users", icon: UserCog },
   { href: "/admin/homepage-builder", label: "Homepage Builder", icon: Home },
   { href: "/admin/agent-feedback", label: "Agent Feedback", icon: FlaskConical },
+  { href: "/admin/loop", label: "Loop Console", icon: Workflow },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
