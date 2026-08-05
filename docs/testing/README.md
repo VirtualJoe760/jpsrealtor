@@ -133,6 +133,44 @@ real-data hookup attempt, which LEADS the report when it fails
 - **Storage:** `agenttestreports` + `testingstates` (singleton), models in
   `src/models/AgentTesting.ts`.
 
+## Test accounts (`scripts/test-accounts.ts`)
+
+Tom creates accounts through the real signup flow, then uses this to put one
+into a known state before a build and tear it down after. Run with
+`npx tsx`; every command prints a before/after diff, and `--json` makes it
+report-ready.
+
+```bash
+npx tsx scripts/test-accounts.ts promote <email> --tier=experienced --session=7
+npx tsx scripts/test-accounts.ts enrich  <email> --persona=golf-laquinta --partial
+npx tsx scripts/test-accounts.ts degrade <email> --tier=free
+npx tsx scripts/test-accounts.ts reset   <email>
+```
+
+`personas` lists the four GPS-market personas; `inspect` and `list` are
+read-only. Provenance for every mutation lands in the `testaccounts`
+collection.
+
+Four things about it that are load-bearing:
+
+- **The email gate is an allowlist.** Only `+crtest` plus-addressed or
+  `@chatrealty-test.com` accounts are writable; everything else is refused with
+  exit 2, and admin accounts are refused regardless of address. The same
+  database holds ~4,700 real MLS agent records.
+- **No `create`, and no delete.** Account creation stays in the signup flow
+  because that flow is under test — a bypass here would be used to route around
+  a broken signup, which is the finding. Teardown strips what the loop added
+  and never removes the row.
+- **It uses the real Mongoose models, not the raw driver**, because two
+  pre-save hooks carry behaviour a raw write skips: subdomain generation on
+  first promotion, and the `features` rewrite from the tier. A raw-driver
+  promote produces an agent with no subdomain and a paid subscription still
+  wearing free-tier limits — both of which would be reported as product bugs.
+- **`enrich --partial` stops one step short of site readiness**, leaving the
+  "Coming Soon" gate closed. Full enrichment makes `{subdomain}.chatrealty.io`
+  publicly reachable, so personas carry `TEST-` licence numbers rather than a
+  plausible DRE format and say in their own copy that they are fictitious.
+
 ## What makes `resolutionNotes` useful
 
 Tom relays them verbatim into the next brief, so they should read as
