@@ -69,6 +69,20 @@ Pick per the agent's market and feel; don't default to the scaffold's choice.
   "Balboa Peninsula → Explore" pointing at `/neighborhoods?q=Balboa Peninsula`
   back when the index ignored `q`, and every tile landed on the same
   undifferentiated page. Click each one before you call the homepage done.
+- **Service areas drive `/neighborhoods`:** the index is built from the agent's
+  service areas (ChatRealty profile, or `AGENT_SERVICE_AREAS` in `.env.local`),
+  each annotated with live counts — not from a sample of the feed. Set them.
+  A single-market agent whose token can see a wider feed previously got an
+  index of whatever cities happened to land in the first 50 rows; with no
+  service areas set, that sample-derived list is still the fallback.
+- **Identity:** name, license, brokerage, bio and headshot come from the
+  ChatRealty profile. Any of them can be overridden per-field with the `AGENT_*`
+  vars in `.env.local` (see `env.example`) — that is the supported way to build
+  for someone other than the token holder, or to put a license number on the
+  site before it reaches the profile. Do not hardcode identity into components:
+  a fallback like `agent.name || "Jane Smith"` never fires when the API returns
+  a real — and wrong — name, which is exactly how a build shipped with the
+  wrong agent on every page.
 - **Map:** pin style (pill / dot / teardrop), tile theme, cluster behavior.
 - **Nav:** the hamburger drawer is standard on all breakpoints — restyle it, don't replace it with a link row.
 

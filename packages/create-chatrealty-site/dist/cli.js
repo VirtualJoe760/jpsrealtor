@@ -304,9 +304,37 @@ AUTH_SECRET=${authSecret}
 # AUTH_FACEBOOK_ID=
 # AUTH_FACEBOOK_SECRET=
 `;
+    // Identity overrides — written COMMENTED, prefilled with whatever the flags
+    // already told us. The site's name/license/brokerage normally come from the
+    // ChatRealty profile the token belongs to, which is right for the token's
+    // owner and wrong for everyone else: a build done on someone else's token
+    // shipped every page, title and CTA under the token holder's name, because
+    // the usual `agent.name || "Their Name"` fallback never fires against an API
+    // that returns a real — just incorrect — name. Uncommenting a line here is
+    // the supported fix. Also the place to put a license number collected in the
+    // interview that the profile doesn't carry yet.
+    const identityBlock = `
+# Identity overrides (optional). Uncomment any line to make it win over the
+# ChatRealty profile for that field alone. Use when the site is for someone
+# other than the token holder, or for details the profile doesn't have yet.
+# AGENT_SERVICE_AREAS drives the /neighborhoods index — set it for a
+# single-market site whose feed reaches beyond that market.
+# Note: set_site_live checks the license on your ChatRealty PROFILE, so an
+# override here shows on the site but does not unblock going live.
+# AGENT_NAME=${agentName}
+# AGENT_LICENSE=
+# AGENT_BROKERAGE=${brokerage}
+# AGENT_SERVICE_AREAS=${market}
+# AGENT_PHONE=
+# AGENT_EMAIL=
+# AGENT_HEADLINE=
+# AGENT_TAGLINE=
+# AGENT_BIO=
+# AGENT_HEADSHOT=
+`;
     const envContent = testMode
-        ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}`
-        : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}`;
+        ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${identityBlock}`
+        : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${identityBlock}`;
     fs.writeFileSync(path.join(dest, ".env.local"), envContent, { mode: 0o600 });
     console.log(`  ✓ Wrote .env.local (${testMode ? "TEST DATA mode" : "token kept server-side"}; already in .gitignore)`);
     // 7. Next steps

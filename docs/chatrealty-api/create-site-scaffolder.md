@@ -33,6 +33,48 @@ verifies the token against `GET /api/skill/me` (warns + continues on failure so 
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
 
+**v0.11.0 (2026-08-04) — the site shows the right agent, and the neighborhood
+index is about the agent instead of the feed.** Three findings from the session-7
+judge run, two of them structural rather than build mistakes.
+
+*Identity.* Every surface hydrated from `GET /api/skill/me/profile`, which is
+correct for the token's owner and wrong for anyone else. A build done for a
+persona shipped the token holder's name in the `<title>`, the header, `/about`
+and the "Meet {name}" CTA — and the builder's `agent.name || "Their Name"`
+fallbacks never fired, because the API returned a real name, just not the right
+one. There was no override path at all, so the identity gate was structurally
+unpassable on a shared token. `getAgentProfile()` now applies per-field
+`AGENT_*` overrides from `.env.local` — `AGENT_NAME`, `AGENT_LICENSE`,
+`AGENT_BROKERAGE`, `AGENT_PHONE`, `AGENT_EMAIL`, `AGENT_HEADLINE`,
+`AGENT_TAGLINE`, `AGENT_BIO`, `AGENT_HEADSHOT`, `AGENT_SERVICE_AREAS`,
+`AGENT_SPECIALIZATIONS` — in live, test-data and fetch-failed modes alike; unset
+vars change nothing. The CLI writes the block commented into `.env.local`,
+prefilled from `--agent-name` / `--brokerage` / `--market`. Second use, equally
+real: a license number collected during the interview shows on the site
+immediately instead of waiting on a profile edit. `set_site_live` still checks
+the license on the **profile**, so an override alone does not unblock go-live —
+`env.example`, `DESIGN.md` and the build guide all say so.
+
+*Neighborhoods index.* It built its city list from `searchListings({limit: 50})`
+and collected whatever cities appeared. That reads fine on a small feed and
+fails on a large one: a build serving the Coachella Valley got an index of Los
+Angeles, Oxnard, San Diego and Camarillo, because the agent's own markets were
+not in the first 50 rows. Detail pages were correct throughout — only the index
+was wrong. The index now starts from the agent's **service areas** (profile or
+`AGENT_SERVICE_AREAS`), asks `/api/skill/market/stats` for each (fan-out capped
+at 12), and renders a market with no active inventory honestly rather than
+dropping it. Sample-derivation remains only as the fallback when no service
+areas are set.
+
+*IDX attribution on cards.* Not a template bug: `GET /api/skill/listings/search`
+returned no `listAgentName` / `listOfficeName` on the legacy/dogfood path, so
+`<Attribution />` correctly rendered nothing on every card while the detail page
+showed it. Fixed in the API (`src/app/api/skill/listings/search/route.ts` —
+projection + response); 84,979 of 84,980 active listings carry the fields, so
+cards populate immediately. The tenant-adapter path already carried them in its
+DTO. `lib/types.ts` and `Attribution.tsx` no longer describe attribution as
+token-dependent.
+
 **v0.10.0 (2026-08-04) — `--radius` stops being a decoy, named markets stop
 being dead ends.** `DESIGN.md` advertised `--radius` as *the* shape knob, but
 every surface in the template shaped itself with a hardcoded Tailwind class

@@ -248,6 +248,13 @@ export async function GET(req: NextRequest) {
     // sets, which was the main search-latency driver.
     media: { $slice: 1 }, poolFeatures: 1,
     latitude: 1, longitude: 1, coordinates: 1,
+    // IDX attribution. The detail endpoint has always returned these; search
+    // did not, so a site rendering "Listed by {office} — {agent}" on its cards
+    // showed nothing on every card while the detail page showed it correctly.
+    // That is an IDX display failure, not a cosmetic gap — the tenant adapter
+    // path below already carries them in its DTO, so this closes the gap on
+    // the legacy/dogfood path too.
+    listAgentName: 1, listOfficeName: 1,
   } as const;
 
   const col = UnifiedListing.collection;
@@ -326,6 +333,9 @@ export async function GET(req: NextRequest) {
             ? Math.max(0, Math.floor((Date.now() - new Date(l.onMarketDate).getTime()) / 86400000))
             : null),
         onMarketDate: l.onMarketDate || null,
+        // IDX attribution — display as "Listed by {office} — {agent}".
+        listAgentName: l.listAgentName || null,
+        listOfficeName: l.listOfficeName || null,
         primaryPhotoUrl: rawPhotoUrl(l),
         // Render-ready optimized thumbnail — use this for <img> in an artifact.
         thumbUrl: optimizedThumb(rawPhotoUrl(l)),

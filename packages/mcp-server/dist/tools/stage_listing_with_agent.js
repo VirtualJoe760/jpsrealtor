@@ -13,7 +13,7 @@ exports.stage_listing_with_agent = void 0;
 const http_js_1 = require("../http.js");
 exports.stage_listing_with_agent = {
     name: "stage_listing_with_agent",
-    description: "Use Gemini 2.5 Flash Image (Nano Banana) to generate marketing images that place the agent (from their headshot) naturally INTO each listing photo — like they're showing the home. Each image is subtly color-graded so it looks distinct from the original MLS photo. Returns Cloudinary URLs at 4:5 portrait (Instagram-optimal) for review before posting. Takes ~30 seconds for 10 photos. After this call, review the returned URLs with the agent before passing them to post_instagram_carousel.",
+    description: "Use Gemini 2.5 Flash Image (Nano Banana) to generate marketing images that place the agent (from their headshot) naturally INTO each listing photo — like they're showing the home. Each image is subtly color-graded so it looks distinct from the original MLS photo. Returns Cloudinary URLs at 4:5 portrait (Instagram-optimal) for review before posting. Takes ~30 seconds for 10 photos. ALWAYS pass `photoIndexes` and choose INTERIOR ROOM photos — the compositing only works when the scene gives the model a floor plane and human-scale reference. Aerial and distant-exterior shots come back with a giant agent floating over the property, and MLS feeds routinely lead with drone shots, so the default first-N selection often produces unusable images. Get the photo list from plan_listing_carousel or get_listing_photos first. After this call, review every returned URL with the agent before passing them to post_instagram_carousel.",
     inputSchema: {
         type: "object",
         properties: {
@@ -21,9 +21,14 @@ exports.stage_listing_with_agent = {
                 type: "string",
                 description: "MLS listingKey to pull source photos from.",
             },
+            photoIndexes: {
+                type: "array",
+                items: { type: "number" },
+                description: "Which listing photos to stage, by 0-based index, in the order you want them in the carousel (max 10). STRONGLY PREFERRED over `count`. Pick interior rooms — great room, kitchen, primary bedroom, entry, a covered patio. Avoid aerials, distant exteriors, and detail/close-up shots: there is no floor plane for the model to stand the agent on. If omitted, the first `count` photos are used, which is usually wrong.",
+            },
             count: {
                 type: "number",
-                description: "How many photos to generate (1-10, default 5). Each costs ~$0.04.",
+                description: "How many photos to generate (1-10, default 5) when `photoIndexes` is not given. Each costs ~$0.04. Prefer `photoIndexes`.",
             },
             prompt: {
                 type: "string",

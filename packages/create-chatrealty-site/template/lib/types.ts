@@ -24,8 +24,10 @@ export interface ListingSummary {
   slug: string;
   detailUrl: string;
   distanceMiles?: number;
-  // IDX attribution. Present on the tenant/product token path; the detail
-  // endpoint always returns them. Display "Listed by {office} — {agent}".
+  // IDX attribution — display "Listed by {office} — {agent}". Search and
+  // detail both return these; a given listing can still be missing one (the
+  // feed's own gap), so render whichever is present and neither when both are
+  // absent. Optional because older API deployments omitted them from search.
   listAgentName?: string | null;
   listOfficeName?: string | null;
 }

@@ -187,22 +187,76 @@ function normalizeServiceAreas(raw: unknown): AgentProfile["serviceAreas"] {
     .filter((a): a is { name: string; type?: string } => !!a && typeof a.name === "string" && a.name.length > 0);
 }
 
+// Identity overrides from .env.local. The site's identity normally comes from
+// the ChatRealty profile the token belongs to — that is correct for a real
+// agent, and the reason /about, the header and the footer hydrate themselves.
+//
+// It is WRONG in two ordinary cases, and both used to have no answer:
+//   1. The site is being built for someone other than the token holder (a test
+//      build, a persona, an assistant scaffolding for their agent). A judge run
+//      failed its identity gate outright: every page read the token holder's
+//      name and license, and the "if the API returns null, use this instead"
+//      fallbacks the builder wrote never fired, because the API returned a
+//      perfectly good — and wrong — name.
+//   2. The build interview collected a license number or brokerage the
+//      ChatRealty profile does not have yet. Compliance has to show on the site
+//      NOW; waiting on a profile edit is not an option.
+//
+// So env wins over the API, per field, and only for fields actually set. Unset
+// vars change nothing. Applied in every mode (live, test data, and the
+// fetch-failed fallback) so identity is the same everywhere.
+//
+// This is a stopgap for the profile, not a replacement for it: the license
+// number `set_site_live` checks lives on the ChatRealty profile, so an override
+// that only exists here will show on the site and still block go-live.
+function env(name: string): string | null {
+  const v = process.env[name];
+  return v && v.trim() ? v.trim() : null;
+}
+
+function envList(name: string): string[] | null {
+  const v = env(name);
+  if (!v) return null;
+  const parts = v.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : null;
+}
+
+function applyIdentityOverrides(p: AgentProfile): AgentProfile {
+  const areas = envList("AGENT_SERVICE_AREAS");
+  const specs = envList("AGENT_SPECIALIZATIONS");
+  return {
+    ...p,
+    name: env("AGENT_NAME") ?? p.name,
+    email: env("AGENT_EMAIL") ?? p.email,
+    phone: env("AGENT_PHONE") ?? p.phone,
+    licenseNumber: env("AGENT_LICENSE") ?? p.licenseNumber,
+    brokerageName: env("AGENT_BROKERAGE") ?? p.brokerageName,
+    website: env("AGENT_WEBSITE") ?? p.website,
+    bio: env("AGENT_BIO") ?? p.bio,
+    headline: env("AGENT_HEADLINE") ?? p.headline,
+    tagline: env("AGENT_TAGLINE") ?? p.tagline,
+    headshot: env("AGENT_HEADSHOT") ?? p.headshot,
+    serviceAreas: areas ? normalizeServiceAreas(areas) : p.serviceAreas,
+    specializations: specs ?? p.specializations,
+  };
+}
+
 export async function getAgentProfile(): Promise<AgentProfile> {
   if (isTestDataMode()) {
     const t = testAgentProfile();
-    return { ...t, serviceAreas: normalizeServiceAreas(t.serviceAreas) };
+    return applyIdentityOverrides({ ...t, serviceAreas: normalizeServiceAreas(t.serviceAreas) });
   }
   const res = await skillFetch(`/api/skill/me/profile`, undefined, { revalidate: REVALIDATE.profile });
   if (!res.ok) {
     // Identity should never take the site down — fall back to minimal.
-    return {
+    return applyIdentityOverrides({
       name: null, email: null, phone: null, licenseNumber: null,
       brokerageName: null, website: null, bio: null, headline: null,
       tagline: null, headshot: null, heroPhoto: null, serviceAreas: [], specializations: [],
-    };
+    });
   }
   const p = await res.json();
-  return {
+  return applyIdentityOverrides({
     name: p.name ?? null,
     email: p.email ?? null,
     phone: p.phone ?? null,
@@ -216,7 +270,7 @@ export async function getAgentProfile(): Promise<AgentProfile> {
     heroPhoto: p.heroPhoto ?? null,
     serviceAreas: normalizeServiceAreas(p.serviceAreas),
     specializations: Array.isArray(p.specializations) ? p.specializations : [],
-  };
+  });
 }
 
 // Blog — posts live in the agent's ChatRealty CMS (written there or drafted +

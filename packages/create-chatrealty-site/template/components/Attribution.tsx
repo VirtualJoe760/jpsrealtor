@@ -1,7 +1,9 @@
 // IDX display rule: every card and detail view MUST show the listing's source
-// attribution — the listing agent and brokerage. Renders nothing when absent
-// (e.g. a non-tenant/dogfood token whose search rows omit it); the detail page
-// always has it.
+// attribution — the listing agent and brokerage. Search and detail both carry
+// it. Renders nothing when the feed itself has neither name for that listing,
+// which is the only case where a blank line is correct — if attribution is
+// missing across EVERY card, that is a data problem worth reporting, not a
+// styling one.
 
 export default function Attribution({
   agent,
