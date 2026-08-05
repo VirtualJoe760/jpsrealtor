@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-08-04
+last_verified: 2026-08-05
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -37,6 +37,9 @@ Smallest possible surface to confirm auth works and orient Claude.
 | `whoami` | (any token) | `GET /api/skill/me` | Returns agent name, email, site URL, token name + last4. Claude calls this once at the start of a session to know who it's helping. Already shipped. |
 | `my_agent_profile` | (any token) | `GET /api/skill/me/profile` | Bio, service areas, specializations, headshot URL. Used to tailor LP / article content. |
 | `my_stats` | (any token) | `GET /api/skill/me/stats` | Counts: published articles, draft landing pages, active campaigns, contacts. Helps Claude answer "what should I work on?". |
+| `report_bug` | (any token) | `POST /api/skill/bugs` | File a defect with the ChatRealty team: title, severity, area, repro, exact errors verbatim (never tokens). Testing-phase reports drive same-day fixes. |
+| `give_feedback` | (any token) | `POST /api/skill/feedback` | Hand a whole session's results over: returns a one-time upload URL for a source-only zip (no `.env`, no `node_modules`). |
+| `report_data_issue` | (any token) | `POST /api/skill/tickets` | File a **structured data-pipeline failure** at the moment it's hit: association, failing step, verbatim error, how far the pipeline got, payload SHAPE. Clusters by fingerprint server-side — duplicates from many machines become one work item with a population count, triaged by the judge loop ahead of scheduled test work. Redaction is structural: names and shapes only, never values; the route rejects `envVarNames` containing `=`. Full pipeline: `docs/testing/tickets.md`. |
 
 ### 2. MLS / Listings · `Phase 1`
 

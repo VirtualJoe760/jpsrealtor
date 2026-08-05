@@ -106,9 +106,11 @@ extra scope). Base: `https://jpsrealtor.com`.
 
 | Call | Body | Purpose |
 |---|---|---|
-| `GET /api/skill/testing` | — | Poll. Returns `{ testingOn, latestReport: { id, title, status, resolutionNotes } }`. `resolutionNotes` (present once complete) is our fix summary — Tom relays it verbatim into the next brief as "recently fixed, please re-verify". |
+| `GET /api/skill/testing` | — | Poll. Returns `{ testingOn, latestReport: { id, title, status, resolutionNotes }, openTickets: { count, fingerprints[≤5] }, unreadMessages }`. `resolutionNotes` (present once complete) is our fix summary — Tom relays it verbatim into the next brief. `openTickets` and `unreadMessages` are the reactive queue and console mail, riding the same poll. |
 | `POST /api/skill/testing` | `{ title, markdown, testingOff: true }` | Submit the report and turn testing off in one call. `markdown` ≤ 200k chars. |
 | `PATCH /api/skill/testing` | `{ testingOn: false }` | Turn testing off separately. `true` is rejected with 403. |
+| `GET/PATCH /api/skill/tickets` | see `tickets.md` | Triage: fingerprints by population; write goals. Owner-account tokens only. `POST` (filing) is open to any token. |
+| `GET/POST /api/skill/testing/messages` | `?channel=` / `{ channel, body }` | The console mailbox. Reading marks nothing — **the reply is the ack**. Owner-account tokens only. |
 
 ### Report format (convention, not schema)
 

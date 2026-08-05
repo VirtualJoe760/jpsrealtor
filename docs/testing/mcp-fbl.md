@@ -234,6 +234,21 @@ are a convenience, not a signal you can build on: a missing message means
 neither success nor failure, and a supervisor that treats it as either will be
 wrong.
 
+The same discipline applies one layer up, to any message *sent* to an agent:
+
+> **A fetch is not a delivery. The only trustworthy ack is an action from the
+> receiving side.**
+
+Marking a message "delivered" when the agent's poll retrieves it stamps the
+receipt before the response has crossed the wire — a dropped connection then
+leaves a message everyone's records say was read that no process ever acted
+on. And because "unread messages exist" is typically the *trigger* for the
+next fetch, the loss is silent and permanent. The correct receipt is the
+agent's first subsequent action (here, its reply — which the protocol already
+requires on the same wake-up). Under that design a dropped response leaves the
+message unread and the next poll re-delivers: the failure mode becomes
+double-delivery, which for a mailbox is the safe one.
+
 ---
 
 ## 5. What drives the work
@@ -450,9 +465,19 @@ stage the judge owns:
                               │                │             new shape?
                               │                │             environment-local?
                               │                └─ N reports, one work item
-                              └─ hash(association shape · failing step ·
-                                      error class · versions)
+                              └─ hash(association · failing step ·
+                                      error class · package version)
 ```
+
+The error class is normalised before hashing — quoted strings, filesystem
+paths, hex identifiers, and numbers are masked — so the same failure reported
+by two machines with different local paths hashes identically. The package
+version is part of the hash deliberately: the same error on two releases is
+two clusters, because "did this survive the version bump" is a question the
+data should answer rather than blur. A fresh ticket landing on a *resolved*
+fingerprint **reopens it atomically** — a recurrence after a claimed fix is
+the system's highest-value signal and must never be absorbed silently into a
+closed cluster.
 
 **Fingerprinting is what makes this scale.** One association changing a field
 name generates a ticket from every customer on that association — potentially
@@ -502,6 +527,31 @@ therefore every ticket clustered under it — including the tenants that never
 received an individual response, because they never needed one. The fix is
 confirmed by an independent run before that resolution is considered real.
 
+### The queue is write-open, read-closed
+
+Filing is open to any authenticated caller — a failure report must never be
+the thing a permission forbids, and a duplicate filing is harmless by
+construction (it raises a population count). Browsing is not: tickets carry
+verbatim error traces and payload shapes from every tenant, so the triage
+reads are an operator surface, closed to customer credentials. One queue, two
+postures: anyone may put work in; only the system's own roles see across it.
+
+### The operator surface
+
+An autonomous loop still owes its operator legibility. The system exposes one
+console answering "what is the loop doing right now" — the current stage
+(derived from state, never stored, so it cannot drift from the truth it
+summarises), the ticket queue with populations, recent reports, and a merged
+activity timeline composed from the collections that already exist rather
+than from a parallel event log that could disagree with them.
+
+The console also carries an asynchronous channel to each agent. It is
+deliberately a **mailbox, not a chat**: the agents wake on schedules, so the
+interface shows delivery semantics honestly — a message is "answered" only
+when the agent's reply lands, because the reply is the receipt (§4). Building
+a live-looking chat over a polling system would misrepresent the one property
+the operator most needs to know: when to expect a response.
+
 ## 8. Why this shape
 
 ```
@@ -536,6 +586,11 @@ confirmed by an independent run before that resolution is considered real.
    │  VOLUME          into one work item — tickets scale    │
    │                  with customers, work with distinct    │
    │                  failure modes                         │
+   │                                                        │
+   │  ACK BY ACTION   a fetch is not a delivery; the only   │
+   │                  receipt is the receiver's next act,   │
+   │                  so a dropped response re-delivers     │
+   │                  instead of silently losing            │
    │                                                        │
    └────────────────────────────────────────────────────────┘
 ```

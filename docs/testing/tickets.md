@@ -144,6 +144,32 @@ system, not a sibling of it.
 - **MCP** — `report_data_issue` (@chatrealty/mcp-server ≥ 0.21.0). The tool
   description carries the redaction rules; the server enforces them again.
 
+## Console chat — delivery semantics
+
+`loopmessages` backs the `/admin/loop` chat to each agent (`tom` /
+`repairer`). It is a **mailbox**: Tom reads on his 15-minute cron, the
+repairer on its 5-minute poll, and the UI labels expectations accordingly.
+
+The load-bearing rule is **ack-on-reply**: reading marks nothing, and a
+message is "answered" only when the agent's reply lands — the reply is the
+delivery receipt. Marking on fetch would stamp `readAt` before the response
+crossed the wire, so a dropped connection could leave a message everyone's
+records called read that no agent ever saw; and since `unreadMessages > 0` is
+the only automated trigger to fetch, it would never be fetched again. With
+the reply as the ack, a dropped response leaves the message unread and the
+next poll re-delivers — double-delivery is the safe failure for a mailbox.
+Both agents' standing duty is to reply on the firing they read, so the ack
+costs no extra request.
+
+## Verified live
+
+2026-08-05, against production: a ticket filed with a non-admin customer
+token returned `201` with a computed fingerprint and population count; the
+same token was refused (`403`) from the triage queue and the `tom` message
+channel; the fingerprint was then closed with `ticket-resolve`. That
+fingerprint remains visible on `/admin/loop` as a worked example of the full
+lifecycle.
+
 ## Storage
 
 `ticketfingerprints`, `looptickets`, `loopmessages` — models and the
