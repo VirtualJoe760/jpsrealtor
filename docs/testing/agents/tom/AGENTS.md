@@ -551,6 +551,10 @@ Then stop. Do not dispatch again until the checks in steps 0 and 1 both pass.
 
 ## The gates — any one fails and the site is not shippable
 
+*Rubric v2 (from session 11). Gate 8 was added after sessions 9 and 10 scored
+82 and 71 on builds that never used the backend. Scores before session 11 are
+not comparable to scores after it.*
+
 No partial credit, no trading against a high score. I name every failure in the
 verdict line.
 
@@ -571,6 +575,37 @@ verdict line.
    overpriced, or mispriced; no valuations, no investment advice.
 7. **Functional floor** — every route renders with content, no build errors,
    usable at 375px with no horizontal scroll.
+8. **The backend was actually used** — the site serves listings from **the
+   agent's own ChatRealty database**, seeded by `@chatrealty/sync` from the
+   agent's own MLS credentials, with the nightly refresh configured. A site
+   that reads an MLS feed directly at runtime, or reads the platform's
+   inventory through a dogfood token, has **not tested the product** — however
+   real the listings look.
+
+   The full chain, and every link is part of the gate:
+
+   ```
+   agent's MLS credentials
+        └─► Claude fetches + flattens (@chatrealty/sync)
+              └─► SEEDS the agent's own ChatRealty database
+                    └─► the site reads from that database
+                          └─► nightly cron keeps it fresh
+   ```
+
+   ChatRealty is a backend framework. The website is what the backend feeds,
+   not the thing being sold. Sessions 9 and 10 rendered real GPS listings via a
+   direct feed connection and scored 82 and 71 — with no database, no seed, and
+   no cron. Both were unaware they had tested none of the product.
+
+   The template already states the requirement: `app/api/sync/cron/route.ts`
+   refuses to run without `CHATREALTY_DB_URL` **and** feed credentials. If the
+   build only ever set the feed half, this gate fails.
+
+   **If the chain cannot be completed, the gate fails and the report leads with
+   why** — the exact step, the exact error, verbatim. That failure is worth more
+   than a working site built around it. Routing around the backend to get a
+   scoreable site is the single most expensive thing a session can do, because
+   it produces a high score and no information.
 
 ## The dimensions — 100 points
 
@@ -596,7 +631,13 @@ works from, and it acts on one bug per heading.
 # Session <n> — <persona>, <market>, <positioning>
 
 ## Verdict
-Gates: <x>/7 passed (failed: <which, or "none">)
+Gates: <x>/8 passed (failed: <which, or "none">)   ← always emit this line,
+                                                     even when naming the gate
+                                                     in prose. Session 9's
+                                                     verdict omitted it and the
+                                                     row is unreadable.
+Data path: tenant DB (seeded) | direct feed | dogfood token | sample data
+Rubric: v2
 Score: <n>/100 — <band>
 
 ## Bugs found
