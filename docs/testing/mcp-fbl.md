@@ -13,9 +13,10 @@ adversarially evaluates it, and a third repairs what the second found — with n
 human in the critical path.
 
 This document covers the architecture only: the roles, the control plane, the
-synchronisation guarantees, and how the design scales to evaluating many
-independent data sources concurrently. It assumes no prior knowledge of the
-product.
+synchronisation guarantees, how the design scales to evaluating many independent
+data sources concurrently, and how failures observed in production enter the
+same machinery as work the system schedules for itself. It assumes no prior
+knowledge of the product.
 
 ---
 
@@ -372,7 +373,136 @@ rather than a global lock.
 
 ---
 
-## 7. Why this shape
+## 7. Reactive ingress — production failures as work items
+
+Everything above describes a system that decides for itself what to test. That
+covers the space you can anticipate. It does not cover the failure that only
+appears on a real customer's machine, against a feed you have never held
+credentials for.
+
+So the coverage matrix is not the only producer of work. The second producer is
+**the field**.
+
+### The assistant is the sensor
+
+The same MCP server that serves the build guide exposes a feedback tool. When a
+customer's AI assistant encounters something it cannot resolve — a feed that
+will not authenticate, a field the normaliser rejects, an instruction that does
+not match what the product actually does — it invokes that tool rather than
+improvising a workaround or silently degrading.
+
+This is worth stating precisely, because it inverts the usual reporting
+relationship. The reporter is not a human who noticed something looked wrong
+and wrote a paragraph about it. It is **the process that was executing the
+instructions at the moment they failed**, with the failing step, the verbatim
+error, and the surrounding state still in hand.
+
+A ticket therefore carries what a reproduction needs:
+
+```
+   association / feed vendor        what the instruction claimed
+   the step being executed          how far it got: auth ▸ fetch ▸
+   verbatim error text                normalise ▸ persist ▸ serve
+   payload SHAPE (keys, types)      guide + package versions
+   env var NAMES, never values      no credentials, no customer records
+```
+
+Redaction is structural, not a review step: the tool transmits field *names*
+and payload *shapes*, never values. Shape is what the normaliser is tested
+against; the customer's records are irrelevant to reproducing the defect and
+are never collected.
+
+### Tickets are coverage cells with evidence
+
+The important property is that an inbound ticket and a matrix cell are **the
+same unit of work**. A cell says *"this configuration is unverified."* A ticket
+says *"this configuration is broken, and here is the trace."* Both resolve to:
+synthesise a scenario exercising exactly this configuration, run the loop,
+confirm on a later independent run.
+
+```
+   ┌────────────────────┐
+   │  COVERAGE MATRIX   │──┐        proactive: what we haven't verified
+   └────────────────────┘  │
+                           ├──►  ┌──────────────┐
+   ┌────────────────────┐  │     │ TARGET CELL  │──►  the loop, unchanged
+   │  INBOUND TICKETS   │──┘     └──────────────┘
+   └────────────────────┘           reactive: what reality just broke
+```
+
+Nothing downstream changes. The dispatch machinery, the invariants, the
+isolation model and the confirmation rule are identical whichever producer
+supplied the target. The queue gains a second source; the loop does not gain a
+second mode.
+
+Priority follows from provenance: a configuration reality has already broken
+outranks one that is merely unverified.
+
+### Triage, and why volume decouples from work
+
+Raw tickets are not work items. Between ingress and dispatch sits a triage
+stage the judge owns:
+
+```
+   ticket ──► normalise ──► fingerprint ──► cluster ──► assess ──► goal
+                              │                │          │
+                              │                │          └─ known cell?
+                              │                │             new shape?
+                              │                │             environment-local?
+                              │                └─ N reports, one work item
+                              └─ hash(association shape · failing step ·
+                                      error class · versions)
+```
+
+**Fingerprinting is what makes this scale.** One association changing a field
+name generates a ticket from every customer on that association — potentially
+hundreds. They share a fingerprint, so they collapse into a single work item
+carrying a population count.
+
+That produces the property the whole design turns on:
+
+> **Ticket volume scales with customers. Work volume scales with distinct
+> failure modes.** Those are different curves, and only the second one has to be
+> serviced.
+
+Population count also supplies priority for free: a fingerprint seen across
+many tenants is a defect in the shared normalisation path; a fingerprint seen
+once, on one machine, is more likely local — and is triaged as such rather than
+consuming a full cycle.
+
+Assessment is a judgment, so the judge makes it: is this an existing cell
+regressing, a known association presenting a new shape, an association not yet
+in the matrix at all, or something specific to one environment? Each answer
+produces a different goal, and the goal — not the ticket — is what the loop
+consumes.
+
+### Reproduction without customer data
+
+A ticket is only actionable if the failure can be reproduced without touching
+the customer's tenant. Two properties of the architecture make that possible:
+
+- **The failure is a property of the feed shape, not the records.** The
+  fingerprint captures the association, the payload shape, and the failing step.
+  That is sufficient to construct an equivalent scenario against the same
+  association's feed.
+- **Every run provisions its own data plane.** Reproduction happens in an
+  isolated database that is created for the run and dropped after it, so no
+  customer tenant is read, written, or risked.
+
+The output is a new row or cell in the matrix. A failure reported once from the
+field becomes a configuration the system verifies from then on — which is how
+the covered surface grows toward the real distribution of feeds rather than the
+one that was anticipated.
+
+### Closing the customer's loop
+
+The repairer's resolution notes already flow to the next run for
+re-verification. The same record resolves the originating fingerprint, and
+therefore every ticket clustered under it — including the tenants that never
+received an individual response, because they never needed one. The fix is
+confirmed by an independent run before that resolution is considered real.
+
+## 8. Why this shape
 
 ```
    ┌────────────────────────────────────────────────────────┐
@@ -396,6 +526,16 @@ rather than a global lock.
    │                                                        │
    │  ISOLATION       per-run data plane; no shared         │
    │                  fixture, teardown is a drop           │
+   │                                                        │
+   │  ONE UNIT OF     scheduled coverage and field-reported │
+   │  WORK            failures resolve to the same target;  │
+   │                  the queue gains a producer, the loop  │
+   │                  gains nothing                         │
+   │                                                        │
+   │  DECOUPLED       fingerprinting collapses N reports    │
+   │  VOLUME          into one work item — tickets scale    │
+   │                  with customers, work with distinct    │
+   │                  failure modes                         │
    │                                                        │
    └────────────────────────────────────────────────────────┘
 ```
