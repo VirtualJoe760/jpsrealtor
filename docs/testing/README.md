@@ -2,7 +2,7 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-08-05
-related: [agents/tom/README.md, loops.md, evidence.md, coverage.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [agents/tom/README.md, mcp-fbl.md, evidence.md, coverage.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -21,8 +21,10 @@ what it names, and re-arms the loop.
   mechanism, and the environment facts that cost a night to learn. Start here.
 - **`mcp/web-design/README.md`** — the reference: every endpoint with examples,
   the report format, the judging standard, failure-mode table.
-- **`loops.md`** — the architecture, written for readers outside the project:
-  the invariants, the in-flight marker, and the observed failure modes.
+- **`mcp-fbl.md`** — the architecture, written for readers outside the project
+  and free of internal specifics: roles, the control plane and its invariants,
+  liveness vs dispatch, the coverage-driven scheduler, and how the design scales
+  to evaluating many MLS feeds concurrently. This is the one to share.
 - **`evidence.md`** — what the loop has actually produced: every session's
   score and findings count, the finding→release→re-verified trail, cycle times,
   and an explicit list of what the data does *not* establish.

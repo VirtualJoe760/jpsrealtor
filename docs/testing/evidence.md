@@ -2,13 +2,13 @@
 title: Evidence — what the loop has actually produced
 status: current
 last_verified: 2026-08-05
-related: [loops.md, README.md, agents/tom/MEMORY.md]
+related: [mcp-fbl.md, README.md, agents/tom/MEMORY.md]
 audience: external — readable without ChatRealty context
 ---
 
 # Evidence
 
-`loops.md` describes how the loop is built. This file is the record of what it
+`mcp-fbl.md` describes how the loop is built. This file is the record of what it
 has done, drawn from the report store and the judge's own cross-session memory.
 
 Every number here is computed from `agenttestreports` in MongoDB or quoted from
