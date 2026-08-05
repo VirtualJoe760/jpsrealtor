@@ -1,16 +1,17 @@
 ---
-title: The Loop — architecture of an autonomous QA system
+title: Tom — Testing on Mac Mini · architecture of an autonomous QA system
 status: current
 last_verified: 2026-08-05
 related: [README.md, coverage.md, agents/tom/README.md]
 audience: external — written to be read without prior context
 ---
 
-# The Loop
+# Tom — Testing on Mac Mini
 
 An autonomous quality system in which one AI agent builds a product, a second
 adversarially evaluates it, and a third repairs what the second found — with no
-human in the critical path.
+human in the critical path. The system is named for Tom, the judge agent at its
+center, and the Mac Mini he runs on.
 
 This document covers the architecture only: the roles, the control plane, the
 synchronisation guarantees, how the design scales to evaluating many independent
