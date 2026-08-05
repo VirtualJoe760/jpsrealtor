@@ -1,457 +1,411 @@
 ---
-title: The Loop — architecture of an autonomous QA cycle
+title: The Loop — architecture of an autonomous QA system
 status: current
 last_verified: 2026-08-05
-related: [README.md, agents/tom.md, mcp/web-design/README.md]
-audience: external — written to be readable without ChatRealty context
+related: [README.md, coverage.md, agents/tom/README.md]
+audience: external — written to be read without prior context
 ---
 
 # The Loop
 
-An autonomous QA cycle in which one AI agent builds a product, a second AI
-agent adversarially judges it, and a third fixes what the second found — with
-no human in the critical path.
+An autonomous quality system in which one AI agent builds a product, a second
+adversarially evaluates it, and a third repairs what the second found — with no
+human in the critical path.
 
-This document explains the architecture: the actors, how they synchronise, why
-the synchronisation is shaped the way it is, and which failure modes it was
-built to survive. It is written to be read by someone with no prior context.
-
----
-
-## 1. The problem being solved
-
-ChatRealty is a SaaS platform that lets licensed real-estate agents scaffold
-their own website. The agent talks to an AI assistant, which follows a **build
-guide** served over MCP, and a working site comes out.
-
-The thing that needs testing is therefore not a UI or an API. It's a
-**procedure** — a document that instructs an AI, executed by an AI, producing
-software. Traditional tests can't touch it. The only way to know whether the
-guide works is to have an AI follow it end-to-end and report where it broke.
-
-That gives the loop its defining principle:
-
-```
-              ┌────────────────────────────────────────┐
-              │  THE BUILD GUIDE IS THE PRODUCT.       │
-              │  A site that fails to build correctly  │
-              │  is a symptom. The guide that misled   │
-              │  the builder is the defect.            │
-              └────────────────────────────────────────┘
-```
-
-A cosmetic bug in a generated site affects one site. A wrong sentence in the
-guide affects every agent who follows it. So the loop ranks
-**guide-vs-reality mismatches** above everything else it finds.
+This document covers the architecture only: the roles, the control plane, the
+synchronisation guarantees, and how the design scales to evaluating many
+independent data sources concurrently. It assumes no prior knowledge of the
+product.
 
 ---
 
-## 2. The actors
+## 1. What is actually under test
 
-Four participants, three of them autonomous.
+Conventional test suites assume a deterministic artifact: given this input, the
+function returns that output. The artifact here is not like that.
+
+The product is a platform that lets a non-technical user build a working web
+application by talking to an AI assistant. The assistant follows a **build
+guide** — a document served over MCP that instructs the model step by step.
+
+So the thing that determines whether the product works is a **procedure**: a
+document, written for a language model, executed by a language model, producing
+software. There is no function to call and no return value to assert on.
 
 ```
-        ┌─────────────────────────────────────────────────────────────┐
-        │                          THE LOOP                           │
-        │                                                             │
-        │   ┌───────────┐   brief    ┌──────────────┐                 │
-        │   │           │───────────►│              │                 │
-        │   │    TOM    │            │  TEST CLAUDE │                 │
-        │   │ the judge │◄───────────│  the builder │                 │
-        │   │           │  questions │              │                 │
-        │   └─────┬─────┘  + result  └──────┬───────┘                 │
-        │         │                         │                         │
-        │         │ scores the              │ builds by following     │
-        │         │ rendered site           │ the build guide         │
-        │         │                         ▼                         │
-        │         │                  ┌─────────────┐                  │
-        │         │                  │  THE SITE   │                  │
-        │         │                  │ (localhost) │                  │
-        │         │                  └─────────────┘                  │
-        │         │                                                   │
-        │         │ markdown report                                   │
-        │         ▼                                                   │
-        │   ┌─────────────┐        fixes        ┌─────────────────┐   │
-        │   │  REPORT API │────────────────────►│  DEV CLAUDE     │   │
-        │   │  (shared    │◄────────────────────│  the routine    │   │
-        │   │   state)    │   "complete" +      │  (in the repo)  │   │
-        │   └─────────────┘   resolutionNotes   └─────────────────┘   │
-        │                                                             │
-        └─────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ watches, unsticks
-                                    ▼
-                              ┌───────────┐
-                              │   HUMAN   │
-                              └───────────┘
+   CONVENTIONAL TARGET              THIS TARGET
+
+   code → deterministic output      document → LLM interprets it → software
+   assert(f(x) == y)                ??? 
 ```
 
-| Actor | Nature | Responsibility |
+That yields the system's defining inversion:
+
+```
+   ┌──────────────────────────────────────────────────┐
+   │  THE INSTRUCTIONS ARE THE PRODUCT.               │
+   │  A defective build is a symptom.                 │
+   │  The instruction that misled the builder         │
+   │  is the defect.                                  │
+   └──────────────────────────────────────────────────┘
+```
+
+A bug in one generated application affects one user. An ambiguous sentence in
+the guide affects every user who follows it. The system therefore ranks
+**guide-versus-reality mismatches** above ordinary defects — including cases
+where the instructions are *technically* correct but written in language the
+actual audience cannot follow.
+
+Because the artifact is interpreted by a model, the only instrument that can
+evaluate it is also a model. That constraint produces everything below.
+
+---
+
+## 2. Roles
+
+Three autonomous roles. The separation between them is a correctness property,
+not an organisational convenience.
+
+```
+        ┌──────────────────────────────────────────────────────────────┐
+        │                                                              │
+        │   ┌───────────┐    brief    ┌──────────────┐                 │
+        │   │           │────────────►│              │                 │
+        │   │   JUDGE   │             │   BUILDER    │                 │
+        │   │           │◄────────────│              │                 │
+        │   └─────┬─────┘  questions  └──────┬───────┘                 │
+        │         │        + result          │                         │
+        │         │                          │ executes the            │
+        │         │ evaluates the            │ build guide             │
+        │         │ running system           ▼                         │
+        │         │                   ┌─────────────┐                  │
+        │         │                   │ THE ARTIFACT│                  │
+        │         │                   └─────────────┘                  │
+        │         │                                                    │
+        │         │ structured report                                  │
+        │         ▼                                                    │
+        │   ┌─────────────┐      repairs       ┌─────────────────┐     │
+        │   │   CONTROL   │───────────────────►│    REPAIRER     │     │
+        │   │    PLANE    │◄───────────────────│                 │     │
+        │   └─────────────┘  completion +      └─────────────────┘     │
+        │                    resolution notes                          │
+        └──────────────────────────────────────────────────────────────┘
+```
+
+| Role | Lifetime | Responsibility |
 |---|---|---|
-| **Test Claude** | ephemeral AI coding session, one per test | Builds a site by following the build guide faithfully. Files bugs the moment it hits them. |
-| **Tom** | persistent AI agent on a 15-minute schedule | Invents the test scenario, spawns the builder, adversarially judges the result, writes the report. |
-| **Dev Claude** | AI agent running inside the product's repo | Reads the report, verifies each claim against the code, fixes, commits, re-arms the loop. |
-| **Human** | — | Watches. Intervenes only when the loop jams. |
+| **Builder** | Ephemeral — one process per test | Executes the build guide faithfully. Reports friction at the moment it is encountered. |
+| **Judge** | Persistent, scheduled | Selects what to test, provisions the scenario, spawns the builder, evaluates the running system, emits the report. |
+| **Repairer** | Persistent, event-driven | Verifies each claim against source, repairs, updates documentation, closes the report, re-arms the system. |
 
-The critical property: **no actor grades its own work.** The builder doesn't
-judge, the judge doesn't fix, the fixer doesn't test. Each boundary is a place
-where self-assessment would otherwise hide a defect.
+**No role evaluates its own output.** The builder does not grade, the judge does
+not repair, the repairer does not test. Each boundary is a place where
+self-assessment would otherwise conceal a defect — a builder reporting "all
+checks pass" is reporting on work it has every incentive to believe in.
 
----
-
-## 3. The cycle
-
-```
-   ┌──────────────────────────────────────────────────────────────────────┐
-   │                                                                      │
-   │   [testingOn = TRUE]  ◄── "the system is ready for a new test"       │
-   │            │                                                         │
-   │            ▼                                                         │
-   │   ┌────────────────────┐                                             │
-   │   │ 1. TOM DISPATCHES  │  invents persona + market + positioning     │
-   │   │                    │  writes BRIEF.md, spawns a child session    │
-   │   └─────────┬──────────┘                                             │
-   │             │                                                        │
-   │             ▼                                                        │
-   │   ┌────────────────────┐                                             │
-   │   │ 2. BUILD RUNS      │  Test Claude follows the guide.             │
-   │   │    (minutes-hours) │  Asks Tom when the brief is silent.         │
-   │   └─────────┬──────────┘  Files bugs as it hits them.                │
-   │             │                                                        │
-   │             ▼                                                        │
-   │   ┌────────────────────┐                                             │
-   │   │ 3. TOM JUDGES      │  in a real browser: every route,            │
-   │   │                    │  two viewports, gates then dimensions       │
-   │   └─────────┬──────────┘                                             │
-   │             │                                                        │
-   │             ▼                                                        │
-   │   ┌────────────────────┐                                             │
-   │   │ 4. REPORT POSTED   │──────► [testingOn = FALSE]                  │
-   │   └─────────┬──────────┘        "a report is waiting; don't test"    │
-   │             │                                                        │
-   │             ▼                                                        │
-   │   ┌────────────────────┐                                             │
-   │   │ 5. DEV CLAUDE      │  claims → verifies each claim against       │
-   │   │    FIXES           │  the code → fixes → updates docs → commits  │
-   │   └─────────┬──────────┘                                             │
-   │             │                                                        │
-   │             ▼                                                        │
-   │   ┌────────────────────┐                                             │
-   │   │ 6. MARKED COMPLETE │──────► [testingOn = TRUE]                   │
-   │   └─────────┬──────────┘        + resolutionNotes for the next brief │
-   │             │                                                        │
-   └─────────────┘   the next test re-verifies what was just fixed
-```
-
-Step 6 is what closes the loop into a loop. `resolutionNotes` — dev Claude's
-summary of what it changed — is relayed **verbatim** into the next brief as
-*"recently fixed, please re-verify these areas."* A fix that didn't work gets
-caught by the next cycle rather than believed.
+One consequence is worth stating explicitly: **the judge evaluates the running
+system, not the source.** Source inspection tells you what was intended.
+Only exercising the deployed artifact tells you what happens.
 
 ---
 
-## 4. Synchronisation: two invariants
+## 3. The control plane
 
-Three autonomous agents share one piece of state and never talk directly. Two
-rules keep that race-free.
-
-### Invariant 1 — each side writes one direction only
+The three roles share exactly two pieces of state and never communicate
+directly. Everything crosses one HTTP boundary.
 
 ```
-                    ┌─────────────────┐
-                    │   testingOn     │
-                    │   (boolean)     │
-                    └────────┬────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-        ┌─────▼─────┐                 ┌─────▼─────┐
-        │    TOM    │                 │ DEV CLAUDE│
-        │           │                 │           │
-        │  may set  │                 │  may set  │
-        │   FALSE   │                 │   TRUE    │
-        │           │                 │           │
-        │  TRUE  ✗  │                 │  FALSE ✗  │
-        │  403      │                 │           │
-        └───────────┘                 └───────────┘
+                 ┌─────────────────────────────┐
+                 │        CONTROL PLANE        │
+                 │                             │
+                 │   armed : boolean           │
+                 │   reports[] : queue         │
+                 │                             │
+                 └──────┬───────────────┬──────┘
+                        │               │
+          POST report   │               │  claim / complete
+          + disarm      │               │  + resolution notes
+                        │               │
+                 ┌──────▼─────┐   ┌─────▼──────┐
+                 │   JUDGE    │   │  REPAIRER  │
+                 └────────────┘   └────────────┘
 ```
 
-Tom can stop testing but cannot restart it. Only evidence that fixes landed —
-dev Claude completing a report — turns testing back on. If Tom could set it
-himself, the signal would mean nothing: he'd be asserting his own work was
-addressed.
+The interface is three calls: read state, submit a report, set the flag. That is
+the entire contract between roles. Neither needs to know the other exists, be
+running at the same time, or share a filesystem, process table, or host.
 
-**This is the load-bearing idea.** It's a one-bit channel where neither party
-can forge the other's half.
-
-### Invariant 2 — one open report at a time
+### Invariant 1 — each side may write one direction only
 
 ```
-   POST /report ──► ┌──────────────────────────────────┐
-                    │ is a report new / in_progress ?  │
-                    └───────┬──────────────────┬───────┘
-                          yes                  no
-                            │                   │
-                            ▼                   ▼
-                    409 report_pending      201 accepted
-                    "the alarm"             + testingOn = FALSE
+                    ┌─────────────┐
+                    │    armed    │
+                    └──────┬──────┘
+              ┌────────────┴────────────┐
+        ┌─────▼─────┐             ┌─────▼─────┐
+        │   JUDGE   │             │ REPAIRER  │
+        │           │             │           │
+        │ may clear │             │  may set  │
+        │  → false  │             │  → true   │
+        │           │             │           │
+        │ set ✗ 403 │             │ clear ✗   │
+        └───────────┘             └───────────┘
 ```
 
-A 409 means the previous report was never processed. It is an **alarm, not a
-rate limit** — the correct response is to stop and escalate, never to retry or
-queue a second report. Two open reports would mean two sets of fixes racing on
-the same codebase.
+The judge can halt testing but cannot resume it. Only evidence that repairs
+landed — the repairer closing a report — re-arms the system.
+
+This is the load-bearing idea. It is a **one-bit channel in which neither party
+can forge the other's half**. If the judge could re-arm itself, the signal would
+carry no information: it would be asserting that its own findings had been
+addressed. Enforcement is server-side, so the guarantee does not depend on
+either agent behaving correctly — an agent that tries to write the wrong
+direction receives a 403.
+
+### Invariant 2 — bounded work in flight
+
+```
+   submit ──► ┌────────────────────────────┐
+              │  is a report unresolved ?  │
+              └──────┬──────────────┬──────┘
+                   yes              no
+                     │               │
+                     ▼               ▼
+              409 rejected      accepted + disarm
+              (alarm)
+```
+
+A rejection means the previous cycle never completed. It is an **alarm, not
+backpressure** — the correct response is to halt and escalate, never to retry or
+enqueue. Two unresolved reports would mean two repair streams mutating one
+codebase concurrently, and neither report's findings could be attributed to the
+resulting state.
 
 ---
 
-## 5. Across machines
+## 4. Liveness is not the same as dispatch
 
-The loop was designed for two machines that share **nothing** — no filesystem,
-no process table, no memory. Everything crosses through one HTTP API.
+A subtle failure appears once the judge is a **scheduled** process rather than a
+blocking one.
 
 ```
- ┌────────────────────────────┐          ┌────────────────────────────┐
- │      MACHINE A             │          │      MACHINE B             │
- │      "the test rig"        │          │      "the repo"            │
- │                            │          │                            │
- │  ┌──────┐    ┌──────────┐  │          │  ┌──────────────────────┐  │
- │  │ TOM  │───►│   TEST   │  │          │  │     DEV CLAUDE       │  │
- │  │      │◄───│  CLAUDE  │  │          │  │  (inside the repo)   │  │
- │  └───┬──┘    └──────────┘  │          │  └──────────┬───────────┘  │
- │      │                     │          │             │              │
- └──────┼─────────────────────┘          └─────────────┼──────────────┘
-        │                                              │
-        │  POST report + testingOff                    │  claim / complete
-        │  GET  poll                                   │  GET  check
-        │                                              │
-        └──────────────────►┌──────────────────┐◄──────┘
-                            │   REPORT API     │
-                            │                  │
-                            │  testingOn: bool │
-                            │  reports[]       │
-                            │  (persistent DB) │
-                            └──────────────────┘
-                                the ONLY shared state
+   ASSUMED                        ACTUAL
+
+   dispatch                       tick ─► dispatch
+      │                           tick ─► ?
+      │ (blocks)                  tick ─► ?
+      ▼                           tick ─► ?
+   evaluate                            ...
+      │                           (build still running)
+      ▼                           tick ─► evaluate + report
+   report
 ```
 
-The API is the entire contract. Neither machine needs to know the other exists,
-be awake at the same time, or agree on anything except the meaning of one
-boolean and one report status.
+The dispatch precondition — *armed, and no unresolved report* — remains true for
+a build's **entire duration**, because it only clears when the report is
+submitted at the very end. A judge that blocks is fine. A judge that wakes on a
+timer sees an unchanged "go" signal and dispatches a second build on top of the
+first.
 
-**Today all three actors run on one machine.** That changed nothing
-architecturally, because the invariants were never enforced by the machine
-boundary — they're enforced server-side by the API. The collapse to one host is
-a deployment detail, and the design still supports splitting them again.
+The fix is a locally held **in-flight marker**, written in the same operation as
+the dispatch and cleared only on a successful report.
 
-What the collapse *did* change is discipline: with the repo now physically
-reachable from the judge, Tom's instructions must explicitly forbid touching it.
-A boundary that used to be enforced by physics is now enforced by rules.
+```
+   ┌────────────────────────────────────────────────┐
+   │  CONTROL-PLANE INVARIANTS   protect the        │
+   │                             REPAIRER           │
+   │                                                │
+   │  IN-FLIGHT MARKER           protects the       │
+   │                             BUILDER            │
+   └────────────────────────────────────────────────┘
+```
+
+With one constraint that generalises well beyond this system:
+
+> **A marker proves an event occurred. It never proves a process is alive.**
+
+A supervisor that reads a marker and infers "running" will wait indefinitely on
+a dead worker. The resolving rule: *silence requires positive proof of a live
+child; absent that proof, treat it as dead.* Liveness must be established by
+observing actual state — process tables, filesystem artifacts — never by the
+absence of a message. Completion notifications delivered on a best-effort basis
+are a convenience, not a signal you can build on: a missing message means
+neither success nor failure, and a supervisor that treats it as either will be
+wrong.
 
 ---
 
-## 6. The layer the design missed
+## 5. What drives the work
 
-The state machine above has a blind spot that only appears once the judge is a
-**scheduled** process rather than a blocking one.
+A scheduler needs an objective. Scoring a build produces a number; a number does
+not say what to test next, and a system optimising a score will drift toward
+whatever is cheapest to score well on.
 
-```
-   THE ASSUMPTION                        THE REALITY
-   ──────────────                        ───────────
-
-   judge dispatches                      cron fires  ─► dispatch
-        │                                cron fires  ─► ??? 
-        │  (blocks, waiting)             cron fires  ─► ???
-        ▼                                cron fires  ─► ???
-   judge scores                          cron fires  ─► ???
-        │                                     ...
-        ▼                                (build still running)
-   judge reports                         cron fires  ─► score + report
-```
-
-`testingOn` stays `true` and no report exists for a build's **entire duration**
-— the condition only clears at the very end. A judge that blocks is fine. A
-judge that wakes every 15 minutes sees an unchanged "go" signal and dispatches
-a *second* build, then a third.
-
-There is a second reason the marker carries so much weight. The platform is
-supposed to deliver the child's completion back to the judge as a message, and
-in practice that message is frequently lost — often enough that the judge
-cannot treat its absence as information. So the judge is left with two things
-it can actually trust: a file it wrote itself when it dispatched, and the state
-of the build directory on disk.
-
-The fix is a local **in-flight marker** — a file the judge writes when it
-dispatches and clears only when it successfully reports:
+So the judge's input is not a score history but a **coverage matrix** — an
+explicit enumeration of capability × configuration, each cell in one of three
+states.
 
 ```
-        ┌──────────────────────────────────────────────┐
-        │  API INVARIANTS      protect the FIXER        │
-        │                      from the judge           │
-        │                                               │
-        │  IN-FLIGHT MARKER    protects the BUILDER     │
-        │                      from the judge           │
-        └──────────────────────────────────────────────┘
+                    ┌──────────────────────────────────────┐
+   COVERAGE  ──────►│  pick the highest-priority           │
+   MATRIX           │  untested cell                       │
+                    └──────────────┬───────────────────────┘
+                                   ▼
+                    ┌──────────────────────────────────────┐
+                    │  synthesise a scenario that           │
+                    │  exercises exactly that cell          │
+                    └──────────────┬───────────────────────┘
+                                   ▼
+                    ┌──────────────────────────────────────┐
+                    │  dispatch · evaluate · report         │
+                    └──────────────┬───────────────────────┘
+                                   ▼
+                    ┌──────────────────────────────────────┐
+                    │  cell transitions only when a LATER,  │
+                    │  independent run confirms it          │
+                    └──────────────────────────────────────┘
 ```
 
-With one hard-won caveat:
+Three properties follow:
 
-> **A marker proves a build was dispatched. It never proves one is alive.**
+- **The objective is enumerable.** "Done" is a defined state — every cell
+  confirmed — rather than an indefinite process.
+- **A cell advances only on independent confirmation.** The run that repairs a
+  capability never marks it working; a subsequent run does, with no knowledge of
+  the repair beyond the resolution notes relayed to it. Fixes are re-verified,
+  not believed.
+- **Scenarios are narrow by construction.** One configuration per run. A run
+  that exercises many capabilities at once reports that *something* failed and
+  cannot say which configuration caused it.
 
-A judge that reads the marker and infers "in flight" will sit silently while a
-dead build rots. The rule that fixes it: *silence requires positive proof of a
-live child; if you cannot verify, treat it as dead; never go quiet on an
-incomplete site without saying why.*
+Reporting is bounded on purpose. Discovery is cheap for the judge and repair is
+expensive for everything downstream, so a run terminates when it has enough to
+act on: immediately on a structural failure — because the next build will differ
+materially and further observations are already stale — and otherwise at a small
+number of findings ranked by severity. Throughput of the *cycle* matters more
+than the volume of any single report.
 
 ---
 
-## 7. Anatomy of a test session
+## 6. Scaling to many independent data sources
+
+This is where the architecture earns its shape.
+
+The product is a data framework. It ingests a real-estate feed from any of
+roughly 500–600 independent regional associations, normalises it to one internal
+schema, and serves it. Those feeds nominally follow a shared standard and in
+practice diverge constantly: fields present in one association and absent in
+another, identical concepts under different keys, differing vocabularies for the
+same enumeration, and vendors whose payloads do not follow the standard at all.
+
+**The normalisation layer is the real system under test, and it can only be
+tested against real feeds.** No fixture reproduces the ways a live feed differs
+from its specification — that is precisely the information a fixture lacks.
+
+### Why the harness does not grow with the number of feeds
+
+Each data source is a **row**, not a new test suite:
 
 ```
- TOM                          TEST CLAUDE                   THE SITE
-  │                                │                            │
-  ├─ poll API ────────────────►    │                            │
-  │  testingOn && last complete    │                            │
-  │                                │                            │
-  ├─ invent persona                │                            │
-  │  (fictitious agent, market,    │                            │
-  │   positioning, design phrase)  │                            │
-  │                                │                            │
-  ├─ write BRIEF.md ──────────────►│                            │
-  ├─ write permission allowlist ──►│                            │
-  ├─ spawn child session ─────────►│                            │
-  ├─ write in-flight marker        │                            │
-  │                                ├─ read build guide          │
-  │                                ├─ scaffold ────────────────►│
-  │◄──── "what licence number?" ───┤                            │
-  ├───── quotes BRIEF.md ─────────►│                            │
-  │                                ├─ connect real data ───────►│
-  │                                ├─ file bug (guide wrong)    │
-  │◄──── "build complete" ─────────┤                            │
-  │                                                             │
-  ├─ open browser ────────────────────────────────────────────►│
-  ├─ walk every route, 2 viewports                             │
-  ├─ ask CHAP 3 questions (incl. nonsense)                     │
-  ├─ submit a test lead                                        │
-  ├─ check 7 gates, score 100 points                           │
-  │                                                             │
-  ├─ POST report + testingOff ──► API
-  ├─ clear marker
-  ▼
+   association │ ingest │ normalise │ serve │ refresh │ gaps identified
+   ────────────┼────────┼───────────┼───────┼─────────┼────────────────
+      A        │   ✔    │     ✔     │   ✔   │    ✔    │ none
+      B        │   ✔    │     ✔     │   ✔   │    ·    │ no subdivision
+      C        │   ✔    │     ·     │   ·   │    ·    │ non-standard keys
+      D        │   ·    │     ·     │   ·   │    ·    │
+      …        │        │           │       │         │
 ```
 
-Two details worth lifting out:
+Onboarding an association means adding a row and supplying credentials. The
+judge synthesises the scenario, the builder executes the same guide, and the
+same normalisation path is exercised against a new shape of input. **No new test
+code is written per feed** — which is the only way an approach like this reaches
+hundreds of sources.
 
-**The judge invents the scenario.** Persona, brokerage, licence number, phone,
-market, positioning, and a one-phrase design direction — all fabricated, so the
-builder never stalls waiting for a decision. The brief file is canonical: when
-the builder asks a question, the judge answers *from the file* and appends
-anything new to it. Answering from memory produces two contradictory licence
-numbers, which the judge would then score as a defect it authored itself.
+What the system is looking for is not "did it work" but a classification:
 
-**Design questions get handed back.** Asked "which layout should I use?", the
-judge names the trade-off and makes the builder choose and justify. Choosing
-for it would mean grading its own design.
+| Outcome | Meaning |
+|---|---|
+| Normalises cleanly | The mapping covers this source |
+| Field absent | The source does not carry it — must be **surfaced as absent**, never silently empty |
+| Key differs | Same concept, different name — extend the mapping |
+| Absent but derivable | Candidate for optional enrichment, explicitly labelled as derived |
+| Shape unsupported | The normaliser needs a new adapter |
+
+"This association has no subdivision data" is a **result**, not a failure — but
+only if the system detects and reports it. Silent absence is the defect, because
+downstream features degrade with no explanation to the end user.
+
+### What makes concurrency possible
+
+Three properties, each an architectural decision rather than an optimisation:
+
+**Per-tenant data isolation.** Every test run provisions its own database.
+There is no shared fixture to corrupt, so runs against different associations
+cannot interfere, and a run that writes malformed data damages only itself.
+Teardown is dropping one database.
+
+**Stateless evaluation.** The judge holds no cross-run state in memory — each
+wake-up reconstructs context from durable artifacts. Concurrency is therefore
+bounded by infrastructure, not by the evaluator's context window.
+
+**Server-side invariants.** The guarantees in §3 are enforced at the control
+plane, not by agent cooperation. Adding builders or judges does not weaken them
+and does not require re-reasoning about correctness.
+
+### The current bound, and how it lifts
+
+Invariant 2 serialises the system deliberately: one unresolved report at a time,
+because concurrent repair streams on one codebase make findings unattributable.
+That is correct while repairs are global — a normalisation fix affects every
+association.
+
+It is also the throughput ceiling. Testing many associations in parallel means
+**partitioning the report queue** along the axis where repairs are independent —
+per association, or per adapter — so that unrelated streams proceed
+concurrently while the invariant continues to hold *within* each partition.
+The one-directional write guarantee is unaffected; it is per-partition already.
+
+That is a queue-partitioning change, not a redesign. The property that makes it
+tractable is that the invariants were specified over an abstract report stream
+rather than a global lock.
 
 ---
 
-## 8. Adversarial stance
-
-The loop's most important property isn't mechanical. A judge optimising to
-please its operator produces comfortable scores forever, and a comfortable
-score is indistinguishable from a healthy product until a customer finds the
-defect.
+## 7. Why this shape
 
 ```
-     ┌─────────────────────────┬─────────────────────────┐
-     │   AGREEABLE JUDGE       │   ADVERSARIAL JUDGE     │
-     ├─────────────────────────┼─────────────────────────┤
-     │ takes the happy path    │ takes the path most     │
-     │                         │ likely to FAIL          │
-     │ asks the easy question  │ asks the nonsense one   │
-     │ tests what's documented │ tests what ISN'T        │
-     │ "seems fine"            │ pushes until it holds   │
-     │                         │ or breaks               │
-     │ rounds up               │ names the failure       │
-     ├─────────────────────────┼─────────────────────────┤
-     │ score: 88               │ score: 61               │
-     │ defects found: 2        │ defects found: 9        │
-     │ VALUE: near zero        │ VALUE: high             │
-     └─────────────────────────┴─────────────────────────┘
+   ┌────────────────────────────────────────────────────────┐
+   │                                                        │
+   │  SEPARATION      no role evaluates its own output      │
+   │                                                        │
+   │  UNFORGEABLE     a one-bit channel where neither       │
+   │  HANDSHAKE       party can write the other's half      │
+   │                                                        │
+   │  BOUNDED WORK    one unresolved unit; a refusal is     │
+   │                  an alarm, not backpressure            │
+   │                                                        │
+   │  LIVENESS ≠      a flag proves an event, never a       │
+   │  DISPATCH        running process                       │
+   │                                                        │
+   │  ENUMERABLE      progress is a coverage matrix, not    │
+   │  OBJECTIVE       a score — "done" is a defined state   │
+   │                                                        │
+   │  INDEPENDENT     a capability is confirmed by a run    │
+   │  CONFIRMATION    that did not perform the repair       │
+   │                                                        │
+   │  ISOLATION       per-run data plane; no shared         │
+   │                  fixture, teardown is a drop           │
+   │                                                        │
+   └────────────────────────────────────────────────────────┘
 ```
 
-Stated as the judge's own rule: *a session where you found nothing is a session
-where you didn't look hard enough. A 92 that missed a broken data hookup is
-worse than a 54 that found it. The findings are the product; the score just
-ranks them.*
+The generalisable result: **autonomous agents need the same structural
+guarantees as distributed systems.** One-way state transitions, bounded work in
+flight, liveness checks that do not trust a flag, idempotent operations, and an
+explicit rule that a stale instruction halts rather than improvises.
 
-This extends to the riskiest path in the system. The real-data connection is
-**assumed broken** and exercised every single session, because a precise
-account of *how* it fails is worth more than another site that quietly fell
-back to sample data. So:
-
-> A session that fails to connect real data but documents the failure precisely
-> is a **good** session. A session that silently falls back to samples is a
-> **wasted** one.
-
----
-
-## 9. Failure modes
-
-Every one of these was observed, not theorised.
-
-| Failure | Symptom | Root cause | Mitigation |
-|---|---|---|---|
-| **Double dispatch** | New scenario every 15 min on top of a running build | Dispatch condition stays true for the whole build | In-flight marker |
-| **Silent death** | Build dead 40 min, judge quiet | Marker read as proof of life | Silence requires positive proof; ambiguity ⇒ treat as dead |
-| **Lost completion signal** | Builder finishes; judge never told | The platform's completion message is delivered on a best-effort basis and has failed repeatedly | Treat no-message as no-information; find the build on disk instead. Require the builder to leave a written marker, instructed in the launch string and not only in the brief |
-| **Self-assessment** | Builder reports "all gates pass" | Builder grading its own work | Judge re-verifies independently in a browser |
-| **Capability drift** | Dispatch silently does nothing | Instructions referenced tools the agent didn't have | Agent must stop and escalate on an unknown tool, never improvise |
-| **Instruction drift** | Agent follows the stale copy | Same rule written in two places | One source of truth; the other points at it |
-| **Wrong test data** | Site renders inventory from the wrong region | Scenario market outside the data source's coverage | Constrain scenarios to what the credentials actually serve |
-| **Orphaned processes** | Deleted directories reappear | Dev server outlives its parent session | Teardown kills the server, then verifies, then deletes |
-| **Unreleased fix** | Same bug re-found after being "fixed" | Fix committed but not published | Judge reports it as a distinct, high-priority class |
-
-The last one is the loop justifying itself: it caught, twice, that a fix
-described in `resolutionNotes` didn't exist in the published package. No human
-was watching for that.
-
----
-
-## 10. Why this shape
-
-```
-    ┌──────────────────────────────────────────────────────────┐
-    │                                                          │
-    │   SEPARATION      no actor grades its own work           │
-    │                                                          │
-    │   ONE-BIT         a channel neither side can forge       │
-    │   HANDSHAKE                                              │
-    │                                                          │
-    │   SERIALISATION   one open report; a refusal is an       │
-    │                   alarm, not backpressure                │
-    │                                                          │
-    │   ADVERSARIAL     the judge is rewarded for finding      │
-    │   INCENTIVE       problems, not for high scores          │
-    │                                                          │
-    │   EVIDENCE        every score cites a screenshot,        │
-    │   DISCIPLINE      log line, or file — or isn't given     │
-    │                                                          │
-    │   FEEDBACK        fixes are re-verified by the next      │
-    │   CLOSURE         cycle, never assumed                   │
-    │                                                          │
-    └──────────────────────────────────────────────────────────┘
-```
-
-The generalisable lesson is that **autonomous agents need the same structural
-guarantees as distributed systems** — idempotency, one-way state transitions,
-liveness checks that don't trust a flag, and an explicit rule that a stale
-instruction must halt rather than improvise. The AI parts were rarely the hard
-parts. The synchronisation was.
-
----
-
-## Further reading (internal)
-
-- `README.md` — orientation and the API contract
-- `agents/tom.md` — the judge as built: tools, dispatch, failure history
-- `mcp/web-design/README.md` — the full operational reference and rubric
+The agents were rarely the hard part. The synchronisation was — and the pieces
+that make it scale to hundreds of data sources are the ordinary ones: an
+enumerable objective, isolated per-run state, and invariants enforced by the
+control plane rather than by cooperation.
