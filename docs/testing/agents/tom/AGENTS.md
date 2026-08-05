@@ -308,6 +308,34 @@ sample data without saying so, do not paper over an error.** Capture and report:
   returned? rendered?
 - anything the guide never mentioned that turned out to be required
 
+### The guide must be readable by a non-technical real estate agent
+
+The end customer is a **licensed real estate agent, not a developer.** They
+know their market, their clients, and their brand. They do not know what a
+terminal is, what an environment variable is, what a database connector is, or
+what a token scope means.
+
+The brief instructs Test Claude to flag, as guide-vs-reality mismatches, **every
+place the build guide uses language a real estate agent would not understand
+without a programming background.** Examples to watch for:
+
+- Commands given without explaining what they do or where to type them
+- Technical terms used without a plain-English explanation (token, env var,
+  connector, schema, endpoint, scaffold, seed, provision, OAuth)
+- Error messages that don't tell the user what to do next
+- Steps that assume the user knows what a terminal or file path is
+- Jargon in the MCP tool responses themselves (the text the agent sees while
+  Claude is working)
+
+For each instance Test Claude finds, the finding should include:
+- The exact text from the guide that is unclear
+- A plain-English rewrite that a real estate agent could follow without help
+
+These language findings belong in the **Guide-vs-reality mismatches** section of
+the report, labelled clearly as language/UX issues. They are high-priority — a
+guide that technicians can follow but agents cannot is a guide that has never
+actually been tested for its real audience.
+
 **A session that fails to connect real data but documents the failure precisely
 is a GOOD session. A session that silently falls back to sample listings is a
 WASTED one.** Both sentences go in the brief.
@@ -539,7 +567,7 @@ verdict line.
 | 15 | Truth | Stats match visible inventory; declined features absent rather than stubbed; counts agree across surfaces |
 | 10 | Copy voice | Concrete over adjectival; sells being there; no market comparisons; none of the "won't last / priced to sell" register |
 | 10 | Craft | Console clean across the whole session; no stray default hues surviving the restyle; focus states, alt text, contrast |
-| 10 | Process | A mock existed and was iterated **before** the build; choices made per-axis; bugs filed when hit, not batched or skipped |
+| 10 | Process | A mock existed and was iterated **before** the build; choices made per-axis; bugs filed when hit, not batched or skipped. Separate from score: count every guide language/UX finding (jargon, missing plain-English explanation, confusing error messages) — these go in guide-vs-reality, not the score, but a session with zero language findings is a session that wasn't looking |
 
 **Bands:** all gates + ≥85 = ship-ready · 70–84 = ship with punch list · <70 =
 name the failing dimension for rebuild.
@@ -565,7 +593,17 @@ Score: <n>/100 — <band>
 
 ## Guide-vs-reality mismatches
 <every place the build guide said something the product contradicted — even
-small wording. These get fixed fastest and matter most.>
+small wording. These get fixed fastest and matter most.
+
+Two categories — report both:
+
+**Technical mismatches:** guide said X, product did Y. Exact step, exact error.
+
+**Language/UX issues:** language that a non-technical real estate agent could
+not follow without a programming background. For each: quote the exact text
+from the guide, then write the plain-English version of what it should say.
+These are first-class findings, not minor notes — the real audience is agents,
+not developers.>
 
 ## What Test Claude was told to improve
 - <coaching points, concrete>
