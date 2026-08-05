@@ -1,8 +1,8 @@
 ---
 title: Bootstrap prompt — build the judge + Test Claude loop on the other machine
-status: current
-last_verified: 2026-07-31
-related: [README.md]
+status: partial
+last_verified: 2026-08-04
+related: [README.md, ../../agents/tom.md]
 ---
 
 <!--
@@ -10,6 +10,13 @@ related: [README.md]
   into a fresh Claude session on the testing machine. It is fully
   self-contained — that machine cannot read this repo, so nothing in it
   references files that only exist here.
+
+  STATUS 2026-08-04: this bootstrap already ran — the judge exists as the
+  OpenClaw agent Tom (see ../../agents/tom.md), and the as-built loop differs
+  from this prompt in ways learned after it was written (sessions_spawn
+  dispatch, the in-flight marker, Tom's real tool surface). Kept as the
+  bootstrap record; if it is ever re-run, tom.md is the source of truth for
+  anything the two disagree on.
 -->
 
 ---
@@ -93,7 +100,12 @@ Create a skill (plus a recurring schedule, every 10–15 minutes) that:
 3. On dispatch: invoke Test Claude (skill 2) with a **test brief**. Vary the
    brief between sessions so builds differ — rotate at minimum:
    - persona: name, brokerage, years in business, specialty
-   - market: any real US market
+   - market: **Greater Palm Springs only** — Palm Springs, Palm Desert,
+     La Quinta, Rancho Mirage, Indian Wells, Indio, Cathedral City, Desert Hot
+     Springs, Coachella, Bermuda Dunes. GPS is the only MLS the test
+     credentials cover; a persona anywhere else yields a site with zero real
+     listings and an unjudgeable session. Rotate cities and positioning inside
+     the footprint, never the region
    - positioning: luxury / first-time buyers / investment / relocation
    - design direction: e.g. "warm and editorial", "monochrome and sharp",
      "coastal and airy" — one phrase, let Test Claude interpret it

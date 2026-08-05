@@ -2,7 +2,7 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-08-04
-related: [agents/tom.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [agents/tom.md, loops.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -21,6 +21,8 @@ what it names, and re-arms the loop.
   mechanism, and the environment facts that cost a night to learn. Start here.
 - **`mcp/web-design/README.md`** — the reference: every endpoint with examples,
   the report format, the judging standard, failure-mode table.
+- **`loops.md`** — the architecture, written for readers outside the project:
+  the invariants, the in-flight marker, and the observed failure modes.
 
 ## What this loop is actually for
 
