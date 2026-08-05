@@ -1,7 +1,7 @@
 ---
 title: The Loop — architecture of an autonomous QA cycle
 status: current
-last_verified: 2026-08-04
+last_verified: 2026-08-05
 related: [README.md, agents/tom.md, mcp/web-design/README.md]
 audience: external — written to be readable without ChatRealty context
 ---
@@ -273,6 +273,13 @@ The state machine above has a blind spot that only appears once the judge is a
 judge that wakes every 15 minutes sees an unchanged "go" signal and dispatches
 a *second* build, then a third.
 
+There is a second reason the marker carries so much weight. The platform is
+supposed to deliver the child's completion back to the judge as a message, and
+in practice that message is frequently lost — often enough that the judge
+cannot treat its absence as information. So the judge is left with two things
+it can actually trust: a file it wrote itself when it dispatched, and the state
+of the build directory on disk.
+
 The fix is a local **in-flight marker** — a file the judge writes when it
 dispatches and clears only when it successfully reports:
 
@@ -396,6 +403,7 @@ Every one of these was observed, not theorised.
 |---|---|---|---|
 | **Double dispatch** | New scenario every 15 min on top of a running build | Dispatch condition stays true for the whole build | In-flight marker |
 | **Silent death** | Build dead 40 min, judge quiet | Marker read as proof of life | Silence requires positive proof; ambiguity ⇒ treat as dead |
+| **Lost completion signal** | Builder finishes; judge never told | The platform's completion message is delivered on a best-effort basis and has failed repeatedly | Treat no-message as no-information; find the build on disk instead. Require the builder to leave a written marker, instructed in the launch string and not only in the brief |
 | **Self-assessment** | Builder reports "all gates pass" | Builder grading its own work | Judge re-verifies independently in a browser |
 | **Capability drift** | Dispatch silently does nothing | Instructions referenced tools the agent didn't have | Agent must stop and escalate on an unknown tool, never improvise |
 | **Instruction drift** | Agent follows the stale copy | Same rule written in two places | One source of truth; the other points at it |

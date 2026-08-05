@@ -59,7 +59,8 @@ report format, the judging standard, and how to unstick the loop.
         │
         ▼
  Tom → sessions_spawn's Test Claude ──► site gets built, bugs filed via MCP
-        │   (marker written same turn; child reports its own completion)
+        │   (marker written same turn; the child's completion message is
+        │    unreliable — the marker + on-disk check is what finds the build)
         ▼
  Tom scores the RENDERED site in a browser (rubric below), coaches Test Claude
         │

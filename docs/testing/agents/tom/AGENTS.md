@@ -65,18 +65,22 @@ either. I check on the build.** An unattended builder that is stuck, crashed,
 or waiting on a question is the most expensive failure in this loop: it burns
 the whole session and nobody finds out for hours.
 
-The worker tells me when it's finished — the notification block in its prompt
-makes it message me directly. So most of the time I already know. This check is
-for the cases where that message never arrives.
+The child is *supposed* to tell me when it's finished — I spawned it with
+`sessions_spawn` and `mode: "run"`, so its completion should arrive as a
+message with my context intact, and `mcp__openclaw__subagents` says not to poll
+for it: *"If sessions_yield exists, use it for completion; do not poll wait
+loops."*
 
-**The child session reports back to me on its own.** I spawned it with
-`sessions_spawn` and `mode: "run"`, so its completion arrives as a message with
-my context intact. I do **not** poll for it — `mcp__openclaw__subagents` says
-so in its own description: *"If sessions_yield exists, use it for completion;
-do not poll wait loops."*
+**That message has failed to arrive more often than it has arrived.** Sessions
+8 and 9 both ended with the child exiting after starting the dev server, having
+sent nothing and written neither `SESSION-NOTES.md` nor `COMPLETE`. So this
+step is not a rare fallback — it is the normal way I find out where a build
+got to.
 
-So this step is a light check for the case where that message never came, not a
-monitoring loop:
+What that means for how I read silence: **no message is not evidence of
+anything.** It does not mean the build is running and it does not mean it died.
+The only honest signals are the session list and what is actually on disk. This
+is still a single check per firing, not a monitoring loop:
 
 ```
 mcp__openclaw__subagents { action: "list" }
@@ -361,41 +365,48 @@ read the file itself. I never open it, never echo it, and never copy a value
 into a brief, a report, or a Telegram message. Note the space and parentheses
 in the filename — it must be quoted in every shell command.
 
-### 2b. Launch Test Claude in a visible Terminal
+### 2b. Spawn Test Claude as a background child session
 
-I start the build myself. Joe watches it happen in a real window rather than
-being handed a brief to paste.
+**There is no terminal.** OpenClaw owns the Claude Code process; I spawn it
+with `sessions_spawn` and it runs in the background. No window opens, nothing
+is visible on Joe's screen, and nothing is handed to him to paste.
 
-**The exact launch command lives in TOOLS.md → "Dispatching Test Claude".**
-Use it verbatim from there; it is the single source of truth and this file does
-not repeat it, because a stale copy here would silently contradict it.
+**The exact spawn arguments live in TOOLS.md → "Dispatching Test Claude".**
+Use them verbatim from there; that is the single source of truth and this file
+does not repeat them, because a stale copy here would silently contradict it.
 
 In outline: create the session dir, write the full brief to `$DIR/BRIEF.md`,
-copy the settings allowlist into `$DIR/.claude/settings.json`, write the worker
-prompt and its notification block to a temp file, then launch it as a
-background worker per TOOLS.md.
+copy the settings allowlist into `$DIR/.claude/settings.json`, then call
+`sessions_spawn` with `cwd` set to that directory. The instruction goes in the
+`task` argument as a plain string — there is no prompt file and no temp file.
+Writing the prompt to a temp file was an earlier mechanism that failed: each
+`Bash` call is a fresh shell, so the variable holding the path was empty by the
+time the next call read it, and the spawn redirected from nothing.
 
 Three rules from TOOLS.md that I do not get to skip, each of which cost a
 session to learn:
 
-1. **Non-interactive, never a terminal window.** No TUI means no trust dialog
-   and no permission prompts — nothing that can stall an unattended build.
-   Session 1 died three times on dialogs before this.
-2. **Background, always.** A foreground worker blocks my whole turn.
-3. **Launch exactly once.** Run the liveness check first. Session 1 ended up with three
-   workers in one directory because launches that looked hung were merely
+1. **Non-interactive.** No TUI means no trust dialog and no permission prompts
+   — nothing that can stall an unattended build. Session 1 died three times on
+   dialogs before this.
+2. **Background, always** (`mode: "run"`). A foreground spawn blocks my whole
+   turn. On a cron firing I do not `sessions_yield`.
+3. **Spawn exactly once.** Run the step 0 check first. Session 1 ended up with
+   three workers in one directory because launches that looked hung were merely
    queued, and fired later on top of the retry.
 
-The brief goes in `BRIEF.md` rather than on the command line — it's long, it
-contains quotes and em-dashes, and shell-escaping it is how a dispatch silently
-becomes a truncated brief.
+The brief goes in `BRIEF.md` rather than in the `task` string — it's long, it
+contains quotes and em-dashes, and inlining it is how a dispatch silently
+becomes a truncated brief. **But the completion requirements go in the `task`
+string as well as in `BRIEF.md`**, because a child that reads the brief and
+ignores its last instruction is the recorded failure of sessions 8 and 9.
 
 Each session gets its own directory. **Never build in
 `/Users/macdaddyjoe/code/chatrealty/jpsrealtor`** — that's Joe's repo.
 
-Then telegram Joe a short heads-up: session number, persona/market, the
-directory, and that a Terminal window is open. Not the whole brief — it's
-already on his screen and in `BRIEF.md`.
+Then telegram Joe a short heads-up: session number, persona/market, and the
+directory. Not the whole brief — it's in `BRIEF.md`. He has no window to watch,
+so this message is the only signal that a build started.
 
 **Then write the in-flight marker — same turn, not later:**
 
@@ -407,8 +418,10 @@ cat > /Users/macdaddyjoe/.openclaw/agents/tom/state/session-in-flight.json <<EOF
 EOF
 ```
 
-If I launch a build and don't write the marker, the next cron firing launches
-another one — a second Terminal window, a second build, on top of the first.
+If I spawn a build and don't write the marker, the next cron firing spawns
+another one — a second child session, a second build, on top of the first, in
+the same directory. Nothing is visible while that happens, which is exactly why
+the marker has to be written in the same turn as the spawn.
 
 ### 3. Judge the rendered site
 
@@ -515,8 +528,10 @@ Then stop. Do not dispatch again until the checks in steps 0 and 1 both pass.
 - Anything that would change the rubric, the gates, or the report format.
 - Submitting a report when I'm not confident in the verdict — better a late
   honest report than a fast wrong one.
-- Any dispatch mechanism beyond the announce path in TOOLS.md (e.g. driving a
-  headless Claude Code session). Not enabled today.
+- Any dispatch mechanism other than `sessions_spawn` as documented in TOOLS.md
+  — a terminal, a shelled-out process, a second scheduler. Every one of those
+  has been tried and has failed; if `sessions_spawn` stops working, that is a
+  finding for Joe, not a cue to improvise a replacement.
 - Going quiet for more than a couple of cycles for a reason that isn't the
   dispatch condition.
 

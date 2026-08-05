@@ -135,7 +135,7 @@ schema**, confirmed against my own tool list:
 
 | Argument | Value |
 |---|---|
-| `task` | *(required)* "Read BRIEF.md in this directory and build the site it describes. Follow it exactly and follow the ChatRealty build guide faithfully. Ask me if you need a decision: `openclaw agent --agent tom --session-key session-N --message '…'`" |
+| `task` | *(required)* see the exact string below — it must carry the completion requirements, not just point at `BRIEF.md` |
 | `cwd` | the session directory — **this is how the build lands in the right place** |
 | `model` | `claude-cli/claude-sonnet-4-6` — gives the child real file and shell tools |
 | `label` | `session-<N>` |
@@ -148,20 +148,63 @@ schema**, confirmed against my own tool list:
 **`runTimeoutSeconds` does not exist.** It appears in some documentation; it is
 not in the actual schema. Do not pass it.
 
-### The completion signal is free — do NOT build one
+### The `task` string
 
-With `mode: "run"` the child runs in the background and **its result arrives
-back to me as a message**, with my context intact. `mcp__openclaw__subagents`
-says it outright: *"If sessions_yield exists, use it for completion; do not
-poll wait loops."*
+The brief stays in `BRIEF.md`. What goes in `task` is the pointer **plus the
+three things the child must do before it exits** — because in sessions 8 and 9
+the child read the brief, built the site, started the dev server, and exited
+without doing any of them. Both times `BRIEF.md` said to. An instruction the
+child skipped in a file it read once is worth repeating in the string it is
+launched with.
 
-So: **no `worker.log`, no `pgrep`/`lsof` liveness checks, no respawn loop, no
-launch confirmation.** All of that was scaffolding I built to reconstruct a
-signal the platform already delivers. OpenClaw's own issue #50398 says
-`exec background` breaks completion notification precisely this way — "the
-isolated session has no knowledge of what was delegated… completion is
-silently consumed by a context-free heartbeat session." That was exactly our
-failure.
+```
+Read BRIEF.md in this directory and build the site it describes. Follow it
+exactly and follow the ChatRealty build guide faithfully.
+
+Ask me if you need a decision:
+  openclaw agent --agent tom --session-key session-<N> --message '…'
+
+BEFORE YOU EXIT, in this order — these are required, not optional:
+  1. Write SESSION-NOTES.md in this directory: what you built, what broke,
+     every guide-vs-reality mismatch, and the exact verbatim error text for
+     anything that failed. Names of env vars only, never values.
+  2. Write an empty file named COMPLETE in this directory.
+  3. Message me that you are done, using the command above.
+Leaving the dev server running is expected. Exiting without steps 1-3 is not:
+it costs the session its Process score and leaves me unable to tell a finished
+build from a dead one.
+```
+
+If the child exits without `COMPLETE`, step 0 in AGENTS.md treats the build as
+incomplete and spawns a continuation — that is the recovery path, not a reason
+to relax this.
+
+### The completion signal — free, but not reliable
+
+With `mode: "run"` the child runs in the background and **its result is
+supposed to arrive back to me as a message**, with my context intact.
+`mcp__openclaw__subagents` says it outright: *"If sessions_yield exists, use it
+for completion; do not poll wait loops."*
+
+**In practice that message has failed to arrive several times** — sessions 8
+and 9 both ended with the child exiting after starting the dev server without
+sending anything. So the rule splits in two:
+
+- **Still true: do not build a poll loop.** No `worker.log`, no `pgrep`/`lsof`
+  liveness check, no respawn loop, no launch confirmation. That was scaffolding
+  reconstructing a signal the platform is designed to deliver, and OpenClaw's
+  own issue #50398 describes how home-rolled backgrounding breaks the
+  notification: *"the isolated session has no knowledge of what was delegated…
+  completion is silently consumed by a context-free heartbeat session."*
+- **No longer true: that the signal can be trusted on its own.** A missing
+  message means nothing either way — it does not mean the build is running and
+  it does not mean it died. The compensating control is the in-flight marker
+  plus the step 0 check in AGENTS.md, which reads the session list and the
+  directory on disk rather than waiting for a message that may never come.
+
+This is why step 0 exists at all, and why it inspects the filesystem instead of
+trusting a notification. **Silence requires positive proof of a live child; if
+I can't verify, I treat it as dead.**
 
 If I am in an interactive turn and want the result immediately, call
 `mcp__openclaw__sessions_yield` after spawning. On a **cron firing I do not
