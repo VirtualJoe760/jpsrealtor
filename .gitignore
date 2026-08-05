@@ -37,6 +37,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# NOTE: the patterns above all require a leading dot, so a dotless `env.local`
+# was NOT ignored and sat untracked in the repo — one `git add -A` from public.
+env.local
+env
+env.*
+!env.example
 
 # vercel
 .vercel

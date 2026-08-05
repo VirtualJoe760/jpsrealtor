@@ -34,6 +34,22 @@ Edit **this** file; never duplicate rules into `CLAUDE.md`.
    silently no-op'd here (matching zero lines while reporting success) and have
    corrupted file encodings. Read back what you changed.
 
+7. **Env files never reach GitHub. Ever.** `.env`, `.env.local`, `env.local`,
+   and anything else holding live keys stay local, permanently. Before any
+   `git add`/`commit`/`push`:
+   - **Stage by explicit path.** Never `git add -A`, never `git add .`.
+   - **Check the staged list** before committing — if an env file appears,
+     unstage it and fix `.gitignore`.
+   - **Confirm coverage, don't assume it.** `git check-ignore -v <file>` is the
+     only proof. `.gitignore` here had `.env*` and `.env*.local`, all of which
+     require a **leading dot** — a dotless `env.local` (15 KB of live keys for
+     Cloudinary, Google, Facebook, ElevenLabs, Groq, HeyGen, Drop Cowboy) was
+     never matched and sat untracked in the repo, one `git add -A` from public.
+     Now covered by `env.local` / `env.*` with `!env.example`.
+
+   If an env file ever *does* land on a remote, rotating every key in it comes
+   before anything else — a force-push doesn't unpublish a secret.
+
 ---
 
 ## 2. Repository map
