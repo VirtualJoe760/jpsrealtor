@@ -65,7 +65,8 @@ evaluate it is also a model. That constraint produces everything below.
 
 ## 2. Roles
 
-Three autonomous roles. The separation between them is a correctness property,
+Three autonomous roles inside the system — plus an unbounded population of
+reporters outside it. The separation between roles is a correctness property,
 not an organisational convenience.
 
 ```
@@ -75,30 +76,37 @@ not an organisational convenience.
         │   │           │────────────►│              │                 │
         │   │   JUDGE   │             │   BUILDER    │                 │
         │   │           │◄────────────│              │                 │
-        │   └─────┬─────┘  questions  └──────┬───────┘                 │
-        │         │        + result          │                         │
-        │         │                          │ executes the            │
-        │         │ evaluates the            │ build guide             │
-        │         │ running system           ▼                         │
-        │         │                   ┌─────────────┐                  │
-        │         │                   │ THE ARTIFACT│                  │
-        │         │                   └─────────────┘                  │
-        │         │                                                    │
-        │         │ structured report                                  │
-        │         ▼                                                    │
+        │   └───┬───┬───┘  questions  └──────┬───────┘                 │
+        │       │   │      + result          │                         │
+        │       │   │                        │ executes the            │
+        │       │   │ evaluates the          │ build guide             │
+        │       │   │ running system         ▼                         │
+        │       │   │                 ┌─────────────┐                  │
+        │  triages  │                 │ THE ARTIFACT│                  │
+        │  tickets  │ structured      └─────────────┘                  │
+        │  into     │ report                                           │
+        │  goals    ▼                                                  │
         │   ┌─────────────┐      repairs       ┌─────────────────┐     │
         │   │   CONTROL   │───────────────────►│    REPAIRER     │     │
         │   │    PLANE    │◄───────────────────│                 │     │
-        │   └─────────────┘  completion +      └─────────────────┘     │
-        │                    resolution notes                          │
-        └──────────────────────────────────────────────────────────────┘
+        │   └──────▲──────┘  completion +      └─────────────────┘     │
+        │          │         resolution notes                          │
+        └──────────┼───────────────────────────────────────────────────┘
+                   │  structured tickets, fingerprinted + clustered
+                   │  on arrival (report_data_issue)
+          ┌────────┴─────────┐
+          │  FIELD REPORTERS │   customers' AI assistants, mid-build,
+          │  (outside the    │   at the moment a data or instruction
+          │   system)        │   failure is actually hit
+          └──────────────────┘
 ```
 
 | Role | Lifetime | Responsibility |
 |---|---|---|
 | **Builder** | Ephemeral — one process per test | Executes the build guide faithfully. Reports friction at the moment it is encountered. |
-| **Judge** | Persistent, scheduled | Selects what to test, provisions the scenario, spawns the builder, evaluates the running system, emits the report. |
-| **Repairer** | Persistent, event-driven | Verifies each claim against source, repairs, updates documentation, closes the report, re-arms the system. |
+| **Judge** | Persistent, scheduled | Selects what to test, provisions the scenario, spawns the builder, evaluates the running system, emits the report. **Triages inbound tickets into goals — field failures outrank scheduled coverage.** |
+| **Repairer** | Persistent, event-driven | Verifies each claim against source, repairs, updates documentation, closes the report — which resolves every ticket clustered under the fixed fingerprint — and re-arms the system. |
+| **Field reporter** | Unbounded — any customer's AI assistant | Files a structured ticket the moment a data/pipeline failure is hit, with the failing step and verbatim error in hand. Writes into the queue; never reads across it, never triages, never repairs. |
 
 **No role evaluates its own output.** The builder does not grade, the judge does
 not repair, the repairer does not test. Each boundary is a place where
@@ -113,8 +121,9 @@ Only exercising the deployed artifact tells you what happens.
 
 ## 3. The control plane
 
-The three roles share exactly two pieces of state and never communicate
-directly. Everything crosses one HTTP boundary.
+The roles share a small set of state and never communicate directly.
+Everything crosses one HTTP boundary — including the ticket queue that field
+reporters write into (§7).
 
 ```
                  ┌─────────────────────────────┐
@@ -122,7 +131,8 @@ directly. Everything crosses one HTTP boundary.
                  │                             │
                  │   armed : boolean           │
                  │   reports[] : queue         │
-                 │                             │
+                 │   tickets[] : queue  ◄──────│── write-open to the field,
+                 │                             │   read-closed (§7)
                  └──────┬───────────────┬──────┘
                         │               │
           POST report   │               │  claim / complete
