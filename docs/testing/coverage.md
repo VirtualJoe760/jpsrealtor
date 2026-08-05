@@ -95,6 +95,44 @@ agent's MLS credentials ─► fetch + flatten ─► SEED the agent's own datab
 through a dogfood token; sessions 9–10 read the feed directly at runtime. Both
 bypass every column. See `evidence.md`.
 
+### Why it never passed — two blockers, both outside the test loop
+
+Audited 2026-08-05. Neither was findable by building another site, which is why
+ten sessions never surfaced them.
+
+**1. Production cannot provision a Neon database at all.**
+`POST /api/skill/tenant/provision` is deployed and correctly auth-gated (401
+unauthenticated, not 404), and the code is sound. But the two environment
+variables it needs to reach Neon are **absent from Vercel production**:
+
+| Var | Local | Production |
+|---|---|---|
+| `MONGODB_URI` | set | set |
+| `SECRETS_ENCRYPTION_KEY` | set | set |
+| `NEON_API_KEY` | set | **missing** |
+| `NEON_POOLED_CONN_URI` | set | **missing** |
+
+Tom calls `https://jpsrealtor.com`. Provisioning has therefore never been
+possible from where the loop actually runs, regardless of which token was used.
+
+**2. Dogfood tokens are refused by design — correctly.**
+
+```
+dataSource = tenantBinding ? "tenant" : user.isAdmin ? "dogfood" : "none"
+```
+
+and the provision route returns `403 owner_account` when `dataSource` is
+`"dogfood"`, because an owner account serves the internal dataset and must not
+be rebound to a tenant DB. Joe's account is admin, so every session that used
+his token hit this by design.
+
+A **non-admin** account resolves to `"none"`, which the route permits. So
+`scripts/test-accounts.ts promote` on a `+crtest` address produces exactly the
+account shape provisioning requires.
+
+Both must be cleared before a session can pass matrix 1. Until then, gate 8
+fails every dispatch — correctly, and with no new information.
+
 ---
 
 ## Matrix 2 — data shape handling

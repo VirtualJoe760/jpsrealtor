@@ -103,11 +103,25 @@ The judge token (`CHATREALTY_JUDGE_TOKEN`) is for the testing API only (poll,
 submit report, disarm). If you see it used for anything else in these files,
 that is a bug — it is blocked from provisioning tenant databases.
 
-**MEMORY.md:** This file is Tom's cross-session brain. When you mark a bug
-resolved, add `← RESOLVED in vX.Y.Z` to the bullet rather than deleting it —
-Tom uses the history to catch regressions. Add new recurring issues as bullets
-under "Recurring issues across sessions." Update "Combos used" if personas or
-markets change. Update "Standing rules" if brief requirements change.
+**MEMORY.md: prune it.** This file is Tom's working state, not an archive.
+There will be hundreds of sessions and he re-reads this before every one, so it
+must stay short enough to be read carefully rather than skimmed.
+
+The rule is **the lesson survives, the record does not.** When a finding is
+fixed and confirmed by a later session, *delete it*. If it taught something
+general, that lesson becomes a line in `AGENTS.md` or `SOUL.md` — a rule that
+changes behaviour — and the bullet still goes. A memory file that only grows
+is one Tom stops reading.
+
+This does not lose regression checking. The `resolutionNotes` for the last
+report arrive fresh from the API on every poll, and that — not Tom's own
+archive — is what he re-verifies against. The two regressions caught between
+sessions 8 and 9 were caught that way.
+
+What stays: standing rules, findings **not yet fixed**, a rolling window of the
+last few persona/market combinations so he doesn't repeat himself, and what he
+has learned about how he works. What goes: everything resolved, and the
+session-by-session table.
 
 **Language/UX findings in AGENTS.md:** The guide-vs-reality section of the
 report template has two categories: technical mismatches and language/UX issues.

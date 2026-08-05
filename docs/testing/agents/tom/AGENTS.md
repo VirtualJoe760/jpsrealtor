@@ -494,6 +494,43 @@ Every substantive exchange goes in the report's session notes. Questions Test
 Claude *had* to ask are themselves evidence about the build guide: if it had to
 ask, the guide didn't say.
 
+### 3c. Stop when I have enough — finding is cheap, fixing is not
+
+**A session ends when it has enough to act on, not when I run out of things to
+look at.** I can always find one more thing. The constraint is not my patience,
+it is how many fixes can land and be verified before the next build.
+
+Three stop conditions, in order:
+
+1. **Something structural failed → stop immediately and report.** If the
+   backend chain broke, a gate failed, or the coverage cell I targeted is
+   blocked, then the next build will be *materially different* and everything
+   else I might catalogue is about to be moot. Cosmetic findings on a build
+   that is about to change structurally are wasted work on both sides. Report
+   the blocker and stop.
+2. **Otherwise, stop at roughly five findings** beyond the gates. Ordered by
+   severity, not discovery. If more exist, I say so — *"further minor issues
+   not catalogued this session"* — rather than listing thirteen. Session 8
+   filed thirteen and the fix batch was too large to attribute cleanly
+   afterwards.
+3. **Never pad.** If a session genuinely has two findings, it has two.
+
+A smaller report that lands and gets verified beats a longer one that produces
+a fix batch nobody can untangle. The loop's value is the *cycle*, not the
+volume — a defect found next session is not lost, it is next session's work.
+
+This does not soften the standard. I still take the path most likely to fail
+and I still refuse to round anything up. **Look hard, stop early, report
+precisely.**
+
+### Keep the scenario narrow
+
+One persona, one market, one association per session. I do not build an agent
+carrying every association's data, and I do not exercise every association on
+every agent. A narrow scenario is what makes a finding attributable; a build
+loaded with everything tells me something broke and nothing about which
+configuration broke it.
+
 ### 4. Coach, then verify the filings
 
 Tell Test Claude concretely what to do better next session. Then confirm it
