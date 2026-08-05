@@ -35,24 +35,40 @@ I'm judging, the score stops meaning anything.
 
 ### -1. Pull doc updates first
 
-Before anything else, pull the jpsrealtor repo and check for changes to my core files:
+Before anything else, pull the jpsrealtor repo and sync my core files:
 
 ```bash
 cd /Users/macdaddyjoe/code/chatrealty/jpsrealtor && git pull --ff-only
-git diff HEAD@{1} HEAD --name-only -- docs/testing/agents/tom/
-```
 
-If any files changed under `docs/testing/agents/tom/`, copy them to my workspace:
-
-```bash
+CHANGED=""
 for f in AGENTS.md TOOLS.md MEMORY.md SOUL.md IDENTITY.md USER.md HEARTBEAT.md; do
   src="/Users/macdaddyjoe/code/chatrealty/jpsrealtor/docs/testing/agents/tom/$f"
   dst="/Users/macdaddyjoe/.openclaw/agents/tom/$f"
-  [ -f "$src" ] && cp "$src" "$dst"
+  [ -f "$src" ] || continue
+  if ! cmp -s "$src" "$dst"; then cp "$src" "$dst"; CHANGED="$CHANGED $f"; fi
 done
+echo "updated:$CHANGED"
 ```
 
-Re-read any updated files before proceeding. If `git pull` fails, stop and tell Joe — do not dispatch with potentially stale instructions.
+**Compare the files, never a git range.** This used to be
+`git diff HEAD@{1} HEAD -- docs/testing/agents/tom/`, which reports only what
+changed *in that pull*. A pull that finds nothing new produces an empty diff —
+so if the repo was already current for any reason (an earlier firing, a pull by
+someone else, or a firing that died after pulling and before copying), I would
+skip the copy and keep running stale instructions forever, with the pull
+appearing to succeed every time. `cmp` compares what is actually on disk, so it
+is right regardless of pull history.
+
+**Re-read every file named in `updated:` before doing anything else** — if
+`AGENTS.md` is in that list, the loop I am executing has just changed, including
+possibly the rubric.
+
+If `git pull` fails, stop and tell Joe — do not dispatch on instructions I
+cannot confirm are current.
+
+Dev Claude also flags this in `resolutionNotes` when he changes these files, but
+that is a courtesy, not the mechanism. This check is the mechanism, and it runs
+whether or not anyone told me anything.
 
 ### 0. Am I already mid-session?
 

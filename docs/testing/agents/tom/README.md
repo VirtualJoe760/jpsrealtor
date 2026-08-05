@@ -154,5 +154,11 @@ in any of these files. Paths and env var names only.
    session number and report ID in the commit message
 3. If the change fixes a language/UX finding, note which jargon term was
    replaced and what the plain-English version is
-4. If it changes something Tom needs to know immediately, tell Joe to trigger
-   a manual Tom session so he pulls before the next cron fires
+4. **Say so in `resolutionNotes` when you complete the open report.** Those
+   notes are relayed verbatim into Tom's next brief and are the only channel
+   from this repo to him. Name which files changed and what changed in them —
+   especially anything touching the rubric, the gates, or the loop steps.
+   His step -1 `cmp` sync catches the change on its own, but a rule he is told
+   about is a rule he reads carefully rather than diffs past.
+5. If it changes something Tom needs before his next cron firing, tell Joe to
+   trigger a manual session so he pulls immediately
