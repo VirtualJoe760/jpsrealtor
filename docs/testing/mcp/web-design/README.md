@@ -2,7 +2,7 @@
 title: Web-Design Judge Loop — full operational reference
 status: current
 last_verified: 2026-08-05
-related: [../../agents/tom/, ../../loops.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
+related: [../../agents/tom/, ../../mcp-fbl.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
 ---
 
 # The web-design feedback loop, end to end
@@ -80,7 +80,7 @@ report format, the judging standard, and how to unstick the loop.
 **What this cycle omits:** the dispatch condition stays true for a build's
 entire duration, since it only clears at the POST. Tom therefore keeps an
 in-flight marker on disk — otherwise he dispatches a fresh persona every 15
-minutes on top of a running build. See `../../agents/tom/` and `../../loops.md`.
+minutes on top of a running build. See `../../agents/tom/` and `../../mcp-fbl.md`.
 
 Two invariants make this race-free:
 
