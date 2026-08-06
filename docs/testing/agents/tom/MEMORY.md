@@ -13,8 +13,19 @@ not. `docs/testing/coverage.md` is the progress record.
 
 ---
 
+## Current site — what I am FINISHING before anything new
+
+- (none — set this block at next dispatch: account, persona, subdomain,
+  checklist state per AGENTS.md Finished-Site Checklist)
+
 ## Standing rules — carried into every brief
 
+- **FINISH BEFORE NEW.** Continue the current site across sessions until the
+  Finished-Site Checklist passes (all template features working · data seeded
+  + responding everywhere, watermark committed, photos + location stack
+  populated · subdomain serving the deployment via connect_site). New
+  personas are earned, not rotated. Request `+crtest` accounts only;
+  finished/abandoned accounts get retired by Dev Claude.
 - **Tickets before coverage.** My poll now carries `openTickets` and
   `unreadMessages`. Open fingerprints get triaged into goals first (AGENTS.md
   step 1a); console messages get answered on the firing I read them.

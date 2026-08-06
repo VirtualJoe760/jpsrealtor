@@ -239,6 +239,84 @@ ticket — is what the brief consumes. I never mark a fingerprint `resolved`
 myself: that is the repairer's move when the fix lands, and a later session
 confirms it (a fresh ticket reopens it automatically if the fix didn't hold).
 
+### The Finished-Site Checklist — FINISH BEFORE NEW
+
+Joe's rule: a session's site is not a disposable probe, it is a product being
+finished. Twenty sessions produced twenty part-built sites, twenty test
+accounts, and zero finished products. That stops here. The checklist below is
+derived from the template's actual route surface, the tenant schema, and the
+multi-tenant serving chain — not from vibes.
+
+**A site is FINISHED when every box in all three sections holds:**
+
+**1. Web features — every route the template ships, working**
+
+- `/` home: hero, sections, persona-correct copy; named markets link to
+  working neighborhood pages
+- `/listings` browse: market-scoped by default, filters actually filter,
+  map and grid agree, attribution on every card
+- `/listings/[key]` detail: photos render, attribution, back-link preserves
+  filters, fits 375px
+- CHAP — exactly ONE presentation reachable; specific search /
+  conversational / nonsense all answered gracefully; result cards carry
+  attribution and link on-site (`/search` 404s unless it IS the choice)
+- `/neighborhoods` index from the agent's service areas with LIVE counts;
+  `/neighborhoods/[slug]` resolves with stats + homes or an honest empty
+  state (the location stack: cities/subdivisions/location_index populated)
+- `/favorites` — signed-out prompts, signed-in persists (end_user +
+  saved_search working)
+- `/blog` + `/blog/[slug]`, `/about` (persona + specializations correct),
+  `/discover`, `/contact`
+- Lead capture: a test lead lands in `contact` and mirrors to the agent CRM
+- Account flow: request → verify → signed-in state works
+- APIs healthy: `/api/listings`, `/api/listings/by-keys`, `/api/chat`,
+  `/api/lead`, `/api/account/*`, `/api/sync/cron?status=1` (with
+  CRON_SECRET)
+- Console clean across the walk; every route usable at 375px
+
+**2. Data — normalized, seeded, responding through every feature**
+
+- Full seed COMPLETED: `sync_state.watermark` committed, not just rows
+- `property` count ≈ the feed's `$count` for the scoped RESO_NETWORKS
+- `media` populated: photo coverage on Active rows matches the feed, cards
+  and detail heroes show real photos
+- The location stack the sync builds (regions/counties/cities/subdivisions/
+  location_index) populated — neighborhood counts are live numbers
+- Step-3a Data completeness table clean, or every gap CLASSIFIED
+  (feed-absent / sync-dropped / renamed)
+- Numbers agree across every surface: browse total = map pins = neighborhood
+  aggregates = stats blocks
+- Attribution fields (`list_agent_name` / `list_office_name`) never null
+- The seed preflight's verdict was honored (no --force, no --max end-runs)
+
+**3. Multi-tenant link — the site IS a ChatRealty tenant**
+
+- `whoami` reports dataSource `tenant`
+- `connect_site` done and returned `subdomainRegistered: true`
+- `{subdomain}.chatrealty.io` actually serves the deployment — preview via
+  the signed link at minimum; LIVE only through the license gate
+- The subdomain's own `/api/*` answers from the built site (the proxy hands
+  it the whole surface)
+- Test-data mode OFF everywhere; no `crt_live_` in any browser-visible
+  request
+
+**The rule:** I CONTINUE the current site — same account, same persona, same
+scaffold — across as many sessions as it takes to reach FINISHED, before any
+new persona exists. "Vary every session" applies to what I test ON the
+current site, not to abandoning it. A new persona is earned by exactly two
+events: the current site reaching FINISHED, or Joe explicitly retiring it.
+My MEMORY.md carries a **Current site** block (account, persona, subdomain,
+checklist state) so every firing knows what it is finishing. The report's
+verdict states checklist progress as n/3 sections, with the unchecked boxes
+named.
+
+**Account hygiene.** No more throwaway emails — the promotion tooling
+refuses them by design; the Next-session-account block requests a `+crtest`
+address. Retirement is part of finishing: when a site reaches FINISHED (its
+purpose served) or Joe abandons it, my report says so and Dev Claude RETIRES
+the test account — deletes it and its artifacts. Twenty accumulated test
+users is a mess we made; the checklist is also how it gets cleaned up.
+
 ### 2. Write the brief
 
 **First: open tickets, then coverage.** If step 1a left a triaged fingerprint
