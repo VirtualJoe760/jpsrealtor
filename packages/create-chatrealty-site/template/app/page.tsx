@@ -3,7 +3,7 @@ import { searchListings, getMarketStats, getAgentProfile, getMarketCities } from
 import type { MarketStats } from "@/lib/types";
 import ListingCard from "@/components/ListingCard";
 import RecommendedRail from "@/components/RecommendedRail";
-import { money, num } from "@/lib/format";
+import { money, num, medianIsMeaningful } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +51,9 @@ export default async function Home() {
       statsCity = city;
     }
   }
-  // A median over a handful of listings is not a market statistic, it is one
-  // listing's price wearing a statistic's label. Below this, show the count —
-  // which is true at any size — and drop the medians rather than publish a
-  // number that misinforms. Same rule the neighborhood pages should follow.
-  const MIN_MEDIAN_SAMPLE = 5;
-  const medianIsMeaningful = Boolean(stats && stats.activeCount >= MIN_MEDIAN_SAMPLE);
+  // See MIN_MEDIAN_SAMPLE in lib/format.ts — the rule is shared with the
+  // neighborhood pages so the two can't disagree about the same city.
+  const showMedians = Boolean(stats && medianIsMeaningful(stats.activeCount));
   // Silence is the bug this whole section keeps producing: say why in the dev
   // log so the next builder doesn't go looking for a broken endpoint.
   if (!stats && process.env.NODE_ENV !== "production") {
@@ -123,14 +120,14 @@ export default async function Home() {
       {stats && stats.activeCount > 0 && (
         <section
           className={`mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-surface p-6 ${
-            medianIsMeaningful ? "sm:grid-cols-3" : ""
+            showMedians ? "sm:grid-cols-3" : ""
           }`}
         >
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{num(stats.activeCount)}</p>
             <p className="text-sm text-gray-500">Active listings{statsCity ? ` in ${statsCity}` : ""}</p>
           </div>
-          {medianIsMeaningful ? (
+          {showMedians ? (
             <>
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-900">
@@ -170,10 +167,18 @@ export default async function Home() {
             </div>
           )}
           <div className="text-center sm:text-left">
+            {/* The separator is a TEXT character, not the `ml-2` margin it used
+                to be. Margin is invisible to the accessibility tree, so this
+                heading's text content was the single run-on "Patricia
+                NavarroPalm Valley Homes" — which is what a screen reader
+                announced, and what any tool reading the page title got. */}
             <h2 className="text-lg font-bold text-gray-900">
               {agent.name || "Your local agent"}
               {agent.brokerageName ? (
-                <span className="ml-2 text-sm font-normal text-gray-500">{agent.brokerageName}</span>
+                <span className="text-sm font-normal text-gray-500">
+                  {" · "}
+                  {agent.brokerageName}
+                </span>
               ) : null}
             </h2>
             <p className="mt-2 line-clamp-3 text-sm text-gray-600">

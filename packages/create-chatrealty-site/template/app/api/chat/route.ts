@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { searchListings, getMarketStats, getListing, getMarketCities } from "@/lib/chatrealty";
+import { medianIsMeaningful } from "@/lib/format";
 
 const KEY = process.env.CHAT_API_KEY || "";
 const BASE = (process.env.CHAT_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/+$/, "");
@@ -97,6 +98,34 @@ const TOOLS = [
   },
 ];
 
+// "Show me homes in Palm Desert" must return HOMES, not an offer to help.
+//
+// The system prompt and the tool description both say to call search_listings
+// for a request to see properties, and the model still skipped it: a judged
+// session sent three plain "show me homes in Palm Desert" variants from a clean
+// widget and got a conversational "I'm here to help you find homes… what kind
+// of…" with zero cards, 0/3. Natural-language "must" is a suggestion to a
+// sampler; `tool_choice` is not. So when the newest message is unmistakably a
+// request to SEE properties, take the choice away and name the tool.
+//
+// Deliberately narrow. Only the first round is forced (once the search has run,
+// the model is free again), and anything that reads like a MARKET question is
+// excluded — forcing a listing search on "how's the market in Indio?" would
+// trade this bug for the one right next to it, where CHAP answers a market
+// question with a listing grid.
+const SEE_PROPERTIES =
+  /\b(show|find|see|browse|view|send|pull up|any)\b[^.?!]{0,40}\b(home|homes|house|houses|propert(y|ies)|listing|listings|condo|condos|place|places)\b|\b(home|homes|house|houses|propert(y|ies)|listing|listings|condo|condos)\b[^.?!]{0,20}\b(for sale|available|on the market)\b|\bwhat('s| is|s)? available\b|\b(looking|search(ing)?|shopping) for\b[^.?!]{0,40}\b(home|house|propert(y|ies)|condo|place)\b/i;
+// A market/stats question can contain the same nouns ("what are homes going for
+// in Indio?"), so these win over the pattern above.
+const MARKET_QUESTION =
+  /\b(market|median|average|inventory|trend(s|ing)?|appreciat|days on market|going for|worth|price per|statistic)\b/i;
+
+function wantsToSeeListings(text: string): boolean {
+  const t = (text || "").trim();
+  if (!t || t.length > 400) return false;
+  return SEE_PROPERTIES.test(t) && !MARKET_QUESTION.test(t);
+}
+
 async function runTool(name: string, args: any): Promise<unknown> {
   if (name === "search_listings") {
     const r = await searchListings({ ...args, limit: Math.min(10, args?.limit || 6) });
@@ -110,7 +139,22 @@ async function runTool(name: string, args: any): Promise<unknown> {
       })),
     };
   }
-  if (name === "get_market_stats") return getMarketStats(args || {});
+  if (name === "get_market_stats") {
+    const s = await getMarketStats(args || {});
+    // Same threshold the pages honor (lib/format.ts). Strip rather than
+    // annotate: a note saying "don't quote this" still puts the number in the
+    // model's context, and CHAP quoting a $5M median off three listings while
+    // the neighborhood page for that city declines to is the same
+    // contradiction, just harder to spot.
+    if (s && !medianIsMeaningful(s.activeCount)) {
+      const { medianListPrice, medianDaysOnMarket, averageListPrice, ...rest } = s as any;
+      return {
+        ...rest,
+        mediansSuppressed: `Only ${s.activeCount ?? 0} active listing(s) — too few for a meaningful median. Give the count and the price range; do not state or estimate a median or average.`,
+      };
+    }
+    return s;
+  }
   if (name === "get_listing") {
     const l = await getListing(String(args?.listingKey || ""));
     if (!l) return { error: "not_found" };
@@ -169,6 +213,11 @@ export async function POST(req: NextRequest) {
   // to answer in words. A visitor never sees an error for this.
   let toolFailures = 0;
   let toolsDisabled = false;
+  // See SEE_PROPERTIES above: on a plain "show me homes in X", don't let the
+  // model decide whether to search. Read from the newest USER message only —
+  // the assistant's own last reply must never re-trigger a search.
+  const lastUser = [...history].reverse().find((m: any) => m.role === "user");
+  const forceSearch = wantsToSeeListings(String(lastUser?.content || ""));
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // On the LAST round, forbid tool calls so the model has to answer in words
     // (tools stay declared — providers reject a history containing tool_calls
@@ -177,6 +226,15 @@ export async function POST(req: NextRequest) {
     // fallback — which a judged session saw for an ordinary off-topic question,
     // reading as if the visitor had broken something.
     const lastRound = round === MAX_ROUNDS - 1;
+    // Force only the FIRST round. After the search has run its results are in
+    // `messages`, and forcing again would make the model search on loop instead
+    // of writing the reply.
+    const toolChoice =
+      lastRound || toolsDisabled
+        ? "none"
+        : forceSearch && round === 0
+          ? { type: "function", function: { name: "search_listings" } }
+          : "auto";
     const res = await fetch(`${BASE}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
@@ -184,7 +242,7 @@ export async function POST(req: NextRequest) {
         model: MODEL,
         messages,
         tools: TOOLS,
-        tool_choice: lastRound || toolsDisabled ? "none" : "auto",
+        tool_choice: toolChoice,
         temperature: 0.4,
       }),
     });
@@ -201,6 +259,18 @@ export async function POST(req: NextRequest) {
         console.warn(
           `[chat] provider could not form a tool call (attempt ${toolFailures})` +
             `${toolsDisabled ? " — answering without tools" : " — retrying"}`
+        );
+        continue;
+      }
+      // Groq and OpenAI both accept the named-function form of `tool_choice`,
+      // but not every OpenAI-compatible host does, and a site pointed at one
+      // that doesn't would 400 every "show me homes" — the worst possible
+      // trade for a fix aimed at that exact question. Retry: the next round is
+      // never forced, so this falls back to "auto" on its own.
+      if (res.status === 400 && typeof toolChoice === "object") {
+        console.warn(
+          "[chat] provider rejected a forced tool_choice — retrying with tool_choice:auto. " +
+            "Set CHAT_BASE_URL to a provider that supports named tool_choice (Groq, OpenAI) for reliable listing cards."
         );
         continue;
       }

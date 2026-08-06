@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { searchListings, getMarketStats, getAgentProfile } from "@/lib/chatrealty";
-import { money } from "@/lib/format";
+import { money, medianIsMeaningful } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -119,9 +119,14 @@ export default async function NeighborhoodsIndexPage({
               className="rounded-xl border border-gray-200 bg-surface p-6 shadow-sm transition hover:shadow-md"
             >
               <h2 className="font-semibold text-gray-900">{name}</h2>
+              {/* Same median threshold as the homepage and the detail page —
+                  see MIN_MEDIAN_SAMPLE in lib/format.ts. A tile quoting a
+                  median off three listings contradicts the page it links to. */}
               <p className="mt-1 text-sm text-gray-500">
                 {count > 0
-                  ? `${count} active listing${count === 1 ? "" : "s"}${median ? ` · median ${money(median)}` : ""}`
+                  ? `${count} active listing${count === 1 ? "" : "s"}${
+                      median && medianIsMeaningful(count) ? ` · median ${money(median)}` : ""
+                    }`
                   : "No active listings right now"}
               </p>
               <p className="mt-3 text-sm font-medium text-brand">View market →</p>

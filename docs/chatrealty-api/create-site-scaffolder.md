@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-06
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.17.0 (2026-08-06)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.17.1 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,50 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.17.1 (2026-08-06) — CHAP was told it must search and didn't, and one city
+had two different medians one click apart.** Session-20 judge run (Patricia
+Navarro, Palm Valley Homes). Scored 68/100; CHAP was the failing dimension.
+
+*"Show me homes in Palm Desert" returned a paragraph, three times out of three.*
+Not the echo failure 0.17.0 fixed — that one called the tool and lost the cards.
+Here the model never called `search_listings` at all, so the fallback had nothing
+to fall back to. The system prompt says "Call it before you answer"; the tool
+description says "never answer such a request in words alone". Both are natural
+language, and a natural-language "must" is a suggestion to a sampler. The visitor
+got "I'm here to help you find homes… what kind of…" and zero cards, 0/3 from a
+clean widget. `tool_choice` is not a suggestion: when the newest user message is
+unmistakably a request to SEE properties, the route now names the tool
+(`tool_choice: {type:"function", function:{name:"search_listings"}}`) on the
+FIRST round only — after the search runs the model is free again, or it would
+loop searching instead of writing the reply. Deliberately narrow: a MARKET
+question carrying the same nouns ("what are homes going for in La Quinta?") is
+excluded, because forcing a listing search there would trade this bug for the one
+standing right next to it. Verified 4/4 cards on the judge's exact three queries
+plus a fourth, with market questions, small talk and off-topic all still
+behaving. A provider that rejects the named form of `tool_choice` falls back to
+`auto` rather than 400ing the visitor.
+
+*One city, two medians, one click apart.* The homepage suppressed medians below
+`MIN_MEDIAN_SAMPLE` (5) — "too few active listings here to quote a meaningful
+median" — and `/neighborhoods/rancho-mirage` then quoted a $5,000,000 median for
+the same three listings. The threshold lived as a local `const` inside
+`app/page.tsx`, so the only page that honored it was the one that declared it. It
+now lives in `lib/format.ts` (`MIN_MEDIAN_SAMPLE`, `medianIsMeaningful()`) and
+all four surfaces import it: the homepage strip, the neighborhoods index tiles,
+the neighborhood detail page, and CHAP's `get_market_stats` tool result — which
+strips the medians rather than annotating them, because a number left in context
+is a number the model can quote. The price RANGE stays everywhere: min–max over
+three homes is a true statement about those three homes, where a median implies a
+distribution. A threshold only one page honors is worse than no threshold — it
+makes the page that got it right look like it is hiding something.
+
+*A heading that screen readers ran together.* The homepage about-section `<h2>`
+separated the agent name from the brokerage with `ml-2`. Margin is invisible to
+the accessibility tree, so the heading's text content was the single run-on
+"Patricia NavarroPalm Valley Homes" — which is what a screen reader announced and
+what any tool reading the page got. The separator is now a text character
+(" · "), visible to everything that reads text rather than pixels.
 
 **v0.17.0 (2026-08-06) — the sync route stops answering strangers, a stuck
 database stops claiming progress, and CHAP stops finding homes it never

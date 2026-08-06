@@ -13,6 +13,8 @@
 // secret is printed. NEVER deletes — there is no purge subcommand by design
 // (build_plan §6.8, the April-6-2026 incident).
 
+import { createRequire } from "node:module";
+
 import { config as loadDotenv } from "dotenv";
 import { Command } from "commander";
 
@@ -28,6 +30,15 @@ import {
 // Load .env.local (preferred) then .env, without overriding real process env.
 loadDotenv({ path: ".env.local" });
 loadDotenv();
+
+// The single source of truth for the version string this CLI reports.
+const PKG_VERSION: string = (() => {
+  try {
+    return createRequire(import.meta.url)("../package.json").version || "unknown";
+  } catch {
+    return "unknown";
+  }
+})();
 
 // STORAGE EXHAUSTION — the failure that reads as "everything is broken".
 //
@@ -82,11 +93,14 @@ program
     "Sync your MLS RESO Web API feed into your ChatRealty database. " +
       "Full seed on first run, incremental thereafter. Never deletes.",
   )
-  // Keep in step with package.json — `--version` reporting 0.1.0 from a 0.5.x
-  // install makes every "which version are you on?" answer wrong. It drifted
-  // again (0.5.1 while package.json said 0.6.0), which is exactly how a session
-  // concludes it is running an old build and re-installs for nothing.
-  .version("0.6.2");
+  // READ from package.json, never retyped. A hand-maintained literal here has
+  // now drifted three times (0.1.0 on a 0.5.x install, 0.5.1 against a 0.6.0
+  // package, 0.6.2 against 0.6.4) and each drift costs the same: a session runs
+  // `--version` to check it has the fix, reads a lower number, concludes the
+  // install failed, and either re-installs for nothing or files a false bug.
+  // `../package.json` resolves the same from dist/cli.js and from src/cli.ts
+  // under tsx, so dev and published builds agree.
+  .version(PKG_VERSION);
 
 program
   .command("init")

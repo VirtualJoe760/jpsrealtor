@@ -92,4 +92,4 @@ rate tiers per `src/lib/skill-auth.ts` (identity 200/min, read 100/min, write
 | `@chatrealty/mcp-server` | published; agent + research tiers (hosted-bridge tier gap: ship-strategy D0) |
 | `@chatrealty/install-skill` | published (legacy skill installer) |
 | `@chatrealty/auth`, `@chatrealty/ui` | planned — ship-strategy phases B/C |
-| `@chatrealty/sync` | **published** v0.6.4 — tenant provisioning + seed + nightly refresh, photos included; `isStalled()` liveness from the checkpoint itself (see neon-setup.md) |
+| `@chatrealty/sync` | **published** v0.6.5 — tenant provisioning + seed + nightly refresh, photos included; `isStalled()` liveness from the checkpoint itself (see neon-setup.md). 0.6.5: `--version` is READ from package.json, never retyped — the hand-maintained literal had drifted three times and each drift made a session conclude its install had failed |
