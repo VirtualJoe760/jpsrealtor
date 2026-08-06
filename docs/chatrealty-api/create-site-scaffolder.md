@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-05
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.14.0 (2026-08-05)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.0 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,25 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.16.0 (2026-08-06) — the license number stops vanishing, and "caught up"
+stops lying.** Session-13 judge run (Diana Marsh, GPS MLS).
+
+*`AGENT_LICENSE` silently truncated at `#`.* `.env` treats `#` as a comment
+start, so the guide's own `AGENT_LICENSE=CA DRE #02241837` stored `CA DRE ` and
+the footer rendered "CA DRE" with no digits — no error, no warning. California's
+standard license format always contains `#`, so this was the normal case, and a
+missing license number is an IDX **compliance** failure, not a cosmetic one.
+`env.example` and the CLI's generated block now ship the value quoted, with the
+reason spelled out; the build guide tells the builder to read the rendered footer
+and confirm the digits are on the page.
+
+*`/api/sync/cron?status=1` reported "caught up" for three different states* —
+seed finished, seed never started, and seed died before committing a watermark.
+A session read `{"seeding":false,"progress":"caught up"}` off a database that had
+never completed a pass and concluded the data step was done. Only a committed
+watermark is "caught up" now; the other two say so, and the response carries a
+`started` boolean.
 
 **v0.14.0 (2026-08-05) — `?view=map` survives the URL, and the wrong token
 now says so out loud.** Session-12 judge run (Diana Marsh, GPS MLS) scored

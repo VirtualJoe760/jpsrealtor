@@ -171,6 +171,19 @@ organization || "Unnamed contact"` for the display name.
 - **`onMarketDate` is a lexical ISO string, not a Date** — `ListingFilter` carries
   it as a `StrRange` precisely because casting to a Date silently never matches
   the stored strings (the `.collection` bypass in the Mongo adapter).
+- **`propertyType` is read tolerantly, on purpose.** Both adapters filter with
+  `IN (propertyTypeStoredValues(code))`, never `= code`. A BYOD tenant's rows can
+  hold either the A/B/C/D bucket (written by `@chatrealty/sync` ≥0.4.0) or the raw
+  RESO label (`"Residential"`) from an older seed. `src/lib/property-type.ts` is
+  the canonical bucket→stored-values table; do not narrow it back to equality.
+- **An empty tenant search must say what it filtered on.** `/api/skill/listings/
+  search` returns `appliedPropertyType`, `appliedStatus`, and an `emptyReason`
+  when `items` is empty. This exists because `{"items":[],"total":0}` on its own
+  is indistinguishable from a broken API: two judged sessions filed it as a
+  critical API bug when the real cause was a tenant whose only Active row was a
+  Residential Lease, correctly excluded by the default `propertyType=A`. The
+  default browse shows homes **for sale** — leases (B), income (C) and land (D)
+  are reachable only by asking for them.
 - **No test runner is wired in the repo.** The test backfills typed
   `describe`/`it`/`expect` only when a real runner is absent, so it runs
   standalone via `npx tsx src/lib/db/__tests__/to-dto.test.ts` and unmodified

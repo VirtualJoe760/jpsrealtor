@@ -47,18 +47,21 @@ npx @chatrealty/sync init --token crt_live_…     # token: Settings → Integra
 # 2. Add your MLS feed credentials to .env.local (Spark bearer OR RESO OAuth — see below)
 
 # 3. Validate everything
-npx chatrealty-sync doctor
+npx @chatrealty/sync doctor
 
 # 4. Small local test fetch (no writes), then the full seed
-npx chatrealty-sync run --once --dry-run --max 25
-npx chatrealty-sync run
+npx @chatrealty/sync run --once --dry-run --max 25
+npx @chatrealty/sync run
 ```
 
 Recommended for production: a VPS running the daily cron (see below).
 
 ## Install & layout
 
-Published on npm — `npx @chatrealty/sync` / `npx chatrealty-sync` just work.
+Published on npm as **`@chatrealty/sync`** — always invoke it scoped:
+`npx @chatrealty/sync …`. There is no unscoped `chatrealty-sync` package, so
+`npx chatrealty-sync` is a registry 404; `chatrealty-sync` is only the bin name
+once the package is installed.
 For development inside the monorepo: `npm install` in this directory, `npm run
 build` compiles to `dist/`.
 
@@ -90,7 +93,7 @@ get them from your MLS or your feed vendor, not from ChatRealty.
 - The client-id/secret trio is the *other* way some MLSs authenticate. You need
   **either** the bearer token **or** the trio, never both.
 
-If you don't know which you have, run `npx chatrealty-sync doctor` — it says
+If you don't know which you have, run `npx @chatrealty/sync doctor` — it says
 which half is missing and what to do about it.
 
 Secrets come **from the environment only** — never a checked-in config file, never
@@ -107,7 +110,7 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 | `RESO_SCOPE` | — | OAuth2 scope, if your MLS requires one. |
 | `RESO_RESOURCE` | — | Resource name (default `Property`). |
 | `RESO_PAGE_SIZE` | — | OData page size (default `200`). |
-| `SYNC_STATE_PATH` | — | Watermark file path (default `./.sync-state`). |
+| `SYNC_STATE_PATH` | — | Watermark file path for **capped/dry runs only** (default `./.sync-state`). A real `run` checkpoints in your database, not here. |
 | `SYNC_OVERLAP_HOURS` | — | Incremental lookback (default `26`). |
 | `SYNC_BATCH_SIZE` | — | Upsert batch size (default `400`). |
 
@@ -127,15 +130,15 @@ RESO_CLIENT_SECRET=your-client-secret
 
 ```bash
 # Default: full seed on first run, incremental on every run after.
-npx chatrealty-sync run
+npx @chatrealty/sync run
 
 # Dry run — pull + map everything, write NOTHING (safe to inspect).
-npx chatrealty-sync run --dry-run
+npx @chatrealty/sync run --dry-run
 
 # Single bounded pass (SMOKE TEST ONLY — caps at 500 records): prove the
 # plumbing works, then throw it away and seed for real with `run`.
-npx chatrealty-sync run --once
-npx chatrealty-sync run --once --max 50
+npx @chatrealty/sync run --once
+npx @chatrealty/sync run --once --max 50
 ```
 
 **`--once` is not a seed.** It stops at 500 records, and which 500 you get is
@@ -143,7 +146,33 @@ arbitrary — very often mostly one city. A site built on that slice looks broke
 in a way that has nothing to do with the site: a judged session ran `--once`,
 saw `pulled=500`, called the data step done, and then could not work out why
 `/listings` showed the wrong market. Always follow it with a bare
-`npx chatrealty-sync run`.
+`npx @chatrealty/sync run`.
+
+A capped run also **never commits a checkpoint**, deliberately. The feed is
+walked `ModificationTimestamp asc`, so committing the timestamp of an arbitrary
+mid-feed record would tell the next run "everything up to here is synced" and
+skip the rest of your inventory permanently.
+
+### Interruptions and rate limits
+
+A bare `run` checkpoints into your database (`sync_state`) **after every page**,
+so it is safe to kill and resume — and it shares that checkpoint with the
+scaffolded site's hourly Vercel cron, so a local run and the cron hand off to
+each other.
+
+This is load-bearing, not a nicety. Before v0.5.0 the checkpoint lived only in
+`./.sync-state` and was written once, at the very end. Any interruption threw
+the whole run away, and because the file is per-directory, the next session — in
+a fresh project folder — restarted from the oldest record in the feed. One
+tenant synced across three sessions, accumulated thousands of rows, and still
+had zero for-sale inventory: every run re-walked 1998's closings and never
+reached the present.
+
+**MLS feeds rate-limit per API key, not per run**, so a fresh seed can get
+`429 Too Many Requests` on its first request because an earlier session spent
+the quota. The client retries automatically (honoring `Retry-After`). If it
+still gives up, your credentials are fine — wait (15–60 minutes is typical) and
+re-run. Nothing is lost.
 
 ### Reading the output
 
@@ -161,17 +190,27 @@ The CLI prints a summary and exits non-zero on failure. It never prints secrets.
 After a seed, **open `/listings` and confirm the homes shown are in the cities
 you serve.** The counts can all look right while the data is wrong for the site.
 
+**A row count is not an inventory count.** The only number that decides whether
+your site shows homes is **Active for-sale** listings, which is why `doctor`
+reports that specifically. The feed is walked oldest-first, so a partial seed is
+mostly Closed archival sales — comps, not inventory. One tenant had 500 rows,
+then 3,600, and a browse that stayed empty the whole time; at 500 rows its
+single Active listing was a rental lease, which a for-sale browse excludes by
+design. If the browse is empty, check `doctor`'s Active-for-sale line before
+suspecting the API.
+
 ### Daily cadence (cron)
 
 Run it once a day. The first run seeds; every run after is incremental off the
 persisted watermark. Example crontab (6 AM daily):
 
 ```cron
-0 6 * * *  cd /path/to/packages/chatrealty-sync && npx chatrealty-sync run >> sync.log 2>&1
+0 6 * * *  cd /path/to/packages/chatrealty-sync && npx @chatrealty/sync run >> sync.log 2>&1
 ```
 
-The watermark in `./.sync-state` is what makes the daily run incremental — keep it
-on persistent disk. Delete it to force a full re-seed.
+The watermark in your database's `sync_state` table is what makes the daily run
+incremental — it travels with the data, so it survives a machine change, a fresh
+checkout, or a switch between the local CLI and the site's Vercel cron.
 
 ---
 
@@ -182,9 +221,9 @@ on persistent disk. Delete it to force a full re-seed.
    customer at provisioning.
 2. Write `.env.local` from the customer's MLS RESO credentials (above). Secrets go
    in env only.
-3. `npx chatrealty-sync run --once --dry-run` to verify the feed parses and maps
+3. `npx @chatrealty/sync run --once --dry-run` to verify the feed parses and maps
    (no writes). Inspect the printed counts.
-4. `npx chatrealty-sync run` for the full seed.
+4. `npx @chatrealty/sync run` for the full seed.
 5. Add the daily cron line above.
 
 ## Testing

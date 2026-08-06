@@ -310,8 +310,14 @@ AUTH_SECRET=${authSecret}
 # service areas; set it to "off" to browse the whole feed.
 # Note: set_site_live checks the license on your ChatRealty PROFILE, so an
 # override here shows on the site but does not unblock going live.
+#
+# QUOTE ANY VALUE CONTAINING '#' — in a .env file '#' starts a comment, so
+# AGENT_LICENSE=CA DRE #02241837 parses as "CA DRE " and the license number is
+# SILENTLY DROPPED from the footer. The license number is required IDX display
+# content and CA's standard format always contains '#', so this is the normal
+# case. Write it quoted: AGENT_LICENSE="CA DRE #02241837"
 # AGENT_NAME=${agentName}
-# AGENT_LICENSE=
+# AGENT_LICENSE="CA DRE #01234567"
 # AGENT_BROKERAGE=${brokerage}
 # AGENT_SERVICE_AREAS=${market}
 # MARKET_CITIES=${market}

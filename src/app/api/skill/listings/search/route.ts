@@ -408,6 +408,18 @@ async function searchViaTenantAdapter(tenantId: string, sp: URLSearchParams) {
       sort: near ? undefined : [{ field: "onMarketDate", dir: "desc" }],
     });
 
+    // Report the filters that were actually applied — the legacy path above has
+    // always returned `appliedPropertyType`, the tenant path did not, and an
+    // empty result was therefore indistinguishable from a broken API. Two
+    // consecutive judged sessions filed `total:0` as a critical API bug; in both
+    // cases the tenant's only Active row was a Residential Lease and the default
+    // `propertyType=A` (residential FOR SALE) correctly excluded it. An empty
+    // result must say what it filtered on.
+    const applied = {
+      appliedPropertyType: filter.propertyType ?? "A",
+      appliedStatus: filter.status ?? "Active",
+    };
+
     return NextResponse.json(
       {
         items: page.items,
@@ -416,6 +428,18 @@ async function searchViaTenantAdapter(tenantId: string, sp: URLSearchParams) {
         limit: page.limit,
         hasMore: page.hasMore,
         ...(center ? { center, radiusMiles, sortedBy: "distance" } : {}),
+        ...applied,
+        ...(page.items.length === 0
+          ? {
+              emptyReason:
+                `No rows matched status=${applied.appliedStatus}, propertyType=${applied.appliedPropertyType}` +
+                (filter.city || filter.cities ? `, city=${filter.city ?? filter.cities?.join("|")}` : "") +
+                `. propertyType defaults to "A" (residential for sale); pass propertyType=all to ` +
+                `include leases (B), income (C) and land (D). If every permutation is empty, your ` +
+                `database has no Active for-sale inventory yet — check \`npx @chatrealty/sync doctor\`, ` +
+                `which reports the Active FOR-SALE count specifically.`,
+            }
+          : {}),
       },
       { headers: NO_STORE }
     );

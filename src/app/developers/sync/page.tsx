@@ -66,15 +66,18 @@ export default function SyncPage() {
       <DocsSection title="Install">
         <Prose>
           <p>
-            The package runs under <code>tsx</code> (no build step). Its deps are{" "}
-            <code>commander</code>, <code>zod</code>, <code>pg</code>, and{" "}
-            <code>dotenv</code>.
+            Published on npm as <code>@chatrealty/sync</code>. Always invoke it{" "}
+            <em>scoped</em> — <code>npx chatrealty-sync</code> is a registry 404, because
+            no unscoped package by that name exists; <code>chatrealty-sync</code> is only
+            the bin name once installed.
           </p>
         </Prose>
         <CodeBlock
           language="bash"
-          code={`cd packages/chatrealty-sync
-npm install`}
+          code={`# Nothing to install — npx fetches it. The package is SCOPED:
+# there is no unscoped "chatrealty-sync" on npm.
+npx @chatrealty/sync init --token crt_live_…   # provisions your DB, writes CHATREALTY_DB_URL
+npx @chatrealty/sync doctor                     # validates DB + feed credentials`}
         />
       </DocsSection>
 
@@ -88,15 +91,17 @@ npm install`}
         <FieldTable
           nameHeader="Variable"
           rows={[
-            { name: "TENANT_NEON_CONN_URI", type: "string", required: true, description: "Your tenant Neon pooled connection string." },
-            { name: "RESO_BASE_URL", type: "string", required: true, description: "RESO Web API OData base, e.g. https://api.bridgedataoutput.com/api/v2/OData." },
-            { name: "RESO_TOKEN_URL", type: "string", required: true, description: "OAuth2 token endpoint (client-credentials grant)." },
-            { name: "RESO_CLIENT_ID", type: "string", required: true, description: "Your MLS RESO client id." },
-            { name: "RESO_CLIENT_SECRET", type: "string", required: true, description: "Your MLS RESO client secret." },
+            { name: "CHATREALTY_DB_URL", type: "string", required: true, description: "Your tenant database URL (pooled). Written for you by `npx @chatrealty/sync init` — you should never have to paste it." },
+            { name: "RESO_BASE_URL", type: "string", required: true, description: "RESO Web API OData base, e.g. https://replication.sparkapi.com/Reso/OData (Spark) or your MLS's own base." },
+            { name: "RESO_BEARER_TOKEN", type: "string", required: false, description: "Static access token (a Spark access token goes here). Set this and skip the three OAuth vars below." },
+            { name: "RESO_TOKEN_URL", type: "string", required: false, description: "OAuth2 token endpoint (client-credentials grant). Required unless RESO_BEARER_TOKEN is set." },
+            { name: "RESO_CLIENT_ID", type: "string", required: false, description: "Your MLS RESO client id. Required unless RESO_BEARER_TOKEN is set." },
+            { name: "RESO_CLIENT_SECRET", type: "string", required: false, description: "Your MLS RESO client secret. Required unless RESO_BEARER_TOKEN is set." },
             { name: "RESO_SCOPE", type: "string", required: false, description: "OAuth2 scope, if your MLS requires one." },
             { name: "RESO_RESOURCE", type: "string", required: false, description: "Resource name (default Property)." },
             { name: "RESO_PAGE_SIZE", type: "number", required: false, description: "OData page size (default 200)." },
-            { name: "SYNC_STATE_PATH", type: "string", required: false, description: "Watermark file path (default ./.sync-state)." },
+            { name: "RESO_NETWORKS", type: "string", required: false, description: "Comma-separated associations to sync (see `sync networks`). Unset = every association the key can see." },
+            { name: "SYNC_STATE_PATH", type: "string", required: false, description: "Watermark file for capped/dry runs only (default ./.sync-state). A real run checkpoints in your database." },
             { name: "SYNC_OVERLAP_HOURS", type: "number", required: false, description: "Incremental lookback (default 26)." },
             { name: "SYNC_BATCH_SIZE", type: "number", required: false, description: "Upsert batch size (default 400)." },
           ]}
@@ -104,11 +109,18 @@ npm install`}
         <CodeBlock
           language="dotenv"
           title=".env.local (do not commit)"
-          code={`TENANT_NEON_CONN_URI=postgresql://USER:PASS@ep-xxxx-pooler.us-west-2.aws.neon.tech/neondb?sslmode=require
-RESO_BASE_URL=https://api.bridgedataoutput.com/api/v2/OData
-RESO_TOKEN_URL=https://api.bridgedataoutput.com/oauth2/token
-RESO_CLIENT_ID=your-client-id
-RESO_CLIENT_SECRET=your-client-secret`}
+          code={`# Written by \`npx @chatrealty/sync init --token crt_live_…\`
+CHATREALTY_DB_URL=postgresql://USER:PASS@ep-xxxx-pooler.us-west-2.aws.neon.tech/neondb?sslmode=require
+
+# Mode A — a static access token (Spark and similar):
+RESO_BASE_URL=https://replication.sparkapi.com/Reso/OData
+RESO_BEARER_TOKEN=your-access-token
+
+# Mode B — RESO Web API OAuth2 client-credentials:
+# RESO_BASE_URL=https://api.bridgedataoutput.com/api/v2/OData
+# RESO_TOKEN_URL=https://api.bridgedataoutput.com/oauth2/token
+# RESO_CLIENT_ID=your-client-id
+# RESO_CLIENT_SECRET=your-client-secret`}
         />
       </DocsSection>
 
@@ -119,13 +131,13 @@ RESO_CLIENT_SECRET=your-client-secret`}
         <CodeBlock
           language="bash"
           code={`# Full seed on first run, incremental thereafter.
-npx chatrealty-sync run
+npx @chatrealty/sync run
 
 # Dry run — pull + map everything, write NOTHING (safe to inspect).
-npx chatrealty-sync run --dry-run
+npx @chatrealty/sync run --dry-run
 
 # Single bounded pass (smoke test): cap records and exit.
-npx chatrealty-sync run --once --max 50`}
+npx @chatrealty/sync run --once --max 50`}
         />
         <Prose>
           <p>
@@ -138,14 +150,17 @@ npx chatrealty-sync run --once --max 50`}
       <DocsSection title="Daily cadence">
         <Prose>
           <p>
-            Run it once a day. The watermark in <code>./.sync-state</code> is what makes each
-            run incremental — keep it on persistent disk. Delete it to force a full re-seed.
+            Run it once a day. The watermark lives in your own database (the{" "}
+            <code>sync_state</code> table), written after every page, so a run is safe to
+            interrupt and resumes where it stopped — and a local run and the hosted cron
+            share the same checkpoint. Capped (<code>--once</code>/<code>--max</code>) and
+            dry runs deliberately leave it untouched.
           </p>
         </Prose>
         <CodeBlock
           language="cron"
           title="crontab — 6 AM daily"
-          code={`0 6 * * *  cd /path/to/packages/chatrealty-sync && npx chatrealty-sync run >> sync.log 2>&1`}
+          code={`0 6 * * *  cd /path/to/packages/chatrealty-sync && npx @chatrealty/sync run >> sync.log 2>&1`}
         />
       </DocsSection>
 
@@ -168,6 +183,18 @@ npx chatrealty-sync run --once --max 50`}
             <li>
               <strong><code>geom</code> is derived</strong> from longitude/latitude as a
               GeoJSON point. No coordinates → null geom.
+            </li>
+            <li>
+              <strong>Rate limits are per API key, not per run.</strong> A fresh seed can
+              get <code>429</code> on its first request because an earlier run spent the
+              quota. The client retries (honoring <code>Retry-After</code>); if it still
+              gives up, wait and re-run — the checkpoint means nothing is lost.
+            </li>
+            <li>
+              <strong>Row count is not inventory count.</strong> The feed is walked
+              oldest-first, so a partial seed is mostly Closed archival sales. What decides
+              whether a site shows homes is the <em>Active for-sale</em> count, which{" "}
+              <code>doctor</code> reports specifically.
             </li>
           </ul>
         </Prose>

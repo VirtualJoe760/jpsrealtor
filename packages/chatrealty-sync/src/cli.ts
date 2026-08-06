@@ -98,10 +98,10 @@ program
     console.log(`[init] wrote CHATREALTY_DB_URL to .env.local (${masked})`);
     console.log("[init] next steps:");
     console.log("  1. Add your MLS feed credentials to .env.local (see the RESO_ lines).");
-    console.log("  2. Validate everything:        npx chatrealty-sync doctor");
-    console.log("  3. Small local test fetch:     npx chatrealty-sync run --once --dry-run --max 25");
-    console.log("  4. Full seed:                  npx chatrealty-sync run");
-    console.log("  5. Daily sync (VPS, cron):     0 6 * * * cd /path/to/project && npx chatrealty-sync run >> sync.log 2>&1");
+    console.log("  2. Validate everything:        npx @chatrealty/sync doctor");
+    console.log("  3. Small local test fetch:     npx @chatrealty/sync run --once --dry-run --max 25");
+    console.log("  4. Full seed:                  npx @chatrealty/sync run");
+    console.log("  5. Daily sync (VPS, cron):     0 6 * * * cd /path/to/project && npx @chatrealty/sync run >> sync.log 2>&1");
   });
 
 program
@@ -162,7 +162,7 @@ program
     console.log("[doctor] 1. ChatRealty database");
     const conn = process.env.CHATREALTY_DB_URL || process.env.NEON_POOLED_CONN_URI || "";
     if (!conn) {
-      bad("CHATREALTY_DB_URL is not set — run `npx chatrealty-sync init --token crt_live_…` first.");
+      bad("CHATREALTY_DB_URL is not set — run `npx @chatrealty/sync init --token crt_live_…` first.");
     } else {
       try {
         const pgMod = await import("pg");
@@ -184,22 +184,56 @@ program
           // the site has anything to show: ACTIVE rows, and whether the seed
           // pass is still in flight.
           const c = await client.query(`SELECT count(*)::int AS n FROM property;`);
+          // Active BY TYPE, not a flat Active count. The site's default browse
+          // filters to bucket A (residential FOR SALE) — a lease or a land
+          // parcel is Active and still shows nothing. A judged session had
+          // exactly 1 Active row, it was a $12,500/mo Residential Lease, doctor
+          // said "1 Active listings — this is what your site can show", the
+          // browse was empty, and the session filed a critical API bug against
+          // a correctly-working API. Every number was true; the sentence was
+          // not. Count what the browse actually shows.
           const a = await client.query(
-            `SELECT count(*)::int AS n FROM property WHERE standard_status = 'Active';`,
+            `SELECT property_type, count(*)::int AS n FROM property
+              WHERE standard_status = 'Active' GROUP BY 1;`,
           );
           const s = await client
-            .query(`SELECT cursor, pass_mode, pass_upserted FROM sync_state WHERE id = 1;`)
+            .query(`SELECT cursor, pass_mode, pass_upserted, watermark FROM sync_state WHERE id = 1;`)
             .catch(() => ({ rows: [] as any[] }));
           await client.end();
 
           const total = c.rows[0]?.n ?? 0;
-          const active = a.rows[0]?.n ?? 0;
           const st = s.rows[0];
           const seedInFlight = Boolean(st?.cursor);
 
+          // Rows seeded before the bucket normalization still hold RESO labels
+          // ("Residential"), so normalize both spellings before counting.
+          const { normalizePropertyType } = await import("./map.js");
+          let activeForSale = 0;
+          let activeOther = 0;
+          const otherLabels: string[] = [];
+          for (const row of a.rows as { property_type: string | null; n: number }[]) {
+            if (normalizePropertyType(row.property_type) === "A") {
+              activeForSale += row.n;
+            } else {
+              activeOther += row.n;
+              otherLabels.push(`${row.n} ${row.property_type ?? "(untyped)"}`);
+            }
+          }
+
           okMark(`connected — property table present, ${total} rows`);
-          if (active > 0) {
-            okMark(`${active} Active listings — this is what your site can show`);
+          if (activeForSale > 0) {
+            okMark(
+              `${activeForSale} Active FOR-SALE listings — this is what your site's browse shows` +
+                (activeOther > 0 ? ` (plus ${otherLabels.join(", ")}, which the browse excludes)` : ""),
+            );
+          } else if (activeOther > 0) {
+            bad(
+              `0 Active FOR-SALE listings. You do have ${activeOther} Active row(s) —\n` +
+                `    ${otherLabels.join(", ")} — but a site's browse shows homes FOR SALE, so it\n` +
+                "    will be EMPTY. Leases, land and income property are filtered out by design\n" +
+                "    (they're reachable at ?propertyType=B / D / C). This is a SEEDING gap, not\n" +
+                "    an API failure: keep seeding until for-sale inventory arrives.",
+            );
           } else {
             bad(
               `0 Active listings (${total} rows, all non-Active). Your site will show an\n` +
@@ -212,8 +246,20 @@ program
               `the seed is INCOMPLETE — pass "${st?.pass_mode ?? "seed"}" is still in flight\n` +
                 `    (${st?.pass_upserted ?? 0} rows written so far, a saved cursor is waiting).\n` +
                 "    The feed is walked oldest-first, so an unfinished seed holds mostly old\n" +
-                "    archival records. Finish it: `npx chatrealty-sync run` (no --once, no --max),\n" +
+                "    archival records. Finish it: `npx @chatrealty/sync run` (no --once, no --max),\n" +
                 "    or let the deployed hourly Vercel cron finish it over a few ticks.",
+            );
+          } else if (total > 0 && !st?.watermark) {
+            // Rows present, no cursor, no watermark: a pass wrote data but none
+            // ever completed. Historically this was invisible — the tenant that
+            // triggered this check had 3,600 rows, no checkpoint at all, and
+            // doctor called it "all green" while the seed restarted from 1998
+            // on every run and never reached current inventory.
+            bad(
+              `${total} rows are here but NO checkpoint was ever committed — every run has been\n` +
+                "    restarting the seed from the oldest record in your feed, so it never reaches\n" +
+                "    today's listings. Re-run `npx @chatrealty/sync run` (0.5.0 or newer): it\n" +
+                "    checkpoints into your database after every page and resumes from there.",
             );
           }
         }
@@ -244,12 +290,26 @@ program
         if (got > 0) okMark("your MLS credentials work — we fetched one test listing from your feed");
         else bad("feed authenticated but returned no records.");
       } catch (err) {
-        bad(`feed check failed: ${(err as Error).message}`);
+        const e = err as Error;
+        if (e.name === "RateLimitedError" || /\b429\b/.test(e.message)) {
+          // 429 is not a broken setup and should never read like one. The limit
+          // is on the API KEY, so an earlier run — even one from a different
+          // session on the same credentials — can leave the next one throttled
+          // at its first request.
+          bad(
+            "your MLS is rate-limiting this API key (HTTP 429). Your credentials are FINE —\n" +
+              "    the key's request quota is spent, and quotas are per KEY, so an earlier run on\n" +
+              "    the same credentials can use it up. Wait and re-check (15-60 min is typical;\n" +
+              "    your MLS sets the window). Seeding resumes from its checkpoint — nothing lost.",
+          );
+        } else {
+          bad(`feed check failed: ${e.message}`);
+        }
       }
     }
 
     if (failures === 0) {
-      console.log("[doctor] all green — you're ready: npx chatrealty-sync run");
+      console.log("[doctor] all green — you're ready: npx @chatrealty/sync run");
     } else {
       // ✓/✗ with no next step is a dead end for the person running this, who is
       // an agent, not an ops engineer. Name which half failed and what to do.
@@ -257,7 +317,7 @@ program
       console.log("[doctor] What to do next:");
       console.log(
         "  • Check 1 (database) failed → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
-          "    Re-run `npx chatrealty-sync init --token crt_live_…` to provision the database\n" +
+          "    Re-run `npx @chatrealty/sync init --token crt_live_…` to provision the database\n" +
           "    and write the URL into .env.local.",
       );
       console.log(
@@ -291,6 +351,84 @@ program
     }
 
     const startedAt = Date.now();
+
+    // A REAL seed runs on the DATABASE checkpoint, not the local state file.
+    //
+    // `runSync` kept its watermark in ./.sync-state and wrote it only after the
+    // whole feed finished. Two things followed, and together they are why a
+    // tenant could sync for three sessions and still have zero for-sale
+    // inventory: (1) any interruption — a 429, a Ctrl-C — discarded the entire
+    // run's progress, and (2) the file is per-DIRECTORY, so the next session,
+    // in a fresh project folder, started from the beginning of time again. The
+    // feed is walked ModificationTimestamp ASC, so restarting always re-walked
+    // the oldest archival closings and never reached current listings.
+    //
+    // `runSyncSlice` already checkpoints into the tenant's own `sync_state`
+    // table after every page. Looping it here is what the build guide has been
+    // promising all along ("the checkpoint lives in my database, so local runs
+    // and the Vercel cron hand off to each other seamlessly") — now true.
+    //
+    // Capped/dry runs stay on the old path on purpose: they must not touch the
+    // shared checkpoint.
+    const useCheckpoint = !opts.dryRun && maxRecords === undefined;
+
+    if (useCheckpoint) {
+      console.log(
+        `[chatrealty-sync] starting — checkpoint in your database, resumable; ` +
+          `overlap=${cfg.overlapHours}h batch=${cfg.batchSize}`,
+      );
+      try {
+        const { runSyncSlice } = await import("./index.js");
+        let totalPulled = 0;
+        let totalUpserted = 0;
+        let slices = 0;
+        let last;
+        for (;;) {
+          // A generous per-slice budget: this is a local run with no function
+          // timeout, so slices exist here only as checkpoint boundaries.
+          last = await runSyncSlice(cfg, { budgetMs: 15 * 60_000 });
+          slices += 1;
+          totalPulled += last.pulledThisSlice;
+          totalUpserted += last.upsertedThisSlice;
+          if (last.done) break;
+          console.log(
+            `[chatrealty-sync]   … ${last.passPulled.toLocaleString()} pulled so far ` +
+              `(checkpoint saved, continuing)`,
+          );
+        }
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+        console.log(
+          `[chatrealty-sync] done in ${secs}s — mode=${last.mode} ` +
+            `pulled=${totalPulled} upserted=${totalUpserted} ` +
+            `watermark=${last.watermark ?? "none"}` +
+            (slices > 1 ? ` (${slices} checkpointed slices)` : ""),
+        );
+        if (last.resumed) {
+          console.log(
+            "[chatrealty-sync]   resumed an unfinished seed from its saved checkpoint — " +
+              "nothing was re-walked from the start.",
+          );
+        }
+        console.log(
+          "[chatrealty-sync] Now run `npx @chatrealty/sync doctor` — it reports whether you have " +
+            "ACTIVE FOR-SALE listings, which is the only thing that puts homes on your site.",
+        );
+      } catch (err) {
+        const e = err as Error;
+        console.error(`[chatrealty-sync] sync stopped: ${e.message}`);
+        if (e.name === "RateLimitedError") {
+          console.error(
+            "[chatrealty-sync] Your progress IS saved — the checkpoint advances after every page.\n" +
+              "[chatrealty-sync] Re-run `npx @chatrealty/sync run` later (try 15-60 min) and it\n" +
+              "[chatrealty-sync] resumes exactly where it stopped. The limit is per API KEY, so it\n" +
+              "[chatrealty-sync] can be spent by an earlier run on the same credentials.",
+          );
+        }
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     console.log(
       `[chatrealty-sync] starting ${opts.dryRun ? "(dry-run) " : ""}` +
         `state=${cfg.statePath} overlap=${cfg.overlapHours}h batch=${cfg.batchSize}` +
@@ -330,7 +468,9 @@ program
             ` your database now holds an arbitrary ${maxRecords}-record slice of your feed, which` +
             ` may be mostly one city.\n` +
             `[chatrealty-sync]   Your site will look wrong until you seed for real:` +
-            ` run \`npx chatrealty-sync run\` with no --once and no --max.`,
+            ` run \`npx @chatrealty/sync run\` with no --once and no --max.\n` +
+            `[chatrealty-sync]   (A capped run deliberately leaves the checkpoint untouched, so` +
+            ` the real seed still starts from where it should.)`,
         );
       } else if (!result.dryRun) {
         console.log(
@@ -339,7 +479,15 @@ program
         );
       }
     } catch (err) {
-      console.error(`[chatrealty-sync] sync failed: ${(err as Error).message}`);
+      const e = err as Error;
+      console.error(`[chatrealty-sync] sync failed: ${e.message}`);
+      if (e.name === "RateLimitedError") {
+        console.error(
+          "[chatrealty-sync] This is a QUOTA, not a broken setup. Rate limits are per API KEY,\n" +
+            "[chatrealty-sync] so a previous run on the same credentials can spend it. Wait\n" +
+            "[chatrealty-sync] (15-60 min is typical) and re-run.",
+        );
+      }
       process.exitCode = 1;
     }
   });

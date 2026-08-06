@@ -74,6 +74,37 @@ interface CachedToken {
 }
 
 /**
+ * The feed throttled us and kept throttling. Distinct from a generic fetch
+ * failure because the response is different: wait and resume, don't debug.
+ */
+export class RateLimitedError extends Error {
+  readonly status = 429;
+  constructor(message: string) {
+    super(message);
+    this.name = "RateLimitedError";
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** `Retry-After` is either delta-seconds or an HTTP-date. Cap at 60s. */
+function retryAfterMs(header: string | null | undefined): number | null {
+  if (!header) return null;
+  const secs = Number(header);
+  if (Number.isFinite(secs)) return Math.min(60_000, Math.max(0, secs * 1000));
+  const when = new Date(header).getTime();
+  if (Number.isNaN(when)) return null;
+  return Math.min(60_000, Math.max(0, when - Date.now()));
+}
+
+/** 2s, 4s, 8s, 16s, 32s — capped. */
+function backoffMs(attempt: number): number {
+  return Math.min(32_000, 2 ** attempt * 1000);
+}
+
+/**
  * A RESO Web API client. Construct once per feed; `pullProperties()` yields each
  * record across all pages so the caller can stream-map-upsert without buffering
  * the entire feed in memory.
@@ -218,19 +249,56 @@ export class ResoClient {
     return { field, networks, sampled };
   }
 
-  /** Fetch one OData page, returning its records + the next-page cursor. */
+  /**
+   * Fetch one OData page, returning its records + the next-page cursor.
+   *
+   * RETRIES 429 AND 5xx. MLS feeds rate-limit per API KEY, not per run, so the
+   * quota a previous session spent is still spent — a fresh seed can hit 429 on
+   * its very first page. Before this, that threw instantly and killed the whole
+   * run; three consecutive judged sessions reported "sync failed: RESO page
+   * fetch failed: 429" as a hard stop. `Retry-After` is honored when the feed
+   * sends it (Spark does), else exponential backoff. Exhausting the retries
+   * throws `RateLimitedError` so the caller can checkpoint and say something
+   * useful instead of a bare status line.
+   */
   async fetchPage(url: string): Promise<{ records: ResoRecord[]; nextLink: string | null }> {
-    const token = await this.getAccessToken();
-    const res = await this.doFetch(url, {
-      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-    });
-    if (!res.ok) {
-      throw new Error(`RESO page fetch failed: ${res.status} ${res.statusText}`);
+    let attempt = 0;
+    // 6 attempts ≈ up to ~2 minutes of backoff — long enough to ride out a
+    // short throttle, short enough that a real outage still fails the run.
+    const maxAttempts = 6;
+
+    for (;;) {
+      const token = await this.getAccessToken();
+      const res = await this.doFetch(url, {
+        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+      });
+
+      if (res.ok) {
+        const page = (await res.json()) as ODataPage;
+        const records = Array.isArray(page.value) ? page.value : [];
+        const nextLink = page["@odata.nextLink"] ?? null;
+        return { records, nextLink };
+      }
+
+      const retryable = res.status === 429 || res.status >= 500;
+      if (!retryable || ++attempt >= maxAttempts) {
+        if (res.status === 429) {
+          throw new RateLimitedError(
+            `your MLS feed is rate-limiting this API key (HTTP 429) and did not let up after ` +
+              `${attempt} retries. The limit is on the KEY, so it can carry over from an earlier ` +
+              `run. Nothing is lost — the checkpoint is saved; re-run later and it resumes.`,
+          );
+        }
+        throw new Error(`RESO page fetch failed: ${res.status} ${res.statusText}`);
+      }
+
+      const waitMs = retryAfterMs(res.headers?.get?.("retry-after")) ?? backoffMs(attempt);
+      console.warn(
+        `[chatrealty-sync] feed returned ${res.status}; retrying in ${Math.round(waitMs / 1000)}s ` +
+          `(attempt ${attempt}/${maxAttempts - 1})`,
+      );
+      await sleep(waitMs);
     }
-    const page = (await res.json()) as ODataPage;
-    const records = Array.isArray(page.value) ? page.value : [];
-    const nextLink = page["@odata.nextLink"] ?? null;
-    return { records, nextLink };
   }
 
   /**

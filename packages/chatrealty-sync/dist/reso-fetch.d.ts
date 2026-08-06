@@ -41,6 +41,14 @@ export interface ResoFetchConfig {
     readonly fetchImpl?: typeof fetch;
 }
 /**
+ * The feed throttled us and kept throttling. Distinct from a generic fetch
+ * failure because the response is different: wait and resume, don't debug.
+ */
+export declare class RateLimitedError extends Error {
+    readonly status = 429;
+    constructor(message: string);
+}
+/**
  * A RESO Web API client. Construct once per feed; `pullProperties()` yields each
  * record across all pages so the caller can stream-map-upsert without buffering
  * the entire feed in memory.
@@ -80,7 +88,18 @@ export declare class ResoClient {
         }[];
         sampled: number;
     }>;
-    /** Fetch one OData page, returning its records + the next-page cursor. */
+    /**
+     * Fetch one OData page, returning its records + the next-page cursor.
+     *
+     * RETRIES 429 AND 5xx. MLS feeds rate-limit per API KEY, not per run, so the
+     * quota a previous session spent is still spent — a fresh seed can hit 429 on
+     * its very first page. Before this, that threw instantly and killed the whole
+     * run; three consecutive judged sessions reported "sync failed: RESO page
+     * fetch failed: 429" as a hard stop. `Retry-After` is honored when the feed
+     * sends it (Spark does), else exponential backoff. Exhausting the retries
+     * throws `RateLimitedError` so the caller can checkpoint and say something
+     * useful instead of a bare status line.
+     */
     fetchPage(url: string): Promise<{
         records: ResoRecord[];
         nextLink: string | null;

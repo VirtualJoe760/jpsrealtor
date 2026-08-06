@@ -64,12 +64,21 @@ export async function GET(req: NextRequest) {
 
   if (req.nextUrl.searchParams.get("status")) {
     const state = await readSyncStatus(process.env.CHATREALTY_DB_URL as string);
+    // "caught up" was reported for THREE different states: seed finished, seed
+    // never started, and seed died before committing a watermark. A judged
+    // session read `{"seeding":false,"progress":"caught up"}` off a database
+    // that had never completed a single pass and concluded the data was in
+    // place. Only a committed watermark means caught up.
+    const progress = state.cursor
+      ? `${state.passPulled.toLocaleString()} listings so far — resuming next tick`
+      : state.watermark
+        ? "caught up"
+        : "not started — no sync pass has completed yet; the next cron tick begins the seed";
     return NextResponse.json(
       {
         seeding: Boolean(state.cursor),
-        progress: state.cursor
-          ? `${state.passPulled.toLocaleString()} listings so far — resuming next tick`
-          : "caught up",
+        started: Boolean(state.cursor || state.watermark),
+        progress,
         watermark: state.watermark,
         lastRunAt: state.lastRunAt,
       },

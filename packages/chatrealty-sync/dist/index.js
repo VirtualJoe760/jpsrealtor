@@ -133,7 +133,13 @@ export async function runSync(config) {
     const mapped = pulled - skippedKeyless;
     // Persist the advanced watermark only when we actually wrote (or dry-running we
     // never advance, so a real run later still backfills).
-    if (!config.dryRun) {
+    //
+    // A CAPPED run must NEVER commit a watermark. `--once`/`--max` stops at an
+    // arbitrary record in the middle of an ascending ModificationTimestamp walk;
+    // committing that record's timestamp tells the next run "everything up to here
+    // is synced", and every listing after the cap is skipped FOREVER. The cap is a
+    // smoke test — it must leave the checkpoint exactly as it found it.
+    if (!config.dryRun && config.maxRecords === undefined) {
         await saveState(config.statePath, {
             watermark: newWatermark,
             lastRunAt: new Date().toISOString(),
@@ -195,7 +201,7 @@ export function configFromEnv(env = process.env, overrides = {}) {
             pageSize: env.RESO_PAGE_SIZE ? Number(env.RESO_PAGE_SIZE) : 200,
             // Sync only these associations (comma-separated). Unset = everything.
             // One data key often reaches several associations on a shared network;
-            // `npx chatrealty-sync networks` lists them so you can pick.
+            // `npx @chatrealty/sync networks` lists them so you can pick.
             networks: env.RESO_NETWORKS
                 ? env.RESO_NETWORKS.split(",").map((n) => n.trim()).filter(Boolean)
                 : undefined,
