@@ -31,6 +31,18 @@ export { ResoClient } from "./reso-fetch.js";
 export { mapResoProperty } from "./map.js";
 export { upsertProperties, buildUpsertSql } from "./write.js";
 export { pgConnString, pgOptions } from "./pgconn.js";
+// Failure translation. Exported because the OTHER way a sync runs — the hourly
+// cron route in the scaffolded site — has to say the same words as this CLI.
+// When it lived in cli.ts the route returned raw Postgres text instead.
+export {
+  STORAGE_LIMIT_MB,
+  STORAGE_LIMIT_BYTES,
+  isStorageLimitError,
+  isRateLimitError,
+  explainSyncError,
+  storageLimitHelp,
+  type SyncErrorExplanation,
+} from "./errors.js";
 
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {

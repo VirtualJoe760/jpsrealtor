@@ -61,6 +61,41 @@ function getFlag(args: string[], name: string): string | undefined {
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
 }
 
+// Accept a token the way people actually hand one over.
+//
+// A judged session kept its token in a file as a dotenv line and ran
+// `--token $(cat token.txt)`. The whole line — `CHATREALTY_API_TOKEN=crt_live_…`
+// — became the value, .env.local got `CHATREALTY_API_TOKEN=CHATREALTY_API_TOKEN=
+// crt_live_…`, verification 401'd, and the CLI blamed the token ("tokens usually
+// start with 'crt_live_'") when the token was perfectly valid. Nobody can debug
+// a doubled key name they never typed. So: strip a `NAME=` prefix, an `export `,
+// surrounding quotes, and stray lines, from every source (flag, env, prompt).
+//
+// `marker` guards the one way this could bite: some API keys contain `=`, and a
+// blind prefix strip would eat half of one. The prefix is only removed when it
+// reads as an env-var name (ALL_CAPS) or the tail carries the expected marker.
+export function normalizeSecret(raw: string | undefined, marker?: string): string {
+  let t = (raw ?? "").trim();
+  if (!t) return "";
+  // Multi-line paste (a whole .env file, or a file with a trailing comment):
+  // keep the line that carries the secret, else the first non-empty one.
+  if (t.includes("\n")) {
+    const lines = t.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+    t = (marker && lines.find((l) => l.includes(marker))) || lines[0] || "";
+  }
+  const unquote = (s: string) => s.replace(/^(["'])([\s\S]*)\1$/, "$2").trim();
+  t = unquote(t).replace(/^export\s+/i, "").trim();
+  const kv = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\s\S]+)$/.exec(t);
+  if (kv) {
+    const [, name, value] = kv;
+    const looksLikeEnvName = /^[A-Z][A-Z0-9_]*$/.test(name);
+    if (looksLikeEnvName || (marker && value.includes(marker))) t = value.trim();
+  }
+  return unquote(t);
+}
+
+const normalizeToken = (raw: string | undefined) => normalizeSecret(raw, "crt_");
+
 async function verifyToken(
   token: string,
   apiBase: string
@@ -170,7 +205,11 @@ async function main(): Promise<void> {
 
       // 3. Token (flag/env, else prompt). Empty answer → offer TEST DATA mode
       //    instead of erroring, so "no token yet" is a preview path, not a wall.
-      token = getFlag(args, "--token") || process.env.CHATREALTY_API_TOKEN || (await ask("  Your ChatRealty API token (crt_live_…) [Enter for TEST DATA mode]: "));
+      token = normalizeToken(
+        getFlag(args, "--token") ||
+          process.env.CHATREALTY_API_TOKEN ||
+          (await ask("  Your ChatRealty API token (crt_live_…) [Enter for TEST DATA mode]: "))
+      );
       if (!token) {
         const yn = await ask(`  No token — scaffold with ${sampleListingCount()} fictitious SAMPLE listings instead? [Y/n]: `, "y");
         if (yn.toLowerCase().startsWith("y")) {
@@ -183,12 +222,13 @@ async function main(): Promise<void> {
     // feature, so offer it up front (works in test-data mode too). BYOK: any
     // OpenAI-compatible key; Groq (console.groq.com) has a generous free tier.
     // --no-chap skips the ask; non-interactive runs skip it automatically.
-    chapKey =
+    chapKey = normalizeSecret(
       getFlag(args, "--chat-key") ||
-      process.env.CHAT_API_KEY ||
-      (args.includes("--no-chap")
-        ? ""
-        : await ask("  Enable CHAP AI listing chat now? Paste a Groq/OpenAI-compatible API key (Enter to skip): "));
+        process.env.CHAT_API_KEY ||
+        (args.includes("--no-chap")
+          ? ""
+          : await ask("  Enable CHAP AI listing chat now? Paste a Groq/OpenAI-compatible API key (Enter to skip): "))
+    );
   } finally {
     rl?.close();
   }

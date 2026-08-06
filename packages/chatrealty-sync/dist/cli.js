@@ -16,6 +16,7 @@ import { config as loadDotenv } from "dotenv";
 import { Command } from "commander";
 import { configFromEnv, runSync } from "./index.js";
 import { ResoClient } from "./reso-fetch.js";
+import { STORAGE_LIMIT_MB, STORAGE_LIMIT_BYTES, isStorageLimitError, storageLimitHelp, } from "./errors.js";
 // Load .env.local (preferred) then .env, without overriding real process env.
 loadDotenv({ path: ".env.local" });
 loadDotenv();
@@ -32,39 +33,37 @@ loadDotenv();
 // printing "the problem is CHATREALTY_DB_URL, not your MLS" at a tenant whose
 // URL was perfect and whose 39 Active listings were serving correctly. The
 // person running this is a real-estate agent: "project size limit", "Neon" and
-// "could not extend file" are not words they can act on. Translate once, here,
-// and use the same words everywhere the condition can surface.
-const STORAGE_LIMIT_MB = 512;
-const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_MB * 1024 * 1024;
-/** Does this error message mean "the database has no room left"? */
-function isStorageLimitError(message) {
-    return /project size limit|could not extend file|no space left on device|disk (?:quota|full)/i.test(message);
-}
-const STORAGE_LIMIT_HELP = [
-    `YOUR DATABASE IS FULL. The database ChatRealty sets up for you holds about ${STORAGE_LIMIT_MB} MB —`,
-    "enough for a single-market feed, not enough for a large multi-association one.",
-    "",
-    "What this does NOT mean: nothing is misconfigured. Your MLS credentials are fine,",
-    "your database address is fine, and the listings already loaded KEEP SERVING — your",
-    "site still shows homes today. Do NOT re-run `init` expecting it to help: that",
-    "provisions a brand-new empty database and throws away what you have already loaded.",
-    "",
-    "What it does mean: no new listings can be written, so the first load cannot finish",
-    "and nightly updates will not land, until there is room.",
-    "",
-    "The fix is to LOAD LESS. One data key often reaches several MLS associations, so you",
-    "may be loading whole markets you don't serve — one market's inventory fits, five",
-    "markets' history does not. `npx @chatrealty/sync networks` lists them with each one's",
-    "share; put just yours in RESO_NETWORKS in .env.local, then start fresh",
-    "(`npx @chatrealty/sync init --token crt_live_…` — a NEW empty database) and load again.",
-    "",
-    "If it still doesn't fit after narrowing, stop rather than re-running into a full",
-    "database: a bigger database isn't something this tool can provision for you today.",
-].join("\n");
-/** Print a multi-line help block with the CLI's own prefix on every line. */
+// "could not extend file" are not words they can act on.
+//
+// The words now live in ./errors.ts, NOT here. They used to live in this file,
+// which meant the scaffolded site's cron route — the other way a sync runs —
+// returned the raw Postgres string while the CLI translated it, and a fix note
+// claimed both paths translated. One importable module, every caller renders it.
+/**
+ * Print a multi-line help block with the CLI's own prefix on every line.
+ * Paragraphs arrive unwrapped (the same text is rendered as JSON by the cron
+ * route, where hard line breaks would be noise), so wrap for the terminal here.
+ */
 function printHelp(help) {
-    for (const line of help.split("\n"))
-        console.error(`[chatrealty-sync] ${line}`);
+    const width = 84;
+    for (const para of help.split("\n")) {
+        if (!para) {
+            console.error("[chatrealty-sync] ");
+            continue;
+        }
+        let line = "";
+        for (const word of para.split(/\s+/)) {
+            if (line && line.length + 1 + word.length > width) {
+                console.error(`[chatrealty-sync] ${line}`);
+                line = word;
+            }
+            else {
+                line = line ? `${line} ${word}` : word;
+            }
+        }
+        if (line)
+            console.error(`[chatrealty-sync] ${line}`);
+    }
 }
 const program = new Command();
 program
@@ -75,7 +74,7 @@ program
     // install makes every "which version are you on?" answer wrong. It drifted
     // again (0.5.1 while package.json said 0.6.0), which is exactly how a session
     // concludes it is running an old build and re-installs for nothing.
-    .version("0.6.1");
+    .version("0.6.2");
 program
     .command("init")
     .description("Provision (or reconnect to) your ChatRealty database and write CHATREALTY_DB_URL into .env.local. Self-serve — no waiting on anyone.")
@@ -500,7 +499,7 @@ program
         // have provisioned an empty database and discarded a two-session load.
         if (failKinds.has("storage")) {
             console.log("  • Check 1 (database) failed because it is OUT OF ROOM — not because of your URL.");
-            printHelp(STORAGE_LIMIT_HELP);
+            printHelp(storageLimitHelp(process.env));
         }
         if (failKinds.has("connection")) {
             console.log("  • Check 1 (database) failed to CONNECT → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
@@ -629,7 +628,7 @@ program
             // because project size limit (512 MB) has been exceeded"). Left alone it
             // sent a session hunting a connection-string bug for a whole sitting.
             if (isStorageLimitError(e.message))
-                printHelp(STORAGE_LIMIT_HELP);
+                printHelp(storageLimitHelp(process.env));
             if (e.name === "RateLimitedError") {
                 console.error("[chatrealty-sync] Your progress IS saved — the checkpoint advances after every page.\n" +
                     "[chatrealty-sync] Re-run `npx @chatrealty/sync run` later (try 15-60 min) and it\n" +
@@ -685,7 +684,7 @@ program
         const e = err;
         console.error(`[chatrealty-sync] sync failed: ${e.message}`);
         if (isStorageLimitError(e.message))
-            printHelp(STORAGE_LIMIT_HELP);
+            printHelp(storageLimitHelp(process.env));
         if (e.name === "RateLimitedError") {
             console.error("[chatrealty-sync] This is a QUOTA, not a broken setup. Rate limits are per API KEY,\n" +
                 "[chatrealty-sync] so a previous run on the same credentials can spend it. Wait\n" +

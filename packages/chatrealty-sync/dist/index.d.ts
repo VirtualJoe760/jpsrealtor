@@ -3,6 +3,7 @@ export { ResoClient } from "./reso-fetch.js";
 export { mapResoProperty } from "./map.js";
 export { upsertProperties, buildUpsertSql } from "./write.js";
 export { pgConnString, pgOptions } from "./pgconn.js";
+export { STORAGE_LIMIT_MB, STORAGE_LIMIT_BYTES, isStorageLimitError, isRateLimitError, explainSyncError, storageLimitHelp, type SyncErrorExplanation, } from "./errors.js";
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {
     /** ChatRealty database URL (the customer's own DB, provided at provisioning). */

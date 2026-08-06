@@ -30,6 +30,13 @@
 //     with CRON_SECRET UNSET the route is open — set it before deploying.
 //   • {"seeding":…,"progress":…} → working. That is the whole confirmation.
 // Run the status call before and after the real one: `progress` should move.
+//
+// WHEN A SLICE FAILS, this route answers in the same words the CLI uses — the
+// translation is imported from @chatrealty/sync, not re-written here. It used
+// to return `e.message` verbatim, so a full database surfaced as
+// {"error":"could not extend file because project size limit (512 MB) has been
+// exceeded"} to an agent whose only other tool said "YOUR DATABASE IS FULL" in
+// plain English. Same condition, two vocabularies, one of them unusable.
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -60,7 +67,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: "sync not configured" }, { headers: NO_STORE });
   }
 
-  const { runSyncSlice, readSyncStatus, configFromEnv } = await import("@chatrealty/sync");
+  const { runSyncSlice, readSyncStatus, configFromEnv, explainSyncError } = await import(
+    "@chatrealty/sync"
+  );
 
   if (req.nextUrl.searchParams.get("status")) {
     const state = await readSyncStatus(process.env.CHATREALTY_DB_URL as string);
@@ -93,9 +102,23 @@ export async function GET(req: NextRequest) {
     const result = await runSyncSlice(cfg, { budgetMs: budget });
     return NextResponse.json(result, { headers: NO_STORE });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "sync failed" },
-      { status: 500, headers: NO_STORE }
-    );
+    const raw = e instanceof Error ? e.message : "sync failed";
+    const explained = explainSyncError?.(raw, process.env);
+    if (explained) {
+      // A full database is not a server fault and shouldn't read as one. 200 +
+      // an explicit `ok:false` keeps cron dashboards from paging on a condition
+      // the agent has to resolve, while still saying plainly that it stopped.
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: explained.code,
+          error: explained.error,
+          whatToDo: explained.whatToDo,
+          detail: explained.detail,
+        },
+        { status: explained.code === "database_full" ? 200 : 503, headers: NO_STORE }
+      );
+    }
+    return NextResponse.json({ ok: false, error: raw }, { status: 500, headers: NO_STORE });
   }
 }

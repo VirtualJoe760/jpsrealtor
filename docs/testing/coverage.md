@@ -107,6 +107,14 @@ the agent's own tenant database (`t-dianamarsh-msgn4g0r`), seeded by
   `6a73de5f…`), so every card renders the no-photo placeholder.
 - **Nightly refresh ✗** — the route exists and reports its state honestly, but it
   cannot be called verified until a committed watermark exists to resume from.
+  **Session 17 (2026-08-06) gave the cell evidence rather than passing it:** on
+  the same full tenant DB, `GET /api/sync/cron` returned the raw Postgres string
+  `could not extend file because project size limit (512 MB) has been exceeded`
+  while the CLI translated the identical failure into plain English. Fixed in
+  `@chatrealty/sync` 0.6.2 / `create-chatrealty-site` 0.16.4 — the translation
+  is now a package export both paths import. Re-running the route on this DB
+  still fails (it is still full); it should now fail in words an agent can act
+  on. The cell passes when a route call resumes from a committed watermark.
 
 Sessions 5–8 read platform inventory through a dogfood token; sessions 9–10 read
 the feed directly at runtime. Both bypass every column. See `evidence.md`.

@@ -131,20 +131,45 @@ could not extend file because project size limit (512 MB) has been exceeded
 watermark is ever committed, and the nightly refresh never gets configured. Every
 downstream symptom (no photos, incomplete inventory, "Gate 8 fail") is that one cause.
 
-Three things now surface it instead of leaving it to be discovered by a dying write
+Three things surface it instead of leaving it to be discovered by a dying write
 (`@chatrealty/sync` 0.6.1):
 
 - `doctor` queries `pg_database_size(current_database())` and reports headroom on every
   run — `!` warning from 70%, `✗` failure at 90%.
-- Both `run` paths detect the error text and print a plain-English explanation.
+- `run` detects the error text and prints a plain-English explanation.
 - `doctor`'s "What to do next" now distinguishes **connection** / **seeding** /
   **storage** failures. It previously answered *every* check-1 failure with "the problem
   is `CHATREALTY_DB_URL`" — which told a tenant whose URL was perfect to re-run `init`,
   i.e. to provision an empty database and discard a two-session seed.
 
-**Recovery is narrowing, not re-provisioning.** `RESO_NETWORKS` scopes the sync to the
-associations the agent actually serves; one market fits, five markets' history does not.
-Raising a tenant's limit is **not self-serve today** — that gap is real and unowned.
+### The second run path (0.6.2)
+
+0.6.1 shipped with the translation living inside `cli.ts`, and this doc claimed **both**
+run paths translated. They did not. The scaffolded site's hourly cron route
+(`/api/sync/cron`) is the other way a sync runs, it could not import anything out of
+`cli.ts`, and it returned `{"error":"could not extend file because project size limit
+(512 MB) has been exceeded"}` verbatim — the raw Postgres string, to the same agent the
+CLI was carefully speaking plain English to. Session 17 caught it.
+
+The words now live in `packages/chatrealty-sync/src/errors.ts` and are exported from the
+package (`explainSyncError`, `isStorageLimitError`, `storageLimitHelp`,
+`STORAGE_LIMIT_MB`). `cli.ts` renders them wrapped for a terminal; the cron route renders
+them as `{ok:false, reason:"database_full", error, whatToDo[], detail}` — `detail` keeps
+the raw text for logs. **Do not re-word a sync failure at a call site.** Two vocabularies
+for one condition is what this file previously documented as fixed.
+
+The template now depends on `@chatrealty/sync` `^0.6.2` (it was pinned at `^0.2.2`, so
+every scaffolded site's cron ran a build four minors old — no `$expand=Media`, no
+translation).
+
+**Recovery is a fresh database AND narrowing — both, in that order.** `RESO_NETWORKS`
+scopes what a load *pulls*; it cannot shrink a database that is already full, because the
+rows already written still occupy the space and the saved checkpoint still points into the
+un-narrowed walk. A session set `RESO_NETWORKS`, re-ran, got the identical error, and read
+that as the flag being ignored. So: `init` a new empty database first (that is what frees
+room), set `RESO_NETWORKS` before loading it, then `run`. One market fits; five markets'
+history does not. Raising a tenant's limit is **not self-serve today** — that gap is real
+and unowned.
 
 ## Common mistakes
 

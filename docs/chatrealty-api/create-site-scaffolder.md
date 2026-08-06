@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-06
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.3 (2026-08-06)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.4 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,52 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.16.4 (2026-08-06) — the cron route speaks the same language as the CLI, and
+`--token` stops doubling its own key name.** Session-17 judge run (Rafael
+Montoya, GPS MLS).
+
+*The cron route returned raw Postgres.* `GET /api/sync/cron` on a full tenant
+answered `{"error":"could not extend file because project size limit (512 MB)
+has been exceeded"}` — while `@chatrealty/sync` 0.6.1, run from the same
+`.env.local` against the same database, said "YOUR DATABASE IS FULL" and
+explained the recovery. The 0.6.1 fix note claimed both run paths translated;
+they did not, because the translation lived in `cli.ts` where the route could
+not import it. It now lives in `packages/chatrealty-sync/src/errors.ts` and is
+exported (`explainSyncError`), the route renders it as `{ok:false,
+reason:"database_full", error, whatToDo[], detail}`, and `detail` keeps the raw
+text so logs lose nothing. A full database now answers **200** with
+`ok:false` — it is not a server fault, and paging a cron dashboard on it sent
+the wrong signal.
+
+Two things that fell out of the same repro:
+
+- **`template/package.json` pinned `@chatrealty/sync` at `^0.2.2`.** Under
+  npm's 0.x semver that resolves inside 0.2.x, so every scaffolded site's hourly
+  cron ran a build four minors old — no `$expand=Media` (photos), no storage
+  translation — while the agent's own terminal ran 0.6.x. Now `^0.6.2`. If a
+  site still returns the raw Postgres string, that site needs
+  `npm i @chatrealty/sync@latest`.
+- **Guide step 5c sequenced the recovery backwards** (`@chatrealty/mcp-server`
+  0.24.3). It read as "narrow `RESO_NETWORKS`, then start fresh", so a session
+  narrowed, re-ran, hit the identical error, and concluded the flag was ignored.
+  It was applied — it just cannot shrink a database that is already full. 5c now
+  leads with the fresh `init`, says outright that narrowing alone changes
+  nothing and why, and resolves its own old contradiction (it previously said
+  "DO NOT re-run `init`" three sentences before telling you to). The CLI says
+  the same thing at the moment of failure, and adds a line acknowledging
+  `RESO_NETWORKS` when it is already set.
+
+*`--token` doubled its own key name.* A session kept its token in a file as a
+dotenv line and ran `--token $(cat token.txt)`. The whole line became the value:
+`.env.local` got `CHATREALTY_API_TOKEN=CHATREALTY_API_TOKEN=crt_live_…`,
+verification 401'd, and the CLI blamed the token ("tokens usually start with
+'crt_live_'") when the token was valid. `normalizeSecret()` now strips a `NAME=`
+prefix, an `export `, surrounding quotes, comment lines and stray lines from
+every source — flag, env var, and prompt — for both the API token and the CHAP
+key. It only strips the prefix when it reads as an env-var name (ALL_CAPS) or
+the tail carries the expected marker, so a key that legitimately contains `=`
+survives intact.
 
 **v0.16.3 (2026-08-06) — `?beds=5` stops being erased.** Session-16 judge run
 (Sandra Vega, GPS MLS).
