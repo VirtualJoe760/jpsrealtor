@@ -183,6 +183,8 @@ still hold, and do we tell the truth about what's missing?*
 | Non-Spark RESO feed | Flattens to the same standard | untested |
 | Non-RESO source, foreign keys | Flattens to the same standard | untested |
 | Attribution fields | `list_agent_name` / `list_office_name` always present — compliance, never null | untested end-to-end |
+| **Media resource synced** | Photos land in `media` and `primaryPhotoUrl` resolves — an empty media table served placeholders for 7+ sessions before the sync gap was treated as structural | ✗ failing — sync pulls Property only (bug filed 8/5, falsely marked fixed) |
+| **Value normalization** | The same association under two spellings maps to ONE — live example: our own feed carries both `i-Tech MLS` and `iTech MLS` | untested; known instance unhandled |
 
 **Accuracy is part of every row.** A field that maps is not a field that
 *matches*. Spot-check seeded values against the source: price, beds, baths,

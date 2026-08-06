@@ -516,6 +516,55 @@ In a browser, like a buyer — not by reading the code.
 
 Gates first. Then dimensions, each cited.
 
+### 3a. Data-normalization audit — REQUIRED on every seeded-DB session
+
+**Normalization is the job.** ChatRealty's value is taking any association's
+feed and landing it in the standard schema. My spot-checks used to verify that
+present values match the source — that catches corruption, and it is blind to
+ABSENCE. Photos were null on every tenant build for seven straight sessions;
+the audit that would have led with it did not exist. Subdivision coverage has
+been mentioned twice in seventeen reports. This step exists so absence is
+audited every session, not noticed eventually.
+
+On any session whose site serves from a seeded tenant DB, produce and report:
+
+1. **Row counts vs source.** Listings in the tenant DB vs the feed's count for
+   the scoped network(s). A gap is a finding.
+2. **Resource completeness.** Every RESO resource the product depends on has
+   rows: `property` AND `media` (photos), and any others the schema carries.
+   An empty table the product reads from is a CRITICAL finding regardless of
+   how the site looks.
+3. **Null-rate table** for the load-bearing fields, as a percentage:
+   `primaryPhotoUrl` · `subdivision` · `sqft` · `lotSize` · `yearBuilt` ·
+   lat/lng · `listAgentName` / `listOfficeName`. For each field with a high
+   null rate, answer WHICH of these it is — they are different findings:
+   - **absent from the source feed** → a coverage matrix-2 cell (the
+     association doesn't carry it; candidate for enrichment — external
+     sources like Google Places or county/assessor records can backfill some
+     fields, and that is a product decision to surface, never silent)
+   - **present in the feed, dropped by sync** → OUR defect, file it
+   - **present under a different key/spelling** → normalization mapping gap
+4. **Value-domain check.** The same concept under two spellings is a
+   normalization failure even when both rows are "correct" — the live example
+   is our own feed carrying both `i-Tech MLS` and `iTech MLS` as
+   OriginatingSystemName. Group key enum-ish fields and look for near-dupes.
+
+This table goes in the report's **Data completeness** section (format below).
+A seeded-DB session without it is incomplete.
+
+### Recurrence escalates — and "fixed" is a claim, not a fact
+
+- A finding I have observed in **two or more consecutive sessions** is marked
+  **RECURRING**, leads the report, and outranks new findings of equal
+  severity. Seven sessions re-observed missing photos as one more mid-list
+  line; that must not happen again.
+- A bug the tracker says is `fixed` gets the fingerprint treatment from me:
+  when a session touches that area, I verify against the RUNNING build, and a
+  reproduction of a "fixed" bug is my highest-priority class of finding
+  (quote the resolution that claimed it). The Media bug was marked fixed
+  while every card on the live build rendered a placeholder — a false
+  resolution survives exactly as long as nobody re-checks it.
+
 ### 3b. Answer Test Claude's questions while it builds
 
 Test Claude can reach me mid-build:
@@ -758,6 +807,14 @@ Score: <n>/100 — <band>
 - Repro: <steps the routine can follow without having been there>
 - Expected / Actual: <one line each>
 - Filed: report_bug id <id>   ← or "not filed: <reason>"
+
+## Data completeness            ← REQUIRED on seeded-DB sessions (step 3a)
+| Field | Null rate | Classification |
+|---|---|---|
+| primaryPhotoUrl | 100% | dropped by sync — media table empty (OUR defect) |
+| subdivision | n% | absent from feed / dropped / different key |
+rows vs source: <tenant count> / <feed count for scoped network>
+resources: property <rows>, media <rows>
 
 ## Guide-vs-reality mismatches
 <every place the build guide said something the product contradicted — even
