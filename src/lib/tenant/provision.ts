@@ -68,6 +68,42 @@ function migrationStatements(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * The lead-loop repair DDL (`end_user`, `saved_search`, and the `contact`
+ * columns the Drizzle placeholder is missing). Idempotent — see the header of
+ * the SQL file for why it exists.
+ */
+function leadLoopDdl(): string {
+  const file = path.join(
+    process.cwd(),
+    "src",
+    "lib",
+    "reso",
+    "migrations",
+    "0004_leadloop_repair.sql"
+  );
+  return fs.readFileSync(file, "utf8");
+}
+
+/**
+ * Bring a tenant database to the lead-loop schema. Idempotent, so it runs on
+ * every provision AND on every reconnect — that is what heals the tenants
+ * provisioned before 0004 existed, whose lead form returned 500 on every
+ * submission because `end_user` was never created (session 14, 2026-08-05).
+ *
+ * Multi-statement DDL goes over the DIRECT connection in one round-trip; the
+ * script is written so re-running changes nothing.
+ */
+export async function ensureLeadLoopSchema(directUri: string): Promise<void> {
+  const client = new Client({ connectionString: directUri });
+  await client.connect();
+  try {
+    await client.query(leadLoopDdl());
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
 async function prepareDataPlane(directUri: string): Promise<void> {
   const client = new Client({ connectionString: directUri });
   await client.connect();
@@ -77,14 +113,25 @@ async function prepareDataPlane(directUri: string): Promise<void> {
     for (const stmt of migrationStatements()) {
       await client.query(stmt);
     }
+    // The CRM/lead-loop tables the Drizzle migration never shipped. Without
+    // these, every lead the site captures 500s.
+    await client.query(leadLoopDdl());
+
+    // Verify BOTH halves: listings (`property`) and lead capture (`end_user`).
+    // Verifying only `property` is how a tenant went live with a lead form that
+    // could never succeed.
     const check = await client.query(
-      `SELECT EXISTS (
-         SELECT 1 FROM information_schema.tables
-         WHERE table_schema = 'public' AND table_name = 'property'
-       ) AS ok;`
+      `SELECT
+         EXISTS (SELECT 1 FROM information_schema.tables
+                  WHERE table_schema = 'public' AND table_name = 'property') AS has_property,
+         EXISTS (SELECT 1 FROM information_schema.tables
+                  WHERE table_schema = 'public' AND table_name = 'end_user') AS has_end_user;`
     );
-    if (!check.rows[0]?.ok) {
+    if (!check.rows[0]?.has_property) {
       throw new Error("data-plane verification failed: `property` table missing after migration");
+    }
+    if (!check.rows[0]?.has_end_user) {
+      throw new Error("data-plane verification failed: `end_user` table missing after migration");
     }
   } finally {
     await client.end().catch(() => {});
@@ -114,11 +161,24 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
         code: "tenant_conn_missing",
       });
     }
+    const directDbUrl = decryptSecret(existing.directConnStringEncrypted);
+
+    // Self-heal on reconnect. Tenants provisioned before migration 0004 have no
+    // `end_user` table, so every lead their site captured returned a 500. The
+    // repair is idempotent and takes one round-trip; making it best-effort means
+    // a DDL hiccup degrades `init` to exactly its old behaviour instead of
+    // failing a reconnect that has nothing to do with the CRM.
+    try {
+      await ensureLeadLoopSchema(directDbUrl);
+    } catch (err: any) {
+      console.error("[provision] lead-loop schema repair failed:", err?.message);
+    }
+
     return {
       created: false,
       tenantId: existing.tenantId,
       dbUrl: decryptSecret(existing.connStringEncrypted),
-      directDbUrl: decryptSecret(existing.directConnStringEncrypted),
+      directDbUrl,
     };
   }
 

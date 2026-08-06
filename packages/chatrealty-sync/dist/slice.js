@@ -18,6 +18,7 @@ import pg from "pg";
 import { ResoClient } from "./reso-fetch.js";
 import { mapResoProperty } from "./map.js";
 import { upsertProperties } from "./write.js";
+import { pgOptions } from "./pgconn.js";
 const ENSURE_SQL = `
 CREATE TABLE IF NOT EXISTS sync_state (
   id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -82,11 +83,7 @@ function maxIso(a, b) {
 export async function runSyncSlice(config, opts = {}) {
     const deadline = Date.now() + (opts.budgetMs ?? 700_000);
     const client = new ResoClient(config.reso);
-    const pool = new pg.Pool({
-        connectionString: config.connString,
-        ssl: { rejectUnauthorized: false },
-        max: 4,
-    });
+    const pool = new pg.Pool({ ...pgOptions(config.connString), max: 4 });
     try {
         const state = await readSliceState(pool);
         const resumed = Boolean(state.cursor);
@@ -176,7 +173,7 @@ export async function runSyncSlice(config, opts = {}) {
  * want to manage a pg pool (e.g. the template's /api/sync/cron?status=1).
  */
 export async function readSyncStatus(connString) {
-    const pool = new pg.Pool({ connectionString: connString, ssl: { rejectUnauthorized: false }, max: 1 });
+    const pool = new pg.Pool({ ...pgOptions(connString), max: 1 });
     try {
         return await readSliceState(pool);
     }

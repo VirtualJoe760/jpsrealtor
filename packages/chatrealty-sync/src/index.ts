@@ -25,10 +25,12 @@ import pg from "pg";
 import { ResoClient, type ResoFetchConfig, type ResoRecord } from "./reso-fetch.js";
 import { mapResoProperty, type PropertyRow } from "./map.js";
 import { upsertProperties, DEFAULT_BATCH_SIZE } from "./write.js";
+import { pgOptions } from "./pgconn.js";
 
 export { ResoClient } from "./reso-fetch.js";
 export { mapResoProperty } from "./map.js";
 export { upsertProperties, buildUpsertSql } from "./write.js";
+export { pgConnString, pgOptions } from "./pgconn.js";
 
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {
@@ -131,8 +133,7 @@ export async function runSync(config: SyncConfig): Promise<SyncRunResult> {
   const pool = config.dryRun
     ? null
     : new pg.Pool({
-        connectionString: config.connString,
-        ssl: { rejectUnauthorized: false },
+        ...pgOptions(config.connString),
         max: 4,
       });
 

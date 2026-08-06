@@ -2,6 +2,7 @@ import { type ResoFetchConfig } from "./reso-fetch.js";
 export { ResoClient } from "./reso-fetch.js";
 export { mapResoProperty } from "./map.js";
 export { upsertProperties, buildUpsertSql } from "./write.js";
+export { pgConnString, pgOptions } from "./pgconn.js";
 /** Resolved configuration for one sync run. */
 export interface SyncConfig {
     /** ChatRealty database URL (the customer's own DB, provided at provisioning). */

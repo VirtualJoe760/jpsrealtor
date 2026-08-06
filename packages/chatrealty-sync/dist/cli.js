@@ -24,7 +24,9 @@ program
     .name("chatrealty-sync")
     .description("Sync your MLS RESO Web API feed into your ChatRealty database. " +
     "Full seed on first run, incremental thereafter. Never deletes.")
-    .version("0.1.0");
+    // Keep in step with package.json — `--version` reporting 0.1.0 from a 0.5.x
+    // install makes every "which version are you on?" answer wrong.
+    .version("0.5.1");
 program
     .command("init")
     .description("Provision (or reconnect to) your ChatRealty database and write CHATREALTY_DB_URL into .env.local. Self-serve — no waiting on anyone.")
@@ -77,11 +79,23 @@ program
     console.log(`[init] ${body.created ? "database created" : "reconnected to your existing database"} — tenant ${body.tenantId}`);
     console.log(`[init] wrote CHATREALTY_DB_URL to .env.local (${masked})`);
     console.log("[init] next steps:");
-    console.log("  1. Add your MLS feed credentials to .env.local (see the RESO_ lines).");
-    console.log("  2. Validate everything:        npx @chatrealty/sync doctor");
-    console.log("  3. Small local test fetch:     npx @chatrealty/sync run --once --dry-run --max 25");
-    console.log("  4. Full seed:                  npx @chatrealty/sync run");
-    console.log("  5. Daily sync (VPS, cron):     0 6 * * * cd /path/to/project && npx @chatrealty/sync run >> sync.log 2>&1");
+    // "see the RESO_ lines" meant nothing to the licensed agent reading it —
+    // RESO is a standards body, not a word anyone outside MLS plumbing knows.
+    // Say what to open and what to paste.
+    console.log("  1. Open .env.local and fill in the lines starting with RESO_ — those are the\n" +
+        "     feed credentials your MLS issued you (the comment above each one says what\n" +
+        "     to paste). RESO is just the industry's name for the standard MLS feed.");
+    console.log("  2. Check it all works:         npx @chatrealty/sync doctor");
+    console.log("  3. Small test fetch:           npx @chatrealty/sync run --once --dry-run --max 25");
+    console.log("  4. Load your listings:         npx @chatrealty/sync run");
+    // Step 5 used to be a VPS crontab line. Following it verbatim meant building
+    // a server-side cron and never noticing the nightly refresh the site already
+    // ships — so the built-in one sat idle. Lead with the thing that needs no work.
+    console.log("  5. Daily updates: nothing to set up — your site ships with a built-in nightly\n" +
+        "     refresh (/api/sync/cron) that runs on its own once the site is deployed.\n" +
+        "     Running `npx @chatrealty/sync run` yourself any time is also fine; both\n" +
+        "     share the same checkpoint in your database. To run it from your own\n" +
+        "     server instead, see 'Running the sync yourself' in the README.");
 });
 program
     .command("networks")
@@ -132,6 +146,15 @@ program
         console.log(`  ✗ ${m}`);
         failures++;
     };
+    // A warning is something to fix that is NOT blocking the site from working.
+    // It must not move the exit code: a CI script or an agent running `echo $?`
+    // reads a 1 as "the setup is broken", and telling someone their working site
+    // is broken costs more than the warning saves.
+    let warnings = 0;
+    const warn = (m) => {
+        console.log(`  ! ${m}`);
+        warnings++;
+    };
     console.log("[doctor] 1. ChatRealty database");
     const conn = process.env.CHATREALTY_DB_URL || process.env.NEON_POOLED_CONN_URI || "";
     if (!conn) {
@@ -140,7 +163,8 @@ program
     else {
         try {
             const pgMod = await import("pg");
-            const client = new pgMod.default.Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
+            const { pgOptions } = await import("./pgconn.js");
+            const client = new pgMod.default.Client(pgOptions(conn));
             await client.connect();
             const t = await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='property') AS ok;`);
             if (!t.rows[0]?.ok) {
@@ -219,10 +243,27 @@ program
                     // triggered this check had 3,600 rows, no checkpoint at all, and
                     // doctor called it "all green" while the seed restarted from 1998
                     // on every run and never reached current inventory.
-                    bad(`${total} rows are here but NO checkpoint was ever committed — every run has been\n` +
+                    //
+                    // Severity depends on whether the site can show homes TODAY. With
+                    // for-sale inventory present this is a freshness problem: real, worth
+                    // fixing, not a broken setup — so it warns and leaves the exit code
+                    // alone. `--once` / `--max` runs land here by design (a capped run
+                    // deliberately never commits a checkpoint), and a session that read
+                    // exit 1 after a correct capped run reported the whole install as
+                    // failing. With NO for-sale inventory it stays a hard failure.
+                    const msg = `${total} rows are here but NO checkpoint was ever committed — every run has been\n` +
                         "    restarting the seed from the oldest record in your feed, so it never reaches\n" +
-                        "    today's listings. Re-run `npx @chatrealty/sync run` (0.5.0 or newer): it\n" +
-                        "    checkpoints into your database after every page and resumes from there.");
+                        "    today's listings. Re-run `npx @chatrealty/sync run` with no --once and no\n" +
+                        "    --max (0.5.1 or newer): it checkpoints into your database after every page\n" +
+                        "    and resumes from there. (A capped run never checkpoints, on purpose.)";
+                    if (activeForSale > 0) {
+                        warn(msg +
+                            "\n    Not blocking: your site HAS for-sale listings to show right now — this is\n" +
+                            "    about staying current, so this check does not fail.");
+                    }
+                    else {
+                        bad(msg);
+                    }
                 }
             }
         }
@@ -230,6 +271,8 @@ program
             bad(`connection failed: ${err.message}`);
         }
     }
+    // Which half failed decides what advice is worth printing below.
+    const dbFailures = failures;
     console.log("[doctor] 2. MLS feed credentials");
     const missing = ["RESO_BASE_URL", "RESO_TOKEN_URL", "RESO_CLIENT_ID", "RESO_CLIENT_SECRET"].filter((k) => !process.env[k]);
     const hasBearer = !!process.env.RESO_BEARER_TOKEN;
@@ -271,23 +314,40 @@ program
         }
     }
     if (failures === 0) {
-        console.log("[doctor] all green — you're ready: npx @chatrealty/sync run");
+        if (warnings > 0) {
+            console.log("[doctor] no blockers — you're ready: npx @chatrealty/sync run");
+            console.log(`[doctor] ${warnings} warning(s) above (marked !): worth fixing, but your site works today.`);
+        }
+        else {
+            console.log("[doctor] all green — you're ready: npx @chatrealty/sync run");
+        }
     }
     else {
         // ✓/✗ with no next step is a dead end for the person running this, who is
         // an agent, not an ops engineer. Name which half failed and what to do.
-        console.log(`[doctor] ${failures} check(s) failed. ✓ = working, ✗ = needs fixing.`);
+        //
+        // Only the half that ACTUALLY failed. Printing both bullets told a session
+        // whose database check passed cleanly that "Check 1 (database) failed",
+        // which is worse than printing nothing.
+        const feedFailures = failures - dbFailures;
+        console.log(`[doctor] ${failures} check(s) failed. ✓ = working, ✗ = needs fixing, ! = worth fixing but not blocking.`);
         console.log("[doctor] What to do next:");
-        console.log("  • Check 1 (database) failed → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
-            "    Re-run `npx @chatrealty/sync init --token crt_live_…` to provision the database\n" +
-            "    and write the URL into .env.local.");
-        console.log("  • Check 2 (MLS feed) failed → the problem is your MLS credentials, not the database.\n" +
-            "    'missing env' means the vars aren't set (or aren't loaded — check .env.local).\n" +
-            "    'feed check failed' means they ARE set but your MLS rejected them: confirm the\n" +
-            "    token hasn't expired and RESO_BASE_URL matches your MLS exactly.\n" +
-            "    'returned no records' means the credentials work but your feed is empty —\n" +
-            "    that is an MLS-side permissions question for your association.");
-        console.log("  • Both failed → work top-down: fix the database first, then re-run doctor.");
+        if (dbFailures > 0) {
+            console.log("  • Check 1 (database) failed → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
+                "    Re-run `npx @chatrealty/sync init --token crt_live_…` to provision the database\n" +
+                "    and write the URL into .env.local.");
+        }
+        if (feedFailures > 0) {
+            console.log("  • Check 2 (MLS feed) failed → the problem is your MLS credentials, not the database.\n" +
+                "    'missing env' means the vars aren't set (or aren't loaded — check .env.local).\n" +
+                "    'feed check failed' means they ARE set but your MLS rejected them: confirm the\n" +
+                "    token hasn't expired and RESO_BASE_URL matches your MLS exactly.\n" +
+                "    'returned no records' means the credentials work but your feed is empty —\n" +
+                "    that is an MLS-side permissions question for your association.");
+        }
+        if (dbFailures > 0 && feedFailures > 0) {
+            console.log("  • Both failed → work top-down: fix the database first, then re-run doctor.");
+        }
         process.exitCode = 1;
     }
 });
@@ -374,9 +434,14 @@ program
         }
         return;
     }
+    // Capped and dry runs take the legacy file-state path on purpose: they must
+    // not touch the checkpoint in the database. Printing `state=./.sync-state`
+    // here read as "the database checkpoint is broken, it's using a file" and was
+    // filed as a bug. Say which mode this is instead of naming an internal path.
     console.log(`[chatrealty-sync] starting ${opts.dryRun ? "(dry-run) " : ""}` +
-        `state=${cfg.statePath} overlap=${cfg.overlapHours}h batch=${cfg.batchSize}` +
-        (maxRecords ? ` max=${maxRecords}` : ""));
+        `${maxRecords ? `capped at ${maxRecords} records — smoke test, ` : ""}` +
+        `your database checkpoint is left untouched; ` +
+        `overlap=${cfg.overlapHours}h batch=${cfg.batchSize}`);
     try {
         const result = await runSync(cfg);
         const secs = ((Date.now() - startedAt) / 1000).toFixed(1);

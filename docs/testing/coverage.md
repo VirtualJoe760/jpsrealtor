@@ -1,7 +1,7 @@
 ---
 title: Coverage — what Tom is working toward, and when he is done
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-08-06
 related: [README.md, evidence.md, agents/tom/AGENTS.md, agents/tom/USER.md]
 ---
 
@@ -88,12 +88,28 @@ agent's MLS credentials ─► fetch + flatten ─► SEED the agent's own datab
 
 | Association | Feed | Provision | Seed | Serve | Nightly refresh |
 |---|---|---|---|---|---|
-| GPS MLS (Greater Palm Springs) | Spark RESO | ✔ verified by hand 2026-08-05 — awaiting session confirmation | ✗ untested | ✗ untested | ✗ untested |
+| GPS MLS (Greater Palm Springs) | Spark RESO | ✔ session 14, 2026-08-05 | ◐ partial — 5,600 rows / 39 Active FOR-SALE in the tenant DB, but no committed checkpoint yet | ✔ session 14, 2026-08-05 | ✗ untested |
 | *(next association)* | — | — | — | — | — |
 
-**Nothing in this table has ever passed.** Sessions 5–8 read platform inventory
-through a dogfood token; sessions 9–10 read the feed directly at runtime. Both
-bypass every column. See `evidence.md`.
+**First cells filled: session 14 (2026-08-05).** The site served listings from
+the agent's own tenant database (`t-dianamarsh-msgn4g0r`), seeded by
+`@chatrealty/sync` from the agent's own MLS credentials — gate 8's first pass.
+
+- **Provision ✔** — `npx @chatrealty/sync init` created the tenant DB and bound
+  the token; re-init reconnected idempotently.
+- **Seed ◐** — inventory is real and the site shows it, but no full uncapped run
+  has completed, so `sync_state.watermark` is still null. Until one does, every
+  fresh pass restarts from the oldest record in the feed. Capped runs
+  (`--once` / `--max`) never checkpoint by design, so they cannot close this.
+- **Serve ✔** — browse, filters, detail pages and neighborhood counts all read
+  the tenant DB and agree with it. One gap: `primaryPhotoUrl` is null on all 39
+  (`media` has 0 rows — the sync pulls the Property resource only; open bug
+  `6a73de5f…`), so every card renders the no-photo placeholder.
+- **Nightly refresh ✗** — the route exists and reports its state honestly, but it
+  cannot be called verified until a committed watermark exists to resume from.
+
+Sessions 5–8 read platform inventory through a dogfood token; sessions 9–10 read
+the feed directly at runtime. Both bypass every column. See `evidence.md`.
 
 ### Why it never passed — two blockers, both outside the test loop
 

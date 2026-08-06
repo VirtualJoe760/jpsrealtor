@@ -23,9 +23,11 @@ import pg from "pg";
 import { ResoClient } from "./reso-fetch.js";
 import { mapResoProperty } from "./map.js";
 import { upsertProperties, DEFAULT_BATCH_SIZE } from "./write.js";
+import { pgOptions } from "./pgconn.js";
 export { ResoClient } from "./reso-fetch.js";
 export { mapResoProperty } from "./map.js";
 export { upsertProperties, buildUpsertSql } from "./write.js";
+export { pgConnString, pgOptions } from "./pgconn.js";
 const EMPTY_STATE = {
     watermark: null,
     lastRunAt: null,
@@ -90,8 +92,7 @@ export async function runSync(config) {
     const pool = config.dryRun
         ? null
         : new pg.Pool({
-            connectionString: config.connString,
-            ssl: { rejectUnauthorized: false },
+            ...pgOptions(config.connString),
             max: 4,
         });
     let pulled = 0;

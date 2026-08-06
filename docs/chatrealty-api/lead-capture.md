@@ -1,7 +1,7 @@
 ---
 title: Lead Capture — Signup → auto-Contact (per-tenant CRM)
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-08-06
 related: [./build_plan.md, ./db-adapter.md, ./connection-resolver.md]
 ---
 
@@ -66,6 +66,40 @@ lowercased) — so the same `toContactDTO` collapses the row identically to a Mo
 `Contact`. Tags always include the canonical `"Website Signup"`; the caller may
 add more (e.g. the origin domain). `linked_user_id` is set when an `endUserId`
 is supplied.
+
+## The schema has to actually be there (2026-08-06)
+
+Every lead a self-serve tenant site captured returned **500** from
+`POST /api/skill/contacts/from-signup`. Nothing in this document was wrong and no
+module here had a bug — the tenant's database had no `end_user` table to write to,
+so `registerEndUser()` threw `relation "end_user" does not exist`.
+
+Two provisioning paths had drifted apart, and the one that mattered applied
+neither `0001_init.sql` nor `0002_crm_leadloop.sql`:
+
+| Path | Applies | Used by |
+|---|---|---|
+| `src/lib/tenant/provision-service.ts` | `0001_init.sql` | internal/orchestrated provisioning |
+| `src/lib/tenant/provision.ts` | Drizzle `0000_supreme_maginty.sql` | **the self-serve path every real tenant takes** (`npx @chatrealty/sync init` → `POST /api/skill/tenant/provision`) |
+
+`applyMigration0002()` existed, was correct, and had **zero callers** — its own
+docstring claimed the provisioning runner drove it. Nothing did.
+
+Consequences on a provisioned tenant: no `end_user` (the 500), no `saved_search`,
+and a `contact` table in the **Drizzle placeholder shape** from
+`schema/contacts.ts` (`id text` with no default, no `linked_user_id`, no
+`labels`, no `updated_at`) rather than the lead-loop shape from `schema/crm.ts`
+that `upsertContactFromSignup` inserts into — so even the contact write would
+have failed, silently, because the mirror is non-blocking by design.
+
+**Fixed** by `0004_leadloop_repair.sql`: idempotent DDL that creates
+`end_user` / `saved_search` and ALTERs an existing `contact` into shape without
+dropping or retyping anything. `prepareDataPlane()` applies it on create, the
+idempotent reconnect branch applies it again on every `init`, and provisioning
+now verifies **`end_user` as well as `property`** before declaring a data plane
+ready — verifying only the listings half is how a tenant went live with a lead
+form that could never succeed. Tenants provisioned before it exists are healed by
+`node scripts/repair-tenant-leadloop.mjs --all`.
 
 ## Gotchas
 

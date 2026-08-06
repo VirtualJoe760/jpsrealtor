@@ -1,6 +1,6 @@
 ---
 title: create-chatrealty-site (frontend scaffolder)
-last_verified: 2026-08-05
+last_verified: 2026-08-06
 owner: platform
 status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.0 (2026-08-06)
 ---
@@ -32,6 +32,31 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.16.1 (2026-08-06) — CHAP stops answering with a blank bubble, and stops
+saying "LISTINGS:" out loud.** Session-14 judge run (Valentina Cruz, GPS MLS).
+
+The chat route asks the model to end a reply with a `LISTINGS: KEY1,KEY2` line,
+strips that line, and renders the keys as cards. One regex carried both bugs:
+
+*Empty reply whenever listings came back.* The old pattern required one or more
+key characters after the colon and anchored to the end of the reply; it happily
+matched a reply that was ONLY the LISTINGS line, so stripping it left `""`. The
+widget rendered four property cards under a blank message — photos with no
+sentence saying what they are. Filed in session 13, recurred unfixed in 14.
+
+*The literal token leaking into user-facing copy.* With no listings to show, the
+model ends on a bare `LISTINGS:` — which the `+` quantifier refused to match, so
+the token survived as the last word the visitor read: "There are no homes under
+$500k in La Quinta with 3 bedrooms. LISTINGS:".
+
+Fixed in `app/api/chat/route.ts`: the key list is now `*` (a bare `LISTINGS:` is
+matched and stripped), and an empty reply is replaced with a truthful sentence
+built from the cards rather than shipped blank. The system prompt also says the
+line is stripped before the visitor sees it, so prose is required and the line is
+omitted when there is nothing to list — but the prompt is the belt, not the
+braces: a prompt is a request, not a guarantee, so the route no longer depends
+on the model complying.
 
 **v0.16.0 (2026-08-06) — the license number stops vanishing, and "caught up"
 stops lying.** Session-13 judge run (Diana Marsh, GPS MLS).

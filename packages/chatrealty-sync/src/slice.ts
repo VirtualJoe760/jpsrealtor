@@ -19,6 +19,7 @@ import pg from "pg";
 import { ResoClient, type ResoRecord } from "./reso-fetch.js";
 import { mapResoProperty, type PropertyRow } from "./map.js";
 import { upsertProperties } from "./write.js";
+import { pgOptions } from "./pgconn.js";
 import type { SyncConfig } from "./index.js";
 
 export interface SliceState {
@@ -112,11 +113,7 @@ export async function runSyncSlice(
 ): Promise<SliceResult> {
   const deadline = Date.now() + (opts.budgetMs ?? 700_000);
   const client = new ResoClient(config.reso);
-  const pool = new pg.Pool({
-    connectionString: config.connString,
-    ssl: { rejectUnauthorized: false },
-    max: 4,
-  });
+  const pool = new pg.Pool({ ...pgOptions(config.connString), max: 4 });
 
   try {
     const state = await readSliceState(pool);
@@ -220,7 +217,7 @@ export async function runSyncSlice(
  * want to manage a pg pool (e.g. the template's /api/sync/cron?status=1).
  */
 export async function readSyncStatus(connString: string): Promise<SliceState> {
-  const pool = new pg.Pool({ connectionString: connString, ssl: { rejectUnauthorized: false }, max: 1 });
+  const pool = new pg.Pool({ ...pgOptions(connString), max: 1 });
   try {
     return await readSliceState(pool);
   } finally {

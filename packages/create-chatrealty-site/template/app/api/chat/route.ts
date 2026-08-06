@@ -35,6 +35,8 @@ const SYSTEM = [
   "If a question needs no data — small talk, how the process works, what you can do — just answer it in a sentence. Do not call a tool.",
   "If the question is not about real estate at all (restaurants, weather, sports), say in one friendly line that you only cover homes, neighborhoods and the market here, and offer an example of what to ask. Do not call a tool and do not apologize at length.",
   "Keep replies short and conversational. When you mention specific listings, end the reply with a LISTINGS: line containing their listingKeys separated by commas (e.g. LISTINGS: ABC123,DEF456) so the site can render cards.",
+  "ALWAYS write at least one sentence of prose before that line — the LISTINGS: line is stripped out before the visitor sees the reply, so a reply that is only a LISTINGS: line arrives as a blank message.",
+  "When you have no listings to show, omit the LISTINGS: line entirely — never end a reply with a bare 'LISTINGS:'.",
   "Report metrics as plain facts. Never call a listing stale, overpriced, or distressed; days-on-market is a neutral metric.",
   "If the visitor wants to see a home or talk to the agent, point them to the listing page's inquiry form or the Contact page.",
 ].join(" ");
@@ -184,9 +186,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Final answer. Extract LISTINGS: line → cards.
+    //
+    // The `*` (not `+`) on the key list matters: a reply that ends with a bare
+    // "LISTINGS:" — which the model emits whenever it found nothing — used to
+    // fail the match, leaving the literal token as the last word the visitor
+    // read ("There are no homes under $500k in La Quinta. LISTINGS:").
     let text: string = msg.content || "";
     let keys: string[] = [];
-    const m = text.match(/\n?LISTINGS:\s*([A-Za-z0-9,\-\s]+)\s*$/);
+    const m = text.match(/\n?\s*LISTINGS:\s*([A-Za-z0-9,\-\s]*)$/);
     if (m) {
       keys = m[1].split(",").map((s) => s.trim()).filter((k) => usedKeys.has(k));
       text = text.slice(0, m.index).trim();
@@ -198,6 +205,19 @@ export async function POST(req: NextRequest) {
       // ChatRealty hub, and the UI builds its own /listings/{key} link.
       if (l) cards.push({ listingKey: l.listingKey, address: l.address, city: l.city, price: l.listPrice, beds: l.beds, baths: l.baths, sqft: l.sqft, thumbUrl: l.thumbUrl, listAgentName: l.listAgentName ?? null, listOfficeName: l.listOfficeName ?? null });
     }
+    // A reply that is ONLY the LISTINGS: line strips down to "", and the widget
+    // then renders cards under a blank message — the visitor gets property
+    // photos with no sentence telling them what they are looking at. The system
+    // prompt asks for prose, but a prompt is not a guarantee: say something
+    // truthful ourselves rather than ship an empty bubble.
+    if (!text) {
+      text = cards.length
+        ? cards.length === 1
+          ? "Here's the home that matches what you asked for."
+          : `Here are ${cards.length} homes that match what you asked for.`
+        : "I don't have anything to show for that one — try a city, a price range, or a number of bedrooms.";
+    }
+
     return NextResponse.json({ reply: text, listings: cards }, { headers: { "Cache-Control": "no-store" } });
   }
   // Only reachable if the model still emitted tool calls under tool_choice

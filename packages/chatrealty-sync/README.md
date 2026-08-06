@@ -54,7 +54,10 @@ npx @chatrealty/sync run --once --dry-run --max 25
 npx @chatrealty/sync run
 ```
 
-Recommended for production: a VPS running the daily cron (see below).
+Daily updates need no extra setup: a scaffolded ChatRealty site ships a nightly
+refresh route (`/api/sync/cron`) that runs on its own once the site is deployed,
+off the same checkpoint. Running the sync from your own server is an option, not
+a requirement — see [Running the sync yourself](#running-the-sync-yourself).
 
 ## Install & layout
 
@@ -199,18 +202,33 @@ single Active listing was a rental lease, which a for-sale browse excludes by
 design. If the browse is empty, check `doctor`'s Active-for-sale line before
 suspecting the API.
 
-### Daily cadence (cron)
+### Daily cadence
 
-Run it once a day. The first run seeds; every run after is incremental off the
-persisted watermark. Example crontab (6 AM daily):
+**You do not have to set this up.** A scaffolded ChatRealty site deploys with a
+nightly refresh route (`/api/sync/cron`) that runs the same slice runner this CLI
+does, against the same checkpoint. Deploy the site and daily updates happen.
+
+The watermark in your database's `sync_state` table is what makes every run after
+the first incremental — it travels with the data, so it survives a machine
+change, a fresh checkout, or a switch between the local CLI and the site's cron.
+Local runs and the deployed cron hand off to each other for exactly that reason.
+
+### Running the sync yourself
+
+Optional, for anyone who wants the pull to originate from their own machine or
+server instead of (or in addition to) the deployed site. It is the same command,
+and it shares the same checkpoint, so nothing is duplicated or re-walked:
 
 ```cron
-0 6 * * *  cd /path/to/packages/chatrealty-sync && npx @chatrealty/sync run >> sync.log 2>&1
+0 6 * * *  cd /path/to/your/project && npx @chatrealty/sync run >> sync.log 2>&1
 ```
 
-The watermark in your database's `sync_state` table is what makes the daily run
-incremental — it travels with the data, so it survives a machine change, a fresh
-checkout, or a switch between the local CLI and the site's Vercel cron.
+Note `--once` and `--max` are smoke tests: they cap the pull at an arbitrary
+point in an ascending timestamp walk and therefore **never** commit a checkpoint,
+on purpose. A capped run that committed one would tell the next run "everything
+up to here is synced" and skip every listing past the cap forever. `doctor` flags
+a database that has rows but no checkpoint — as a warning when there is for-sale
+inventory to show, as a failure when there isn't.
 
 ---
 
@@ -224,7 +242,9 @@ checkout, or a switch between the local CLI and the site's Vercel cron.
 3. `npx @chatrealty/sync run --once --dry-run` to verify the feed parses and maps
    (no writes). Inspect the printed counts.
 4. `npx @chatrealty/sync run` for the full seed.
-5. Add the daily cron line above.
+5. Deploy the site — its `/api/sync/cron` route keeps the data fresh nightly.
+   No crontab needed unless the customer specifically wants to run it themselves
+   (see [Running the sync yourself](#running-the-sync-yourself)).
 
 ## Testing
 
