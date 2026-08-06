@@ -2,12 +2,12 @@
 title: The repairer — where it lives and how it runs
 status: current
 last_verified: 2026-08-05
-related: [README.md, tickets.md, agents/tom/AGENTS.md, mcp-fbl.md]
+related: [README.md, tickets.md, agents/tom/AGENTS.md, tom.md]
 ---
 
 # The repairer
 
-The third role in the loop (`mcp-fbl.md` §2): reads the judge's report,
+The third role in the loop (`tom.md` §2): reads the judge's report,
 verifies each claim against the code, fixes, updates docs in the same commit,
 closes the report — which re-arms testing.
 
@@ -84,7 +84,7 @@ means something because each side stays off the other's half.
 
 - **Desktop-bound.** No app open, no repairs. Reports and messages queue in
   Mongo losslessly, but the clock runs. This is the known ceiling
-  (`mcp-fbl.md` §6 names lifting it — an always-on runner — as the path to
+  (`tom.md` §6 names lifting it — an always-on runner — as the path to
   production support; a documented SLA is the interim).
 - **Serialised.** One open report at a time, by API invariant. Correct while
   repairs are global to one codebase; the throughput wall once ticket volume

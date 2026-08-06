@@ -129,6 +129,28 @@ export async function GET(req: NextRequest) {
 
   const latest = reports[0] || null;
 
+  // Presence, derived from what the agents already touch — no heartbeat
+  // infrastructure. Tom stamps his token's lastUsedAt on every poll; the
+  // repairer's most recent visible act is its last chat reply or last
+  // completed report.
+  const owner: any = await User.findOne({ isAdmin: true, "agentProfile.aiIntegrations.apiTokens.name": "tom" })
+    .select("agentProfile.aiIntegrations.apiTokens")
+    .lean();
+  const tomToken = (owner?.agentProfile?.aiIntegrations?.apiTokens || []).find(
+    (t: any) => t.name === "tom" && !t.revokedAt
+  );
+  const lastRepairerMsg = (messages as any[]).find((m) => m.channel === "repairer" && m.from === "agent");
+  const lastCompleted = (reports as any[]).find((r) => r.completedAt);
+  const repairerCandidates = [lastRepairerMsg?.createdAt, lastCompleted?.completedAt]
+    .filter(Boolean)
+    .map((d) => new Date(d).getTime());
+  const presence = {
+    tomLastPoll: tomToken?.lastUsedAt || null,
+    repairerLastAction: repairerCandidates.length
+      ? new Date(Math.max(...repairerCandidates))
+      : null,
+  };
+
   // Activity feed: one merged, newest-first timeline from what already exists.
   const events: Array<{ at: Date; kind: string; text: string }> = [];
   events.push({
@@ -162,6 +184,7 @@ export async function GET(req: NextRequest) {
       testingOn: state.testingOn,
       toggleUpdatedBy: state.updatedBy,
       toggleUpdatedAt: state.updatedAt,
+      presence,
       ...deriveStage(state.testingOn, latest),
       reports: (reports as any[]).map((r) => ({
         id: String(r._id),

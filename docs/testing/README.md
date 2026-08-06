@@ -2,7 +2,7 @@
 title: Judge Loop — automated test-site feedback
 status: current
 last_verified: 2026-08-05
-related: [agents/tom/README.md, mcp-fbl.md, evidence.md, coverage.md, tickets.md, repairer.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
+related: [agents/tom/README.md, tom.md, evidence.md, coverage.md, tickets.md, repairer.md, loop-console.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
 # The judge loop
@@ -21,7 +21,7 @@ what it names, and re-arms the loop.
   mechanism, and the environment facts that cost a night to learn. Start here.
 - **`mcp/web-design/README.md`** — the reference: every endpoint with examples,
   the report format, the judging standard, failure-mode table.
-- **`mcp-fbl.md`** — the architecture, written for readers outside the project
+- **`tom.md`** — the architecture, written for readers outside the project
   and free of internal specifics: roles, the control plane and its invariants,
   liveness vs dispatch, the coverage-driven scheduler, and how the design scales
   to evaluating many MLS feeds concurrently. This is the one to share.
@@ -38,6 +38,9 @@ what it names, and re-arms the loop.
 - **`repairer.md`** — where the repairer actually lives (the `judge-loop-check`
   scheduled task on Joe's Windows machine), its firing sequence, its CLI, and
   its honest constraints.
+- **`loop-console.md`** — the `/admin/loop` surface and how it streams: SSE
+  over Mongo change streams, the chat-vs-bump event design, the serverless
+  reconnect story, and the always-on poll beneath it.
 
 ## What this loop is actually for
 

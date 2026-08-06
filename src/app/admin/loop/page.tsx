@@ -60,6 +60,7 @@ type Payload = {
   testingOn: boolean;
   toggleUpdatedBy: string;
   toggleUpdatedAt: string;
+  presence: { tomLastPoll: string | null; repairerLastAction: string | null };
   stage: string;
   detail: string;
   reports: Report[];
@@ -106,6 +107,31 @@ const REPORT_STATUS_META: Record<string, { label: string; cls: string }> = {
   in_progress: { label: "in progress", cls: "bg-blue-500/15 text-blue-500 border-blue-500/30" },
   complete: { label: "complete", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
 };
+
+// Presence chip: green while the agent's last observable act is inside its
+// normal cadence, grey once it has gone quiet past it. Derived from data the
+// agents already touch — Tom's token stamp, the repairer's last visible act —
+// so it cannot claim liveness the system doesn't have.
+function AgentPresence({
+  label,
+  at,
+  freshMins,
+  muted,
+}: {
+  label: string;
+  at: string | null | undefined;
+  freshMins: number;
+  muted: string;
+}) {
+  if (!at) return <span className={`text-[10px] ${muted}`}>{label} · no signal</span>;
+  const mins = Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 60_000));
+  const fresh = mins <= freshMins;
+  return (
+    <span className={`text-[10px] ${fresh ? "text-emerald-500" : muted}`}>
+      {fresh ? "●" : "○"} {label} · {mins < 1 ? "just now" : `${mins}m ago`}
+    </span>
+  );
+}
 
 // The four stops a cycle passes through, for the pipeline strip.
 const PIPELINE: Array<{ key: string; label: string }> = [
@@ -164,12 +190,58 @@ export default function LoopConsolePage() {
     }
   }
 
-  // "View the loop in progress" means the page keeps itself current: poll
-  // every 15s. Cheap — the GET is a handful of indexed reads.
+  // Two freshness mechanisms, deliberately layered (docs/testing/
+  // loop-console.md): an SSE stream for instant updates, and the 15s poll as
+  // the always-on safety net beneath it. The poll stays even while the stream
+  // is healthy — it is cheap, and a silently dead stream then costs 15s of
+  // staleness instead of forever.
+  const [live, setLive] = useState<"connecting" | "live" | "polling">("connecting");
   useEffect(() => {
     load();
     const t = setInterval(load, 15_000);
     return () => clearInterval(t);
+  }, [load]);
+
+  useEffect(() => {
+    const es = new EventSource("/api/admin/loop/stream");
+    let bumpTimer: ReturnType<typeof setTimeout> | null = null;
+    // Change streams can fire in bursts (a repair completes = report update +
+    // toggle update + fingerprint resolve); coalesce into one refetch.
+    const debouncedLoad = () => {
+      if (bumpTimer) clearTimeout(bumpTimer);
+      bumpTimer = setTimeout(load, 400);
+    };
+
+    // Every (re)connect means "I may have missed events" — serverless cuts
+    // the stream at maxDuration and EventSource silently reconnects. A full
+    // snapshot is one cheap GET, so that is the whole resume story.
+    es.onopen = () => {
+      setLive("live");
+      load();
+    };
+    es.addEventListener("chat", (e) => {
+      const m = JSON.parse((e as MessageEvent).data);
+      setData((prev) => {
+        if (!prev) return prev;
+        const thread = prev.chat[m.channel as "tom" | "repairer"];
+        if (thread.some((x) => x.id === m.id)) return prev; // poll got it first
+        return {
+          ...prev,
+          chat: { ...prev.chat, [m.channel]: [...thread, m] },
+        };
+      });
+      debouncedLoad(); // activity feed + unread counts still come from the GET
+    });
+    es.addEventListener("bump", debouncedLoad);
+    es.onerror = () => {
+      // EventSource retries on its own; between attempts the 15s poll carries
+      // the page. Only the badge changes.
+      setLive("polling");
+    };
+    return () => {
+      if (bumpTimer) clearTimeout(bumpTimer);
+      es.close();
+    };
   }, [load]);
 
   // Keyed on the last message id, not the array — the array is a fresh
@@ -273,6 +345,22 @@ export default function LoopConsolePage() {
           <div className={cardClass}>
             <div className="flex flex-wrap items-center gap-3">
               <span className={`text-xs px-2 py-0.5 rounded-full border ${stage!.cls}`}>{stage!.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                  live === "live"
+                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                    : "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                }`}
+                title={
+                  live === "live"
+                    ? "Streaming: updates arrive the moment they happen (SSE)"
+                    : "Stream reconnecting — the 15s poll is carrying the page"
+                }
+              >
+                {live === "live" ? "● live" : "○ polling"}
+              </span>
+              <AgentPresence label="Tom" at={data.presence?.tomLastPoll} freshMins={20} muted={textMuted} />
+              <AgentPresence label="Repairer" at={data.presence?.repairerLastAction} freshMins={10} muted={textMuted} />
               <span className={`text-xs ${textMuted}`}>
                 toggle {data.testingOn ? "ON" : "OFF"} · flipped by {data.toggleUpdatedBy} ·{" "}
                 {new Date(data.toggleUpdatedAt).toLocaleString()}
@@ -323,8 +411,124 @@ export default function LoopConsolePage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* ── Tickets ─────────────────────────────────────────────── */}
+            {/* ── Chat ────────────────────────────────────────────────── */}
             <div className={cardClass}>
+              <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
+                <MessageSquare className="w-4 h-4" /> Agent chat
+              </h2>
+              <div className="mt-3 flex gap-2">
+                {(["tom", "repairer"] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setChannel(c)}
+                    className={`text-xs px-3 py-1.5 rounded-full border ${
+                      channel === c
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : isLight
+                          ? "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                          : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {c === "tom" ? "Tom (judge)" : "Repairer (Dev Claude)"}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className={`mt-3 h-72 overflow-y-auto rounded-lg border p-3 space-y-2 ${
+                  isLight ? "bg-gray-50 border-gray-200" : "bg-black/30 border-white/10"
+                }`}
+              >
+                {thread.length === 0 && (
+                  <p className={`text-xs ${textMuted}`}>
+                    No messages on this channel yet. Write one below — the agent reads it on its next
+                    firing.
+                  </p>
+                )}
+                {thread.map((m) => (
+                  <div key={m.id} className={m.from === "admin" ? "flex justify-end" : "flex justify-start"}>
+                    <div
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-[13px] leading-relaxed ${
+                        m.from === "admin"
+                          ? "bg-blue-600 text-white"
+                          : isLight
+                            ? "bg-white border border-gray-200 text-gray-800"
+                            : "bg-white/10 text-gray-200"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{m.body}</p>
+                      <p className={`mt-1 text-[10px] ${m.from === "admin" ? "text-blue-200" : textMuted}`}>
+                        {new Date(m.at).toLocaleString()}
+                        {m.from === "admin" && (m.readAt ? " · answered" : " · awaiting reply")}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Guard busy (the button is disabled but Enter isn't) and
+                    // IME composition — Enter that confirms Japanese/Chinese
+                    // input must not fire a send.
+                    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                    e.preventDefault();
+                    if (!busy) send();
+                  }}
+                  placeholder={`Message ${channel === "tom" ? "Tom" : "the repairer"}…`}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm outline-none ${
+                    isLight
+                      ? "bg-white border-gray-200 text-gray-900 placeholder-gray-400"
+                      : "bg-white/5 border-white/10 text-white placeholder-gray-500"
+                  }`}
+                />
+                <button
+                  disabled={busy || !draft.trim()}
+                  onClick={send}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" /> Send
+                </button>
+              </div>
+              {sendError && <p className="text-[11px] mt-2 text-red-500">{sendError}</p>}
+              <p className={`text-[11px] mt-2 ${textMuted}`}>
+                This is a mailbox, not live chat: Tom reads on his next cron firing (≤15 min while his
+                cron is on); the repairer on its next poll (≤5 min while the desktop app is open). A
+                message shows &ldquo;answered&rdquo; once the agent replies — the reply is the
+                delivery receipt.
+              </p>
+            </div>
+
+            {/* ── Activity ────────────────────────────────────────────── */}
+            <div className={cardClass}>
+              <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
+                <Activity className="w-4 h-4" /> Activity
+              </h2>
+              <div className="mt-3 space-y-2">
+                {data.events.map((e, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${
+                        e.kind === "ticket" ? "bg-red-500" : e.kind === "chat" ? "bg-blue-500" : e.kind === "toggle" ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className={`text-xs truncate ${textPrimary}`}>{e.text}</p>
+                      <p className={`text-[10px] ${textMuted}`}>{new Date(e.at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* ── Tickets ─────────────────────────────────────────────── */}
+            <div className={`${cardClass} self-start`}>
               <div className="flex items-center justify-between">
                 <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
                   <Fingerprint className="w-4 h-4" /> Field tickets
@@ -596,121 +800,6 @@ export default function LoopConsolePage() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* ── Chat ────────────────────────────────────────────────── */}
-            <div className={cardClass}>
-              <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <MessageSquare className="w-4 h-4" /> Agent chat
-              </h2>
-              <div className="mt-3 flex gap-2">
-                {(["tom", "repairer"] as const).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setChannel(c)}
-                    className={`text-xs px-3 py-1.5 rounded-full border ${
-                      channel === c
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : isLight
-                          ? "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                          : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
-                    }`}
-                  >
-                    {c === "tom" ? "Tom (judge)" : "Repairer (Dev Claude)"}
-                  </button>
-                ))}
-              </div>
-
-              <div
-                className={`mt-3 h-72 overflow-y-auto rounded-lg border p-3 space-y-2 ${
-                  isLight ? "bg-gray-50 border-gray-200" : "bg-black/30 border-white/10"
-                }`}
-              >
-                {thread.length === 0 && (
-                  <p className={`text-xs ${textMuted}`}>
-                    No messages on this channel yet. Write one below — the agent reads it on its next
-                    firing.
-                  </p>
-                )}
-                {thread.map((m) => (
-                  <div key={m.id} className={m.from === "admin" ? "flex justify-end" : "flex justify-start"}>
-                    <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-[13px] leading-relaxed ${
-                        m.from === "admin"
-                          ? "bg-blue-600 text-white"
-                          : isLight
-                            ? "bg-white border border-gray-200 text-gray-800"
-                            : "bg-white/10 text-gray-200"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{m.body}</p>
-                      <p className={`mt-1 text-[10px] ${m.from === "admin" ? "text-blue-200" : textMuted}`}>
-                        {new Date(m.at).toLocaleString()}
-                        {m.from === "admin" && (m.readAt ? " · answered" : " · awaiting reply")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Guard busy (the button is disabled but Enter isn't) and
-                    // IME composition — Enter that confirms Japanese/Chinese
-                    // input must not fire a send.
-                    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
-                    e.preventDefault();
-                    if (!busy) send();
-                  }}
-                  placeholder={`Message ${channel === "tom" ? "Tom" : "the repairer"}…`}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm outline-none ${
-                    isLight
-                      ? "bg-white border-gray-200 text-gray-900 placeholder-gray-400"
-                      : "bg-white/5 border-white/10 text-white placeholder-gray-500"
-                  }`}
-                />
-                <button
-                  disabled={busy || !draft.trim()}
-                  onClick={send}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" /> Send
-                </button>
-              </div>
-              {sendError && <p className="text-[11px] mt-2 text-red-500">{sendError}</p>}
-              <p className={`text-[11px] mt-2 ${textMuted}`}>
-                This is a mailbox, not live chat: Tom reads on his next cron firing (≤15 min while his
-                cron is on); the repairer on its next poll (≤5 min while the desktop app is open). A
-                message shows &ldquo;answered&rdquo; once the agent replies — the reply is the
-                delivery receipt.
-              </p>
-            </div>
-
-            {/* ── Activity ────────────────────────────────────────────── */}
-            <div className={cardClass}>
-              <h2 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <Activity className="w-4 h-4" /> Activity
-              </h2>
-              <div className="mt-3 space-y-2">
-                {data.events.map((e, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span
-                      className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${
-                        e.kind === "ticket" ? "bg-red-500" : e.kind === "chat" ? "bg-blue-500" : e.kind === "toggle" ? "bg-amber-500" : "bg-emerald-500"
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <p className={`text-xs truncate ${textPrimary}`}>{e.text}</p>
-                      <p className={`text-[10px] ${textMuted}`}>{new Date(e.at).toLocaleString()}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </>
       )}
     </div>

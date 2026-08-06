@@ -2,7 +2,7 @@
 title: Tickets — reactive ingress, fingerprinting, and triage
 status: current
 last_verified: 2026-08-05
-related: [mcp-fbl.md, coverage.md, README.md, repairer.md, agents/tom/AGENTS.md]
+related: [tom.md, coverage.md, README.md, repairer.md, agents/tom/AGENTS.md]
 ---
 
 # Tickets
@@ -12,7 +12,7 @@ what is **unverified**; a ticket says what is **broken**, with the trace
 attached. Both resolve to the same unit — a target the judge briefs a session
 toward — so the queue gained a producer and the loop gained nothing.
 
-`mcp-fbl.md` §7 is the architecture; this file is the implementation reference.
+`tom.md` §7 is the architecture; this file is the implementation reference.
 
 ## The pipeline
 

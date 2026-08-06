@@ -578,6 +578,13 @@ summarises), the ticket queue with populations, recent reports, and a merged
 activity timeline composed from the collections that already exist rather
 than from a parallel event log that could disagree with them.
 
+State changes reach the console as they happen — pushed over a one-way
+stream fed by the database's own change feed, with a slow poll always running
+beneath it so a silently dead stream costs seconds of staleness, not
+indefinite blindness. The stream carries deltas; the poll re-fetches the
+snapshot; every reconnect re-syncs from the snapshot, which is what makes the
+inevitable connection resets on serverless invisible.
+
 The console also carries an asynchronous channel to each agent. It is
 deliberately a **mailbox, not a chat**: the agents wake on schedules, so the
 interface shows delivery semantics honestly — a message is "answered" only
