@@ -49,7 +49,7 @@ export default function HeroSearch({
         onChange={(e) => setQ(e.target.value)}
         placeholder={placeholder}
         aria-label="Ask about homes"
-        className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-brand focus:outline-none"
+        className="flex-1 border border-gray-300 bg-surface px-4 py-3 text-sm text-gray-900 focus:border-brand focus:outline-none"
         style={{ borderRadius: "var(--radius)" }}
       />
       <button

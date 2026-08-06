@@ -28,7 +28,9 @@
 //     are missing from .env.local. The route is fine; the config isn't.
 //   • {"error":"unauthorized"} → the header doesn't match CRON_SECRET. Note that
 //     with CRON_SECRET UNSET the route is open — set it before deploying.
-//   • {"seeding":…,"progress":…} → working. That is the whole confirmation.
+//   • {"seeding":true,"progress":…} → working. That is the whole confirmation.
+//   • {"stalled":true,"lastError":…} → a pass IS checkpointed but the last tick
+//     died, and the next one will die the same way. `progress` says what on.
 // Run the status call before and after the real one: `progress` should move.
 //
 // WHEN A SLICE FAILS, this route answers in the same words the CLI uses — the
@@ -78,18 +80,38 @@ export async function GET(req: NextRequest) {
     // session read `{"seeding":false,"progress":"caught up"}` off a database
     // that had never completed a single pass and concluded the data was in
     // place. Only a committed watermark means caught up.
+    //
+    // A SAVED CURSOR IS NOT A HEARTBEAT. The next judged session hit the other
+    // half of the same problem: `{"seeding":true,"progress":"26,400 listings
+    // so far — resuming next tick"}` on a database that was FULL. The cursor
+    // was real, the count was real, and the next tick had no chance of moving
+    // it — every one of them died on the same storage error. The slice now
+    // records why it stopped (sync_state.last_error, cleared by the next page
+    // that lands), so "resuming" is claimed only when nothing is known to be
+    // blocking it.
+    const stopped = state.lastError ? explainSyncError?.(state.lastError, process.env) : null;
     const progress = state.cursor
-      ? `${state.passPulled.toLocaleString()} listings so far — resuming next tick`
+      ? state.lastError
+        ? `${state.passPulled.toLocaleString()} listings loaded, then the last run STOPPED — ` +
+          `it will not get further until this is resolved: ${stopped?.error ?? state.lastError}`
+        : `${state.passPulled.toLocaleString()} listings so far — resuming next tick`
       : state.watermark
         ? "caught up"
         : "not started — no sync pass has completed yet; the next cron tick begins the seed";
     return NextResponse.json(
       {
-        seeding: Boolean(state.cursor),
+        seeding: Boolean(state.cursor && !state.lastError),
+        // Distinct from `seeding`: a pass IS checkpointed, it just isn't
+        // advancing. Without this a caller sees seeding:false and reads it as
+        // "nothing in flight".
+        stalled: Boolean(state.cursor && state.lastError),
         started: Boolean(state.cursor || state.watermark),
         progress,
         watermark: state.watermark,
         lastRunAt: state.lastRunAt,
+        lastError: state.lastError,
+        lastErrorAt: state.lastErrorAt,
+        ...(stopped ? { reason: stopped.code, whatToDo: stopped.whatToDo } : {}),
       },
       { headers: NO_STORE }
     );

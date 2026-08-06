@@ -63,7 +63,7 @@ export default function AccountMenu() {
           {initial}
         </button>
         {menu && (
-          <div className="absolute right-0 z-40 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+          <div className="absolute right-0 z-40 mt-2 w-56 rounded-lg border border-gray-200 bg-surface py-2 shadow-lg">
             <div className="border-b border-gray-100 px-4 py-2">
               <p className="truncate text-sm font-semibold text-gray-900">{user?.name || "Signed in"}</p>
               <p className="truncate text-xs text-gray-500">{user?.email}</p>

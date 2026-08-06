@@ -1,7 +1,7 @@
 ---
 title: DB-Agnostic Adapter — Interface, DTOs & Mappers
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-08-06
 related: [./build_plan.md, ./architecture.md]
 ---
 
@@ -171,6 +171,18 @@ organization || "Unnamed contact"` for the display name.
 - **`onMarketDate` is a lexical ISO string, not a Date** — `ListingFilter` carries
   it as a `StrRange` precisely because casting to a Date silently never matches
   the stored strings (the `.collection` bypass in the Mongo adapter).
+- **The tenant read path must MATCH the legacy Mongo route, and "mirrors it" is
+  not proof that it does.** `statsFromListings()` in `src/lib/skill/tenant-read.ts`
+  is documented as mirroring `api/skill/market/stats`'s computation, and its
+  median took `sorted[floor(n/2)]` with no even-length averaging — the *upper*
+  middle value. On a 2-listing tenant market that is simply the larger number:
+  a judged site with homes at $697,777 (DOM 194) and $49,000 (DOM 269) showed
+  "$697,777 median list price / 269 median days on market" — both stats were the
+  max, and the homepage read as if the cheaper home did not exist. Small markets
+  are the *normal* case on a fresh tenant, so the even branch is the common path,
+  not an edge case. Both medians now average and round (fixed 2026-08-06). When
+  you port another route to the tenant adapter, diff the arithmetic against the
+  Mongo one, don't restate the intent in a comment.
 - **`propertyType` is read tolerantly, on purpose.** Both adapters filter with
   `IN (propertyTypeStoredValues(code))`, never `= code`. A BYOD tenant's rows can
   hold either the A/B/C/D bucket (written by `@chatrealty/sync` ≥0.4.0) or the raw

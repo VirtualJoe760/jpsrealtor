@@ -116,7 +116,7 @@ export default async function NeighborhoodsIndexPage({
             <Link
               key={name}
               href={`/neighborhoods/${slugify(name)}`}
-              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md"
+              className="rounded-xl border border-gray-200 bg-surface p-6 shadow-sm transition hover:shadow-md"
             >
               <h2 className="font-semibold text-gray-900">{name}</h2>
               <p className="mt-1 text-sm text-gray-500">

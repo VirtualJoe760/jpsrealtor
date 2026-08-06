@@ -96,7 +96,7 @@ export default function ChapSearch() {
         <ChapMessages msgs={msgs} busy={busy} size="md" />
       </div>
 
-      <form onSubmit={submit} className="sticky bottom-0 mt-6 flex gap-2 bg-white py-4">
+      <form onSubmit={submit} className="sticky bottom-0 mt-6 flex gap-2 bg-surface py-4">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

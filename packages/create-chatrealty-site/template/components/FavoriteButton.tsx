@@ -33,7 +33,7 @@ export default function FavoriteButton({
       aria-pressed={active}
       aria-label={active ? "Remove from favorites" : "Save to favorites"}
       title={active ? "Remove from favorites" : "Save to favorites"}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/85 shadow transition hover:bg-white ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/85 shadow transition hover:bg-surface ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

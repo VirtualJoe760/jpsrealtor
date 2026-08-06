@@ -125,7 +125,7 @@ export default function ListingsBrowser({
           e.preventDefault();
           setApplied(draft);
         }}
-        className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-surface p-4 shadow-sm"
       >
         <label className="flex flex-col text-xs text-gray-500">
           City
@@ -222,13 +222,13 @@ export default function ListingsBrowser({
         <div className="inline-flex overflow-hidden rounded-lg border border-gray-300 text-sm">
           <button
             onClick={() => setView("grid")}
-            className={`px-3 py-1.5 ${view === "grid" ? "bg-brand text-white" : "bg-white text-gray-600"}`}
+            className={`px-3 py-1.5 ${view === "grid" ? "bg-brand text-white" : "bg-surface text-gray-600"}`}
           >
             Grid
           </button>
           <button
             onClick={() => setView("map")}
-            className={`px-3 py-1.5 ${view === "map" ? "bg-brand text-white" : "bg-white text-gray-600"}`}
+            className={`px-3 py-1.5 ${view === "map" ? "bg-brand text-white" : "bg-surface text-gray-600"}`}
           >
             Map
           </button>
@@ -252,7 +252,7 @@ export default function ListingsBrowser({
             // are set — there is nothing to widen, the market simply has no
             // listings to show. Telling them to adjust filters that aren't
             // there reads as a broken site.
-            <p className="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-500">
+            <p className="rounded-xl border border-gray-200 bg-surface p-10 text-center text-gray-500">
               {toQuery(applied, "grid") === ""
                 ? `No homes are available${marketCities.length > 0 ? ` in ${marketCities.join(" · ")}` : ""} right now. Check back soon — or get in touch and I'll watch the market for you.`
                 : "No homes match these filters. Try widening your search."}

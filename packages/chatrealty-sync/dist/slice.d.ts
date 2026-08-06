@@ -9,6 +9,17 @@ export interface SliceState {
     passUpserted: number;
     lastRunAt: string | null;
     lastRunUpserted: number | null;
+    /**
+     * Why the last slice stopped, if it threw. A saved cursor means "a pass is
+     * in flight"; it does NOT mean the next tick will get further. A judged
+     * session read `{"seeding":true,"progress":"26,400 listings so far —
+     * resuming next tick"}` off a database that was FULL: every subsequent tick
+     * died on the same storage error, and the status endpoint cheerfully
+     * reported forward motion that could never happen. Cleared on the next
+     * page that lands.
+     */
+    lastError: string | null;
+    lastErrorAt: string | null;
 }
 /**
  * One page landed. Emitted so a caller can SAY SOMETHING while a long seed

@@ -26,7 +26,7 @@ export default async function BlogIndexPage() {
             <Link
               key={p.slugId}
               href={`/blog/${encodeURIComponent(p.slugId)}`}
-              className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+              className="group overflow-hidden rounded-xl border border-gray-200 bg-surface shadow-sm transition hover:shadow-md"
             >
               {p.coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element

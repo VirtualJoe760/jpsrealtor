@@ -40,8 +40,22 @@ export function tenantNotReadyResponse(
   );
 }
 
-const median = (xs: number[]): number | null =>
-  xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : null;
+// TRUE median, including the even-length average. This used to return
+// `sorted[floor(n/2)]` unconditionally, which on an even-sized set is the
+// UPPER middle value, not the median. On a 2-listing market that is simply the
+// larger number: a judged tenant site showed "$697,777 median list price / 269
+// median days on market" for a market of $697,777 (DOM 194) and $49,000 (DOM
+// 269) — both stats were the max, and the homepage read as if the cheaper home
+// did not exist. Small tenant markets are the normal case here, so the even
+// branch is the common path, not an edge case. The legacy Mongo route
+// (api/skill/market/stats) always averaged; this is what "mirrors the legacy
+// computation" was supposed to mean.
+const median = (xs: number[]): number | null => {
+  if (xs.length === 0) return null;
+  const sorted = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+};
 
 /**
  * Compute the market-stats shape from a set of listings (each with listPrice +
@@ -59,11 +73,15 @@ export function statsFromListings(
 } {
   const prices = listings.map((l) => l.listPrice).filter((p): p is number => typeof p === "number");
   const dom = listings.map((l) => l.daysOnMarket).filter((d): d is number => typeof d === "number");
+  // Rounded: the even-length branch halves, and neither a half dollar nor half
+  // a day on market is a thing anyone means. averageListPrice already rounded.
+  const mp = median(prices);
+  const md = median(dom);
   return {
     activeCount: listings.length,
-    medianListPrice: median(prices),
+    medianListPrice: mp === null ? null : Math.round(mp),
     averageListPrice: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
-    medianDaysOnMarket: median(dom),
+    medianDaysOnMarket: md === null ? null : Math.round(md),
     priceRange: prices.length ? { min: Math.min(...prices), max: Math.max(...prices) } : null,
   };
 }

@@ -97,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
         <AccountProvider>
         <TestDataBanner />
-        <header className="border-b border-gray-200 bg-white">
+        <header className="border-b border-gray-200 bg-surface">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold text-brand">
               {logo ? (
@@ -118,7 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             for its own route by wrapping itself in .cr-bleed — without any
             other route losing its padding. */}
         <main className="cr-shell">{children}</main>
-        <footer className="mt-16 border-t border-gray-200 bg-white py-8 text-center text-xs text-gray-400">
+        <footer className="mt-16 border-t border-gray-200 bg-surface py-8 text-center text-xs text-gray-400">
           {/* COMPLIANCE — always visible, never remove: license number,
               brokerage, and team (when one exists). Contact info (phone/email)
               is the agent's choice: public here, or gated behind /contact. */}

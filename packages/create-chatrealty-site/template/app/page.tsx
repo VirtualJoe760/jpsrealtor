@@ -68,6 +68,8 @@ export default async function Home() {
           {agent.name ? ` — with ${agent.name}.` : ""}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          {/* Literal white, not bg-surface: these sit on the brand hero, which
+              does not follow the light/dark tokens. */}
           <Link
             href="/listings"
             className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-brand transition hover:bg-white/90"
@@ -106,7 +108,7 @@ export default async function Home() {
 
       {/* Market strip — live stats */}
       {stats && stats.activeCount > 0 && (
-        <section className="mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-white p-6 sm:grid-cols-3">
+        <section className="mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-surface p-6 sm:grid-cols-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{num(stats.activeCount)}</p>
             <p className="text-sm text-gray-500">Active listings{statsCity ? ` in ${statsCity}` : ""}</p>
@@ -128,7 +130,7 @@ export default async function Home() {
 
       {/* Agent intro */}
       {(agent.bio || agent.name) && (
-        <section className="mt-12 flex flex-col items-center gap-6 rounded-2xl border border-gray-200 bg-white p-8 sm:flex-row">
+        <section className="mt-12 flex flex-col items-center gap-6 rounded-2xl border border-gray-200 bg-surface p-8 sm:flex-row">
           {agent.headshot ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -158,12 +160,17 @@ export default async function Home() {
         </section>
       )}
 
-      {/* CTA */}
-      <section className="mt-12 rounded-2xl bg-gray-900 px-6 py-12 text-center text-white">
+      {/* CTA — an INVERTED block: ink background, page-coloured text. Written
+          as bg-ink/text-surface rather than bg-gray-900/text-white so it flips
+          with the theme; in a dark build `bg-gray-900` is a light slab and
+          white text on it disappears. */}
+      <section className="mt-12 rounded-2xl bg-ink px-6 py-12 text-center text-surface">
         <h2 className="text-2xl font-bold">
           {firstArea ? `Thinking about ${firstArea}?` : "Ready when you are"}
         </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-white/70">
+        {/* opacity-80, not text-surface/80: Tailwind 3 can't apply an alpha
+            modifier to a raw var() colour — it silently drops the modifier. */}
+        <p className="mx-auto mt-2 max-w-md text-sm text-surface opacity-80">
           Get a straight answer about any home, neighborhood, or number on this site.
         </p>
         <Link

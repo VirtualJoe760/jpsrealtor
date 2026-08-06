@@ -241,9 +241,20 @@ program
     try {
       const { readSyncStatus } = await import("./index.js");
       const st = await readSyncStatus(conn);
-      const inFlight = Boolean(st.cursor);
+      // A saved cursor means a pass is CHECKPOINTED, not that it is advancing.
+      // Reported as "RUNNING" regardless, this line told a judged session its
+      // seed was healthy while every tick was dying on a full database. Split
+      // the two states and lead with the reason.
+      const inFlight = Boolean(st.cursor) && !st.lastError;
+      const stalled = Boolean(st.cursor) && Boolean(st.lastError);
       console.log(
-        `[status] ${inFlight ? `a ${st.passMode ?? "seed"} pass is RUNNING` : "no pass in flight"}`,
+        `[status] ${
+          stalled
+            ? `a ${st.passMode ?? "seed"} pass is STALLED — the last run stopped and the next will stop the same way`
+            : inFlight
+              ? `a ${st.passMode ?? "seed"} pass is RUNNING`
+              : "no pass in flight"
+        }`,
       );
       console.log(`[status]   pulled this pass:  ${st.passPulled.toLocaleString()}`);
       console.log(`[status]   written this pass: ${st.passUpserted.toLocaleString()}`);
@@ -256,7 +267,13 @@ program
       console.log(
         `[status]   completed watermark: ${st.watermark?.slice(0, 10) ?? "none yet — the first full pass hasn't finished"}`,
       );
-      if (inFlight) {
+      if (stalled) {
+        const { explainSyncError } = await import("./errors.js");
+        const ex = explainSyncError(st.lastError as string, process.env);
+        console.log(`[status] It stopped on: ${ex?.error ?? st.lastError}`);
+        for (const step of ex?.whatToDo ?? []) console.log(`[status]   → ${step}`);
+        if (!ex) console.log("[status] Re-run `npx @chatrealty/sync run` to see the failure in full.");
+      } else if (inFlight) {
         console.log(
           "[status] Run it again in a minute: if the numbers moved, it's working. Nothing to\n" +
             "[status] restart — progress is saved after every page.",

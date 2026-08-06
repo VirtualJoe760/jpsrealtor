@@ -132,7 +132,7 @@ export default async function ListingDetailPage({
             <Attribution agent={l.listAgentName} office={l.listOfficeName} className="mt-2 !text-xs" />
           </div>
 
-          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-gray-200 bg-white p-5 sm:grid-cols-3">
+          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-gray-200 bg-surface p-5 sm:grid-cols-3">
             {facts.map(([k, v]) => (
               <div key={k}>
                 <dt className="text-xs uppercase tracking-wide text-gray-400">{k}</dt>
@@ -157,7 +157,7 @@ export default async function ListingDetailPage({
 
         {/* Inquiry sidebar */}
         <aside className="col-span-1 min-w-0">
-          <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="sticky top-6 rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm">
             <h2 className="mb-1 text-lg font-semibold text-gray-900">Interested?</h2>
             <p className="mb-4 text-sm text-gray-500">Send a quick note and we&apos;ll follow up.</p>
             <InquiryForm listingKey={l.listingKey} />

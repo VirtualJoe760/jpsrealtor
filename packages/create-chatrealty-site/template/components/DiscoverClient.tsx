@@ -66,7 +66,7 @@ export default function DiscoverClient({ initial }: { initial: ListingSummary[] 
           className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
             active
               ? "border-brand bg-brand text-white"
-              : "border-gray-300 bg-white text-gray-600 hover:border-brand hover:text-brand"
+              : "border-gray-300 bg-surface text-gray-600 hover:border-brand hover:text-brand"
           }`}
         >
           {active ? "Refining ✓" : "Refine"} — area, beds, pool, price
@@ -74,7 +74,7 @@ export default function DiscoverClient({ initial }: { initial: ListingSummary[] 
       </div>
 
       {open && (
-        <div className="mx-auto mb-6 max-w-sm rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mx-auto mb-6 max-w-sm rounded-2xl border border-gray-200 bg-surface p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3">
             <input
               value={filters.city}

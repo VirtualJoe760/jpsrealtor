@@ -59,7 +59,7 @@ export default function ChapWidget() {
 
       {open && (
         <div
-          className="fixed bottom-24 right-5 z-40 flex h-[520px] w-[min(92vw,380px)] flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl"
+          className="fixed bottom-24 right-5 z-40 flex h-[520px] w-[min(92vw,380px)] flex-col overflow-hidden border border-gray-200 bg-surface shadow-2xl"
           style={{ borderRadius: "calc(var(--radius) * 1.5)" }}
         >
           <div className="bg-brand px-4 py-3 text-white">

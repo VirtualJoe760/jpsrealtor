@@ -27,7 +27,7 @@ export default async function ContactPage() {
           {agent.licenseNumber && <p className="text-gray-400">{license(agent.licenseNumber)}</p>}
         </div>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-gray-200 bg-surface p-6 shadow-sm">
         <InquiryForm source="contact-page" />
       </div>
     </div>

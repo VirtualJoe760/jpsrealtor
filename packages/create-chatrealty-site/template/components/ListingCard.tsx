@@ -31,7 +31,7 @@ export default function ListingCard({
     .join(" · ");
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-surface shadow-sm transition hover:shadow-md">
       <div className="absolute right-3 top-3 z-10">
         <FavoriteButton listing={listing} />
       </div>

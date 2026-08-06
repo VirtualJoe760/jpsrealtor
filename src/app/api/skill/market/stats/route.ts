@@ -15,11 +15,16 @@ import { statsFromListings } from "@/lib/skill/tenant-read";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
+// Rounded on the way out: the even-length branch halves, and neither a half
+// dollar nor half a day on market is a thing anyone means. Matches
+// statsFromListings() in lib/skill/tenant-read.ts — the tenant path must agree
+// with this one, and once did not (it took the upper middle value instead of
+// averaging, which on a 2-listing market is simply the larger number).
 function median(nums: number[]): number | null {
   if (nums.length === 0) return null;
   const sorted = nums.slice().sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  return Math.round(sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]);
 }
 
 // Days on market from the listing's on-market date. Accepts the ISO string the

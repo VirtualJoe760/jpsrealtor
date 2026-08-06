@@ -50,7 +50,7 @@ export default function ChapPanel({
 
   return (
     <section
-      className="flex flex-col overflow-hidden border border-gray-200 bg-white"
+      className="flex flex-col overflow-hidden border border-gray-200 bg-surface"
       style={{ height, borderRadius: "var(--radius)" }}
     >
       <div className="border-b border-gray-200 px-5 py-4">

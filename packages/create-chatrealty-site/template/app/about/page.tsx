@@ -47,7 +47,7 @@ export default async function AboutPage() {
             {agent.serviceAreas.map((a) => (
               <span
                 key={a.name}
-                className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700"
+                className="rounded-full border border-gray-200 bg-surface px-3 py-1 text-sm text-gray-700"
               >
                 {a.name}
               </span>
@@ -67,6 +67,8 @@ export default async function AboutPage() {
 
       <div className="mt-10 rounded-xl bg-brand px-6 py-8 text-center text-white">
         <p className="text-lg font-semibold">Ready to talk real estate?</p>
+        {/* On a brand block: literal white, not bg-surface — this button sits
+            on --brand, which does not follow the light/dark tokens. */}
         <a
           href="/contact"
           className="mt-4 inline-block rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand"

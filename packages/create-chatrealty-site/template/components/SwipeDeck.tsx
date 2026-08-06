@@ -66,7 +66,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
 
   if (!current) {
     return (
-      <div className="mx-auto max-w-sm rounded-2xl border border-gray-200 bg-white p-10 text-center">
+      <div className="mx-auto max-w-sm rounded-2xl border border-gray-200 bg-surface p-10 text-center">
         <p className="text-lg font-semibold text-gray-900">That's everything!</p>
         <p className="mt-2 text-sm text-gray-500">
           You saved {savedCount} {savedCount === 1 ? "home" : "homes"}.
@@ -93,11 +93,11 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
       <div className="relative h-[30rem]">
         {/* Peek of the next card behind. */}
         {next && (
-          <div className="absolute inset-0 scale-[0.96] rounded-2xl border border-gray-200 bg-white opacity-70" aria-hidden />
+          <div className="absolute inset-0 scale-[0.96] rounded-2xl border border-gray-200 bg-surface opacity-70" aria-hidden />
         )}
 
         <div
-          className="absolute inset-0 cursor-grab overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg active:cursor-grabbing"
+          className="absolute inset-0 cursor-grab overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-lg active:cursor-grabbing"
           style={{
             transform: `translateX(${tx}px) rotate(${rot}deg)`,
             opacity,
@@ -180,7 +180,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
         <button
           onClick={() => commit("left")}
           aria-label="Pass"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-danger bg-white text-2xl cr-text-danger shadow-sm transition hover:scale-105 hover:cr-border-danger"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-danger bg-surface text-2xl cr-text-danger shadow-sm transition hover:scale-105 hover:cr-border-danger"
         >
           ✕
         </button>
@@ -190,7 +190,7 @@ export default function SwipeDeck({ listings }: { listings: ListingSummary[] }) 
         <button
           onClick={() => commit("right")}
           aria-label="Save"
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-success bg-white text-2xl cr-text-success shadow-sm transition hover:scale-105 hover:cr-border-success"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 cr-border-success bg-surface text-2xl cr-text-success shadow-sm transition hover:scale-105 hover:cr-border-success"
         >
           ♥
         </button>

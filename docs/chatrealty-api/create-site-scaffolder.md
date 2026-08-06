@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-06
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.4 (2026-08-06)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.5 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,57 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.16.5 (2026-08-06) — a dark theme actually goes dark, and a dead sync
+stops reporting progress.** Session-18 judge run (Priya Sharma, GPS MLS).
+
+*The design tokens were a decoy for colour, the way they once were for shape.*
+The build set `--background: #0f0b2c` and `--text` light; the pages kept
+Tailwind's stock grays, because nothing wired the two together. `/about`
+rendered the agent's own name in `text-gray-900` (#111827) on the dark page —
+**1.07:1**, invisible — and the bio in `text-gray-700` at 1.84:1. Fixing the
+one page the judge named would have left ~250 identical utilities defective on
+every other route, so the fix follows the `--radius` precedent exactly:
+`tailwind.config.ts` now derives the whole `gray` scale from `--text` mixed
+into `--surface` (`color-mix(in srgb, …)`), and `--surface` / `--border` /
+`--text-muted` / `--foreground` derive from `--background` + `--text` rather
+than being hardcoded alongside them. Same theme, after: gray-900 **16.99:1**,
+gray-700 11.46:1, gray-500 6.13:1 — all AA. At the DEFAULT light tokens the
+ramp lands within a few RGB points of stock Tailwind, so existing light builds
+are visually unchanged.
+
+Three things that had to come with it:
+
+- **`white`/`black` are deliberately NOT theme-derived.** `text-white` on
+  `bg-brand` must stay white in every theme, and `bg-white`/`text-white` share
+  one Tailwind colour key. So the 40-odd card/panel `bg-white`s became
+  `bg-surface`, and the two buttons that genuinely sit on the brand hero kept
+  `bg-white` (with a comment saying why).
+- **The homepage CTA was `bg-gray-900 text-white`** — in a dark theme a *light*
+  slab with white text on it. Now `bg-ink text-surface`, which inverts either
+  way. `DESIGN.md` documents the pattern.
+- **Tailwind 3 silently drops an alpha modifier on a raw `var()` colour**, so
+  `text-surface/80` is a no-op; write `text-surface opacity-80`. Noted in
+  `DESIGN.md` next to the token utilities (`surface`, `surface-2`, `line`,
+  `ink`, `muted`).
+
+*The status endpoint reported forward motion that could not happen.*
+`GET /api/sync/cron?status=1` answered `{"seeding":true,"progress":"26,400
+listings so far — resuming next tick"}` on a database that was **full**: the
+checkpoint was real, and every subsequent tick died on the same storage error.
+A saved cursor was being read as a heartbeat. `@chatrealty/sync` 0.6.3 now
+records *why* a slice died (`sync_state.last_error` / `last_error_at`, added
+via an idempotent `ALTER TABLE` since `CREATE TABLE IF NOT EXISTS` never
+migrates an existing table), clears it on the next page that lands, and the
+route reports `stalled: true` + `lastError` + the translated `reason` /
+`whatToDo` instead of claiming a resume. `npx @chatrealty/sync status` prints
+`STALLED` with the recovery steps rather than `RUNNING`. Both writes are
+best-effort and swallowed — the headline case is a full database, where the
+bookkeeping write is itself likely to fail, and losing the real error to it
+would be strictly worse.
+
+Guide step 3b gained a rule (c) for the two-token dark theme and 5a gained the
+RUNNING-vs-STALLED distinction (`@chatrealty/mcp-server` 0.24.4).
 
 **v0.16.4 (2026-08-06) — the cron route speaks the same language as the CLI, and
 `--token` stops doubling its own key name.** Session-17 judge run (Rafael

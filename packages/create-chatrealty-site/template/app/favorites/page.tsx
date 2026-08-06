@@ -18,14 +18,14 @@ export default function FavoritesPage() {
   const { status, openSignIn } = useAccount();
 
   if (status === "loading") {
-    return <div className="h-40 animate-pulse rounded-xl border border-gray-200 bg-white" />;
+    return <div className="h-40 animate-pulse rounded-xl border border-gray-200 bg-surface" />;
   }
 
   if (status === "guest") {
     return (
       <div>
         <h1 className="mb-6 text-2xl font-bold text-gray-900">Your favorites</h1>
-        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
+        <div className="rounded-xl border border-gray-200 bg-surface p-10 text-center">
           <p className="text-gray-600">Sign in to see the homes you&apos;ve saved.</p>
           <p className="mt-1 text-sm text-gray-500">
             Your saved homes sync across every device you use.
@@ -45,7 +45,7 @@ export default function FavoritesPage() {
     <div>
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Your favorites</h1>
       {favorites.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
+        <div className="rounded-xl border border-gray-200 bg-surface p-10 text-center">
           <p className="text-gray-500">You haven&apos;t saved any homes yet.</p>
           <Link
             href="/listings"

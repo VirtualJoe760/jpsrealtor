@@ -58,7 +58,7 @@ export default async function NeighborhoodPage({
               stats.priceRange ? `${money(stats.priceRange.min)} – ${money(stats.priceRange.max)}` : "—",
             ],
           ].map(([k, v]) => (
-            <div key={k} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div key={k} className="rounded-xl border border-gray-200 bg-surface p-4">
               <dt className="text-xs uppercase tracking-wide text-gray-400">{k}</dt>
               <dd className="mt-1 text-lg font-semibold text-gray-900">{v}</dd>
             </div>
@@ -68,7 +68,7 @@ export default async function NeighborhoodPage({
 
       <h2 className="mb-4 mt-10 text-lg font-semibold text-gray-900">Active listings in {city}</h2>
       {listings.length === 0 ? (
-        <p className="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-500">
+        <p className="rounded-xl border border-gray-200 bg-surface p-10 text-center text-gray-500">
           No active listings found for {city} right now.
         </p>
       ) : (

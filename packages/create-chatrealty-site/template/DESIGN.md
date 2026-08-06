@@ -16,11 +16,42 @@ This site is a **framework, not a template**. Two layers:
 | Knob | Where | What it changes |
 |---|---|---|
 | Brand scale | `--brand` / `--brand-600/700` in `globals.css` **+** `brand` in `tailwind.config.ts` | buttons, links, map pins, accents |
-| Surfaces | `--surface`, `--surface-2`, `--border` | page bg, cards, fills |
-| Text ramp | `--text`, `--text-muted` | copy contrast |
+| **Light / dark** | `--background` **+** `--text` in `globals.css` | the whole page, **and Tailwind's entire `gray` scale** — see below |
+| Surfaces | `--surface`, `--surface-2`, `--border` (all derived from the two above; override only to lift a card *off* the page) | cards, fills, hairlines |
+| Text ramp | `--text-muted` (derived) | secondary copy |
 | Shape | `--radius` | 0 = editorial/sharp · 0.75rem = friendly · 1.25rem = soft/luxury. Tailwind's whole `rounded-*` scale is mapped to it, so this one value shapes every surface — including the ones you write. `rounded-full` is exempt (circles stay circles); `rounded-none` is the per-element escape hatch. **Never** shape a container with `rounded-[14px]` or an inline `borderRadius` — that is precisely how a build ships sharp everywhere except the four places someone hand-rounded. |
 | Type | `--font-display`, `--font-body` (load via `next/font` in `layout.tsx`) | whole personality |
 | Rhythm | `--section-gap` | tight = data-forward · airy = luxury |
+
+### Going dark is two lines
+
+```css
+:root { --background: #0f0b2c; --text: #f5f2ea; }
+```
+
+That is the entire change. `tailwind.config.ts` derives the whole `gray`
+scale from those two tokens, so every `text-gray-900`, `text-gray-500`,
+`border-gray-200` and `bg-gray-50` in the site — including the ones you write
+next — inverts with them. This is the same trick as `--radius`, and it exists
+for the same reason: a build once set `--background: #0f0b2c` while the pages
+kept Tailwind's stock near-black grays, and `/about` rendered the agent's own
+name at ~1.2:1 against the page. A judged session called it invisible.
+
+Two rules that come with it:
+
+- **`bg-surface`, never `bg-white`, for a card or panel.** `white` and `black`
+  are deliberately *not* theme-derived, because `text-white` on `bg-brand` must
+  stay white in every theme. `bg-white` on a page-level surface is the one way
+  back into the bug above.
+- **Inverted blocks are `bg-ink text-surface`, not `bg-gray-900 text-white`.**
+  In a dark theme `bg-gray-900` is a *light* slab; white text vanishes on it.
+  The homepage CTA shows the pattern.
+
+Token-named utilities available for new surfaces: `surface`, `surface-2`,
+`line` (borders), `ink` (primary text), `muted` (secondary). Prefer them —
+they say what the colour is *for*. Note that Tailwind 3 cannot apply an alpha
+modifier to a raw `var()` colour: write `text-surface opacity-80`, not
+`text-surface/80` (the modifier is silently dropped).
 
 ## Variant axes — vary these so no two builds match
 

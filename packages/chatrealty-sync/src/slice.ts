@@ -31,6 +31,17 @@ export interface SliceState {
   passUpserted: number;
   lastRunAt: string | null;
   lastRunUpserted: number | null;
+  /**
+   * Why the last slice stopped, if it threw. A saved cursor means "a pass is
+   * in flight"; it does NOT mean the next tick will get further. A judged
+   * session read `{"seeding":true,"progress":"26,400 listings so far —
+   * resuming next tick"}` off a database that was FULL: every subsequent tick
+   * died on the same storage error, and the status endpoint cheerfully
+   * reported forward motion that could never happen. Cleared on the next
+   * page that lands.
+   */
+  lastError: string | null;
+  lastErrorAt: string | null;
 }
 
 /**
@@ -74,25 +85,47 @@ CREATE TABLE IF NOT EXISTS sync_state (
   pass_upserted integer NOT NULL DEFAULT 0,
   last_run_at timestamptz,
   last_run_upserted integer,
+  last_error text,
+  last_error_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT now()
 )`;
 
+// CREATE TABLE IF NOT EXISTS is a no-op on a table that already exists, so a
+// database seeded by an earlier version never gains a new column from
+// ENSURE_SQL alone. Every column added after the first release needs its own
+// idempotent ALTER or the next SELECT * silently returns undefined for it.
+const MIGRATE_SQL = `
+ALTER TABLE sync_state ADD COLUMN IF NOT EXISTS last_error text;
+ALTER TABLE sync_state ADD COLUMN IF NOT EXISTS last_error_at timestamptz;`;
+
+const EMPTY_STATE: SliceState = {
+  watermark: null,
+  cursor: null,
+  cursorWatermark: null,
+  passMode: null,
+  passPulled: 0,
+  passUpserted: 0,
+  lastRunAt: null,
+  lastRunUpserted: null,
+  lastError: null,
+  lastErrorAt: null,
+};
+
 export async function readSliceState(pool: pg.Pool): Promise<SliceState> {
   await pool.query(ENSURE_SQL);
+  // Best-effort: on a FULL database DDL can itself fail, and a status read
+  // that throws is strictly worse than one missing the error column — the
+  // full database is the exact case this column exists to report.
+  try {
+    await pool.query(MIGRATE_SQL);
+  } catch {
+    /* older shape; lastError just stays null */
+  }
   const r = await pool.query(`SELECT * FROM sync_state WHERE id = 1`);
   const row = r.rows[0];
   if (!row) {
     await pool.query(`INSERT INTO sync_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
-    return {
-      watermark: null,
-      cursor: null,
-      cursorWatermark: null,
-      passMode: null,
-      passPulled: 0,
-      passUpserted: 0,
-      lastRunAt: null,
-      lastRunUpserted: null,
-    };
+    return { ...EMPTY_STATE };
   }
   return {
     watermark: row.watermark ? new Date(row.watermark).toISOString() : null,
@@ -103,6 +136,8 @@ export async function readSliceState(pool: pg.Pool): Promise<SliceState> {
     passUpserted: row.pass_upserted ?? 0,
     lastRunAt: row.last_run_at ? new Date(row.last_run_at).toISOString() : null,
     lastRunUpserted: row.last_run_upserted ?? null,
+    lastError: row.last_error ?? null,
+    lastErrorAt: row.last_error_at ? new Date(row.last_error_at).toISOString() : null,
   };
 }
 
@@ -185,9 +220,12 @@ export async function runSyncSlice(
       url = records.length > 0 ? nextLink : null;
 
       // Checkpoint AFTER the page is fully written — kill-anywhere safe.
+      // A landed page also clears last_error: forward motion is the proof that
+      // whatever stopped the previous tick is no longer stopping this one.
       await pool.query(
         `UPDATE sync_state SET cursor=$1, cursor_watermark=$2, pass_mode=$3,
-           pass_pulled=$4, pass_upserted=$5, updated_at=now() WHERE id=1`,
+           pass_pulled=$4, pass_upserted=$5, last_error=NULL, last_error_at=NULL,
+           updated_at=now() WHERE id=1`,
         [url, isoOrNull(cursorWatermark), mode, passPulled, passUpserted]
       );
 
@@ -212,7 +250,8 @@ export async function runSyncSlice(
     const newWatermark = cursorWatermark ?? state.watermark;
     await pool.query(
       `UPDATE sync_state SET watermark=$1, cursor=NULL, cursor_watermark=NULL,
-         last_run_at=now(), last_run_upserted=$2, updated_at=now() WHERE id=1`,
+         last_run_at=now(), last_run_upserted=$2, last_error=NULL, last_error_at=NULL,
+         updated_at=now() WHERE id=1`,
       [isoOrNull(newWatermark), passUpserted]
     );
 
@@ -227,6 +266,21 @@ export async function runSyncSlice(
       watermark: newWatermark,
       resumed,
     };
+  } catch (e) {
+    // Remember WHY this tick died, so ?status stops reporting a checkpointed
+    // cursor as healthy progress. Best-effort and deliberately swallowed: the
+    // headline case is a full database, where this write is itself likely to
+    // fail — and losing the real error to a bookkeeping error would be a
+    // strictly worse outcome than a null column.
+    try {
+      await pool.query(
+        `UPDATE sync_state SET last_error=$1, last_error_at=now(), updated_at=now() WHERE id=1`,
+        [(e instanceof Error ? e.message : String(e)).slice(0, 500)]
+      );
+    } catch {
+      /* nothing we can do; rethrow the original below */
+    }
+    throw e;
   } finally {
     await pool.end();
   }
