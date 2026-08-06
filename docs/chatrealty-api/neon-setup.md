@@ -162,6 +162,35 @@ The template now depends on `@chatrealty/sync` `^0.6.2` (it was pinned at `^0.2.
 every scaffolded site's cron ran a build four minors old — no `$expand=Media`, no
 translation).
 
+### The failure handler is not a witness (0.6.4)
+
+0.6.3 added `sync_state.last_error` so a checkpointed-but-dead pass would stop
+reporting forward motion. It is written **from the catch block** — which is exactly
+as likely to fail as the write that just died, because the headline failure here is
+*the database is full*. And a tenant seeded before 0.6.3 has no such column at all.
+Both leave the identical state, and it is the one that reads as healthy:
+
+```json
+{"seeding":true,"stalled":false,"started":true,"watermark":null,
+ "lastRunAt":null,"lastError":null,
+ "progress":"26,400 listings so far — resuming next tick"}
+```
+
+Session 19 read that off a permanently stuck tenant and could not tell it from a
+seed in flight. **Never derive liveness from something the dying process had to
+write.** Staleness now comes from `sync_state.updated_at`, stamped on every landed
+page by the checkpoint write itself: if a cursor is saved and that timestamp has not
+moved in 90 minutes (the cron is hourly), nothing is resuming.
+
+`isStalled(state)` in `slice.ts` is the single rule — exported from the package and
+read by BOTH the CLI's `status` and the template's cron route, so the two cannot
+drift apart the way the error translation once did. It returns `null` when there is
+no cursor to judge; callers must render that as "not applicable", never as healthy.
+A stall with nothing recorded reports `reason: "stopped_without_recorded_cause"` and
+sends the operator to `doctor`, which is what actually measures the disk.
+
+`SliceState` gained `updatedAt` (additive), so the template moved to `^0.6.4`.
+
 **Recovery is a fresh database AND narrowing — both, in that order.** `RESO_NETWORKS`
 scopes what a load *pulls*; it cannot shrink a database that is already full, because the
 rows already written still occupy the space and the saved checkpoint still points into the

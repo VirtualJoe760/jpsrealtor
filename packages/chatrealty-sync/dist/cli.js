@@ -202,16 +202,25 @@ program
         return;
     }
     try {
-        const { readSyncStatus } = await import("./index.js");
+        const { readSyncStatus, isStalled } = await import("./index.js");
         const st = await readSyncStatus(conn);
         // A saved cursor means a pass is CHECKPOINTED, not that it is advancing.
         // Reported as "RUNNING" regardless, this line told a judged session its
         // seed was healthy while every tick was dying on a full database. Split
         // the two states and lead with the reason.
-        const inFlight = Boolean(st.cursor) && !st.lastError;
-        const stalled = Boolean(st.cursor) && Boolean(st.lastError);
+        //
+        // The split cannot key off lastError alone: that column is written from
+        // the catch block, and on a full database THAT write dies too. isStalled
+        // falls back to the checkpoint's own updated_at, which needs nothing to
+        // succeed at failure time. See slice.ts.
+        const stalled = isStalled(st) === true;
+        const inFlight = Boolean(st.cursor) && !stalled;
+        const silent = stalled && !st.lastError;
         console.log(`[status] ${stalled
-            ? `a ${st.passMode ?? "seed"} pass is STALLED — the last run stopped and the next will stop the same way`
+            ? silent
+                ? `a ${st.passMode ?? "seed"} pass is STALLED — the checkpoint has not moved in over an hour,` +
+                    ` and no reason was recorded. Re-run \`npx @chatrealty/sync run\` to see what it dies on`
+                : `a ${st.passMode ?? "seed"} pass is STALLED — the last run stopped and the next will stop the same way`
             : inFlight
                 ? `a ${st.passMode ?? "seed"} pass is RUNNING`
                 : "no pass in flight"}`);
@@ -222,7 +231,7 @@ program
         // today's listings have been reached yet.
         console.log(`[status]   reached listings modified through: ${st.cursorWatermark?.slice(0, 10) ?? "—"}`);
         console.log(`[status]   completed watermark: ${st.watermark?.slice(0, 10) ?? "none yet — the first full pass hasn't finished"}`);
-        if (stalled) {
+        if (stalled && st.lastError) {
             const { explainSyncError } = await import("./errors.js");
             const ex = explainSyncError(st.lastError, process.env);
             console.log(`[status] It stopped on: ${ex?.error ?? st.lastError}`);
@@ -230,6 +239,14 @@ program
                 console.log(`[status]   → ${step}`);
             if (!ex)
                 console.log("[status] Re-run `npx @chatrealty/sync run` to see the failure in full.");
+        }
+        else if (stalled) {
+            // Stalled with nothing recorded: either the database is so full that
+            // even the error write failed, or the checkpoint predates 0.6.3. Both
+            // answer to the same next step, and neither is "wait for the cron".
+            console.log(`[status] Last movement: ${st.updatedAt?.replace("T", " ").slice(0, 16) ?? "unknown"} — nothing since.`);
+            console.log("[status]   → `npx @chatrealty/sync doctor` first: it reports how full the database is.");
+            console.log("[status]   → then `npx @chatrealty/sync run` to see the failure in full.");
         }
         else if (inFlight) {
             console.log("[status] Run it again in a minute: if the numbers moved, it's working. Nothing to\n" +

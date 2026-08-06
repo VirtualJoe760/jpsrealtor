@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-06
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.5 (2026-08-06)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.17.0 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,77 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.17.0 (2026-08-06) — the sync route stops answering strangers, a stuck
+database stops claiming progress, and CHAP stops finding homes it never
+shows.** Session-19 judge run (Marcus Whitfield, GPS MLS).
+
+*Unset was the default, and the default was open.* `/api/sync/cron` gated on
+`if (CRON_SECRET && header !== …)`, so a deployment that never set the variable
+answered anyone: the judge curled `?status=1` with no header and got the whole
+sync state — cursor position, error text, watermark, timings — off a site that
+had followed the guide end to end. Nothing in the guide ever told anyone to
+create the secret, while its own example `curl` referenced `$CRON_SECRET` as
+though something had. Three changes, because any one alone leaves a hole: the
+route now **fails closed** (503 `cron_secret_not_configured`, naming the fix)
+rather than falling open; the scaffolder **generates** a `CRON_SECRET` into
+`.env.local` the way it already generates `AUTH_SECRET`; and the guide says
+where the value comes from and that the same one goes into Vercel. Fail-closed
+is deliberate — an unset secret is now a dead sync, which is loud, instead of
+an open one, which is silent.
+
+*A saved cursor is not a heartbeat, and neither is a null error column.*
+v0.16.4 taught the status route to report `stalled` from `sync_state.last_error`.
+That column is written from the failure handler — and the headline failure is a
+**full database**, where that write dies with everything else. A tenant seeded
+before `@chatrealty/sync` 0.6.3 has no such column at all. Both land in the
+identical shape the judge reported: `{"seeding":true,"stalled":false,
+"watermark":null,"lastError":null,"progress":"26,400 listings so far — resuming
+next tick"}` on a database that could never resume. Staleness now comes from
+`sync_state.updated_at` — written on every landed page, so it needs nothing to
+succeed at failure time — via `isStalled()` in `@chatrealty/sync` 0.6.4, shared
+by the route and the CLI so the two can't disagree. A silent death reports
+`stalled: true` with `reason: "stopped_without_recorded_cause"` and points at
+`doctor`. (Five unit tests, one per state the judge reported.)
+
+*And the status body stopped being written for engineers.* "watermark", "next
+tick" and a bare `cursor` mean nothing to a licensed agent reading their own
+site's health. The machine fields keep their names; `progress` now says "still
+going; the next hourly run picks up where this one left off" or "up to date —
+the first full load finished", and `firstLoadComplete` / `lastSyncCompleted` /
+`lastProgressAt` alias the three that were misread.
+
+*CHAP found 27 homes and showed none of them.* Asked for investment properties
+in Indio against a database holding 27 Active Indio listings, CHAP returned a
+well-formed paragraph and `listings: []`. Rendering cards depended entirely on
+the model echoing listing keys back on a trailing `LISTINGS:` line, and every
+way that can fail produced the same output — a reply the visitor reads as "this
+agent has nothing to sell". So the echo is no longer load-bearing: the route
+tracks what the TOOLS surfaced this request, in order, and falls back to the
+first three when the model's line is missing or unusable. The regex also stopped
+anchoring to end-of-string (it dropped the line, keeping the literal token in
+the reply, whenever the model wrote `LISTINGS: A,B.` or added a closing
+sentence), `getListing` failures no longer 500 the conversation, and the tool
+description says outright that a request to SEE homes must call the tool — the
+model had answered "I can help you find investment properties in Indio…"
+without searching at all.
+
+*Two listings are not a market.* The homepage stat strip took the first service
+area with any inventory, which put a build on its two La Quinta listings — a
+$924k home and a $12M one — ahead of the 27 Indio listings behind them, and
+published **$6,462,000 median list price** as the site's market number.
+Arithmetically correct; a buyer reading it would misjudge the market entirely.
+The strip now picks the market with the MOST active inventory, and below five
+active listings drops the medians rather than quote one listing's price wearing
+a statistic's label.
+
+*Plus the three guide-vs-reality gaps the same session named:* `cd my-site`
+before `npm run dev` (outside it, `next: not found` reads as a broken install),
+the port check before trusting any curl (a stray dev server on 3000 sends Next
+to 3001 and every subsequent request tests the OLD site), and
+`GROQ_API_KEY` → `CHAT_API_KEY` — the same map-the-credential-onto-the-setting
+rule already documented for Spark → RESO, now stated for the chat key in both
+the guide and the generated `.env.local`.
 
 **v0.16.5 (2026-08-06) — a dark theme actually goes dark, and a dead sync
 stops reporting progress.** Session-18 judge run (Priya Sharma, GPS MLS).

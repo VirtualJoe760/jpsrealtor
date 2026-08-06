@@ -329,8 +329,32 @@ async function main() {
     }
     // 6. .env.local — the token lives here (git-ignored), server-side only.
     const chapBlock = chapKey.trim()
-        ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). LIVE.\n# WHICH presentation appears is a design choice, not a default. Set ONE\n# constant — CHAP_PRESENTATION in lib/chap-presentation.ts — to "widget"\n# (floating), "panel" (inline), or "search" (full-page /search). The ones you\n# don't pick render nothing and /search 404s unless it IS the pick, so there\n# is nothing to delete and no way to leave two presentations live at once.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
-        : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# Set a key here and CHAP switches on. WHICH presentation appears is a design\n# choice, not a default. Set ONE constant — CHAP_PRESENTATION in\n# lib/chap-presentation.ts — to "widget" (floating), "panel" (inline), or\n# "search" (full-page /search). The ones you don't pick render nothing and\n# /search 404s unless it IS the pick, so there is nothing to delete and no way\n# to leave two presentations live at once.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+        ? `\n# CHAP — on-site AI listing chat (ChatRealty's flagship search). LIVE.\n# The variable is CHAT_API_KEY; a key labeled GROQ_API_KEY belongs here under\n# this name. Nothing reads GROQ_API_KEY.\n# WHICH presentation appears is a design choice, not a default. Set ONE\n# constant — CHAP_PRESENTATION in lib/chap-presentation.ts — to "widget"\n# (floating), "panel" (inline), or "search" (full-page /search). The ones you\n# don't pick render nothing and /search 404s unless it IS the pick, so there\n# is nothing to delete and no way to leave two presentations live at once.\nCHAT_API_KEY=${chapKey.trim()}\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`
+        : `\n# CHAP — on-site AI listing chat (BYOK, OpenAI-compatible; Groq recommended).\n# THE VARIABLE IS CHAT_API_KEY. A key your credentials file labels GROQ_API_KEY\n# goes here, under THIS name — nothing reads GROQ_API_KEY.\n# Set a key here and CHAP switches on. WHICH presentation appears is a design\n# choice, not a default. Set ONE constant — CHAP_PRESENTATION in\n# lib/chap-presentation.ts — to "widget" (floating), "panel" (inline), or\n# "search" (full-page /search). The ones you don't pick render nothing and\n# /search 404s unless it IS the pick, so there is nothing to delete and no way\n# to leave two presentations live at once.\n# CHAT_API_KEY=gsk_...\n# CHAT_MODEL=llama-3.3-70b-versatile\n# CHAT_BASE_URL=https://api.groq.com/openai/v1\n`;
+    // CRON_SECRET is generated here, not left to the operator, because "left to
+    // the operator" meant "left unset": the sync route shipped open, a judged
+    // session read the whole sync state off it with no header, and the guide's
+    // own `curl -H "Authorization: Bearer $CRON_SECRET"` example referenced a
+    // variable no step ever created. The route now fails closed without it, so
+    // an unset secret is a dead sync rather than an open one — generating it at
+    // scaffold time is what keeps both failure modes off the table.
+    const cronSecret = require("crypto").randomBytes(32).toString("hex");
+    const syncBlock = `
+# Nightly MLS refresh. /api/sync/cron runs the sync in resumable slices; the
+# hourly Vercel cron (vercel.json) calls it. This secret locks that route —
+# Vercel sends it automatically once the same value is in your Vercel env vars.
+# WITHOUT IT THE ROUTE REFUSES TO RUN (503): it exposes sync state and triggers
+# a real MLS pull, so it is closed until deliberately configured.
+# Check progress: curl -H "Authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/sync/cron?status=1"
+CRON_SECRET=${cronSecret}
+# Your own listing database + MLS feed — \`npx @chatrealty/sync init\` writes
+# CHATREALTY_DB_URL here; the RESO_* values are your feed credentials. A file
+# labeled Spark maps onto these names: the access token is RESO_BEARER_TOKEN,
+# Spark's API root is RESO_BASE_URL. There are no SPARK_* variables.
+# CHATREALTY_DB_URL=postgresql://...
+# RESO_BASE_URL=https://replication.sparkapi.com/Reso/OData
+# RESO_BEARER_TOKEN=
+`;
     const authSecret = require("crypto").randomBytes(32).toString("base64url");
     const authBlock = `
 # Auth.js session secret (generated at scaffold time). Social login: add your
@@ -381,8 +405,8 @@ AUTH_SECRET=${authSecret}
 # AGENT_HEADSHOT=
 `;
     const envContent = testMode
-        ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${identityBlock}`
-        : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${identityBlock}`;
+        ? `# TEST DATA MODE — the site serves fictitious, watermarked sample listings from data/test-listings.json.\n# A permanent banner marks every page. LOCALHOST ONLY — deploy builds hard-fail in this mode.\n# When your ChatRealty data is ready: remove CHATREALTY_TEST_DATA and set the token.\nCHATREALTY_TEST_DATA=true\n# CHATREALTY_API_TOKEN=crt_live_...\n# CHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${syncBlock}${identityBlock}`
+        : `# ChatRealty API — SERVER-SIDE ONLY. Never expose this token to the browser.\nCHATREALTY_API_TOKEN=${token}\nCHATREALTY_API_BASE=${apiBase}\n${chapBlock}${authBlock}${syncBlock}${identityBlock}`;
     fs.writeFileSync(path.join(dest, ".env.local"), envContent, { mode: 0o600 });
     console.log(`  ✓ Wrote .env.local (${testMode ? "TEST DATA mode" : "token kept server-side"}; already in .gitignore)`);
     // 7. Next steps
@@ -390,6 +414,14 @@ AUTH_SECRET=${authSecret}
     console.log(`    cd ${dir}`);
     console.log("    npm install");
     console.log("    npm run dev\n");
+    // Both lines below are here because a judged session lost time to each:
+    // `npm run dev` from the parent directory (next isn't on PATH there, and the
+    // failure reads as a broken install), and a stray dev server from an earlier
+    // session still holding 3000 — Next quietly moves to 3001 and every curl
+    // afterwards tests the OLD site.
+    console.log(`  The cd is not optional — \`npm run dev\` outside ${dir} fails with "next: not found".`);
+    console.log("  If port 3000 is already taken, Next silently starts on 3001: read the port off");
+    console.log("  its startup line, or run `npm run dev -- -p 3100` to pick your own.\n");
     if (chapKey.trim()) {
         console.log("  ✓ CHAP AI listing chat is ENABLED — the chat bubble appears bottom-right. Try “3 beds under $800k with a pool”.\n");
     }

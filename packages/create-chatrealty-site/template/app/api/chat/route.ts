@@ -28,7 +28,7 @@ const SYSTEM = [
   "You are the property-search assistant on a real-estate agent's website, powered by ChatRealty.",
   "Answer questions about homes for sale and local market data using ONLY the tools — never invent listings, prices, or stats.",
   "Choose the tool that fits the question actually being asked:",
-  "search_listings only when the visitor wants to SEE PROPERTIES;",
+  "search_listings whenever the visitor wants to SEE PROPERTIES — 'show me', 'find me', 'what's available', 'any homes in X'. Call it before you answer; never say you can help them find homes without actually searching.",
   "get_market_stats for questions about a market, area, or trend ('what's the market like', 'how's inventory', 'are prices up');",
   "get_listing for a specific home already mentioned.",
   "Answer the newest message on its own terms. NEVER repeat a previous reply or re-show the previous search's listings when the visitor has moved on to a different question.",
@@ -46,7 +46,18 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_listings",
-      description: "Search active listings. All filters optional.",
+      // "All filters optional" read to one model as "and optional to call at
+      // all": asked to SHOW investment properties in Indio, it replied "I can
+      // help you find investment properties in Indio…" and called nothing.
+      // There is also no keyword search here, so a descriptive ask has to be
+      // translated into the structural filters that exist — say so, or the
+      // model treats an untranslatable adjective as a reason not to search.
+      description:
+        "Search active listings and SHOW them to the visitor. Call this for any request to see, " +
+        "find, browse or get homes — never answer such a request in words alone. There is no " +
+        "keyword search: translate descriptive asks (investment, starter, luxury, fixer, " +
+        "short-term-rental) into the filters below, using none of them if none apply, and say " +
+        "in your reply which ones you used. All filters optional.",
       parameters: {
         type: "object",
         properties: {
@@ -142,6 +153,12 @@ export async function POST(req: NextRequest) {
       .map((m: any) => ({ role: m.role, content: m.content.slice(0, 2000) })),
   ];
 
+  // Listings the TOOLS surfaced this request, in the order they came back.
+  // Ordered, not a Set, because it is also the fallback when the model fails
+  // to echo them — and "the first three the search returned" is a defensible
+  // choice where an arbitrary Set iteration order is not. Scoped to this
+  // request, so it can never re-show a previous turn's search.
+  const surfaced: string[] = [];
   const usedKeys = new Set<string>();
   // A provider can fail to produce a well-formed tool call — Groq answers HTTP
   // 400 `tool_use_failed` with the half-written generation attached. It is a
@@ -202,7 +219,12 @@ export async function POST(req: NextRequest) {
         const result = await runTool(tc.function?.name, args);
         // Track listing keys surfaced by tools so the UI can render cards.
         const items = (result as any)?.items;
-        if (Array.isArray(items)) for (const i of items) if (i.listingKey) usedKeys.add(i.listingKey);
+        if (Array.isArray(items))
+          for (const i of items)
+            if (i.listingKey && !usedKeys.has(i.listingKey)) {
+              usedKeys.add(i.listingKey);
+              surfaced.push(i.listingKey);
+            }
         messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
       }
       continue;
@@ -214,16 +236,32 @@ export async function POST(req: NextRequest) {
     // "LISTINGS:" — which the model emits whenever it found nothing — used to
     // fail the match, leaving the literal token as the last word the visitor
     // read ("There are no homes under $500k in La Quinta. LISTINGS:").
+    // Not anchored to the end of the string any more, and it tolerates
+    // trailing punctuation: the old `…$` match dropped the whole line when the
+    // model wrote "LISTINGS: A,B." or followed it with a closing sentence, and
+    // a dropped line means a search that found homes renders zero cards while
+    // the literal token stays in the visitor's reply.
     let text: string = msg.content || "";
     let keys: string[] = [];
-    const m = text.match(/\n?\s*LISTINGS:\s*([A-Za-z0-9,\-\s]*)$/);
+    const m = text.match(/\n?[ \t]*LISTINGS:[ \t]*([A-Za-z0-9,\-\s]*)/);
     if (m) {
-      keys = m[1].split(",").map((s) => s.trim()).filter((k) => usedKeys.has(k));
-      text = text.slice(0, m.index).trim();
+      keys = m[1].split(/[,\s]+/).map((s) => s.trim()).filter((k) => usedKeys.has(k));
+      text = (text.slice(0, m.index) + text.slice((m.index ?? 0) + m[0].length)).trim();
     }
+    // THE MODEL ECHOING THE KEYS IS NOT LOAD-BEARING. A judged session asked
+    // for investment properties in Indio against a database holding 27 Active
+    // Indio listings and got a well-formed paragraph with `listings: []` —
+    // every one of the failure modes above lands there, and they are
+    // indistinguishable from "no inventory" to the visitor, who is looking at
+    // an agent's site that appears to have nothing to sell. If a search ran
+    // and returned homes this turn, show them. `surfaced` is per-request, so
+    // this cannot resurrect an earlier search; get_market_stats and
+    // get_listing contribute no items, so a stats answer still gets no cards.
+    if (keys.length === 0 && surfaced.length > 0) keys = surfaced.slice(0, 3);
     const cards = [];
     for (const k of keys.slice(0, 4)) {
-      const l = await getListing(k);
+      // One unfetchable key must not 500 the whole conversation.
+      const l = await getListing(k).catch(() => null);
       // No detailUrl in the card payload on purpose: it points at the
       // ChatRealty hub, and the UI builds its own /listings/{key} link.
       if (l) cards.push({ listingKey: l.listingKey, address: l.address, city: l.city, price: l.listPrice, beds: l.beds, baths: l.baths, sqft: l.sqft, thumbUrl: l.thumbUrl, listAgentName: l.listAgentName ?? null, listOfficeName: l.listOfficeName ?? null });

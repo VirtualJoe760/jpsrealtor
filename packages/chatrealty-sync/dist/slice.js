@@ -52,6 +52,7 @@ const EMPTY_STATE = {
     lastRunUpserted: null,
     lastError: null,
     lastErrorAt: null,
+    updatedAt: null,
 };
 export async function readSliceState(pool) {
     await pool.query(ENSURE_SQL);
@@ -81,7 +82,32 @@ export async function readSliceState(pool) {
         lastRunUpserted: row.last_run_upserted ?? null,
         lastError: row.last_error ?? null,
         lastErrorAt: row.last_error_at ? new Date(row.last_error_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
     };
+}
+/**
+ * How long a saved cursor may sit unchanged before "resuming next tick" stops
+ * being a claim anyone should believe. The cron runs hourly; 90 minutes means
+ * a tick has come and gone without moving the checkpoint.
+ */
+export const STALE_AFTER_MS = 90 * 60 * 1000;
+/**
+ * Is this checkpoint actually in flight, or only checkpointed?
+ *
+ * Returns `null` when there is nothing to judge (no cursor — either idle or
+ * complete), `true` when a pass is saved but is not advancing, `false` when it
+ * genuinely is. Callers should render `null` as "not applicable", never as
+ * "healthy" — collapsing the two is the bug this replaces.
+ */
+export function isStalled(state, now = Date.now()) {
+    if (!state.cursor)
+        return null;
+    if (state.lastError)
+        return true;
+    // No error recorded is NOT evidence of health — see SliceState.updatedAt.
+    if (!state.updatedAt)
+        return true;
+    return now - new Date(state.updatedAt).getTime() > STALE_AFTER_MS;
 }
 function isoOrNull(v) {
     if (!v)

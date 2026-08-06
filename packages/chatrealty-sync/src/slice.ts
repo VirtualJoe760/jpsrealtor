@@ -42,6 +42,23 @@ export interface SliceState {
    */
   lastError: string | null;
   lastErrorAt: string | null;
+  /**
+   * When the checkpoint row last MOVED. Written on every landed page and on
+   * pass completion, so it is the one liveness signal that does not depend on
+   * anything succeeding at failure time.
+   *
+   * That distinction is the whole reason it exists. `lastError` is recorded by
+   * a write issued from the catch block — and the headline failure is a FULL
+   * DATABASE, where that write is exactly as likely to fail as the one that
+   * just died. So the state a judged session actually saw on a permanently
+   * stuck tenant was `cursor` set, `lastError` null: indistinguishable from
+   * healthy progress by every other field, and reported as "resuming next
+   * tick" forever. A database populated before 0.6.3 (no last_error column at
+   * all) lands in the identical shape. `updatedAt` catches both without
+   * needing the dying process to cooperate: if a cursor is saved and this
+   * timestamp has not moved in over an hour, nothing is resuming.
+   */
+  updatedAt: string | null;
 }
 
 /**
@@ -109,6 +126,7 @@ const EMPTY_STATE: SliceState = {
   lastRunUpserted: null,
   lastError: null,
   lastErrorAt: null,
+  updatedAt: null,
 };
 
 export async function readSliceState(pool: pg.Pool): Promise<SliceState> {
@@ -138,7 +156,31 @@ export async function readSliceState(pool: pg.Pool): Promise<SliceState> {
     lastRunUpserted: row.last_run_upserted ?? null,
     lastError: row.last_error ?? null,
     lastErrorAt: row.last_error_at ? new Date(row.last_error_at).toISOString() : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
   };
+}
+
+/**
+ * How long a saved cursor may sit unchanged before "resuming next tick" stops
+ * being a claim anyone should believe. The cron runs hourly; 90 minutes means
+ * a tick has come and gone without moving the checkpoint.
+ */
+export const STALE_AFTER_MS = 90 * 60 * 1000;
+
+/**
+ * Is this checkpoint actually in flight, or only checkpointed?
+ *
+ * Returns `null` when there is nothing to judge (no cursor — either idle or
+ * complete), `true` when a pass is saved but is not advancing, `false` when it
+ * genuinely is. Callers should render `null` as "not applicable", never as
+ * "healthy" — collapsing the two is the bug this replaces.
+ */
+export function isStalled(state: SliceState, now = Date.now()): boolean | null {
+  if (!state.cursor) return null;
+  if (state.lastError) return true;
+  // No error recorded is NOT evidence of health — see SliceState.updatedAt.
+  if (!state.updatedAt) return true;
+  return now - new Date(state.updatedAt).getTime() > STALE_AFTER_MS;
 }
 
 function isoOrNull(v: string | null): string | null {

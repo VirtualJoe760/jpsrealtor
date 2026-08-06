@@ -34,16 +34,29 @@ export default async function Home() {
     ? marketCities
     : agent.serviceAreas.map((a) => a.name)
   ).slice(0, 4);
+  // AND SHOW THE BIGGEST MARKET, NOT THE FIRST ONE THAT ISN'T EMPTY. Taking
+  // the first non-empty city put a judged build's homepage on the two La
+  // Quinta listings it happened to hold — a $924k home and a $12M one —
+  // ahead of the 27 Indio listings sitting behind them, and published
+  // "$6,462,000 median list price" as the market number for the whole site.
+  // Arithmetically correct, and a buyer reading it would misjudge the market
+  // completely. The largest market is both the more representative sample and
+  // the one the agent most likely leads with.
   let stats: MarketStats | null = null;
   let statsCity: string | undefined;
   for (const city of statsCities) {
     const s = await getMarketStats({ city }).catch(() => null);
-    if (s && s.activeCount > 0) {
+    if (s && s.activeCount > 0 && (!stats || s.activeCount > stats.activeCount)) {
       stats = s;
       statsCity = city;
-      break;
     }
   }
+  // A median over a handful of listings is not a market statistic, it is one
+  // listing's price wearing a statistic's label. Below this, show the count —
+  // which is true at any size — and drop the medians rather than publish a
+  // number that misinforms. Same rule the neighborhood pages should follow.
+  const MIN_MEDIAN_SAMPLE = 5;
+  const medianIsMeaningful = Boolean(stats && stats.activeCount >= MIN_MEDIAN_SAMPLE);
   // Silence is the bug this whole section keeps producing: say why in the dev
   // log so the next builder doesn't go looking for a broken endpoint.
   if (!stats && process.env.NODE_ENV !== "production") {
@@ -108,23 +121,36 @@ export default async function Home() {
 
       {/* Market strip — live stats */}
       {stats && stats.activeCount > 0 && (
-        <section className="mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-surface p-6 sm:grid-cols-3">
+        <section
+          className={`mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-surface p-6 ${
+            medianIsMeaningful ? "sm:grid-cols-3" : ""
+          }`}
+        >
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{num(stats.activeCount)}</p>
             <p className="text-sm text-gray-500">Active listings{statsCity ? ` in ${statsCity}` : ""}</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.medianListPrice ? money(stats.medianListPrice) : "—"}
+          {medianIsMeaningful ? (
+            <>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.medianListPrice ? money(stats.medianListPrice) : "—"}
+                </p>
+                <p className="text-sm text-gray-500">Median list price</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.medianDaysOnMarket ?? "—"}
+                </p>
+                <p className="text-sm text-gray-500">Median days on market</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-center text-sm text-gray-500">
+              Too few active listings here right now to quote a meaningful median price or
+              days-on-market. Ask about a specific home or neighborhood instead.
             </p>
-            <p className="text-sm text-gray-500">Median list price</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.medianDaysOnMarket ?? "—"}
-            </p>
-            <p className="text-sm text-gray-500">Median days on market</p>
-          </div>
+          )}
         </section>
       )}
 

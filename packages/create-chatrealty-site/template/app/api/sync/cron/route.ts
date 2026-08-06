@@ -8,7 +8,16 @@
 // Setup: set CHATREALTY_DB_URL + your feed credentials (RESO_BEARER_TOKEN +
 // RESO_BASE_URL, or the RESO OAuth set) in this project's Vercel env vars.
 // CRON_SECRET (any random string) locks the route; Vercel sends it
-// automatically once the env var exists.
+// automatically once the env var exists. The scaffolder writes one into
+// .env.local for you — copy the SAME value into Vercel when you deploy.
+//
+// THIS ROUTE IS CLOSED WITHOUT CRON_SECRET. It used to be open when the env
+// var was missing, on the reasoning that an unset secret meant "not locked
+// yet" — which is exactly backwards, because unset is the DEFAULT. A judged
+// session curled ?status=1 with no header on a site that had followed the
+// guide end to end and got the whole sync state back: cursor position, error
+// text, watermark, timings. Anyone who could guess the path had it. Missing
+// config now fails closed and says which variable to set.
 //
 // Check progress anytime: GET /api/sync/cron?status=1
 //
@@ -26,8 +35,10 @@
 // What you should see:
 //   • {"skipped":"sync not configured"} → CHATREALTY_DB_URL or the RESO_* vars
 //     are missing from .env.local. The route is fine; the config isn't.
-//   • {"error":"unauthorized"} → the header doesn't match CRON_SECRET. Note that
-//     with CRON_SECRET UNSET the route is open — set it before deploying.
+//   • {"error":"unauthorized"} → the header doesn't match CRON_SECRET.
+//   • {"error":"cron_secret_not_configured"} → CRON_SECRET is missing entirely.
+//     Generate one (`openssl rand -hex 32`), put it in .env.local AND in your
+//     Vercel env vars, and restart the dev server.
 //   • {"seeding":true,"progress":…} → working. That is the whole confirmation.
 //   • {"stalled":true,"lastError":…} → a pass IS checkpointed but the last tick
 //     died, and the next one will die the same way. `progress` says what on.
@@ -58,8 +69,25 @@ function configured(): boolean {
 export async function GET(req: NextRequest) {
   // Auth: Vercel cron sends `Authorization: Bearer ${CRON_SECRET}` when the
   // env var is set. Status checks are allowed with the same secret.
+  //
+  // Fail CLOSED when it isn't set (see the header comment). 503 rather than
+  // 401 because the caller did nothing wrong — the deployment is misconfigured
+  // — and because the body has to name the fix: a bare 401 sent an agent
+  // hunting for a secret nobody had generated.
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret) {
+    return NextResponse.json(
+      {
+        error: "cron_secret_not_configured",
+        whatToDo:
+          "Set CRON_SECRET to any random string (openssl rand -hex 32) in .env.local and in " +
+          "your Vercel env vars, then restart. Until it is set this route stays closed — it " +
+          "exposes sync state and triggers a real MLS pull.",
+      },
+      { status: 503, headers: NO_STORE }
+    );
+  }
+  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
   }
 
@@ -69,7 +97,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: "sync not configured" }, { headers: NO_STORE });
   }
 
-  const { runSyncSlice, readSyncStatus, configFromEnv, explainSyncError } = await import(
+  const { runSyncSlice, readSyncStatus, configFromEnv, explainSyncError, isStalled } = await import(
     "@chatrealty/sync"
   );
 
@@ -85,33 +113,66 @@ export async function GET(req: NextRequest) {
     // half of the same problem: `{"seeding":true,"progress":"26,400 listings
     // so far — resuming next tick"}` on a database that was FULL. The cursor
     // was real, the count was real, and the next tick had no chance of moving
-    // it — every one of them died on the same storage error. The slice now
-    // records why it stopped (sync_state.last_error, cleared by the next page
-    // that lands), so "resuming" is claimed only when nothing is known to be
-    // blocking it.
+    // it — every one of them died on the same storage error. The slice records
+    // why it stopped (sync_state.last_error, cleared by the next page that
+    // lands), so "resuming" is claimed only when nothing blocks it.
+    //
+    // AND `last_error` IS NOT ENOUGH EITHER. It is written from the catch
+    // block, so on a full database that write dies with everything else — and
+    // a database seeded before 0.6.3 has no such column at all. Both land in
+    // the same shape the NEXT judged session reported: cursor set, lastError
+    // null, "resuming next tick" on a permanently stuck tenant. `isStalled`
+    // falls back to how long the checkpoint itself has sat unchanged, which
+    // needs nothing to succeed at failure time. Never re-derive staleness from
+    // lastError here; the two sides of the loop must agree.
     const stopped = state.lastError ? explainSyncError?.(state.lastError, process.env) : null;
+    const stalled = isStalled?.(state) === true;
+    // Every string below is read by a licensed real-estate agent, not an
+    // engineer. "watermark", "cursor" and "next tick" mean nothing to them —
+    // a judged session flagged all three. The machine-readable fields keep
+    // their names; `progress` and `state` say what is happening in English.
     const progress = state.cursor
-      ? state.lastError
-        ? `${state.passPulled.toLocaleString()} listings loaded, then the last run STOPPED — ` +
-          `it will not get further until this is resolved: ${stopped?.error ?? state.lastError}`
-        : `${state.passPulled.toLocaleString()} listings so far — resuming next tick`
+      ? stalled
+        ? `${state.passPulled.toLocaleString()} listings loaded, then it STOPPED — it will not ` +
+          `get further on its own. ` +
+          (stopped?.error ?? state.lastError
+            ? `Cause: ${stopped?.error ?? state.lastError}`
+            : `No cause was recorded, which usually means the database is full. ` +
+              `Run \`npx @chatrealty/sync doctor\` — it reports how full it is.`)
+        : `${state.passPulled.toLocaleString()} listings loaded so far — still going; the next ` +
+          `hourly run picks up where this one left off`
       : state.watermark
-        ? "caught up"
-        : "not started — no sync pass has completed yet; the next cron tick begins the seed";
+        ? "up to date — the first full load finished and nightly updates are keeping it current"
+        : "not started — no listings have been loaded yet; the next hourly run begins the first load";
     return NextResponse.json(
       {
-        seeding: Boolean(state.cursor && !state.lastError),
+        seeding: Boolean(state.cursor) && !stalled,
         // Distinct from `seeding`: a pass IS checkpointed, it just isn't
         // advancing. Without this a caller sees seeding:false and reads it as
         // "nothing in flight".
-        stalled: Boolean(state.cursor && state.lastError),
+        stalled,
         started: Boolean(state.cursor || state.watermark),
         progress,
+        // Plain-English aliases for the two fields agents misread. The
+        // original names stay for anything already parsing them.
+        firstLoadComplete: Boolean(state.watermark),
+        lastSyncCompleted: state.watermark,
+        lastProgressAt: state.updatedAt ?? null,
         watermark: state.watermark,
         lastRunAt: state.lastRunAt,
         lastError: state.lastError,
         lastErrorAt: state.lastErrorAt,
         ...(stopped ? { reason: stopped.code, whatToDo: stopped.whatToDo } : {}),
+        ...(stalled && !stopped
+          ? {
+              reason: "stopped_without_recorded_cause",
+              whatToDo: [
+                "Run `npx @chatrealty/sync doctor` — a full database is the usual cause, and it reports that.",
+                "Then `npx @chatrealty/sync run` to see the failure in full.",
+                "Do not wait for the next hourly run; it fails the same way.",
+              ],
+            }
+          : {}),
       },
       { headers: NO_STORE }
     );
