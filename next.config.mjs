@@ -164,6 +164,23 @@ const nextConfig = {
 
     return config;
   },
+
+  async redirects() {
+    return [
+      // The settings sections are TABS on one page, not routes — but four
+      // separate bug reports from testers' sessions say otherwise, because
+      // "/agent/settings/integrations" is the shape everyone guesses when
+      // they are told to open the Integrations section, and it 404'd. The
+      // docs were corrected; a corrected doc only helps whoever reads that
+      // copy of it. This makes the guessable URL work. Each section already
+      // deep-links via ?section= (SettingsSidebar reads it).
+      {
+        source: "/agent/settings/:section(identity|branding|photos|content|highlights|social|domain|areas|calendar|gbp|integrations|billing)",
+        destination: "/agent/settings?section=:section",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 // MDX plugin wrapper (ESM)
