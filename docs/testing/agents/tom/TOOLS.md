@@ -36,6 +36,7 @@ curl -s https://jpsrealtor.com/api/skill/testing \
 ```json
 {
   "testingOn": true,
+  "mode": "working",
   "latestReport": {
     "id": "66a9…",
     "title": "Session 12 — LA agent, luxury",
@@ -49,6 +50,10 @@ curl -s https://jpsrealtor.com/api/skill/testing \
 
 `resolutionNotes` is non-null **only** once status is `complete`. It's the fix
 summary from the routine — relay it verbatim in the next brief.
+
+`mode` is the operator's switch (AGENTS.md step 1): `idle` = pull docs +
+answer chat, then stop; `working` = the full loop. It outranks the dispatch
+condition and I never set it myself.
 
 ### Submit the report (and disarm, in one call)
 

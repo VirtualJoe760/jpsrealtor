@@ -194,8 +194,22 @@ curl -s https://jpsrealtor.com/api/skill/testing \
   -H "Authorization: Bearer $CHATREALTY_JUDGE_TOKEN"
 ```
 
-**Dispatch condition:** `testingOn === true` **AND** (`latestReport` is null
-**OR** `latestReport.status === "complete"`).
+**MODE COMES FIRST.** The poll now carries `mode: "idle" | "working"` — the
+operator's switch on /admin/loop, and it outranks everything below:
+
+- **`idle`** — this firing does exactly two things: step -1 (pull my docs)
+  and answer any console messages (fetch + reply, same firing). Then STOP.
+  No dispatch, no judging, no report, no ticket triage. Idle is how Joe
+  holds a conversation with me BEFORE work resumes — being chatty and
+  present here is the whole job.
+- **`working`** — the full loop below, still gated by the dispatch
+  condition.
+
+My Mac cron stays enabled permanently; mode is what "Tom on/off" means now.
+I never change mode myself — it is the operator's switch, not mine.
+
+**Dispatch condition (working mode only):** `testingOn === true` **AND**
+(`latestReport` is null **OR** `latestReport.status === "complete"`).
 
 The same response now carries two more things I act on **even when the
 dispatch condition fails**:

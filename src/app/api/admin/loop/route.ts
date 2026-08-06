@@ -24,7 +24,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { AgentTestReport, getTestingState, setTestingOn } from "@/models/AgentTesting";
+import { AgentTestReport, getTestingState, setTestingOn, setTomMode } from "@/models/AgentTesting";
 import BugReport from "@/models/BugReport";
 import FeedbackSubmission from "@/models/FeedbackSubmission";
 import {
@@ -54,7 +54,20 @@ async function requireAdmin() {
  *   armed     testingOn=true, last report complete (Tom dispatches on his
  *             next cron firing — up to ~15 min away)
  */
-function deriveStage(testingOn: boolean, latest: any): { stage: string; detail: string } {
+function deriveStage(
+  testingOn: boolean,
+  latest: any,
+  mode?: "idle" | "working"
+): { stage: string; detail: string } {
+  // The operator's switch outranks the loop handshake in the display: an idle
+  // Tom answers chat and does nothing else, whatever the toggle says.
+  if (mode === "idle") {
+    return {
+      stage: "idle",
+      detail:
+        "Tom is IDLE — on each firing he pulls his docs and answers chat, nothing else. Flip to Working when the conversation is done.",
+    };
+  }
   const open = latest && latest.status !== "complete";
   if (open) {
     return {
@@ -185,7 +198,8 @@ export async function GET(req: NextRequest) {
       toggleUpdatedBy: state.updatedBy,
       toggleUpdatedAt: state.updatedAt,
       presence,
-      ...deriveStage(state.testingOn, latest),
+      tomMode: state.tomMode || "working",
+      ...deriveStage(state.testingOn, latest, state.tomMode),
       reports: (reports as any[]).map((r) => ({
         id: String(r._id),
         title: r.title,
@@ -321,6 +335,12 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  // The operator's switch: idle = chat-only firings, working = full loop.
+  if (body.mode === "idle" || body.mode === "working") {
+    const state = await setTomMode(body.mode, "admin");
+    return NextResponse.json({ ok: true, tomMode: state.tomMode }, { headers: NO_STORE });
+  }
+
   // The toggle — same absorption. Manual override half of the handshake.
   if (typeof body.testingOn === "boolean") {
     const state = await setTestingOn(body.testingOn, "admin");
@@ -330,7 +350,7 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(
     {
       error: "validation_failed",
-      message: "Send { fingerprint, status }, { reportId, status }, or { testingOn }.",
+      message: "Send { fingerprint, status }, { reportId, status }, { testingOn }, or { mode }.",
     },
     { status: 400, headers: NO_STORE }
   );

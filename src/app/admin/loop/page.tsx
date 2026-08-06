@@ -58,6 +58,7 @@ type Report = {
 
 type Payload = {
   testingOn: boolean;
+  tomMode: "idle" | "working";
   toggleUpdatedBy: string;
   toggleUpdatedAt: string;
   presence: { tomLastPoll: string | null; repairerLastAction: string | null };
@@ -89,6 +90,7 @@ type Payload = {
 };
 
 const STAGE_META: Record<string, { label: string; cls: string }> = {
+  idle: { label: "Idle — Tom answers chat only", cls: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
   armed: { label: "Armed — awaiting Tom's next firing", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" },
   "report-waiting": { label: "Report waiting for the repairer", cls: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
   repairing: { label: "Repairer is fixing", cls: "bg-blue-500/15 text-blue-500 border-blue-500/30" },
@@ -364,6 +366,31 @@ export default function LoopConsolePage() {
               <span className={`text-xs ${textMuted}`}>
                 toggle {data.testingOn ? "ON" : "OFF"} · flipped by {data.toggleUpdatedBy} ·{" "}
                 {new Date(data.toggleUpdatedAt).toLocaleString()}
+              </span>
+              <span className={`inline-flex rounded-lg border overflow-hidden ${isLight ? "border-gray-200" : "border-white/10"}`}>
+                {(["idle", "working"] as const).map((m) => (
+                  <button
+                    key={m}
+                    disabled={busy}
+                    onClick={() => patch({ mode: m })}
+                    className={`px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50 ${
+                      data.tomMode === m
+                        ? m === "idle"
+                          ? "bg-violet-600 text-white"
+                          : "bg-emerald-600 text-white"
+                        : isLight
+                          ? "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                          : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                    title={
+                      m === "idle"
+                        ? "Chat-only: Tom pulls docs and answers messages, nothing else"
+                        : "Full loop: dispatch, judge, report (still gated by the toggle)"
+                    }
+                  >
+                    {m === "idle" ? "Idle" : "Working"}
+                  </button>
+                ))}
               </span>
               <button
                 onClick={() => patch({ testingOn: !data.testingOn })}

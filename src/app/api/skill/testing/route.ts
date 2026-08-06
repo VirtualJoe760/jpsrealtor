@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       testingOn: state.testingOn,
+      // The judge's operating mode. "idle" = this firing pulls docs and
+      // answers console messages, then STOPS — no dispatch, no judging, no
+      // reports. "working" = the full loop. Set from /admin/loop.
+      mode: state.tomMode || "working",
       latestReport: latest
         ? {
             id: String(latest._id),

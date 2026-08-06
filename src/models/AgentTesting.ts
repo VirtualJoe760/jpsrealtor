@@ -53,6 +53,19 @@ AgentTestReportSchema.index({ status: 1, createdAt: -1 });
 export interface ITestingState extends Document {
   key: "testing";
   testingOn: boolean;
+  /**
+   * The judge's operating mode, controlled from /admin/loop.
+   *   "idle"    — chat-only: on each firing Tom pulls his docs and answers
+   *               console messages, and does NOTHING else. No dispatch, no
+   *               judging, no reports. This is how a conversation with him
+   *               gets priority before work resumes.
+   *   "working" — the full loop (still gated by testingOn for dispatch).
+   * Orthogonal to testingOn on purpose: testingOn is the loop handshake the
+   * judge/routine trade; mode is the OPERATOR's switch. His Mac cron stays
+   * enabled permanently — mode is what "turning Tom on/off from the UI"
+   * actually flips.
+   */
+  tomMode: "idle" | "working";
   /** "judge" | "routine" | "admin" — who flipped it last, for the admin page. */
   updatedBy: string;
   updatedAt: Date;
@@ -62,6 +75,7 @@ const TestingStateSchema = new Schema<ITestingState>(
   {
     key: { type: String, default: "testing", unique: true },
     testingOn: { type: Boolean, default: false },
+    tomMode: { type: String, enum: ["idle", "working"], default: "working" },
     updatedBy: { type: String, default: "admin" },
   },
   { timestamps: true }
@@ -97,6 +111,15 @@ export async function setTestingOn(on: boolean, by: string) {
   return TestingState.findOneAndUpdate(
     { key: "testing" },
     { $set: { testingOn: on, updatedBy: by } },
+    { new: true, upsert: true }
+  );
+}
+
+/** The operator's switch — see tomMode on the schema. Admin-only callers. */
+export async function setTomMode(mode: "idle" | "working", by: string) {
+  return TestingState.findOneAndUpdate(
+    { key: "testing" },
+    { $set: { tomMode: mode, updatedBy: by } },
     { new: true, upsert: true }
   );
 }
