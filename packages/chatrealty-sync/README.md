@@ -28,8 +28,17 @@ RESO Web API feed  ──►  reso-fetch.ts  ──►  map.ts  ──►  write
   carries `list_agent_name` + `list_office_name` (+ phones + MLS ids). These
   columns are `NOT NULL`; the mapper substitutes a placeholder rather than ever
   emitting null, and always preserves real attribution when the feed provides it.
+- **Photos ride along with the listing** — the pull asks for `$expand=Media` and
+  the mapper lifts the feed's preferred photo into `primary_photo_url`, which is
+  what the card grid, the map popups, the CHAP results and the detail hero all
+  render. There is no separate photo pass to keep in step with the checkpoint. A
+  feed that rejects the expansion is detected on the first page and the seed
+  continues without photos rather than dying (`RESO_EXPAND_MEDIA=off` skips the
+  attempt). Before 0.6.0 nothing wrote that column, so three judged sessions
+  browsed perfectly-seeded tenants where every listing read "No photo available".
 - **Nothing is silently lost.** RESO fields the catalog doesn't model fall into the
-  `extras` jsonb column; the full raw payload is retained in `raw`.
+  `extras` jsonb column; the full raw payload is retained in `raw` — minus the
+  expanded `Media` collection, which would otherwise be stored twice per listing.
 
 The column naming is **not guessed** — it is read from the canonical RESO Data
 Dictionary at `src/lib/reso/data-dictionary.ts`, the same source the tenant DB
@@ -52,6 +61,9 @@ npx @chatrealty/sync doctor
 # 4. Small local test fetch (no writes), then the full seed
 npx @chatrealty/sync run --once --dry-run --max 25
 npx @chatrealty/sync run
+
+# 5. From another terminal while that runs: where has the seed got to?
+npx @chatrealty/sync status
 ```
 
 Daily updates need no extra setup: a scaffolded ChatRealty site ships a nightly
@@ -113,6 +125,7 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 | `RESO_SCOPE` | — | OAuth2 scope, if your MLS requires one. |
 | `RESO_RESOURCE` | — | Resource name (default `Property`). |
 | `RESO_PAGE_SIZE` | — | OData page size (default `200`). |
+| `RESO_EXPAND_MEDIA` | — | `off` skips the photo expansion (`$expand=Media`). On by default; a feed that rejects it turns it off by itself on the first page. |
 | `SYNC_STATE_PATH` | — | Watermark file path for **capped/dry runs only** (default `./.sync-state`). A real `run` checkpoints in your database, not here. |
 | `SYNC_OVERLAP_HOURS` | — | Incremental lookback (default `26`). |
 | `SYNC_BATCH_SIZE` | — | Upsert batch size (default `400`). |
@@ -176,6 +189,31 @@ reached the present.
 the quota. The client retries automatically (honoring `Retry-After`). If it
 still gives up, your credentials are fine — wait (15–60 minutes is typical) and
 re-run. Nothing is lost.
+
+### Watching a run that hasn't finished
+
+A seed prints a progress line every few pages:
+
+```
+[chatrealty-sync]   … 12,400 pulled, 12,400 written — through 2019-08-03
+```
+
+`through` is the date it has reached in **your feed's history**, and it is the
+number that answers "has it got to current listings yet?" — a row count can't.
+The feed is walked oldest-first, so a seed spends its early minutes in archival
+closings no matter how healthy it is.
+
+From a second terminal, or against a run redirected to a log file:
+
+```bash
+npx @chatrealty/sync status
+```
+
+That reads the checkpoint straight out of your database and is safe to run while
+a sync is in flight. Run it twice a minute apart: if the numbers moved, it's
+working. (Before 0.6.0 the only progress line came at the end of a 15-minute
+slice, and a judged session watched a log file sit at "starting" for 40 minutes
+with no way to tell a working seed from a hung one.)
 
 ### Reading the output
 

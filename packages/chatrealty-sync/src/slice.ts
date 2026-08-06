@@ -33,6 +33,24 @@ export interface SliceState {
   lastRunUpserted: number | null;
 }
 
+/**
+ * One page landed. Emitted so a caller can SAY SOMETHING while a long seed
+ * runs: the CLI used to print a line only when a 15-minute slice ended, so a
+ * judged session watched a log file sit at "starting" for 40 minutes and had to
+ * query the database directly to find out whether anything was happening. A
+ * silent process is indistinguishable from a hung one.
+ */
+export interface PageProgress {
+  /** Pages completed in this slice. */
+  pages: number;
+  /** Records pulled across the whole pass (all slices). */
+  passPulled: number;
+  /** Rows upserted across the whole pass. */
+  passUpserted: number;
+  /** Newest ModificationTimestamp seen — how far through the feed's history. */
+  cursorWatermark: string | null;
+}
+
 export interface SliceResult {
   done: boolean; // true = pass complete; false = deadline hit, cursor saved
   mode: "seed" | "incremental";
@@ -109,7 +127,7 @@ function maxIso(a: string | null, b: unknown): string | null {
  */
 export async function runSyncSlice(
   config: SyncConfig,
-  opts: { budgetMs?: number } = {}
+  opts: { budgetMs?: number; onPage?: (p: PageProgress) => void } = {}
 ): Promise<SliceResult> {
   const deadline = Date.now() + (opts.budgetMs ?? 700_000);
   const client = new ResoClient(config.reso);
@@ -172,6 +190,8 @@ export async function runSyncSlice(
            pass_pulled=$4, pass_upserted=$5, updated_at=now() WHERE id=1`,
         [url, isoOrNull(cursorWatermark), mode, passPulled, passUpserted]
       );
+
+      opts.onPage?.({ pages, passPulled, passUpserted, cursorWatermark });
 
       if (url && Date.now() >= deadline) {
         return {

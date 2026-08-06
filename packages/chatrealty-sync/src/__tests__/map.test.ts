@@ -213,3 +213,59 @@ test("mappedPropertyColumns includes attribution + jsonb + geom columns", () => 
     assert.ok(cols.includes(c), `expected column ${c}`);
   }
 });
+
+// --- photos (expanded Media) -------------------------------------------------
+//
+// Every one of these covers a way a card ended up reading "No photo available"
+// on a fully-seeded tenant.
+
+test("primary photo comes from the expanded Media collection", () => {
+  const row = mapResoProperty({
+    ...SAMPLE,
+    Media: [
+      { MediaCategory: "Photo", Order: 3, MediaURL: "https://cdn/third.jpg" },
+      { MediaCategory: "Photo", Order: 1, MediaURL: "https://cdn/first.jpg" },
+    ],
+  })!;
+  assert.equal(row.primary_photo_url, "https://cdn/first.jpg");
+});
+
+test("PreferredPhotoYN beats Order", () => {
+  const row = mapResoProperty({
+    ...SAMPLE,
+    Media: [
+      { MediaCategory: "Photo", Order: 1, MediaURL: "https://cdn/first.jpg" },
+      { MediaCategory: "Photo", Order: 9, PreferredPhotoYN: true, MediaURL: "https://cdn/chosen.jpg" },
+    ],
+  })!;
+  assert.equal(row.primary_photo_url, "https://cdn/chosen.jpg");
+});
+
+test("non-photo media never becomes a card image", () => {
+  const row = mapResoProperty({
+    ...SAMPLE,
+    Media: [
+      { MediaCategory: "Document", Order: 1, MediaURL: "https://cdn/disclosure.pdf" },
+      { MediaCategory: "Photo", Order: 2, MediaURL: "https://cdn/photo.jpg" },
+    ],
+  })!;
+  assert.equal(row.primary_photo_url, "https://cdn/photo.jpg");
+});
+
+test("the Media collection is stored in neither raw nor extras", () => {
+  const row = mapResoProperty({
+    ...SAMPLE,
+    PhotosCount: 2,
+    Media: [{ MediaCategory: "Photo", Order: 1, MediaURL: "https://cdn/a.jpg" }],
+  })!;
+  assert.ok(!("Media" in (row.raw as Record<string, unknown>)));
+  assert.ok(!("Media" in (row.extras as Record<string, unknown>)));
+  // The count is a scalar and stays — it's how you tell "no photos in the feed"
+  // from "photos we failed to pull".
+  assert.equal((row.extras as Record<string, unknown>).PhotosCount, 2);
+});
+
+test("no Media on the wire leaves the photo column null, not undefined", () => {
+  const row = mapResoProperty(SAMPLE)!;
+  assert.equal(row.primary_photo_url, null);
+});

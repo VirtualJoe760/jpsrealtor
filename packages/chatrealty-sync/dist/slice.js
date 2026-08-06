@@ -134,6 +134,7 @@ export async function runSyncSlice(config, opts = {}) {
             // Checkpoint AFTER the page is fully written — kill-anywhere safe.
             await pool.query(`UPDATE sync_state SET cursor=$1, cursor_watermark=$2, pass_mode=$3,
            pass_pulled=$4, pass_upserted=$5, updated_at=now() WHERE id=1`, [url, isoOrNull(cursorWatermark), mode, passPulled, passUpserted]);
+            opts.onPage?.({ pages, passPulled, passUpserted, cursorWatermark });
             if (url && Date.now() >= deadline) {
                 return {
                     done: false,

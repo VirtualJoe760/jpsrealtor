@@ -10,6 +10,23 @@ export interface SliceState {
     lastRunAt: string | null;
     lastRunUpserted: number | null;
 }
+/**
+ * One page landed. Emitted so a caller can SAY SOMETHING while a long seed
+ * runs: the CLI used to print a line only when a 15-minute slice ended, so a
+ * judged session watched a log file sit at "starting" for 40 minutes and had to
+ * query the database directly to find out whether anything was happening. A
+ * silent process is indistinguishable from a hung one.
+ */
+export interface PageProgress {
+    /** Pages completed in this slice. */
+    pages: number;
+    /** Records pulled across the whole pass (all slices). */
+    passPulled: number;
+    /** Rows upserted across the whole pass. */
+    passUpserted: number;
+    /** Newest ModificationTimestamp seen — how far through the feed's history. */
+    cursorWatermark: string | null;
+}
 export interface SliceResult {
     done: boolean;
     mode: "seed" | "incremental";
@@ -29,6 +46,7 @@ export declare function readSliceState(pool: pg.Pool): Promise<SliceState>;
  */
 export declare function runSyncSlice(config: SyncConfig, opts?: {
     budgetMs?: number;
+    onPage?: (p: PageProgress) => void;
 }): Promise<SliceResult>;
 /**
  * Read sync progress by connection string — for status endpoints that don't

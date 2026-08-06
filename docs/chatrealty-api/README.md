@@ -1,7 +1,7 @@
 ---
 title: ChatRealty API Productization — Area Overview
 status: current
-last_verified: 2026-07-23
+last_verified: 2026-08-06
 related: [./ship-strategy.md, ./architecture.md, ./build_plan.md]
 ---
 
@@ -31,8 +31,15 @@ sync, OData — planned/design).
   `build_plan.md` is the *full BaaS* program (Postgres/Neon, control plane,
   OData). Ship-strategy Phase F and the holstered sync work reference build_plan
   sections; they do not duplicate them.
-- `@chatrealty/sync` is written but **deliberately unpublished** until the
-  control plane can provision tenant DBs (ship-strategy §6 "Holstered").
+- `@chatrealty/sync` is **published and is the documented seed path**
+  (`npx @chatrealty/sync init|doctor|status|run`) — the control plane provisions
+  the tenant DB from the same `crt_live_` token. The package name is scoped:
+  `npx chatrealty-sync` is a registry 404, and testers have filed it as a bug.
+- **Photos come from the Property pull, not a second pass.** The sync asks for
+  `$expand=Media` and lifts the preferred photo into `primary_photo_url`
+  (0.6.0+). A feed that rejects the expansion is detected on the first page and
+  the seed continues without photos. Tenants seeded before 0.6.0 have the column
+  NULL on every row and render "No photo available" everywhere until they re-run.
 - The skill surface is agent-token only today; end-user auth is Phase B of
   ship-strategy — nothing end-user-facing exists under `/api/skill` yet.
 - **BYOD gate (2026-07-23):** ChatRealty is purely bring-your-own-data. Tokens
@@ -81,8 +88,8 @@ rate tiers per `src/lib/skill-auth.ts` (identity 200/min, read 100/min, write
 
 | Package | State |
 |---|---|
-| `create-chatrealty-site` | **published** v0.1.0 (unscoped, `npm create` convention) |
+| `create-chatrealty-site` | **published** v0.16.x (unscoped, `npm create` convention) |
 | `@chatrealty/mcp-server` | published; agent + research tiers (hosted-bridge tier gap: ship-strategy D0) |
 | `@chatrealty/install-skill` | published (legacy skill installer) |
 | `@chatrealty/auth`, `@chatrealty/ui` | planned — ship-strategy phases B/C |
-| `@chatrealty/sync` | written, holstered |
+| `@chatrealty/sync` | **published** v0.6.0 — tenant provisioning + seed + nightly refresh, photos included |

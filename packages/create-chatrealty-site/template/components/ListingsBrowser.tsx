@@ -129,12 +129,24 @@ export default function ListingsBrowser({
       >
         <label className="flex flex-col text-xs text-gray-500">
           City
+          {/* The placeholder is a WORKED EXAMPLE, so it has to be a city this
+              site actually serves. It was hardcoded to "Palm Desert", which on
+              a Coachella/Indio build invited the visitor to type the one city
+              guaranteed to return nothing. The datalist offers the rest. */}
           <input
             className={`${input} w-40`}
-            placeholder="Palm Desert"
+            placeholder={marketCities[0] || "City"}
+            list={marketCities.length > 0 ? "cr-market-cities" : undefined}
             value={draft.city}
             onChange={(e) => setDraft({ ...draft, city: e.target.value })}
           />
+          {marketCities.length > 0 && (
+            <datalist id="cr-market-cities">
+              {marketCities.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          )}
         </label>
         <label className="flex flex-col text-xs text-gray-500">
           Min price

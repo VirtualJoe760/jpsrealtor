@@ -143,6 +143,15 @@ export async function POST(req: NextRequest) {
   ];
 
   const usedKeys = new Set<string>();
+  // A provider can fail to produce a well-formed tool call — Groq answers HTTP
+  // 400 `tool_use_failed` with the half-written generation attached. It is a
+  // sampling accident, not a broken site: a judged session hit it on "show me
+  // 3-bed homes under $400k in Indio" and the visitor got a 502, while the same
+  // question asked twice more worked fine. Retry once (different sampling,
+  // usually enough); if it happens again, take the tools away so the model has
+  // to answer in words. A visitor never sees an error for this.
+  let toolFailures = 0;
+  let toolsDisabled = false;
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // On the LAST round, forbid tool calls so the model has to answer in words
     // (tools stay declared — providers reject a history containing tool_calls
@@ -158,12 +167,26 @@ export async function POST(req: NextRequest) {
         model: MODEL,
         messages,
         tools: TOOLS,
-        tool_choice: lastRound ? "none" : "auto",
+        tool_choice: lastRound || toolsDisabled ? "none" : "auto",
         temperature: 0.4,
       }),
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
+      const malformedToolCall =
+        res.status === 400 && /tool_use_failed|failed to call a function/i.test(errBody);
+      if (malformedToolCall && !toolsDisabled) {
+        toolFailures += 1;
+        // Second strike: stop asking for tool calls this turn. The model still
+        // has whatever tool results are already in `messages`, so an answer is
+        // usually still a real answer — and a plain sentence beats a 502.
+        if (toolFailures >= 2) toolsDisabled = true;
+        console.warn(
+          `[chat] provider could not form a tool call (attempt ${toolFailures})` +
+            `${toolsDisabled ? " — answering without tools" : " — retrying"}`
+        );
+        continue;
+      }
       console.error("[chat] provider error", res.status, errBody.slice(0, 300));
       return NextResponse.json({ error: "provider_error" }, { status: 502 });
     }

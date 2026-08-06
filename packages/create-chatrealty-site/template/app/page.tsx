@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { searchListings, getMarketStats, getAgentProfile } from "@/lib/chatrealty";
+import { searchListings, getMarketStats, getAgentProfile, getMarketCities } from "@/lib/chatrealty";
+import type { MarketStats } from "@/lib/types";
 import ListingCard from "@/components/ListingCard";
 import RecommendedRail from "@/components/RecommendedRail";
 import { money, num } from "@/lib/format";
@@ -13,11 +14,46 @@ export default async function Home() {
   // Featured homes come from the scoped browse (see MARKET SCOPE in
   // lib/chatrealty.ts) — this section used to show whatever the feed listed
   // most recently, which on a Coachella Valley site meant Camarillo and Oxnard.
-  const [agent, featured] = await Promise.all([getAgentProfile(), searchListings({ limit: 3 })]);
+  const [agent, featured, marketCities] = await Promise.all([
+    getAgentProfile(),
+    searchListings({ limit: 3 }),
+    getMarketCities().catch(() => [] as string[]),
+  ]);
   const firstArea = agent.serviceAreas[0]?.name;
   // The stats endpoint needs a place: `{}` is a 400 and the strip silently
-  // never rendered. Ask about the agent's primary market.
-  const stats = firstArea ? await getMarketStats({ city: firstArea }).catch(() => null) : null;
+  // never rendered.
+  //
+  // ASK ABOUT EVERY MARKET, NOT JUST THE FIRST. This used to ask about
+  // serviceAreas[0] alone and hide the strip when that one city came back
+  // empty — so a build whose first listed market was its smallest (Coachella,
+  // ahead of Indio) rendered no market section at all and read as a missing
+  // feature. A city with no active inventory today is ordinary; a homepage that
+  // silently drops a section over it is not. Walk the markets and show the
+  // first one with homes in it.
+  const statsCities = (marketCities.length > 0
+    ? marketCities
+    : agent.serviceAreas.map((a) => a.name)
+  ).slice(0, 4);
+  let stats: MarketStats | null = null;
+  let statsCity: string | undefined;
+  for (const city of statsCities) {
+    const s = await getMarketStats({ city }).catch(() => null);
+    if (s && s.activeCount > 0) {
+      stats = s;
+      statsCity = city;
+      break;
+    }
+  }
+  // Silence is the bug this whole section keeps producing: say why in the dev
+  // log so the next builder doesn't go looking for a broken endpoint.
+  if (!stats && process.env.NODE_ENV !== "production") {
+    console.warn(
+      statsCities.length === 0
+        ? "[home] No market stats strip: this site has no service areas. Set AGENT_SERVICE_AREAS (or MARKET_CITIES) in .env.local."
+        : `[home] No market stats strip: none of ${statsCities.join(", ")} has active for-sale inventory yet. ` +
+            "That is a seeding question (npx @chatrealty/sync doctor), not a broken endpoint — the section renders as soon as one of them does."
+    );
+  }
 
   return (
     <div>
@@ -73,7 +109,7 @@ export default async function Home() {
         <section className="mt-12 grid gap-4 rounded-2xl border border-gray-200 bg-white p-6 sm:grid-cols-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{num(stats.activeCount)}</p>
-            <p className="text-sm text-gray-500">Active listings{firstArea ? ` in ${firstArea}` : ""}</p>
+            <p className="text-sm text-gray-500">Active listings{statsCity ? ` in ${statsCity}` : ""}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">

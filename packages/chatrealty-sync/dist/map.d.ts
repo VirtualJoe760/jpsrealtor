@@ -12,6 +12,7 @@ export interface MapOptions {
     /** Retain the raw record in the `raw` jsonb column. Default true. */
     readonly keepRaw?: boolean;
 }
+export declare function primaryPhotoFrom(record: Record<string, unknown>): string | null;
 /** RESO PropertyType label (or an already-bucketed code) → bucket code. */
 export declare function normalizePropertyType(value: unknown): string | null;
 /**

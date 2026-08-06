@@ -207,6 +207,10 @@ export function configFromEnv(env = process.env, overrides = {}) {
                 ? env.RESO_NETWORKS.split(",").map((n) => n.trim()).filter(Boolean)
                 : undefined,
             networkField: env.RESO_NETWORK_FIELD,
+            // Photos come inline with each listing unless explicitly turned off. A
+            // feed that can't serve the expansion turns it off by itself on the first
+            // page (reso-fetch.ts) — this is the manual override, not the safety net.
+            expandMedia: !/^(off|false|0|no)$/i.test(env.RESO_EXPAND_MEDIA ?? ""),
         },
     };
 }

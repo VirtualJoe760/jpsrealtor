@@ -166,6 +166,59 @@ program
     }
   });
 
+// `status` — "is the seed making progress?", answered from OUTSIDE the run.
+//
+// A sync that is working prints nothing for minutes at a time, and a run
+// redirected to a log file gives even less to watch. The checkpoint in the
+// database is the ground truth and was previously only reachable by writing SQL
+// or curling the site's cron route with a secret. This is that answer, in one
+// command, runnable in another terminal while the seed is still going.
+program
+  .command("status")
+  .description("Where the seed is right now — safe to run while a sync is in progress.")
+  .action(async () => {
+    const conn = process.env.CHATREALTY_DB_URL || process.env.NEON_POOLED_CONN_URI || "";
+    if (!conn) {
+      console.error(
+        "[status] CHATREALTY_DB_URL is not set — run `npx @chatrealty/sync init --token crt_live_…` first.",
+      );
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const { readSyncStatus } = await import("./index.js");
+      const st = await readSyncStatus(conn);
+      const inFlight = Boolean(st.cursor);
+      console.log(
+        `[status] ${inFlight ? `a ${st.passMode ?? "seed"} pass is RUNNING` : "no pass in flight"}`,
+      );
+      console.log(`[status]   pulled this pass:  ${st.passPulled.toLocaleString()}`);
+      console.log(`[status]   written this pass: ${st.passUpserted.toLocaleString()}`);
+      // The feed is walked oldest-first, so "through" is the honest measure of
+      // how far a seed has come — a record count says nothing about whether
+      // today's listings have been reached yet.
+      console.log(
+        `[status]   reached listings modified through: ${st.cursorWatermark?.slice(0, 10) ?? "—"}`,
+      );
+      console.log(
+        `[status]   completed watermark: ${st.watermark?.slice(0, 10) ?? "none yet — the first full pass hasn't finished"}`,
+      );
+      if (inFlight) {
+        console.log(
+          "[status] Run it again in a minute: if the numbers moved, it's working. Nothing to\n" +
+            "[status] restart — progress is saved after every page.",
+        );
+      } else if (!st.watermark) {
+        console.log("[status] Nothing has been seeded yet — start with `npx @chatrealty/sync run`.");
+      } else {
+        console.log("[status] The last pass finished. `npx @chatrealty/sync doctor` checks what landed.");
+      }
+    } catch (err) {
+      console.error(`[status] failed: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
+
 program
   .command("doctor")
   .description("Validate your setup: database reachable + schema present, MLS feed credentials work.")
@@ -227,6 +280,17 @@ program
           const s = await client
             .query(`SELECT cursor, pass_mode, pass_upserted, watermark FROM sync_state WHERE id = 1;`)
             .catch(() => ({ rows: [] as any[] }));
+          // Photo coverage on the rows the site actually shows. Rows seeded
+          // before 0.6.0 have no primary_photo_url at all — the column was
+          // never written — and a browse of photo-less cards is the single most
+          // visible way a correctly-seeded site still looks broken.
+          const ph = await client
+            .query(
+              `SELECT count(*) FILTER (WHERE primary_photo_url IS NOT NULL)::int AS with_photo,
+                      count(*)::int AS n
+                 FROM property WHERE standard_status = 'Active';`,
+            )
+            .catch(() => ({ rows: [{ with_photo: 0, n: 0 }] as any[] }));
           await client.end();
 
           const total = c.rows[0]?.n ?? 0;
@@ -269,6 +333,25 @@ program
                 "    comps, not inventory. This is a SEEDING gap, not an API failure.",
             );
           }
+          const withPhoto = ph.rows[0]?.with_photo ?? 0;
+          const activeRows = ph.rows[0]?.n ?? 0;
+          if (activeRows > 0) {
+            if (withPhoto === 0) {
+              warn(
+                "none of your Active listings have a photo. Cards, the map popups and the\n" +
+                  "    detail hero will all read 'No photo available'. Photos arrive with the\n" +
+                  "    listing itself from 0.6.0 on — re-run `npx @chatrealty/sync run` on the\n" +
+                  "    current version to backfill them. (Not blocking: the site works, it just\n" +
+                  "    looks empty. If your feed can't serve $expand=Media the run says so.)",
+              );
+            } else {
+              okMark(
+                `${withPhoto} of ${activeRows} Active listings have a photo` +
+                  (withPhoto < activeRows ? " (the rest have none in the feed)" : ""),
+              );
+            }
+          }
+
           if (seedInFlight) {
             bad(
               `the seed is INCOMPLETE — pass "${st?.pass_mode ?? "seed"}" is still in flight\n` +
@@ -454,7 +537,25 @@ program
         for (;;) {
           // A generous per-slice budget: this is a local run with no function
           // timeout, so slices exist here only as checkpoint boundaries.
-          last = await runSyncSlice(cfg, { budgetMs: 15 * 60_000 });
+          //
+          // SAY SOMETHING EVERY FEW PAGES. The only progress line used to be
+          // the one printed when a slice ENDED — i.e. every 15 minutes — so a
+          // judged session ran `... run > sync.log` and watched the file hold a
+          // single "starting" line for 40 minutes, unable to tell a working
+          // seed from a hung one. The feed is walked oldest-first, so the
+          // "through" date is the number that actually answers the question
+          // being asked: have we reached current listings yet?
+          last = await runSyncSlice(cfg, {
+            budgetMs: 15 * 60_000,
+            onPage: (p) => {
+              if (p.pages % 5 !== 0) return;
+              const through = p.cursorWatermark ? p.cursorWatermark.slice(0, 10) : "…";
+              console.log(
+                `[chatrealty-sync]   … ${p.passPulled.toLocaleString()} pulled, ` +
+                  `${p.passUpserted.toLocaleString()} written — through ${through}`,
+              );
+            },
+          });
           slices += 1;
           totalPulled += last.pulledThisSlice;
           totalUpserted += last.upsertedThisSlice;
