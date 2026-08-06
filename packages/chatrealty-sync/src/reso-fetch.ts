@@ -269,6 +269,40 @@ export class ResoClient {
   }
 
   /**
+   * Exact count of what THIS configuration will pull — same network filter as
+   * the seed, no watermark, no sampling. `$top=0&$count=true` costs one
+   * request. Returns null when the vendor rejects $count (some do) so the
+   * preflight can degrade honestly instead of guessing.
+   */
+  async countScope(): Promise<number | null> {
+    const params = new URLSearchParams();
+    params.set("$top", "0");
+    params.set("$count", "true");
+    const networks = this.cfg.networks;
+    if (networks && networks.length > 0) {
+      const field = this.cfg.networkField || "OriginatingSystemName";
+      const ors = networks
+        .map((n) => `${field} eq '${String(n).replace(/'/g, "''")}'`)
+        .join(" or ");
+      params.set("$filter", networks.length > 1 ? `(${ors})` : ors);
+    }
+    const url = `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+    try {
+      const token = await this.getAccessToken();
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) return null;
+      const body = (await res.json()) as Record<string, unknown>;
+      const n = body["@odata.count"];
+      return typeof n === "number" ? n : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Discover which MLS networks/associations this data key can see, with a
    * rough per-network count — so the operator can choose to sync ONE instead
    * of blindly seeding all of them (Joseph's key reaches 8 associations,

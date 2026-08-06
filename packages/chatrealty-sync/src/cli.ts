@@ -676,7 +676,11 @@ program
   .option("--once", "Single bounded pass: cap records and exit (smoke test).")
   .option("--dry-run", "Pull + map but do NOT write to the database.")
   .option("--max <n>", "Cap the number of records pulled.", (v) => parseInt(v, 10))
-  .action(async (opts: { once?: boolean; dryRun?: boolean; max?: number }) => {
+  .option(
+    "--force",
+    "Seed even when the preflight says the feed exceeds your plan's storage.",
+  )
+  .action(async (opts: { once?: boolean; dryRun?: boolean; max?: number; force?: boolean }) => {
     const maxRecords = opts.max ?? (opts.once ? 500 : undefined);
     let cfg;
     try {
@@ -710,6 +714,44 @@ program
     const useCheckpoint = !opts.dryRun && maxRecords === undefined;
 
     if (useCheckpoint) {
+      // PREFLIGHT — only on a FRESH seed (no committed watermark). An
+      // incremental pull is tens of rows and needs no ceremony; a first seed
+      // is the thing that dies at the storage wall. The check speaks BEFORE
+      // any row is written, because the first tenant found the 512 MB limit
+      // by watching row ~26,400 fail — twice — with no way to finish and no
+      // way to start over.
+      try {
+        const { Client: PgClient } = await import("pg");
+        const { pgConnString } = await import("./pgconn.js");
+        const pc = new PgClient({
+          connectionString: pgConnString(cfg.connString),
+          ssl: { rejectUnauthorized: false },
+        });
+        await pc.connect();
+        const wm = await pc
+          .query(`SELECT watermark FROM sync_state WHERE id = 1;`)
+          .catch(() => ({ rows: [] as any[] }));
+        await pc.end();
+        const freshSeed = !wm.rows[0]?.watermark;
+
+        if (freshSeed) {
+          const { seedPreflight } = await import("./preflight.js");
+          const pf = await seedPreflight({ dbUrl: cfg.connString, reso: cfg.reso });
+          for (const l of pf.lines) console.log(l);
+          if (pf.verdict === "exceeds" && !opts.force) {
+            console.error(
+              `[chatrealty-sync] refusing to start a seed that cannot finish. ` +
+                `Narrow RESO_NETWORKS or upgrade (${pf.upgradeUrl}); --force overrides.`,
+            );
+            process.exitCode = 1;
+            return;
+          }
+        }
+      } catch {
+        // Preflight is advisory infrastructure — a failure inside it must
+        // never block a seed the operator asked for.
+      }
+
       console.log(
         `[chatrealty-sync] starting — checkpoint in your database, resumable; ` +
           `overlap=${cfg.overlapHours}h batch=${cfg.batchSize}`,

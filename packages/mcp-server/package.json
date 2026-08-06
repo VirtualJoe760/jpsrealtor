@@ -1,7 +1,7 @@
 {
   "name": "@chatrealty/mcp-server",
-  "version": "0.25.1",
-  "description": "Model Context Protocol server for ChatRealty — lets agents read MLS data and draft landing pages, articles, contacts, and campaigns from any Claude client using their own Claude subscription.",
+  "version": "0.25.2",
+  "description": "Model Context Protocol server for ChatRealty \u2014 lets agents read MLS data and draft landing pages, articles, contacts, and campaigns from any Claude client using their own Claude subscription.",
   "bin": {
     "chatrealty-mcp-server": "./dist/index.js"
   },

@@ -368,6 +368,42 @@ to scaffold the site. It is specific to the test account, not the judge token.
 **The `CHATREALTY_JUDGE_TOKEN` is for the testing API only (poll, report, disarm).
 It is never the site token and never goes in a brief.**
 
+## Data-normalization audit mechanics (AGENTS.md step 3a)
+
+The session directory's `.env.local` holds `CHATREALTY_DB_URL` (the tenant
+Postgres) and the RESO vars. Read the file for the VALUES only in commands —
+never echo them.
+
+```bash
+# Row counts + resource completeness (psql ships on this Mac)
+psql "$CHATREALTY_DB_URL" -c "SELECT (SELECT count(*) FROM property) AS property_rows, (SELECT count(*) FROM media) AS media_rows;"
+
+# Null-rate table for the load-bearing fields
+psql "$CHATREALTY_DB_URL" -c "SELECT
+  round(100.0*count(*) FILTER (WHERE primary_photo_url IS NULL)/count(*),1) AS photo_null_pct,
+  round(100.0*count(*) FILTER (WHERE subdivision_name IS NULL OR subdivision_name='')/count(*),1) AS subdiv_null_pct,
+  round(100.0*count(*) FILTER (WHERE living_area IS NULL)/count(*),1) AS sqft_null_pct,
+  round(100.0*count(*) FILTER (WHERE latitude IS NULL)/count(*),1) AS geo_null_pct,
+  round(100.0*count(*) FILTER (WHERE list_agent_name IS NULL)/count(*),1) AS agent_null_pct
+FROM property;"
+
+# Source-side count for the scoped network (feed truth to compare against)
+curl -s "$RESO_BASE_URL/Property?\$filter=OriginatingSystemName eq 'Greater Palm Springs Multiple Listing Service' and StandardStatus eq 'Active'&\$count=true&\$top=0" \
+  -H "Authorization: Bearer $RESO_BEARER_TOKEN" | head -c 300
+
+# Value-domain near-dupes (the i-Tech / iTech class of failure)
+psql "$CHATREALTY_DB_URL" -c "SELECT originating_system_name, count(*) FROM property GROUP BY 1 ORDER BY 2 DESC;"
+```
+
+Column names above follow the RESO data dictionary snake_case; if a query
+errors on a column, `\\d property` lists the real ones — and a field the
+standard expects that is missing from the schema is itself a finding.
+
+**Classify every high null-rate** (feed-absent / sync-dropped / renamed) by
+checking one sample record at the SOURCE: fetch that listing key from the feed
+and see whether the field is there. If the feed has it and the DB doesn't, it
+is ours.
+
 ## Judging in a browser
 
 I score the rendered site, so I need a browser I can drive, with DevTools open
