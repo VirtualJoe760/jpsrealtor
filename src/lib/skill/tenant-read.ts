@@ -16,11 +16,25 @@ const NO_STORE = { "Cache-Control": "no-store" };
  * per-tenant reads. Honest + non-leaking (better than serving another agent's
  * data): the feature simply isn't wired to their database yet.
  */
-export function tenantNotReadyResponse(feature = "This data"): NextResponse {
+export function tenantNotReadyResponse(
+  feature = "This data",
+  /**
+   * What the caller CAN use instead, if anything. Without it the reply says
+   * only "not yet", and a session hunting a missing gallery has no way to tell
+   * "unimplemented" from "broken" — one judged session filed the photos route
+   * as a 404 bug when the honest answer was "your database holds one photo per
+   * listing, and the detail page is already showing it."
+   */
+  alternative?: string
+): NextResponse {
   return NextResponse.json(
     {
       error: "not_available_on_tenant_yet",
-      message: `${feature} isn't wired to your ChatRealty database yet — it's coming online. Your listing search already reads your own data.`,
+      message:
+        `${feature} isn't wired to your ChatRealty database yet — it's coming online.` +
+        (alternative
+          ? ` ${alternative}`
+          : " Your listing search already reads your own data."),
     },
     { status: 501, headers: NO_STORE }
   );

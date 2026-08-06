@@ -1,7 +1,7 @@
 ---
 title: Neon Setup & Provisioning
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-08-06
 related: [./architecture.md, ./build_plan.md, ./db-adapter.md, ./data-dictionary.md]
 ---
 
@@ -114,6 +114,37 @@ going (it does not crash) — but the data plane is incomplete until PostGIS is 
 confirm your Neon plan/region allows `postgis`, then re-run the script. `postgis_version()`
 in the verify step is the green light. (See the CHAP-on-PostGIS spike,
 `spike-chap-postgis.md`, for the geo dependency.)
+
+## The 512 MB ceiling (the limit that stops a seed)
+
+A Neon **free-tier project has a hard ~512 MB storage limit**, and it is a *project*
+limit — WAL and history count toward it, so `pg_database_size()` is a lower bound, not
+the whole story. A large multi-association MLS does not fit: two judged test sessions
+seeded ~21k then ~28k rows into one tenant and the next write died with
+
+```
+could not extend file because project size limit (512 MB) has been exceeded
+```
+
+**Reads keep working when this happens.** The tenant in question was still serving its
+39 Active listings correctly. Only writes are blocked — so the seed cannot finish, no
+watermark is ever committed, and the nightly refresh never gets configured. Every
+downstream symptom (no photos, incomplete inventory, "Gate 8 fail") is that one cause.
+
+Three things now surface it instead of leaving it to be discovered by a dying write
+(`@chatrealty/sync` 0.6.1):
+
+- `doctor` queries `pg_database_size(current_database())` and reports headroom on every
+  run — `!` warning from 70%, `✗` failure at 90%.
+- Both `run` paths detect the error text and print a plain-English explanation.
+- `doctor`'s "What to do next" now distinguishes **connection** / **seeding** /
+  **storage** failures. It previously answered *every* check-1 failure with "the problem
+  is `CHATREALTY_DB_URL`" — which told a tenant whose URL was perfect to re-run `init`,
+  i.e. to provision an empty database and discard a two-session seed.
+
+**Recovery is narrowing, not re-provisioning.** `RESO_NETWORKS` scopes the sync to the
+associations the agent actually serves; one market fits, five markets' history does not.
+Raising a tenant's limit is **not self-serve today** — that gap is real and unowned.
 
 ## Common mistakes
 

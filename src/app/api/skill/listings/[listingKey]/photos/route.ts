@@ -23,7 +23,19 @@ export async function GET(
   if (rl) return rl;
   // Per-tenant isolation: a tenant-bound token must not read the shared dogfood
   // dataset through this not-yet-ported route. Refuse cleanly (no leak).
-  if (auth.ok && (auth as any).tenantId) return tenantNotReadyResponse("Listing photos");
+  //
+  // Say what the tenant DOES have, or the refusal reads as a broken endpoint.
+  // The sync stores one primary photo per listing on the property row and
+  // strips the expanded Media collection, so the tenant `media` table is empty
+  // by design (see packages/chatrealty-sync/src/map.ts stripMedia). A judged
+  // session filed this route as a 404 bug while the detail page was correctly
+  // rendering the one photo that exists.
+  if (auth.ok && (auth as any).tenantId) {
+    return tenantNotReadyResponse(
+      "Per-listing photo galleries",
+      "Your database currently holds one photo per listing — it comes back as `primaryPhotoUrl` / `thumbUrl` on the listing itself, which is what a detail page should render today.",
+    );
+  }
 
   const { listingKey } = await params;
 

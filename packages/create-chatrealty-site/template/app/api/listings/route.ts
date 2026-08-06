@@ -28,8 +28,11 @@ export async function GET(req: NextRequest) {
     propertyType: sp.get("propertyType") || undefined,
     minPrice: n(sp.get("minPrice")),
     maxPrice: n(sp.get("maxPrice")),
-    minBeds: n(sp.get("minBeds")),
-    minBaths: n(sp.get("minBaths")),
+    // `beds`/`baths` are accepted as aliases for the canonical minBeds/minBaths
+    // so a hand-written or shared query filters instead of silently returning
+    // everything. /listings parses the same pair — keep them in step.
+    minBeds: n(sp.get("minBeds")) ?? n(sp.get("beds")),
+    minBaths: n(sp.get("minBaths")) ?? n(sp.get("baths")),
     hasPool: sp.get("hasPool") === "true" ? true : sp.get("hasPool") === "false" ? false : undefined,
     near: sp.get("near") || undefined,
     radiusMiles: n(sp.get("radiusMiles")),

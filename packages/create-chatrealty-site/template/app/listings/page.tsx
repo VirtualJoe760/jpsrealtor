@@ -16,6 +16,9 @@ type ListingsSearchParams = {
   maxPrice?: string;
   minBeds?: string;
   minBaths?: string;
+  /** Aliases for minBeds/minBaths — see BED/BATH ALIASES below. */
+  beds?: string;
+  baths?: string;
   hasPool?: string;
   /** grid | map — which presentation the browse opens in. */
   view?: string;
@@ -40,8 +43,15 @@ export default async function ListingsPage({
     city: city || "",
     minPrice: digits(sp.minPrice),
     maxPrice: digits(sp.maxPrice),
-    minBeds: oneOf(sp.minBeds, ["1", "2", "3", "4", "5"]),
-    minBaths: oneOf(sp.minBaths, ["1", "2", "3", "4"]),
+    // BED/BATH ALIASES. `?beds=5` is what a human writes and what an assistant
+    // composing a share link writes; the canonical param is `minBeds`. An
+    // unrecognized param isn't ignored here — the browser REWRITES the address
+    // bar from the filters it was given, so `?beds=5` was silently erased while
+    // `city` and `minPrice` in the same URL survived. That reads as "the beds
+    // filter is broken": a judged session watched a 4-bed home come back from
+    // `?beds=5` and filed it. Accept both spellings; canonical still wins.
+    minBeds: oneOf(sp.minBeds, ["1", "2", "3", "4", "5"]) || oneOf(sp.beds, ["1", "2", "3", "4", "5"]),
+    minBaths: oneOf(sp.minBaths, ["1", "2", "3", "4"]) || oneOf(sp.baths, ["1", "2", "3", "4"]),
     hasPool: sp.hasPool === "true",
   };
   // Live data, nothing scoping it → this page is serving the whole feed,

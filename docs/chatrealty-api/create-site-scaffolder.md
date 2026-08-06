@@ -2,7 +2,7 @@
 title: create-chatrealty-site (frontend scaffolder)
 last_verified: 2026-08-06
 owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.0 (2026-08-06)
+status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.16.3 (2026-08-06)
 ---
 
 # create-chatrealty-site
@@ -32,6 +32,55 @@ Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
 verifies the token against `GET /api/skill/me` (warns + continues on failure so a
 bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
 (mode 0600) with the token + base.
+
+**v0.16.3 (2026-08-06) — `?beds=5` stops being erased.** Session-16 judge run
+(Sandra Vega, GPS MLS).
+
+`/listings?beds=5&minPrice=2000000&city=Indian+Wells` came up with the city and
+min-price inputs filled and the Beds dropdown on "Any", and a 4-bed home in the
+results. The canonical param has always been `minBeds`; `beds` was simply not
+read. That is worse than being ignored, because `ListingsBrowser` **rewrites the
+address bar** from the filters it was handed — so the unrecognized param was
+actively erased on arrival while its neighbours in the same URL survived. From
+the outside that is indistinguishable from "the beds filter is broken", which is
+how it was filed.
+
+`app/listings/page.tsx` and `app/api/listings/route.ts` now accept `beds` /
+`baths` as aliases for `minBeds` / `minBaths` (canonical wins when both are
+present). A hand-written or assistant-composed share link filters correctly, and
+the address bar self-corrects to the canonical spelling. Nothing generates the
+short form — this is about the URLs humans and agents actually type.
+
+*Also filed this session, and NOT a template bug: "the per-listing gallery
+404s".* The repro was `fetch('/api/skill/listings/{key}/photos')` **from the
+browser against the scaffolded site** — which has no such route, so Next served
+its 404 page. The template never calls it from the client: `getListingPhotos()`
+runs server-side in the RSC, which is also why "the template makes no network
+call to this endpoint" looked true in a devtools panel. Nothing to fix here.
+
+What *is* real underneath it: **a tenant site has one photo per listing.** The
+sync stores `primary_photo_url` on the property row and deliberately strips the
+expanded `Media` collection (`stripMedia()` in `packages/chatrealty-sync/
+src/map.ts`), so the tenant `media` table — which exists in the schema — is
+never populated, and the platform's photos route correctly refuses a
+tenant-bound token with a 501 (`tenantNotReadyResponse`, not a 404).
+`<PhotoGallery />` handles this exactly right: one photo renders the hero alone,
+no strip, no counter. The defect was that **nothing said so** — the build guide
+promised "the whole set", so a judge reasonably read a correct one-photo page as
+a broken gallery. Guide step 6a-2 now states the one-photo reality outright.
+
+Populating `media` per listing is real work and is **deliberately not done
+here**: ~19 rows per listing against a 512 MB tenant ceiling is the fastest way
+to make the storage problem worse. It needs to land opt-in, after the storage
+ceiling has an answer. See `neon-setup.md` § *The 512 MB ceiling*.
+
+Guide changes in `@chatrealty/mcp-server` (0.24.2), all in step 1
+(`check-your-data-source`) unless noted: new **5c** names the 512 MB ceiling, the
+error text it produces, and that the recovery is narrowing `RESO_NETWORKS` — not
+re-running `init`, which discards the seed; new **5d** documents
+`RESO_EXPAND_MEDIA=off` for a feed that won't serve `$expand=Media`; **6a-2**
+(step 2) now states the one-photo-per-listing reality instead of promising a
+full set. CLI changes in `@chatrealty/sync` (0.6.1) — see `neon-setup.md`.
 
 **v0.16.1 (2026-08-06) — CHAP stops answering with a blank bubble, and stops
 saying "LISTINGS:" out loud.** Session-14 judge run (Valentina Cruz, GPS MLS).

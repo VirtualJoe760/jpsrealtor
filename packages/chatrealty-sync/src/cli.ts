@@ -23,6 +23,58 @@ import { ResoClient } from "./reso-fetch.js";
 loadDotenv({ path: ".env.local" });
 loadDotenv();
 
+// STORAGE EXHAUSTION — the failure that reads as "everything is broken".
+//
+// The database `init` provisions is a Neon free-tier project with a hard 512 MB
+// ceiling. A large multi-association MLS does not fit. Two judged sessions
+// seeded ~21k then ~28k rows and the next write died with:
+//
+//   could not extend file because project size limit (512 MB) has been exceeded
+//
+// Nothing in this CLI or the build guide named that limit, so the session read
+// a storage wall as a broken connection string — and `doctor` agreed with it,
+// printing "the problem is CHATREALTY_DB_URL, not your MLS" at a tenant whose
+// URL was perfect and whose 39 Active listings were serving correctly. The
+// person running this is a real-estate agent: "project size limit", "Neon" and
+// "could not extend file" are not words they can act on. Translate once, here,
+// and use the same words everywhere the condition can surface.
+const STORAGE_LIMIT_MB = 512;
+const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_MB * 1024 * 1024;
+
+/** Does this error message mean "the database has no room left"? */
+function isStorageLimitError(message: string): boolean {
+  return /project size limit|could not extend file|no space left on device|disk (?:quota|full)/i.test(
+    message,
+  );
+}
+
+const STORAGE_LIMIT_HELP = [
+  `YOUR DATABASE IS FULL. The database ChatRealty sets up for you holds about ${STORAGE_LIMIT_MB} MB —`,
+  "enough for a single-market feed, not enough for a large multi-association one.",
+  "",
+  "What this does NOT mean: nothing is misconfigured. Your MLS credentials are fine,",
+  "your database address is fine, and the listings already loaded KEEP SERVING — your",
+  "site still shows homes today. Do NOT re-run `init` expecting it to help: that",
+  "provisions a brand-new empty database and throws away what you have already loaded.",
+  "",
+  "What it does mean: no new listings can be written, so the first load cannot finish",
+  "and nightly updates will not land, until there is room.",
+  "",
+  "The fix is to LOAD LESS. One data key often reaches several MLS associations, so you",
+  "may be loading whole markets you don't serve — one market's inventory fits, five",
+  "markets' history does not. `npx @chatrealty/sync networks` lists them with each one's",
+  "share; put just yours in RESO_NETWORKS in .env.local, then start fresh",
+  "(`npx @chatrealty/sync init --token crt_live_…` — a NEW empty database) and load again.",
+  "",
+  "If it still doesn't fit after narrowing, stop rather than re-running into a full",
+  "database: a bigger database isn't something this tool can provision for you today.",
+].join("\n");
+
+/** Print a multi-line help block with the CLI's own prefix on every line. */
+function printHelp(help: string): void {
+  for (const line of help.split("\n")) console.error(`[chatrealty-sync] ${line}`);
+}
+
 const program = new Command();
 
 program
@@ -32,8 +84,10 @@ program
       "Full seed on first run, incremental thereafter. Never deletes.",
   )
   // Keep in step with package.json — `--version` reporting 0.1.0 from a 0.5.x
-  // install makes every "which version are you on?" answer wrong.
-  .version("0.5.1");
+  // install makes every "which version are you on?" answer wrong. It drifted
+  // again (0.5.1 while package.json said 0.6.0), which is exactly how a session
+  // concludes it is running an old build and re-installs for nothing.
+  .version("0.6.1");
 
 program
   .command("init")
@@ -224,10 +278,19 @@ program
   .description("Validate your setup: database reachable + schema present, MLS feed credentials work.")
   .action(async () => {
     let failures = 0;
+    // WHICH KIND of check-1 failure, not just how many. The advice block at the
+    // bottom used to key off "did anything in check 1 fail" and always answered
+    // "the problem is CHATREALTY_DB_URL" — so a tenant whose connection was
+    // perfect and whose seed was merely unfinished (or whose database was full)
+    // was told to re-provision. Every one of those failures is reported by code
+    // that already knows it is NOT a URL problem; carry that knowledge down.
+    type FailKind = "connection" | "seeding" | "storage";
+    const failKinds = new Set<FailKind>();
     const okMark = (m: string) => console.log(`  ✓ ${m}`);
-    const bad = (m: string) => {
+    const bad = (m: string, kind?: FailKind) => {
       console.log(`  ✗ ${m}`);
       failures++;
+      if (kind) failKinds.add(kind);
     };
     // A warning is something to fix that is NOT blocking the site from working.
     // It must not move the exit code: a CI script or an agent running `echo $?`
@@ -242,7 +305,10 @@ program
     console.log("[doctor] 1. ChatRealty database");
     const conn = process.env.CHATREALTY_DB_URL || process.env.NEON_POOLED_CONN_URI || "";
     if (!conn) {
-      bad("CHATREALTY_DB_URL is not set — run `npx @chatrealty/sync init --token crt_live_…` first.");
+      bad(
+        "CHATREALTY_DB_URL is not set — run `npx @chatrealty/sync init --token crt_live_…` first.",
+        "connection",
+      );
     } else {
       try {
         const pgMod = await import("pg");
@@ -254,7 +320,7 @@ program
         );
         if (!t.rows[0]?.ok) {
           await client.end();
-          bad("connected, but the property table is missing (re-run init).");
+          bad("connected, but the property table is missing (re-run init).", "connection");
         } else {
           // A bare row count is the most misleading number this tool prints.
           // A judged session ran `run --once`, saw "500 rows", concluded the
@@ -291,6 +357,14 @@ program
                  FROM property WHERE standard_status = 'Active';`,
             )
             .catch(() => ({ rows: [{ with_photo: 0, n: 0 }] as any[] }));
+          // HOW FULL IS IT. The 512 MB ceiling was invisible until a write hit
+          // it, so a tenant found out by watching a seed die — twice, across
+          // two sessions, with doctor reporting all-clear in between. Ask the
+          // database its own size and say so BEFORE the wall, while there is
+          // still time to narrow RESO_NETWORKS instead of starting over.
+          const sz = await client
+            .query(`SELECT pg_database_size(current_database())::bigint AS bytes;`)
+            .catch(() => ({ rows: [] as any[] }));
           await client.end();
 
           const total = c.rows[0]?.n ?? 0;
@@ -325,13 +399,43 @@ program
                 "    will be EMPTY. Leases, land and income property are filtered out by design\n" +
                 "    (they're reachable at ?propertyType=B / D / C). This is a SEEDING gap, not\n" +
                 "    an API failure: keep seeding until for-sale inventory arrives.",
+              "seeding",
             );
           } else {
             bad(
               `0 Active listings (${total} rows, all non-Active). Your site will show an\n` +
                 "    empty catalog: Active is what a browse displays. Closed records are\n" +
                 "    comps, not inventory. This is a SEEDING gap, not an API failure.",
+              "seeding",
             );
+          }
+
+          // Storage headroom. Reported BEFORE the seed/photo verdicts below,
+          // because when the database is full every one of those is a symptom
+          // and this is the cause — and the recovery is different (make room,
+          // don't keep running the sync into a wall).
+          const usedBytes = Number(sz.rows[0]?.bytes ?? 0);
+          if (usedBytes > 0) {
+            const usedMb = Math.round(usedBytes / (1024 * 1024));
+            const pct = Math.round((usedBytes / STORAGE_LIMIT_BYTES) * 100);
+            if (pct >= 90) {
+              bad(
+                `database storage is ${pct}% full (${usedMb} MB of about ${STORAGE_LIMIT_MB} MB).\n` +
+                  "    New listings can no longer be written — the load will stop, and everything\n" +
+                  "    below about an unfinished load is a SYMPTOM of this, not a separate problem.\n" +
+                  "    Your existing listings keep serving. See 'What to do next' at the end.",
+                "storage",
+              );
+            } else if (pct >= 70) {
+              warn(
+                `database storage is ${pct}% full (${usedMb} MB of about ${STORAGE_LIMIT_MB} MB).\n` +
+                  "    Not blocking yet. If the load is still running it may not fit: narrowing\n" +
+                  "    RESO_NETWORKS to the associations you actually serve is the cheapest fix,\n" +
+                  "    and it is much easier to do now than after the database fills.",
+              );
+            } else {
+              okMark(`database storage ${usedMb} MB used of about ${STORAGE_LIMIT_MB} MB (${pct}%)`);
+            }
           }
           const withPhoto = ph.rows[0]?.with_photo ?? 0;
           const activeRows = ph.rows[0]?.n ?? 0;
@@ -359,6 +463,7 @@ program
                 "    The feed is walked oldest-first, so an unfinished seed holds mostly old\n" +
                 "    archival records. Finish it: `npx @chatrealty/sync run` (no --once, no --max),\n" +
                 "    or let the deployed hourly Vercel cron finish it over a few ticks.",
+              "seeding",
             );
           } else if (total > 0 && !st?.watermark) {
             // Rows present, no cursor, no watermark: a pass wrote data but none
@@ -387,12 +492,19 @@ program
                   "    about staying current, so this check does not fail.",
               );
             } else {
-              bad(msg);
+              bad(msg, "seeding");
             }
           }
         }
       } catch (err) {
-        bad(`connection failed: ${(err as Error).message}`);
+        // A full database can fail mid-query too. Calling that "connection
+        // failed" is how a storage wall got diagnosed as a bad URL.
+        const msg = (err as Error).message;
+        if (isStorageLimitError(msg)) {
+          bad(`the database is full: ${msg}`, "storage");
+        } else {
+          bad(`connection failed: ${msg}`, "connection");
+        }
       }
     }
 
@@ -460,11 +572,28 @@ program
         `[doctor] ${failures} check(s) failed. ✓ = working, ✗ = needs fixing, ! = worth fixing but not blocking.`,
       );
       console.log("[doctor] What to do next:");
-      if (dbFailures > 0) {
+      // Answer the failure that ACTUALLY happened. "Check 1 failed → your URL is
+      // wrong" is true for exactly one of the three ways check 1 can fail, and a
+      // judged session was handed it while connected, reading, and serving 39
+      // listings — its database was simply full. Re-running `init` there would
+      // have provisioned an empty database and discarded a two-session load.
+      if (failKinds.has("storage")) {
+        console.log("  • Check 1 (database) failed because it is OUT OF ROOM — not because of your URL.");
+        printHelp(STORAGE_LIMIT_HELP);
+      }
+      if (failKinds.has("connection")) {
         console.log(
-          "  • Check 1 (database) failed → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
+          "  • Check 1 (database) failed to CONNECT → the problem is CHATREALTY_DB_URL, not your MLS.\n" +
             "    Re-run `npx @chatrealty/sync init --token crt_live_…` to provision the database\n" +
             "    and write the URL into .env.local.",
+        );
+      }
+      if (failKinds.has("seeding") && !failKinds.has("storage")) {
+        console.log(
+          "  • Check 1 (database) connected fine — what failed is that your listings aren't all\n" +
+            "    loaded yet. Do NOT re-run `init`: it provisions a NEW empty database and throws\n" +
+            "    away what you have. Run `npx @chatrealty/sync run` (no --once, no --max) and let\n" +
+            "    it finish; `npx @chatrealty/sync status` from another terminal shows it moving.",
         );
       }
       if (feedFailures > 0) {
@@ -477,8 +606,17 @@ program
             "    that is an MLS-side permissions question for your association.",
         );
       }
-      if (dbFailures > 0 && feedFailures > 0) {
+      // Only when the DATABASE ITSELF is the problem. A seeding failure plus a
+      // feed failure is one problem, not two: fix the credentials and the seed
+      // finishes. "Fix the database first" would send someone re-provisioning a
+      // database that was working the whole time.
+      if ((failKinds.has("connection") || failKinds.has("storage")) && feedFailures > 0) {
         console.log("  • Both failed → work top-down: fix the database first, then re-run doctor.");
+      } else if (failKinds.has("seeding") && feedFailures > 0) {
+        console.log(
+          "  • These are ONE problem, not two: the load can't finish while your MLS credentials\n" +
+            "    are rejected. Fix check 2, then re-run the sync — the database is fine.",
+        );
       }
       process.exitCode = 1;
     }
@@ -585,6 +723,10 @@ program
       } catch (err) {
         const e = err as Error;
         console.error(`[chatrealty-sync] sync stopped: ${e.message}`);
+        // The raw message is Postgres talking to a DBA ("could not extend file
+        // because project size limit (512 MB) has been exceeded"). Left alone it
+        // sent a session hunting a connection-string bug for a whole sitting.
+        if (isStorageLimitError(e.message)) printHelp(STORAGE_LIMIT_HELP);
         if (e.name === "RateLimitedError") {
           console.error(
             "[chatrealty-sync] Your progress IS saved — the checkpoint advances after every page.\n" +
@@ -655,6 +797,7 @@ program
     } catch (err) {
       const e = err as Error;
       console.error(`[chatrealty-sync] sync failed: ${e.message}`);
+      if (isStorageLimitError(e.message)) printHelp(STORAGE_LIMIT_HELP);
       if (e.name === "RateLimitedError") {
         console.error(
           "[chatrealty-sync] This is a QUOTA, not a broken setup. Rate limits are per API KEY,\n" +
