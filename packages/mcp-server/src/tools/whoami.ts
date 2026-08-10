@@ -19,7 +19,7 @@ type WhoamiResponse = {
 export const whoami: ToolDef = {
   name: "whoami",
   description:
-    "Returns the name, email, site URL, token info, AND `dataSource` for the agent whose ChatRealty API token is configured. Call this once at the start of any session. `dataSource` is the signal the build guide's step 1 branches on: `tenant` = the agent's own MLS data is connected (safe to probe listings/market), `none` = no data connected yet (do NOT call any listing/market tool — they'll refuse), `dogfood` = a ChatRealty-internal owner account.",
+    "Returns the name, email, site URL, token info, AND `dataSource` for the agent whose ChatRealty API token is configured. Call this once at the start of any session. `dataSource` is the signal the build guide's step 1 branches on: `tenant` = the agent's own MLS data is connected (safe to probe listings/market), `none` = no data connected yet (do NOT call any listing/market tool — they'll refuse), `dogfood` = a ChatRealty-internal owner account, which reads the platform's internal dataset over the API but CANNOT be given a database of its own (`sync init` refuses it with a 403) — so listings coming back on this token never mean the site being built has data.",
   inputSchema: {
     type: "object",
     properties: {},

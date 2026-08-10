@@ -219,9 +219,27 @@ test("(d) build-guide prompt library is non-empty and well-formed", () => {
     /Do NOT say `dogfood`/.test(dataStep!.body),
     "the dogfood branch must forbid speaking the internal codename"
   );
+  // CRBR 6a7a2e2d + 6a7a2f42: the FIRST fix for the above over-corrected. Telling
+  // the model to "probe it exactly as you would `tenant`" routed internal
+  // accounts to the tenant DESTINATION — ready to build — so a session reported
+  // 579 platform listings as the agent's data and never asked for a feed key.
+  // An internal account cannot own a database at all (provision 403s it), so the
+  // probe is diagnostic-only and must never read as satisfying the data step.
   assert.ok(
-    /PROBE IT EXACTLY AS YOU WOULD `tenant`/.test(dataStep!.body),
-    "the dogfood branch must require the same inventory probe tenant gets"
+    !/PROBE IT EXACTLY AS YOU WOULD `tenant`/.test(dataStep!.body),
+    "the dogfood branch must NOT route to the tenant destination — init 403s on internal accounts"
+  );
+  assert.ok(
+    /THE PROBE IS DIAGNOSTIC ONLY/.test(dataStep!.body),
+    "the dogfood probe must be marked diagnostic-only"
+  );
+  assert.ok(
+    /CANNOT OWN A DATABASE/.test(dataStep!.body),
+    "the dogfood branch must state up front that init refuses this account"
+  );
+  assert.ok(
+    /SWITCH TO A NON-INTERNAL TEST ACCOUNT/.test(dataStep!.body),
+    "the dogfood branch must name the account-switch path for testing the seed"
   );
 });
 
