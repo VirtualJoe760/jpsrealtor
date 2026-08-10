@@ -1,6 +1,6 @@
 // src/lib/mcp-tool-bridge.ts
 //
-// Bridges the 26 tools from @chatrealty/mcp-server onto a hosted MCP server
+// Bridges the tools from @chatrealty/mcp-server onto a hosted MCP server
 // (the HTTP/Streamable transport at /api/mcp/[transport]). We reuse the SAME
 // tool definitions the stdio server uses — no duplication, no Zod re-spec. Each
 // tool is a thin wrapper that calls /api/skill/* with a bearer token; here that

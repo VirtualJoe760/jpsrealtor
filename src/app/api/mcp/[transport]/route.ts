@@ -5,7 +5,9 @@
 //
 //     https://www.chatrealty.io/api/mcp/mcp
 //
-// Exposes the same 26 ChatRealty tools as the stdio server (lib/mcp-tool-bridge).
+// Exposes the same ChatRealty tool surface as the stdio server, bridged from the
+// package's own ALL_TOOLS registry (lib/mcp-tool-bridge) — no list, count or
+// version is retyped here, so the two servers cannot drift apart.
 //
 // Why we drive the SDK transport directly (instead of mcp-handler's
 // createMcpHandler): the WebStandard transport defaults to enableJsonResponse=
@@ -27,12 +29,19 @@ import { decryptSecret } from "@/lib/secrets";
 import { sha256, getOrigin, MCP_OAUTH_SCOPES } from "@/lib/mcp-oauth";
 import { registerChatRealtyTools } from "@/lib/mcp-tool-bridge";
 import { SERVER_INSTRUCTIONS } from "@chatrealty/mcp-server/dist/tools/index.js";
+import mcpServerPkg from "@chatrealty/mcp-server/package.json";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const PKG = { name: "@chatrealty/mcp-server", version: "0.18.0" };
+// What this server reports to every connecting client in the `initialize`
+// response. READ FROM THE PACKAGE, never retyped: this was a hand-maintained
+// literal pinned at 0.18.0 while the package it bridges had reached 0.25.3, so
+// a client that asked the hosted server its version got an answer seven minors
+// stale. That is worse than no answer — a test session verifying a shipped fix
+// reads the old number as proof the fix did not land, and goes hunting.
+const PKG = { name: mcpServerPkg.name, version: mcpServerPkg.version };
 
 async function verifyToken(
   req: Request,
