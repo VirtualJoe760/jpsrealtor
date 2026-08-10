@@ -10,7 +10,11 @@
 // build guide is documentation, not data.
 
 import type { ToolDef } from "./types.js";
-import { BUILD_GUIDE_PROMPTS, getBuildGuidePrompt } from "../build-guide/prompts.js";
+import {
+  BUILD_GUIDE_PROMPTS,
+  getBuildGuidePrompt,
+  VOICE_RULE,
+} from "../build-guide/prompts.js";
 
 export const get_build_guide: ToolDef = {
   name: "get_build_guide",
@@ -39,6 +43,7 @@ export const get_build_guide: ToolDef = {
         };
       }
       return {
+        voice: VOICE_RULE,
         id: prompt.id,
         title: prompt.title,
         summary: prompt.summary,
@@ -46,7 +51,15 @@ export const get_build_guide: ToolDef = {
         body: prompt.body,
       };
     }
+    // `voice` rides on the LISTING response, not just the step bodies. This call
+    // — get_build_guide with no id — is the first thing a build session makes,
+    // and it used to answer with titles and summaries only: no instructions at
+    // all. So the session's opening words to a real estate agent were composed
+    // with zero voice guidance, and a judged one opened "Let me start by pulling
+    // the build guide" (CRBR 6a7a23e4). The rule has to arrive with the table of
+    // contents, because that is what gets read before anyone speaks.
     return {
+      voice: VOICE_RULE,
       steps: [...BUILD_GUIDE_PROMPTS]
         .sort((a, b) => a.order - b.order)
         .map((p) => ({ id: p.id, title: p.title, summary: p.summary, order: p.order })),

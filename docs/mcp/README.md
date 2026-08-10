@@ -152,6 +152,29 @@ before we know agents will use it.
 - **Backwards compatibility.** Once an agent installs the server and Claude
   learns the tool names, renaming a tool breaks every saved conversation. Pick
   names that age well; deprecate by adding new tools, not by renaming.
+- **A rule that lives in step 2 arrives after the damage.** *(verified
+  2026-08-10, `@chatrealty/mcp-server` 0.25.3.)* The build guide's VOICE rule —
+  never narrate tooling, never speak internal field values — sat only in
+  `scaffold-your-site` step 0. But step 1 is `check-your-data-source`, and
+  `whoami` tells the model to call it "once at the start of any session", so the
+  first sentence a real estate agent ever read was composed before the rule was.
+  A judged session opened "Let me start by pulling the build guide" (CRBR
+  `6a7a23e4`). The rule is now one exported `VOICE_RULE` in
+  `build-guide/prompts.ts`, interpolated into steps 1–3 **and** returned by
+  `get_build_guide` on the no-id listing call plus the `guide://` index preamble.
+  The general lesson for anything added to this guide: **the no-id listing and
+  the resource index are the only surfaces read before the model speaks.** A
+  constraint that isn't on one of them is not in force for the opening turn, no
+  matter which step body carries it.
+- **Branch labels are internal vocabulary the model will repeat.** The same
+  report found the guide branching on the literal `dataSource` values
+  (`tenant` / `none` / `dogfood`) while forbidding internal field names in
+  replies — so the model reasoned in a language it was barred from speaking, and
+  said `dogfood` to a customer. Any enum the guide branches on now ships an
+  approved customer-facing phrasing beside it. Related trap: an enum whose empty
+  case is named (`none`) makes every other value read as "not empty", and a
+  session inferred "has real data" from the account type without making a single
+  listing call. Account type is never inventory — only returned rows are.
 
 ## Related
 

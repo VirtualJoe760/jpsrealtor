@@ -1,3 +1,4 @@
+export declare const VOICE_RULE: string;
 export type BuildGuidePrompt = {
     /** Stable kebab-case id. Used as the guide:// resource slug and the docs anchor. */
     id: string;

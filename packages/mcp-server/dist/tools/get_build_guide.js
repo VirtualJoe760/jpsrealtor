@@ -37,6 +37,7 @@ exports.get_build_guide = {
                 };
             }
             return {
+                voice: prompts_js_1.VOICE_RULE,
                 id: prompt.id,
                 title: prompt.title,
                 summary: prompt.summary,
@@ -44,7 +45,15 @@ exports.get_build_guide = {
                 body: prompt.body,
             };
         }
+        // `voice` rides on the LISTING response, not just the step bodies. This call
+        // — get_build_guide with no id — is the first thing a build session makes,
+        // and it used to answer with titles and summaries only: no instructions at
+        // all. So the session's opening words to a real estate agent were composed
+        // with zero voice guidance, and a judged one opened "Let me start by pulling
+        // the build guide" (CRBR 6a7a23e4). The rule has to arrive with the table of
+        // contents, because that is what gets read before anyone speaks.
         return {
+            voice: prompts_js_1.VOICE_RULE,
             steps: [...prompts_js_1.BUILD_GUIDE_PROMPTS]
                 .sort((a, b) => a.order - b.order)
                 .map((p) => ({ id: p.id, title: p.title, summary: p.summary, order: p.order })),

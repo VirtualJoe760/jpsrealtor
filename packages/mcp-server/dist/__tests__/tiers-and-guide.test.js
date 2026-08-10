@@ -20,6 +20,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const index_js_1 = require("../tools/index.js");
 const tiers_js_1 = require("../tiers.js");
 const prompts_js_1 = require("../build-guide/prompts.js");
+const get_build_guide_js_1 = require("../tools/get_build_guide.js");
 const resource_js_1 = require("../build-guide/resource.js");
 const names = (tools) => tools.map((t) => t.name).sort();
 // PII / write / content-production tools that a client research token must NEVER see.
@@ -154,6 +155,29 @@ const FORBIDDEN_FOR_RESEARCH = [
     for (const p of prompts_js_1.BUILD_GUIDE_PROMPTS) {
         strict_1.default.ok(!/contact ChatRealty|ask ChatRealty/i.test(p.body), `prompt ${p.id} must not contain an ask-ChatRealty step`);
     }
+    // CRBR 6a7a23e4: the VOICE rule lived only in step 2, so a session's first
+    // words to an agent were composed before it had been read — one opened "Let
+    // me start by pulling the build guide." The rule must reach step 1, and the
+    // `dogfood` branch must not tell the assistant to say the codename or let it
+    // infer inventory from the account type.
+    strict_1.default.ok(dataStep.body.includes("VOICE —"), "step 1 must carry the VOICE rule — it is the first step a session runs");
+    strict_1.default.ok(/Do NOT say `dogfood`/.test(dataStep.body), "the dogfood branch must forbid speaking the internal codename");
+    strict_1.default.ok(/PROBE IT EXACTLY AS YOU WOULD `tenant`/.test(dataStep.body), "the dogfood branch must require the same inventory probe tenant gets");
+});
+// ---------------------------------------------------------------------------
+// (d2) the voice rule reaches the surfaces read BEFORE any step body
+// ---------------------------------------------------------------------------
+(0, node_test_1.test)("(d2) voice rule ships with the guide listing and the index resource", async () => {
+    // The no-id listing call is the first call a build session makes. It used to
+    // answer with titles and summaries only — no instructions at all (CRBR
+    // 6a7a23e4). A rule that arrives with step 2 arrives after the damage.
+    // get_build_guide is pure local data — it ignores the config entirely.
+    const listing = (await get_build_guide_js_1.get_build_guide.handler({}, {}));
+    strict_1.default.ok(typeof listing.voice === "string" && listing.voice.includes("VOICE —"), "get_build_guide listing must carry the voice rule");
+    strict_1.default.ok(listing.voice.includes("`dogfood`"), "the voice rule must name the internal values it forbids speaking");
+    const index = (0, resource_js_1.readGuideResource)(resource_js_1.BUILD_GUIDE_URI);
+    strict_1.default.ok(index.text.includes("VOICE —"), "the index resource must carry the voice rule ahead of the step list");
+    strict_1.default.ok(index.text.indexOf("VOICE —") < index.text.indexOf("## Steps"), "the voice rule must precede the table of contents, not follow it");
 });
 // ---------------------------------------------------------------------------
 // (e) the guide resource resolves a prompt by id

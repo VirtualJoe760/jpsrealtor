@@ -62,6 +62,12 @@ function renderIndexMarkdown() {
         "",
         "Paste these prompts, in order, into a Claude session that has the ChatRealty MCP connected. Each one is self-contained.",
         "",
+        // Ahead of the table of contents on purpose: a reader who takes only the
+        // index still leaves with the one rule that governs their first sentence.
+        "## Before you say anything",
+        "",
+        prompts_js_1.VOICE_RULE,
+        "",
         "## Steps",
         "",
         toc,

@@ -16,6 +16,7 @@
 import {
   BUILD_GUIDE_PROMPTS,
   getBuildGuidePrompt,
+  VOICE_RULE,
   type BuildGuidePrompt,
 } from "./prompts.js";
 
@@ -73,6 +74,12 @@ function renderIndexMarkdown(): string {
     "# ChatRealty Build Guide",
     "",
     "Paste these prompts, in order, into a Claude session that has the ChatRealty MCP connected. Each one is self-contained.",
+    "",
+    // Ahead of the table of contents on purpose: a reader who takes only the
+    // index still leaves with the one rule that governs their first sentence.
+    "## Before you say anything",
+    "",
+    VOICE_RULE,
     "",
     "## Steps",
     "",

@@ -27,6 +27,8 @@ import {
   BUILD_GUIDE_PROMPTS,
   getBuildGuidePrompt,
 } from "../build-guide/prompts.js";
+import { get_build_guide } from "../tools/get_build_guide.js";
+import type { ServerConfig } from "../config.js";
 import {
   readGuideResource,
   listGuideResources,
@@ -203,6 +205,56 @@ test("(d) build-guide prompt library is non-empty and well-formed", () => {
       `prompt ${p.id} must not contain an ask-ChatRealty step`
     );
   }
+
+  // CRBR 6a7a23e4: the VOICE rule lived only in step 2, so a session's first
+  // words to an agent were composed before it had been read — one opened "Let
+  // me start by pulling the build guide." The rule must reach step 1, and the
+  // `dogfood` branch must not tell the assistant to say the codename or let it
+  // infer inventory from the account type.
+  assert.ok(
+    dataStep!.body.includes("VOICE —"),
+    "step 1 must carry the VOICE rule — it is the first step a session runs"
+  );
+  assert.ok(
+    /Do NOT say `dogfood`/.test(dataStep!.body),
+    "the dogfood branch must forbid speaking the internal codename"
+  );
+  assert.ok(
+    /PROBE IT EXACTLY AS YOU WOULD `tenant`/.test(dataStep!.body),
+    "the dogfood branch must require the same inventory probe tenant gets"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// (d2) the voice rule reaches the surfaces read BEFORE any step body
+// ---------------------------------------------------------------------------
+test("(d2) voice rule ships with the guide listing and the index resource", async () => {
+  // The no-id listing call is the first call a build session makes. It used to
+  // answer with titles and summaries only — no instructions at all (CRBR
+  // 6a7a23e4). A rule that arrives with step 2 arrives after the damage.
+  // get_build_guide is pure local data — it ignores the config entirely.
+  const listing = (await get_build_guide.handler({}, {} as ServerConfig)) as {
+    voice?: string;
+    steps: unknown[];
+  };
+  assert.ok(
+    typeof listing.voice === "string" && listing.voice.includes("VOICE —"),
+    "get_build_guide listing must carry the voice rule"
+  );
+  assert.ok(
+    listing.voice!.includes("`dogfood`"),
+    "the voice rule must name the internal values it forbids speaking"
+  );
+
+  const index = readGuideResource(BUILD_GUIDE_URI);
+  assert.ok(
+    index!.text.includes("VOICE —"),
+    "the index resource must carry the voice rule ahead of the step list"
+  );
+  assert.ok(
+    index!.text.indexOf("VOICE —") < index!.text.indexOf("## Steps"),
+    "the voice rule must precede the table of contents, not follow it"
+  );
 });
 
 // ---------------------------------------------------------------------------
