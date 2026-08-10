@@ -1,7 +1,7 @@
 ---
 title: Neon Setup & Provisioning
 status: current
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 related: [./architecture.md, ./build_plan.md, ./db-adapter.md, ./data-dictionary.md]
 ---
 
@@ -199,6 +199,15 @@ that as the flag being ignored. So: `init` a new empty database first (that is w
 room), set `RESO_NETWORKS` before loading it, then `run`. One market fits; five markets'
 history does not. Raising a tenant's limit is **not self-serve today** — that gap is real
 and unowned.
+
+**From `@chatrealty/sync` 0.8.0, narrowing associations is the SECOND lever, not the
+first.** The seed now defaults to the for-sale set (`RESO_STATUSES`), which on a typical
+association is a ~50× reduction — Greater Palm Springs goes 223,935 rows / ~4,374 MB →
+~4,500 / ~90 MB. A tenant that overflowed on the full archive usually fits without
+narrowing anything, and on a single-association key narrowing cannot help at all (the
+preflight now says so instead of advising a destructive `init`). Run
+`npx @chatrealty/sync access` to see every association, property type and status the key
+reaches with exact counts before choosing. See [data-tiers.md](./data-tiers.md).
 
 ## Common mistakes
 
