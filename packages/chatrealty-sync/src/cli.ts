@@ -19,7 +19,7 @@ import { config as loadDotenv } from "dotenv";
 import { Command } from "commander";
 
 import { configFromEnv, runSync } from "./index.js";
-import { ResoClient } from "./reso-fetch.js";
+import { ResoClient, FOR_SALE_STATUSES } from "./reso-fetch.js";
 import {
   STORAGE_LIMIT_MB,
   STORAGE_LIMIT_BYTES,
@@ -190,9 +190,72 @@ program
   });
 
 program
+  .command("access")
+  .description(
+    "Show EVERYTHING your data key can reach — associations, property types and statuses, each with an exact count — so you can choose what to sync before provisioning anything."
+  )
+  .action(async () => {
+    // WHY THIS EXISTS (CRBR 6a7a33bc / 6a7a3405, 2026-08-10): the seed's scope
+    // was decided by defaults and discovered at the storage wall. `networks`
+    // answered one axis from a biased sample; nothing answered "what types" or
+    // "what statuses" at all. A key reaching 223,935 records was seeded whole to
+    // serve a browse that shows ~4,500 of them. This reports the real shape of
+    // the key so the choice is made up front, against numbers.
+    const cfg = configFromEnv(process.env, { dryRun: true });
+    const client = new ResoClient(cfg.reso);
+    console.log("[access] asking your feed what this key can reach — one moment…");
+    try {
+      const a = await client.describeAccess();
+      const n = (x: number) => x.toLocaleString();
+      const KB = 20; // preflight's measured bytes/row on GPS/Spark
+      const mb = (rows: number) => `${Math.round((rows * KB) / 1024)} MB`;
+
+      if (a.total != null) {
+        console.log(`\n  Everything this key can see: ${n(a.total)} listings (~${mb(a.total)})\n`);
+      }
+      const table = (
+        title: string,
+        rows: { name: string; count: number }[],
+        envVar: string,
+      ) => {
+        if (rows.length === 0) {
+          console.log(`  ${title}: feed did not answer — cannot enumerate.\n`);
+          return;
+        }
+        console.log(`  ${title}`);
+        for (const r of rows) {
+          console.log(`    ${n(r.count).padStart(9)}  ~${mb(r.count).padStart(7)}  ${r.name}`);
+        }
+        console.log(`    → choose with ${envVar} in .env.local (comma-separated)\n`);
+      };
+      table(`ASSOCIATIONS (grouped on ${a.field})`, a.networks, "RESO_NETWORKS");
+      table("PROPERTY TYPES", a.propertyTypes, "RESO_PROPERTY_TYPES");
+      table("STATUSES", a.statuses, "RESO_STATUSES");
+
+      const forSale = a.statuses
+        .filter((s) => (FOR_SALE_STATUSES as readonly string[]).includes(s.name))
+        .reduce((t, s) => t + s.count, 0);
+      if (forSale > 0) {
+        console.log(
+          `  Default if you choose nothing: for-sale only — ${n(forSale)} listings (~${mb(forSale)}).`,
+        );
+        console.log(
+          `  That is what your site's browse displays. Closed history is what makes a`,
+        );
+        console.log(
+          `  feed large; add it with RESO_STATUSES only if you need comps in your own DB.\n`,
+        );
+      }
+    } catch (err) {
+      console.error(`[access] failed: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("networks")
   .description(
-    "List the MLS networks/associations your data key can see, with a sampled share of each."
+    "List the MLS networks/associations your data key can see, with a sampled share of each. (Prefer `access` — it counts exactly and covers types + statuses too.)"
   )
   .option("--pages <n>", "How many pages to sample (default 5)", "5")
   .option("--field <name>", "Network field to group on (default OriginatingSystemName)")
@@ -736,7 +799,22 @@ program
 
         if (freshSeed) {
           const { seedPreflight } = await import("./preflight.js");
-          const pf = await seedPreflight({ dbUrl: cfg.connString, reso: cfg.reso });
+          // How many associations the key can reach AT ALL — so the preflight
+          // can stop offering "narrow RESO_NETWORKS" to a key that reaches one.
+          // Sampled and cheap; null when the feed won't say, which the preflight
+          // treats as "unknown, keep offering it".
+          let availableNetworks: number | null = null;
+          try {
+            const probe = new ResoClient(cfg.reso);
+            availableNetworks = (await probe.discoverNetworks(2)).networks.length || null;
+          } catch {
+            /* discovery is advisory — never block a seed on it */
+          }
+          const pf = await seedPreflight({
+            dbUrl: cfg.connString,
+            reso: cfg.reso,
+            availableNetworks,
+          });
           for (const l of pf.lines) console.log(l);
           if (pf.verdict === "exceeds" && !opts.force) {
             console.error(

@@ -124,3 +124,82 @@ test("a CAPPED run never commits a watermark", async () => {
     "a capped run must leave the checkpoint exactly as it found it",
   );
 });
+
+// ---------------------------------------------------------------------------
+// Scope filters — CRBR 6a7a33bc / 6a7a3405
+//
+// The seed had no status filter, so it walked the whole archive: 223,935
+// records on Greater Palm Springs projecting ~4,374 MB, to serve a browse that
+// shows ~4,500 for-sale listings. These pin that the scope actually reaches the
+// wire — on the SEED url and on the COUNT the preflight projects from, because
+// a count taken without the seed's own filter is the number that produced the
+// 4,374 MB verdict.
+// ---------------------------------------------------------------------------
+
+// URLSearchParams encodes spaces as "+", which decodeURIComponent leaves alone.
+const decodeQuery = (u: string) => decodeURIComponent(u).replace(/\+/g, " ");
+
+function urlCapturingClient(cfg: Record<string, unknown>): { seen: string[] } {
+  const seen: string[] = [];
+  const fetchImpl = (async (url: string) => {
+    seen.push(String(url));
+    return jsonResponse({ value: [], "@odata.count": 0 });
+  }) as unknown as typeof fetch;
+  const c = new ResoClient({
+    baseUrl: "https://feed.example/OData",
+    bearerToken: "test-token",
+    tokenUrl: "",
+    clientId: "",
+    clientSecret: "",
+    fetchImpl,
+    ...cfg,
+  });
+  return Object.assign({ seen }, { client: c }) as unknown as { seen: string[]; client: ResoClient };
+}
+
+test("the status filter reaches the wire on both the seed pull and the projection count", async () => {
+  const h = urlCapturingClient({ statuses: ["Active", "Pending"] }) as unknown as {
+    seen: string[];
+    client: ResoClient;
+  };
+  await h.client.countScope();
+  const counted = decodeQuery(h.seen.at(-1)!);
+  assert.match(counted, /StandardStatus eq 'Active'/);
+  assert.match(counted, /StandardStatus eq 'Pending'/);
+  assert.match(counted, /\$count=true/);
+});
+
+test("property type and status compose with the network filter, not replace it", async () => {
+  const h = urlCapturingClient({
+    statuses: ["Active"],
+    propertyTypes: ["Residential"],
+    networks: ["Greater Palm Springs Multiple Listing Service"],
+  }) as unknown as { seen: string[]; client: ResoClient };
+  await h.client.countScope();
+  const u = decodeQuery(h.seen.at(-1)!);
+  assert.match(u, /OriginatingSystemName eq 'Greater Palm Springs Multiple Listing Service'/);
+  assert.match(u, /StandardStatus eq 'Active'/);
+  assert.match(u, /PropertyType eq 'Residential'/);
+  // All three joined by AND — an OR here would widen the pull, not narrow it.
+  assert.equal((u.match(/ and /g) || []).length, 2);
+});
+
+test("no statuses configured means NO status clause — the full archive stays reachable", async () => {
+  const h = urlCapturingClient({ statuses: [] }) as unknown as {
+    seen: string[];
+    client: ResoClient;
+  };
+  await h.client.countScope();
+  assert.doesNotMatch(decodeQuery(h.seen.at(-1)!), /StandardStatus/);
+});
+
+test("describeAccess ignores the configured scope — it reports ACCESS, not the pull", async () => {
+  // A key already narrowed to one association must still show every
+  // association it could use, or the operator cannot revisit the choice.
+  const h = urlCapturingClient({
+    statuses: ["Active"],
+    networks: ["Greater Palm Springs Multiple Listing Service"],
+  }) as unknown as { seen: string[]; client: ResoClient };
+  await h.client.countWhere(null);
+  assert.doesNotMatch(decodeQuery(h.seen.at(-1)!), /StandardStatus|OriginatingSystemName/);
+});

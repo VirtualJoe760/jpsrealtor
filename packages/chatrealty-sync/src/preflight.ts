@@ -86,6 +86,12 @@ export async function seedPreflight(opts: {
   dbUrl: string;
   reso: ConstructorParameters<typeof ResoClient>[0];
   env?: NodeJS.ProcessEnv;
+  /**
+   * How many associations this key can reach at all. When it is 1 there is
+   * nothing to narrow, and the preflight must stop offering narrowing as a
+   * remedy — following it costs a destructive `init` and changes nothing.
+   */
+  availableNetworks?: number | null;
 }): Promise<PreflightResult> {
   const env = opts.env ?? process.env;
   const lines: string[] = [];
@@ -129,6 +135,18 @@ export async function seedPreflight(opts: {
       ? `networks: ${opts.reso.networks.join(", ")}`
       : "ALL networks this key can see (RESO_NETWORKS is unset)";
 
+  // Is there anything left to narrow? Offering "serve fewer associations" to a
+  // key that reaches exactly one is a remedy that cannot work, and following it
+  // costs an `init` — discarding the database — for an identical projection
+  // afterward. The tool already knows the answer and used to advise it anyway
+  // (CRBR 6a7a33bc).
+  const narrowedToOne =
+    (opts.reso.networks?.length ?? 0) === 1 ||
+    (opts.availableNetworks != null && opts.availableNetworks <= 1);
+  // Already pulling for-sale only? Then status scoping is spent too, and the
+  // honest answer is that this feed genuinely needs more room.
+  const statusScoped = (opts.reso.statuses?.length ?? 0) > 0;
+
   if (feedCount == null) {
     lines.push(
       `[preflight] the feed did not answer a $count — cannot project the seed size (${scope}).`,
@@ -168,12 +186,46 @@ export async function seedPreflight(opts: {
     lines.push(
       `[preflight] EXCEEDS YOUR PLAN — this feed needs ~${mb(projectedBytes)}, your plan allows ${mb(allowance.limitBytes)}.`,
       `[preflight] Seeding would die mid-run at the storage wall and leave the database`,
-      `[preflight] neither finished nor restartable. Two ways forward:`,
-      `[preflight]   1. Serve fewer associations: set RESO_NETWORKS in .env.local to just`,
-      `[preflight]      yours (run \`npx @chatrealty/sync networks\` to see sizes), then`,
-      `[preflight]      \`init\` a fresh database and seed that.`,
-      `[preflight]   2. Upgrade your data plan: ${allowance.upgradeUrl}`
+      `[preflight] neither finished nor restartable.`
     );
+
+    // Only list remedies that can actually reduce THIS feed. A remedy the tool
+    // can already prove is a no-op is worse than no remedy: it reads as the
+    // cheap fix, and taking it costs an `init` that discards the database for
+    // an identical projection (CRBR 6a7a33bc).
+    const remedies: string[] = [];
+    if (!statusScoped) {
+      remedies.push(
+        `Seed only what your site displays: leave RESO_STATUSES unset (or set it`,
+        `   to Active,Active Under Contract,Pending) to skip closed history. On a`,
+        `   typical association that is a ~50x reduction — it is what the browse`,
+        `   shows, and closed comps are not served from your database yet.`
+      );
+    }
+    if (!narrowedToOne) {
+      remedies.push(
+        `Serve fewer associations: set RESO_NETWORKS in .env.local to just yours`,
+        `   (run \`npx @chatrealty/sync networks\` to see sizes), then \`init\` a fresh`,
+        `   database and seed that.`
+      );
+    }
+    remedies.push(`Upgrade your data plan: ${allowance.upgradeUrl}`);
+
+    // Number only the leading line of each remedy; continuations stay indented.
+    let n = 0;
+    for (const r of remedies) {
+      const isHead = !r.startsWith("   ");
+      if (isHead) n += 1;
+      lines.push(`[preflight]   ${isHead ? `${n}. ` : "   "}${r}`);
+    }
+
+    if (narrowedToOne && statusScoped) {
+      lines.push(
+        `[preflight] NOTE: narrowing cannot help here — this key reaches one association`,
+        `[preflight] and you are already pulling for-sale listings only. Re-running \`init\``,
+        `[preflight] would discard your database and project exactly the same size.`
+      );
+    }
   }
 
   return {

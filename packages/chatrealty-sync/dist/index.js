@@ -20,7 +20,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import pg from "pg";
-import { ResoClient } from "./reso-fetch.js";
+import { ResoClient, FOR_SALE_STATUSES, } from "./reso-fetch.js";
 import { mapResoProperty } from "./map.js";
 import { upsertProperties, DEFAULT_BATCH_SIZE } from "./write.js";
 import { pgOptions } from "./pgconn.js";
@@ -211,6 +211,27 @@ export function configFromEnv(env = process.env, overrides = {}) {
                 ? env.RESO_NETWORKS.split(",").map((n) => n.trim()).filter(Boolean)
                 : undefined,
             networkField: env.RESO_NETWORK_FIELD,
+            // WHICH STATUSES TO PULL. Defaults to the for-sale set, because that is
+            // what a site's browse displays and the archive behind it is ~50x larger:
+            // Greater Palm Springs is 223,935 records unfiltered against ~4,500 for
+            // sale. Seeding the archive spent the whole storage allowance on rows the
+            // tenant database cannot currently serve, and blocked tenants who had
+            // working credentials (CRBR 6a7a33bc / 6a7a3405).
+            //
+            // `RESO_STATUSES=all` opts back into the full archive — the right call
+            // when comps matter and the plan has room. Anything else is a
+            // comma-separated status list, taken verbatim.
+            statuses: /^all$/i.test((env.RESO_STATUSES ?? "").trim())
+                ? undefined
+                : env.RESO_STATUSES
+                    ? env.RESO_STATUSES.split(",").map((s) => s.trim()).filter(Boolean)
+                    : [...FOR_SALE_STATUSES],
+            // Which property types to pull. Unset = every type the feed carries,
+            // which drags leases, land and commercial in alongside homes. Set from
+            // the `access` report so the choice is made against real counts.
+            propertyTypes: env.RESO_PROPERTY_TYPES
+                ? env.RESO_PROPERTY_TYPES.split(",").map((t) => t.trim()).filter(Boolean)
+                : undefined,
             // Photos come inline with each listing unless explicitly turned off. A
             // feed that can't serve the expansion turns it off by itself on the first
             // page (reso-fetch.ts) — this is the manual override, not the safety net.

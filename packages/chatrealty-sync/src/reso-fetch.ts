@@ -69,8 +69,89 @@ export interface ResoFetchConfig {
    * Defaults to "OriginatingSystemName".
    */
   readonly networkField?: string;
+  /**
+   * Restrict the pull to specific listing statuses (RESO `StandardStatus`).
+   *
+   * WHY THIS EXISTS (CRBR 6a7a33bc / 6a7a3405, 2026-08-10): the seed had no
+   * status filter at all, so it walked the ENTIRE archive oldest-record-first.
+   * On Greater Palm Springs that is 223,935 records projecting ~4,374 MB — for
+   * a site whose browse displays ACTIVE FOR-SALE inventory and nothing else.
+   * The same feed's active set is ~4,500 rows, roughly 90 MB: about 2% of the
+   * pull, comfortably inside even the free allowance. A tenant with working
+   * credentials and a correctly-narrowed single association still could not
+   * seed one listing, because the ceiling was being spent on closed history the
+   * tenant database cannot currently serve (tenant reads 501 on comps).
+   *
+   * Empty/undefined means NO status filter — the full archive, which is the
+   * right choice when comps matter and the plan has room for them.
+   */
+  readonly statuses?: readonly string[];
+  /**
+   * Restrict the pull to specific RESO `PropertyType` values. Empty/undefined
+   * means every type the feed carries — which on most associations drags in
+   * leases, land and commercial alongside the homes a residential site shows.
+   */
+  readonly propertyTypes?: readonly string[];
   /** Injectable fetch — defaults to global fetch. Tests pass a mock. */
   readonly fetchImpl?: typeof fetch;
+}
+
+/**
+ * The for-sale set: what a site's browse actually displays. Deliberately NOT
+ * just "Active" — a home under contract or pending is still shown (usually
+ * badged) right up to close, and dropping them makes listings vanish mid-deal.
+ */
+export const FOR_SALE_STATUSES = [
+  "Active",
+  "Active Under Contract",
+  "Pending",
+] as const;
+
+/** RESO StandardStatus enum — probed one by one; absent values simply count 0. */
+export const KNOWN_STATUSES = [
+  "Active",
+  "Active Under Contract",
+  "Pending",
+  "Closed",
+  "Expired",
+  "Canceled",
+  "Withdrawn",
+  "Hold",
+  "Coming Soon",
+  "Incomplete",
+  "Delete",
+] as const;
+
+/** RESO PropertyType enum — the axis that decides residential vs land vs lease. */
+export const KNOWN_PROPERTY_TYPES = [
+  "Residential",
+  "Residential Lease",
+  "Residential Income",
+  "Land",
+  "Commercial Sale",
+  "Commercial Lease",
+  "Business Opportunity",
+  "Manufactured In Park",
+  "Farm",
+] as const;
+
+/** OData clause for an `eq`-set on one field, or null when unfiltered. */
+export function eqSetClause(
+  field: string,
+  values: readonly string[] | undefined,
+): string | null {
+  if (!values || values.length === 0) return null;
+  const ors = values
+    .map((v) => `${field} eq '${String(v).replace(/'/g, "''")}'`)
+    .join(" or ");
+  return values.length > 1 ? `(${ors})` : ors;
+}
+
+/** OData clause for a status set, or null when unfiltered. */
+export function statusFilterClause(
+  statuses: readonly string[] | undefined,
+): string | null {
+  return eqSetClause("StandardStatus", statuses);
 }
 
 /** The OData collection envelope a RESO feed returns. */
@@ -156,9 +237,9 @@ async function peekBody(res: Response): Promise<string> {
  */
 export class ResoClient {
   private readonly cfg: Required<
-    Omit<ResoFetchConfig, "select" | "scope" | "networks" | "networkField">
+    Omit<ResoFetchConfig, "select" | "scope" | "networks" | "networkField" | "statuses" | "propertyTypes">
   > &
-    Pick<ResoFetchConfig, "select" | "scope" | "networks" | "networkField">;
+    Pick<ResoFetchConfig, "select" | "scope" | "networks" | "networkField" | "statuses" | "propertyTypes">;
   private readonly doFetch: typeof fetch;
   private cached: CachedToken | null = null;
   /** Flipped off for the rest of the run the first time a feed rejects the expand. */
@@ -177,6 +258,8 @@ export class ResoClient {
       select: cfg.select,
       networks: cfg.networks,
       networkField: cfg.networkField,
+      statuses: cfg.statuses,
+      propertyTypes: cfg.propertyTypes,
       expandMedia: cfg.expandMedia ?? true,
       fetchImpl: cfg.fetchImpl ?? fetch,
     };
@@ -264,6 +347,10 @@ export class ResoClient {
         .join(" or ");
       clauses.push(networks.length > 1 ? `(${ors})` : ors);
     }
+    const statusClause = statusFilterClause(this.cfg.statuses);
+    if (statusClause) clauses.push(statusClause);
+    const typeClause = eqSetClause("PropertyType", this.cfg.propertyTypes);
+    if (typeClause) clauses.push(typeClause);
     if (clauses.length > 0) params.set("$filter", clauses.join(" and "));
     return `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
   }
@@ -278,18 +365,29 @@ export class ResoClient {
     const params = new URLSearchParams();
     params.set("$top", "0");
     params.set("$count", "true");
+    const clauses: string[] = [];
     const networks = this.cfg.networks;
     if (networks && networks.length > 0) {
       const field = this.cfg.networkField || "OriginatingSystemName";
       const ors = networks
         .map((n) => `${field} eq '${String(n).replace(/'/g, "''")}'`)
         .join(" or ");
-      params.set("$filter", networks.length > 1 ? `(${ors})` : ors);
+      clauses.push(networks.length > 1 ? `(${ors})` : ors);
     }
+    // The projection must count what the SEED will pull, status filter and all
+    // — a count taken without it is the number that sent a tenant to a 4,374 MB
+    // verdict for a ~90 MB seed.
+    const statusClause = statusFilterClause(this.cfg.statuses);
+    if (statusClause) clauses.push(statusClause);
+    const typeClause = eqSetClause("PropertyType", this.cfg.propertyTypes);
+    if (typeClause) clauses.push(typeClause);
+    if (clauses.length > 0) params.set("$filter", clauses.join(" and "));
     const url = `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
     try {
       const token = await this.getAccessToken();
-      const res = await fetch(url, {
+      // this.doFetch, not the global — countScope used the global, so an injected
+      // fetch was silently bypassed and every projection test hit the network.
+      const res = await this.doFetch(url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         signal: AbortSignal.timeout(20_000),
       });
@@ -313,6 +411,93 @@ export class ResoClient {
    * enough to name the networks and show relative share. `sampleSize` pages
    * are pulled (default 5 × pageSize records).
    */
+  /**
+   * Exact count of records matching one OData clause, IGNORING the configured
+   * network/status scope. This is the discovery primitive: it answers "what can
+   * this key reach", not "what will this run pull". One request, $top=0.
+   */
+  async countWhere(clause: string | null): Promise<number | null> {
+    const params = new URLSearchParams();
+    params.set("$top", "0");
+    params.set("$count", "true");
+    if (clause) params.set("$filter", clause);
+    const url = `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+    try {
+      const token = await this.getAccessToken();
+      // this.doFetch, not the global — countScope used the global, so an injected
+      // fetch was silently bypassed and every projection test hit the network.
+      const res = await this.doFetch(url, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) return null;
+      const body = (await res.json()) as Record<string, unknown>;
+      const n = body["@odata.count"];
+      return typeof n === "number" ? n : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * EVERYTHING this key can reach, across all three axes the operator chooses
+   * on: associations, property types, statuses — each with an EXACT count.
+   *
+   * WHY EXACT AND NOT SAMPLED (CRBR 6a7a33bc, 2026-08-10): `discoverNetworks`
+   * samples the first N pages, and the feed walks oldest-record-first, so its
+   * shares describe the oldest corner of the archive rather than the key. A
+   * session read "100.0% Greater Palm Springs" from it and concluded the key
+   * reached exactly one association. Sampling is fine for a rough share; it is
+   * not fine for a choice that decides whether a seed fits.
+   *
+   * Deliberately ignores the configured scope — this reports ACCESS, so a key
+   * already narrowed to one association still shows every association it could
+   * use. Values the feed does not carry come back 0 and are dropped.
+   */
+  async describeAccess(): Promise<{
+    field: string;
+    total: number | null;
+    networks: { name: string; count: number }[];
+    statuses: { name: string; count: number }[];
+    propertyTypes: { name: string; count: number }[];
+  }> {
+    const field = this.cfg.networkField || "OriginatingSystemName";
+    const q = (f: string, v: string) => `${f} eq '${String(v).replace(/'/g, "''")}'`;
+
+    const total = await this.countWhere(null);
+
+    // Association NAMES still have to be discovered by sampling — OData has no
+    // DISTINCT — but every name found is then counted EXACTLY.
+    const sampled = await this.discoverNetworks(3);
+    const networks: { name: string; count: number }[] = [];
+    for (const n of sampled.networks) {
+      if (n.name === "(unspecified)") continue;
+      const c = await this.countWhere(q(field, n.name));
+      if (c && c > 0) networks.push({ name: n.name, count: c });
+    }
+
+    const statuses: { name: string; count: number }[] = [];
+    for (const s of KNOWN_STATUSES) {
+      const c = await this.countWhere(q("StandardStatus", s));
+      if (c && c > 0) statuses.push({ name: s, count: c });
+    }
+
+    const propertyTypes: { name: string; count: number }[] = [];
+    for (const p of KNOWN_PROPERTY_TYPES) {
+      const c = await this.countWhere(q("PropertyType", p));
+      if (c && c > 0) propertyTypes.push({ name: p, count: c });
+    }
+
+    const bySize = (a: { count: number }, b: { count: number }) => b.count - a.count;
+    return {
+      field,
+      total,
+      networks: networks.sort(bySize),
+      statuses: statuses.sort(bySize),
+      propertyTypes: propertyTypes.sort(bySize),
+    };
+  }
+
   async discoverNetworks(
     sampleSize = 5
   ): Promise<{ field: string; networks: { name: string; sampled: number }[]; sampled: number }> {

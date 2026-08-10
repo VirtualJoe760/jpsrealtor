@@ -16,6 +16,55 @@
 // Secrets (client id/secret) are passed in by the caller from env (`index.ts`),
 // never read from a config file and never logged.
 /**
+ * The for-sale set: what a site's browse actually displays. Deliberately NOT
+ * just "Active" — a home under contract or pending is still shown (usually
+ * badged) right up to close, and dropping them makes listings vanish mid-deal.
+ */
+export const FOR_SALE_STATUSES = [
+    "Active",
+    "Active Under Contract",
+    "Pending",
+];
+/** RESO StandardStatus enum — probed one by one; absent values simply count 0. */
+export const KNOWN_STATUSES = [
+    "Active",
+    "Active Under Contract",
+    "Pending",
+    "Closed",
+    "Expired",
+    "Canceled",
+    "Withdrawn",
+    "Hold",
+    "Coming Soon",
+    "Incomplete",
+    "Delete",
+];
+/** RESO PropertyType enum — the axis that decides residential vs land vs lease. */
+export const KNOWN_PROPERTY_TYPES = [
+    "Residential",
+    "Residential Lease",
+    "Residential Income",
+    "Land",
+    "Commercial Sale",
+    "Commercial Lease",
+    "Business Opportunity",
+    "Manufactured In Park",
+    "Farm",
+];
+/** OData clause for an `eq`-set on one field, or null when unfiltered. */
+export function eqSetClause(field, values) {
+    if (!values || values.length === 0)
+        return null;
+    const ors = values
+        .map((v) => `${field} eq '${String(v).replace(/'/g, "''")}'`)
+        .join(" or ");
+    return values.length > 1 ? `(${ors})` : ors;
+}
+/** OData clause for a status set, or null when unfiltered. */
+export function statusFilterClause(statuses) {
+    return eqSetClause("StandardStatus", statuses);
+}
+/**
  * The feed throttled us and kept throttling. Distinct from a generic fetch
  * failure because the response is different: wait and resume, don't debug.
  */
@@ -98,6 +147,8 @@ export class ResoClient {
             select: cfg.select,
             networks: cfg.networks,
             networkField: cfg.networkField,
+            statuses: cfg.statuses,
+            propertyTypes: cfg.propertyTypes,
             expandMedia: cfg.expandMedia ?? true,
             fetchImpl: cfg.fetchImpl ?? fetch,
         };
@@ -178,9 +229,64 @@ export class ResoClient {
                 .join(" or ");
             clauses.push(networks.length > 1 ? `(${ors})` : ors);
         }
+        const statusClause = statusFilterClause(this.cfg.statuses);
+        if (statusClause)
+            clauses.push(statusClause);
+        const typeClause = eqSetClause("PropertyType", this.cfg.propertyTypes);
+        if (typeClause)
+            clauses.push(typeClause);
         if (clauses.length > 0)
             params.set("$filter", clauses.join(" and "));
         return `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+    }
+    /**
+     * Exact count of what THIS configuration will pull — same network filter as
+     * the seed, no watermark, no sampling. `$top=0&$count=true` costs one
+     * request. Returns null when the vendor rejects $count (some do) so the
+     * preflight can degrade honestly instead of guessing.
+     */
+    async countScope() {
+        const params = new URLSearchParams();
+        params.set("$top", "0");
+        params.set("$count", "true");
+        const clauses = [];
+        const networks = this.cfg.networks;
+        if (networks && networks.length > 0) {
+            const field = this.cfg.networkField || "OriginatingSystemName";
+            const ors = networks
+                .map((n) => `${field} eq '${String(n).replace(/'/g, "''")}'`)
+                .join(" or ");
+            clauses.push(networks.length > 1 ? `(${ors})` : ors);
+        }
+        // The projection must count what the SEED will pull, status filter and all
+        // — a count taken without it is the number that sent a tenant to a 4,374 MB
+        // verdict for a ~90 MB seed.
+        const statusClause = statusFilterClause(this.cfg.statuses);
+        if (statusClause)
+            clauses.push(statusClause);
+        const typeClause = eqSetClause("PropertyType", this.cfg.propertyTypes);
+        if (typeClause)
+            clauses.push(typeClause);
+        if (clauses.length > 0)
+            params.set("$filter", clauses.join(" and "));
+        const url = `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+        try {
+            const token = await this.getAccessToken();
+            // this.doFetch, not the global — countScope used the global, so an injected
+            // fetch was silently bypassed and every projection test hit the network.
+            const res = await this.doFetch(url, {
+                headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+                signal: AbortSignal.timeout(20_000),
+            });
+            if (!res.ok)
+                return null;
+            const body = (await res.json());
+            const n = body["@odata.count"];
+            return typeof n === "number" ? n : null;
+        }
+        catch {
+            return null;
+        }
     }
     /**
      * Discover which MLS networks/associations this data key can see, with a
@@ -193,6 +299,87 @@ export class ResoClient {
      * enough to name the networks and show relative share. `sampleSize` pages
      * are pulled (default 5 × pageSize records).
      */
+    /**
+     * Exact count of records matching one OData clause, IGNORING the configured
+     * network/status scope. This is the discovery primitive: it answers "what can
+     * this key reach", not "what will this run pull". One request, $top=0.
+     */
+    async countWhere(clause) {
+        const params = new URLSearchParams();
+        params.set("$top", "0");
+        params.set("$count", "true");
+        if (clause)
+            params.set("$filter", clause);
+        const url = `${this.cfg.baseUrl}/${this.cfg.resource}?${params.toString()}`;
+        try {
+            const token = await this.getAccessToken();
+            // this.doFetch, not the global — countScope used the global, so an injected
+            // fetch was silently bypassed and every projection test hit the network.
+            const res = await this.doFetch(url, {
+                headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+                signal: AbortSignal.timeout(20_000),
+            });
+            if (!res.ok)
+                return null;
+            const body = (await res.json());
+            const n = body["@odata.count"];
+            return typeof n === "number" ? n : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    /**
+     * EVERYTHING this key can reach, across all three axes the operator chooses
+     * on: associations, property types, statuses — each with an EXACT count.
+     *
+     * WHY EXACT AND NOT SAMPLED (CRBR 6a7a33bc, 2026-08-10): `discoverNetworks`
+     * samples the first N pages, and the feed walks oldest-record-first, so its
+     * shares describe the oldest corner of the archive rather than the key. A
+     * session read "100.0% Greater Palm Springs" from it and concluded the key
+     * reached exactly one association. Sampling is fine for a rough share; it is
+     * not fine for a choice that decides whether a seed fits.
+     *
+     * Deliberately ignores the configured scope — this reports ACCESS, so a key
+     * already narrowed to one association still shows every association it could
+     * use. Values the feed does not carry come back 0 and are dropped.
+     */
+    async describeAccess() {
+        const field = this.cfg.networkField || "OriginatingSystemName";
+        const q = (f, v) => `${f} eq '${String(v).replace(/'/g, "''")}'`;
+        const total = await this.countWhere(null);
+        // Association NAMES still have to be discovered by sampling — OData has no
+        // DISTINCT — but every name found is then counted EXACTLY.
+        const sampled = await this.discoverNetworks(3);
+        const networks = [];
+        for (const n of sampled.networks) {
+            if (n.name === "(unspecified)")
+                continue;
+            const c = await this.countWhere(q(field, n.name));
+            if (c && c > 0)
+                networks.push({ name: n.name, count: c });
+        }
+        const statuses = [];
+        for (const s of KNOWN_STATUSES) {
+            const c = await this.countWhere(q("StandardStatus", s));
+            if (c && c > 0)
+                statuses.push({ name: s, count: c });
+        }
+        const propertyTypes = [];
+        for (const p of KNOWN_PROPERTY_TYPES) {
+            const c = await this.countWhere(q("PropertyType", p));
+            if (c && c > 0)
+                propertyTypes.push({ name: p, count: c });
+        }
+        const bySize = (a, b) => b.count - a.count;
+        return {
+            field,
+            total,
+            networks: networks.sort(bySize),
+            statuses: statuses.sort(bySize),
+            propertyTypes: propertyTypes.sort(bySize),
+        };
+    }
     async discoverNetworks(sampleSize = 5) {
         const field = this.cfg.networkField || "OriginatingSystemName";
         const counts = new Map();
