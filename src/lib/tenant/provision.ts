@@ -23,7 +23,7 @@
 import fs from "fs";
 import path from "path";
 import { Client } from "pg";
-import { createProject, deleteProject } from "@/lib/neon/client";
+import { createProject, deleteProject, getProject } from "@/lib/neon/client";
 import TenantModel from "@/models/control/Tenant";
 import { encryptSecret, decryptSecret } from "@/lib/secrets";
 
@@ -138,6 +138,76 @@ async function prepareDataPlane(directUri: string): Promise<void> {
   }
 }
 
+/**
+ * Returns the project id when Neon says it is GONE, else null.
+ *
+ * Deliberately one-directional: only a hard 404 counts as deleted. No API key,
+ * a timeout, a 5xx, or a malformed id all return null — "I could not check" is
+ * not "it is missing", and treating it as such would throw away live databases
+ * on a transient blip.
+ */
+async function findDeletedProject(projectId?: string | null): Promise<string | null> {
+  if (!projectId) return null;
+  if (!process.env.NEON_API_KEY) return null;
+  try {
+    await getProject(projectId);
+    return null; // alive
+  } catch (err: unknown) {
+    const status = (err as { status?: number })?.status;
+    if (status === 404) return projectId;
+    console.error(
+      `[provision] could not verify Neon project ${projectId} (status ${status ?? "?"}) — assuming alive`,
+    );
+    return null;
+  }
+}
+
+/**
+ * The stored project is gone. Build a new one and point the EXISTING tenant
+ * record at it.
+ *
+ * In place, not a new row: `ownerUserId` is unique, so a second document is
+ * impossible — and reusing the record keeps `tenantId` and every minted token
+ * working, which is what makes this a recovery rather than a migration. The
+ * operator re-runs `init` and their site keeps its identity; only the (empty,
+ * unreachable) database underneath is replaced.
+ */
+async function reprovisionInPlace(
+  existing: any,
+  deadProjectId: string,
+): Promise<ProvisionResult> {
+  console.warn(
+    `[provision] Neon project ${deadProjectId} for tenant ${existing.tenantId} is gone — rebuilding`,
+  );
+  const project = await createProject({ name: `chatrealty-${existing.slug}` });
+  try {
+    await prepareDataPlane(project.directConnUri);
+    await ensureLeadLoopSchema(project.directConnUri);
+  } catch (err) {
+    // Same rule as a fresh provision: never leave a half-built project behind,
+    // because Neon only returns the connection string at creation time.
+    await deleteProject(project.projectId).catch(() => {});
+    throw err;
+  }
+
+  existing.neon = {
+    projectId: project.projectId,
+    databaseName: project.defaultDatabase,
+    roleName: project.defaultRole,
+    provisionedAt: new Date(),
+  };
+  existing.connStringEncrypted = encryptSecret(project.pooledConnUri);
+  existing.directConnStringEncrypted = encryptSecret(project.directConnUri);
+  await existing.save();
+
+  return {
+    created: true,
+    tenantId: existing.tenantId,
+    dbUrl: project.pooledConnUri,
+    directDbUrl: project.directConnUri,
+  };
+}
+
 export async function provisionTenant(input: ProvisionInput): Promise<ProvisionResult> {
   // 1. Idempotent path — the owner already has a tenant.
   const existing = await TenantModel.findOne({ ownerUserId: input.ownerUserId });
@@ -161,6 +231,25 @@ export async function provisionTenant(input: ProvisionInput): Promise<ProvisionR
         code: "tenant_conn_missing",
       });
     }
+    // IS THE DATABASE STILL THERE? (CRBR 6a7a4742, 2026-08-10)
+    //
+    // Reconnect used to hand back the stored credential unconditionally. When
+    // the underlying Neon project is gone, that is a key to a door that no
+    // longer exists: `doctor` reports "password authentication failed", tells
+    // the operator the problem is CHATREALTY_DB_URL and to re-run `init` — and
+    // `init` returns the same dead credential. A closed loop with no
+    // client-side exit, and the tenant is permanently unreachable.
+    //
+    // Neon's own API is the authority, not a Postgres error string: a 404 on
+    // the project id means DELETED, full stop. Anything else — a timeout, a
+    // 5xx, no NEON_API_KEY configured — is NOT evidence of deletion, and must
+    // fall through to the old behaviour. A brief network hiccup must never
+    // cost someone a working database.
+    const deadProjectId = await findDeletedProject(existing.neon?.projectId);
+    if (deadProjectId) {
+      return await reprovisionInPlace(existing, deadProjectId);
+    }
+
     const directDbUrl = decryptSecret(existing.directConnStringEncrypted);
 
     // Self-heal on reconnect. Tenants provisioned before migration 0004 have no
