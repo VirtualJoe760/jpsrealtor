@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-07-27
+last_verified: 2026-08-23
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -126,6 +126,16 @@ A man bent over a pool table is not a failed standing man.
 
 The photo reader refuses these up front, so this is enforced rather than hoped
 for.
+
+**Front driveways and garage doors are the gap in that list.** The reader has no
+front-exterior key, so a driveway comes back as `outdoor` — which the caption
+layer normalises to `pool` and the banding layer labels OUTDOOR LIVING. 3010 N
+Chuperosa Road built a slide of the agent presenting a closed garage door under
+"New pool, big shade tree, and afternoons that don't need a plan." Nothing in
+the render was wrong; the classification was. Until the reader can name a front
+elevation, keep those photo indexes out of the candidate set with `--exclude`,
+and never let a room caption assert an object the chosen frame might not
+contain.
 
 ---
 
@@ -306,6 +316,33 @@ behind it, so the mask stops at the counter edge and a feet-on-floor test reads
 
 Also reject on sight: blank or flat-colour bands at any edge, duplicated limbs,
 hands with wrong finger counts, and invented text or watermarks.
+
+**The composite has no depth ordering, so nothing here can catch a figure
+standing THROUGH the furniture.** Structural room preservation is the reason:
+the person mask is pasted onto the untouched original, and that paste knows
+only "person / not person" — never which of the two is nearer the lens. When
+the chosen spot is *behind* something that fills the foreground, the figure is
+laid over it and reads as standing inside it.
+
+1950 S Palm Canyon Drive #128 produced it twice in one listing, on two
+different objects, and every gate passed both times:
+
+| Frame | Gates said | The slide showed |
+|---|---|---|
+| kitchen, across the peninsula | feet-on-floor 100%, scale 0.79×, face 0.353 | torso behind the cooktop, legs and shoes composited over the island's near face |
+| bedroom, shot from the doorway | all gates passed | shoes planted on the mattress, the comforter filling the foreground |
+
+Both spots were real floor and the geometry was right about that. The counter
+and the bed simply sat between the camera and the floor he was standing on.
+
+**The tell is in the ORIGINAL frame, before any spend: is there a large object
+whose near face runs across the bottom of the photo?** Galley kitchens shot
+across the peninsula and bedrooms shot from the doorway both do this as a
+matter of course, which makes them a whole category rather than bad luck — the
+condo above had four kitchen frames and three bedroom frames and every one of
+them was framed that way. Exclude the category up front rather than paying for
+a build to discover it, and expect a listing shot entirely like this to yield
+room slides only from the spaces you can walk into from the camera position.
 
 ---
 

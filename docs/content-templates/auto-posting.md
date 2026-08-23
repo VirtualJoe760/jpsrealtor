@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-07-26
+last_verified: 2026-08-23
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -134,6 +134,191 @@ Two consequences:
    houses, just-sold, and the reel format all widen the rotation. Worth
    planning for before the cadence outruns the inventory.
 
+### Re-measured 2026-08-11 — it outran the inventory
+
+Sixteen days later, counting anything ever written to `pendingposts` as
+consumed:
+
+| Filter | Count |
+|---|---|
+| Active, team pool, all types | 29 |
+| Never queued, sales only, ≥12 photos | **9** |
+| …of those, furnished enough to stage | **~4** |
+
+Ten listings have been queued, and the pool itself shrank from 40 to 29 as
+listings closed. Consequence 2 above is no longer a thing to plan for; it is
+the current state.
+
+### Re-measured 2026-08-12 — the furniture constraint, priced out
+
+One day later, checking every never-queued sale as IMAGES before writing
+anything:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| 16430 Evans Lane, $1.3M | 53 | **Vacant.** Both residences, all 53 frames. |
+| 79161 Falmouth Drive, $619k | 51 | Vacant (recorded above) |
+| 4140 E Calle San Antonio, $570k | 49 | Vacant, plus "Digitally Altered" frames |
+| 71817 Samarkand Drive, $549k | 38 | Furnished; severe barrel distortion, cluttered |
+| **1184 Lear Avenue, $369,900** | 60 | **Built.** Queued K3 |
+| 66550 San Diego Dr, $599k | 34 | `propertyType: C` — multifamily, out of scope |
+
+So the never-queued pool holds **one** listing that builds and one marginal
+fallback. The $1.3M listing being vacant is the point: price and photo count
+both said pick it, and the images said no. **Check the photos before writing a
+line of copy** — a contact sheet of all 53 frames costs nothing and it is the
+only filter that works.
+
+### Re-measured 2026-08-14 — the never-queued pool is down to one
+
+Two days later. 30 team actives, 13 of them ever queued. Every remaining
+never-queued candidate, checked as a contact sheet before any copy was written:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| 58540 Barron Drive, $285k | 29 | **Vacant.** Listed the day before; bare in all 29. |
+| 76434 Encanto Drive, $325k | 26 | **Vacant.** |
+| **255 S Avenida Caballeros #313, $354,900** | 29 | **Built.** Queued U5 |
+| 78250 Cortez Lane #129, $325k | 50 | Furnished, but 22 of 50 are drone aerials |
+| 71817 Samarkand Drive, $549k | 38 | Furnished; barrel distortion (recorded above) |
+| 16430 Evans Lane / Falmouth / Calle San Antonio | — | Vacant (recorded above) |
+| 72714 Willow Street #4, $299k | 11 | Under the 12-photo bar |
+
+**After this run, 78250 Cortez Lane is the only furnished never-queued sale
+left.** The rest of the pool is land (`propertyType: D`), one rental, one
+multifamily, and vacant houses. Generation is daily and the pool replenishes at
+nothing like that rate, so the next run will have to either repeat a listing
+under a different post type or skip. Consequence 2 above has arrived in full.
+
+**Staging yield is its own limit, separate from the pool.** Caballeros was built
+three times and passed exactly one frame each time — 1 of 7, 2 of 8, 1 of 8. The
+dominant rejection was *"guide marks were drawn into the render"*: the model
+drawing its own skeleton and guide box into the output, on up to six consecutive
+takes of the same frame. One kitchen reaction also came back at ArcFace cosine
+**-0.015** — a completely different man. The gates held and nothing bad shipped,
+but a 6-slide carousel with one room slide is what a 12%-yield build produces,
+and it cost three builds of Gemini spend to learn. Budget candidate frames on
+the assumption that most will not land.
+
+### Re-measured 2026-08-15 — the never-queued pool is empty
+
+78250 Cortez Lane was built and queued (L8), so the prediction above has landed:
+**there is no never-queued furnished sale left.** 29 team actives, 14 ever
+queued. What remains is land (`propertyType: D`), one rental, one multifamily,
+and the vacant houses already recorded. The next run has to repeat a listing
+under a different post type or skip; it cannot pick a fresh one.
+
+Two things about Cortez cost four builds and are worth not re-learning:
+
+**An exclusion list cannot pin the candidate set.** `selectStagingPhotos` is
+called with `want: 14` and returns its own top 14; `--exclude` is applied to
+that result *afterwards*. Hand-picking nine good frames and excluding the other
+41 does not hand the stager those nine — it hands it however many of the nine
+the selector independently ranked into its top 14, which on the third Cortez
+build was four. Exclusions can only remove, never promote.
+
+**On an open-plan unit, room de-duplication eats the run.** Cortez is a 576 sqft
+studio with a partition wall, so nearly every interior frame legitimately comes
+back `living` or `great_room`. One build staged nine candidates, passed every
+one of them, and shipped a **single** room slide — the other eight were dropped
+as duplicate rooms. Nothing failed and nothing was rejected; the yield was 1/9
+anyway. `WANT_SLIDES + 5 = 9` is a *candidate* budget, not a room budget, and on
+a studio those are very different numbers. Expect two room slides from an
+open-plan listing and treat four as the exception.
+
+**The binding constraint is not price or photo count — it is furniture.** The
+highest-priced never-queued candidate, 79161 Falmouth Drive, has 51 photos and
+about 35 of them are bare rooms mid-renovation. A vacant house gives the stager
+nothing telic to work with, so every slide degrades to an edge reaction, which
+`actor-generation.md` §6 then forbids repeating across the sequence. Two of the
+nine remaining candidates were already rejected on exactly this. **Vacant
+listings are effectively not in the pool**, and selection should test for it
+rather than discovering it part-way through a build that costs real Gemini
+spend.
+
+### Re-measured 2026-08-22 — new listings refilled it
+
+A week later the "there is nothing left" reading above is out of date. **32 team
+actives, 16 ever queued, 8 never-queued sales**, and three of those came on
+market inside the previous four days. Checked all three as contact sheets before
+any copy was written:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **1522 Sutherland, Lancaster, $499,999** | 35 | **Built.** Queued V2 |
+| 27305 Hombria, Cathedral City, $429k | 32 | Furnished but heavy wide-lens distortion, dim, lived-in |
+| 1950 Palm Canyon #128, Palm Springs, $299,999 | 33 | Furnished and usable — hold as the next fallback |
+
+The rest of the never-queued list is the vacant houses and the sub-12-photo unit
+already recorded above. So the pool is not exhausted so much as **bursty**: it
+empties, then two or three listings land in a week. A run that finds nothing
+should say so and stop rather than repeat, because the following week may well
+have three.
+
+**Sutherland is also the first candidate whose photography was better than the
+pipeline's usual input** — professionally lit, styled, undistorted — and the
+staging yield reflected it: 5 frames offered, 5 usable renders, 4 shipped after
+room de-duplication dropped a second great-room. Compare Caballeros' 12%. Photo
+quality is not just a taste filter on selection; it is the strongest predictor
+of how many slides a build returns.
+
+**Render the cover before spending Gemini on the rooms.** The cover is a pure
+Cloudinary transform, so candidate frames can be composited and compared for
+nothing, and `gravity: auto` re-crops the source before the panel lands — which
+means the right-half rule in `copy-voice.md` §8 **cannot be applied to the
+original frame by eye**. Sutherland's obvious cover was the pool shot; rendered,
+`gravity: auto` pulled to the deck and put the neighbour's two-storey house
+across the surviving half. `scripts/tmp-cover-preview.ts` renders the real
+template over a list of candidate indexes and accent colours.
+
+**Four of the four room captions had to be rebanded after looking at the build**,
+none of them for a bad render. Two asserted a vaulted ceiling over frames whose
+ceilings are flat and fill the top third of the slide; one called raised-panel
+cabinet doors shaker; one named a block wall in the frame that happens to look
+at the wrought-iron pool fence instead. Every one of these was written to the
+space rather than the photo, which is the rule — and the rule is not sufficient
+on a house whose spaces are not uniform. Budget a reband on every build and
+treat the first captions as drafts.
+
+### Re-measured 2026-08-23 — the pool is down to one, and it cost three builds
+
+31 team actives, 17 ever queued, 15 never queued. Of the 15, six are sales with
+≥12 photos; the rest are land (`propertyType: D`), one rental and one
+multifamily. Four of the six are already recorded vacant above (Evans Lane,
+Calle San Antonio, Encanto, Barron), and Hombria was set aside on the previous
+run. So the pool held exactly the one listing the 2026-08-22 run named as its
+fallback:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **1950 S Palm Canyon Dr #128, Palm Springs, $299,999** | 33 | **Built.** Queued L7 |
+
+**Furnished, bright and undistorted was not enough — three builds shipped one
+usable post.** The photography passes every filter this doc has accumulated,
+and the listing still yielded two room slides out of four attempts, because of
+a failure mode none of the filters name: **every kitchen and bedroom frame is
+shot across a counter or a bed**, so the standing spot is behind an object
+filling the foreground and the composite has no depth ordering to put it there.
+Build G8 shipped the agent standing through the kitchen island; build L7 shipped
+him standing on the mattress. Both passed every gate. Recorded properly in
+`actor-generation.md` §9 — the tell is visible in the original frame for free.
+
+Two process notes from paying for that three times:
+
+- **Rebuilding is a lottery you can lose.** L7's living and dining renders were
+  good. Build 3, run only to replace one bad bedroom slide, came back with **1
+  of 4** room slides — it re-rolled the two good ones and lost the dining. The
+  Star Trail rule ("don't discard four good renders to fix eleven words") holds
+  for renders too: when one slide of several is wrong and the rest are right,
+  the cheap fix is to drop that slide, not to re-roll the build.
+- **Read the exclusion list as categories, not indexes.** "Frame 9 broke" is the
+  wrong lesson when frames 7, 8, 10 and 11 are the same shot of the same galley
+  from the same side. Excluding one at a time costs a build each.
+
+Final: 7 slides — cover, great room, dining, three text, CTA. The balcony and
+the mountain view are the best thing about the unit and no room slide could
+carry them, so a text slide does.
+
 ## Pipeline
 
 ```
@@ -229,7 +414,8 @@ Once published, Instagram serves its own copy and ours is dead weight.
 ## Open questions
 
 - **Reels** on non-carousel days depend on the `staging-timelapse-reel`
-  pipeline, which is WIP (RunPod/ComfyUI steps unbuilt). Out of scope until
+  pipeline, which is WIP (video-generation backend TBD — ComfyUI, Kling, and
+  Luma were all evaluated and deprecated 2026-08-07). Out of scope until
   carousels are running.
 - **Cost control.** Each build is roughly $0.16-$0.40 of Gemini. Generating
   multiple candidates three times a week needs a per-agent cap before this is
