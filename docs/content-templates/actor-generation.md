@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-08-23
+last_verified: 2026-08-25
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -343,6 +343,29 @@ condo above had four kitchen frames and three bedroom frames and every one of
 them was framed that way. Exclude the category up front rather than paying for
 a build to discover it, and expect a listing shot entirely like this to yield
 room slides only from the spaces you can walk into from the camera position.
+
+**And the floor plane can land on water.** 41481 Jamaica Sands Drive staged
+frame 0 — a lap-length pool shot down its own length, water filling the lower
+two-thirds — and shipped the agent standing mid-pool, on the surface, in the
+middle of the water. Every gate passed, feet-on-floor read 100%, and the
+gates were not wrong: still pool water in flat light is a better plane than
+most floors, it sits below the camera, and RANSAC fits it first. Nothing in
+the pipeline knows a plane has to be solid.
+
+So the pre-spend question in the paragraph above has a second half: **is the
+largest horizontal surface in this frame something a person can stand on?**
+Pools, ponds, and (untested but the same geometry) large glass tables and
+polished dark floors reflecting a room all present as clean planes. A backyard
+frame where the water dominates is the same kind of category exclusion as a
+galley kitchen shot across the peninsula — exclude it up front and let the
+outdoor slide come from a patio, a fire-pit corner or a lawn, where the ground
+in shot is ground.
+
+Worth noting what this cost and what it did not: the fix was one exclusion and
+a rebuild, and the rebuild returned dining, great room and kitchen where the
+first had returned only outdoor and great room. Rebuilding is still a lottery
+(§"Re-measured 2026-08-23" in `auto-posting.md`), but a build that yielded 2/4
+has less to lose than one that yielded 4/4.
 
 ---
 

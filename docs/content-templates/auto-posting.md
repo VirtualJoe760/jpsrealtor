@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-08-23
+last_verified: 2026-08-25
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -318,6 +318,59 @@ Two process notes from paying for that three times:
 Final: 7 slides — cover, great room, dining, three text, CTA. The balcony and
 the mountain view are the best thing about the unit and no room slide could
 carry them, so a text slide does.
+
+### Re-measured 2026-08-25 — bursty, and it burst again
+
+38 team actives, 19 ever queued, 20 never queued. Ten of the never-queued are
+sales with `photosCount >= 12`, but six of those are already recorded unusable
+above (Calle San Antonio, Encanto and Barron vacant; Hombria set aside for
+wide-lens distortion), which leaves four genuinely new names — three of them on
+market inside the previous fortnight. The "empties, then two or three land in a
+week" reading from 2026-08-22 holds; it is now the normal shape of this pool
+rather than an observation about one week.
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **41481 Jamaica Sands, Bermuda Dunes, $999,999** | 49 | **Built.** Queued H8 |
+| 84146 Azzura Way, Indio, $625k | 75 | unchecked — next fallback |
+| 28 Oak Tree, Rancho Mirage, $479,900 | 41 | unchecked |
+| 3470 Warren Vista, Yucca Valley, $399k | 64 | unchecked |
+
+Jamaica Sands is the first candidate to top the pool on price, recency, photo
+count and furniture simultaneously, and the roster derivation picked it up
+because Jack A Rook lists opposite the literal team string.
+
+**The pool ate a slide, which is a new category and not bad luck.** Build one
+staged the lap-pool frame and shipped the agent standing on the surface of the
+water, mid-pool, with every gate passing and feet-on-floor at 100%. Still water
+in flat light is a cleaner horizontal plane than most floors and RANSAC fits it
+first; nothing downstream knows a plane has to be solid. Recorded properly in
+`actor-generation.md` §9 alongside the depth-ordering failures, because the tell
+is the same kind of thing and it is free to check: **look at the largest
+horizontal surface in the frame and ask whether a person could stand on it.**
+
+Two smaller notes from the same build:
+
+- **The rebuild was worth taking here, and that is a judgement about what was on
+  the table.** §"Re-measured 2026-08-23" says rebuilding is a lottery you can
+  lose, and it is — but that entry is about re-rolling a build that returned
+  four good renders. This one had returned two, one of which was the pool, so
+  the downside was one slide. It came back with dining, great room and kitchen.
+  Read the rule as *weigh what you are re-gambling*, not *never rebuild*.
+- **The cover spec strip and the remarks disagree about the bath count.**
+  `bathroomsTotalInteger` is 3; the listing agent's remarks say "2 and a half
+  bathroom", and the strip is built from the field. A `coverBody` saying "two
+  and a half baths" three lines under a strip saying "3 BA" is one slide
+  contradicting itself. The strip is not ours to overwrite, so the fix is to
+  keep bath counts out of the cover copy on any listing with a half bath.
+  Cheap to correct after the fact — `scripts/recover-pending-post.ts <slug>
+  <postId>` re-renders slide 1 alone, no staging and no Gemini.
+
+Final: 7 slides — cover, dining, great room, three text, CTA. The sport court,
+the paid-off solar and the air-conditioned garage are the three best facts about
+this listing and none of them can carry a room slide (the court is only in
+aerials; the garage has no room key and would classify as `other` → `living`),
+so all three are text slides. Same call 1950 S Palm Canyon made for its balcony.
 
 ## Pipeline
 
