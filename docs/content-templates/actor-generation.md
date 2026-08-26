@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-08-25
+last_verified: 2026-08-26
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -366,6 +366,39 @@ a rebuild, and the rebuild returned dining, great room and kitchen where the
 first had returned only outdoor and great room. Rebuilding is still a lottery
 (§"Re-measured 2026-08-23" in `auto-posting.md`), but a build that yielded 2/4
 has less to lose than one that yielded 4/4.
+
+**Contact support says "next to furniture", not "on it".** 84146 Azzura Way
+returned a great-room take described as *seated comfortably on the plush
+sectional*, and the composite has the agent sitting on nothing: hips in mid-air
+beside the sofa, legs crossed over bare floor and rug, the near foot missing its
+shoe. Every gate passed, and contact support read **100%**.
+
+The gate is not broken, it is answering a different question. Its job is the one
+in the note above — occluded legs are not missing legs — so it asks whether the
+figure's lower body *abuts real furniture*. A man sitting **beside** a sectional
+abuts it exactly as well as one sitting **in** it. Nothing in the pipeline
+measures a seat plane, and the composite has no depth ordering to notice that
+the cushion he should be on is somewhere else.
+
+So the seated tier has its own pre-spend tell, and it is a different one from
+the two above:
+
+| Mode | Ask before spending |
+|---|---|
+| Standing | is there a large OPAQUE object whose near face runs across the bottom of the frame? |
+| Standing | is the largest horizontal surface something a person can stand on? |
+| **Seated** | **is the seat itself visible and facing the lens, or only its arm and back?** |
+
+An open sectional shot across its own back — the near section filling the
+foreground, the far cushions hidden behind it — offers no visible seat, and
+that is when the model puts him next to it instead of on it. It is the same
+family as the galley kitchen and the pool: the frame decides the failure, and
+the frame is free to look at.
+
+The repair is not a rebuild. This was one slide of three good ones, so it was
+dropped — `scripts/tmp-drop-slide.js <postId> <n>` removes a slide, renumbers
+the rest, trims `generation.photoIndexes` and destroys the orphaned Cloudinary
+asset.
 
 ---
 

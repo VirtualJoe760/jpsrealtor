@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-08-25
+last_verified: 2026-08-26
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -371,6 +371,89 @@ the paid-off solar and the air-conditioned garage are the three best facts about
 this listing and none of them can carry a room slide (the court is only in
 aerials; the garage has no room key and would classify as `other` → `living`),
 so all three are text slides. Same call 1950 S Palm Canyon made for its balcony.
+
+### Re-measured 2026-08-26 — the exclusion list has to be aimed at the SELECTOR
+
+40 team actives, 20 ever queued, 21 never queued. Eleven of the never-queued are
+sales with `photosCount >= 12`; four of those are already recorded unusable
+above (Calle San Antonio, Encanto and Barron vacant; Hombria set aside for
+wide-lens distortion), leaving seven open names — two of which came on market
+the morning of this run. The bursty shape holds.
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **84146 Azzura Way, Indio, $625k** | 75 | **Built.** Queued C9 |
+| 3470 Warren Vista, Yucca Valley, $399k | 64 | unchecked — next fallback |
+| 28 Oak Tree, Rancho Mirage, $479,900 | 41 | unchecked |
+| 5803 Los Santos Dr #19, Palm Springs, $415k | 56 | unchecked |
+| 1321 Sea Life Ave, Thermal, $315k | 48 | unchecked, new 2026-08-26 |
+| 7526 Apache Trail, Yucca Valley, $295k | 31 | unchecked |
+| 2502 Harbor Drive, Thermal, $230k | 17 | unchecked, new 2026-08-26 |
+
+Azzura Way is the fallback the 2026-08-25 run named, and it is the second
+candidate after Sutherland whose photography is better than this pipeline's
+usual input — professionally lit, undistorted, every room styled.
+
+**An exclusion list aimed at the photo set instead of at the selector's
+shortlist starves the build.** §"Re-measured 2026-08-15" already says
+`--exclude` can only remove and never promote. What that entry does not say is
+how to size the list, and the first Azzura build (W3) is what the gap costs:
+65 of 75 frames excluded on a careful read of the contact sheet, ten kept — and
+`selectStagingPhotos` handed back a top 14 of which **twelve were on the list**.
+Two candidates for four slots, one survivor, a one-room carousel.
+
+The fix is free and takes one command. **Dump the selector's ranking before
+writing the exclusion list** — classification is ~$0.0001/photo, so the whole
+sweep is under a cent, and `scripts/tmp-selector-dump.ts <listingKey>` prints
+the ranked 14 with each frame's room, placement and `placementDetail`. Then
+exclude *from that list*, and count what is left.
+
+Reading the ranking also shows why guessing cannot work here. The selector takes
+**one frame per room kind first**, then fills every remaining slot from the top
+of the same sort — which is `living` (roomRank 0). On this listing the fill was
+six more great-room frames, so the second-best kitchen and every good backyard
+frame were never offered at all. Excluding the one outdoor frame it did offer
+does not promote a better one; it removes the outdoor slide from the post.
+
+**And the category to exclude is an OPAQUE near face at waist height, not any
+object in the foreground.** W3 treated five great-room frames whose only
+foreground object is a glass coffee table as the same §9 depth-ordering risk as
+a kitchen island or a bed. They are not: a low glass table occludes a standing
+figure from the shin down, through glass, and the floor still wins the RANSAC
+fit because `floor_plane` takes the *lowest* strong horizontal plane. Build C9
+kept them and returned three passes from nine candidates against W3's one from
+two.
+
+**Then C9 shipped a slide the gates could not catch, and it is a new one.** The
+great-room frame came back "seated comfortably on the plush sectional" with
+contact support at 100% — and the composite has him sitting on nothing, hips in
+mid-air beside the sofa over bare floor, near foot missing its shoe. Recorded
+properly in `actor-generation.md` §9: the contact-support gate asks whether the
+occluded lower body abuts furniture, and a figure *beside* a sectional satisfies
+that as readily as one *in* it. It was one slide of three, so it was dropped
+rather than re-rolled, per §"Re-measured 2026-08-23" — `scripts/tmp-drop-slide.js
+<postId> <n>` removes a slide, renumbers, trims `generation.photoIndexes` and
+destroys the orphaned Cloudinary asset.
+
+Two smaller notes:
+
+- **Two builds of the same listing means two `PendingPost` records.** The
+  generator always inserts; it never supersedes. W3 was deleted (record and
+  both Cloudinary assets) once C9 was judged the better build, because the
+  publish cron blocks duplicates by `listingKey` and a review queue holding two
+  versions of one house is the agent's problem to untangle, not the queue's.
+- **A copy fix after a build has already `require`d the config is cheap.** Text
+  slides are pure Cloudinary transforms over the `sample` asset, exactly like
+  the room bands, so `scripts/tmp-retext-pending-post.ts <slug> <postId>`
+  re-renders them and the caption from the current config with no Gemini spend.
+  It deliberately leaves the CTA alone — `buildCtaTransformation` needs the
+  agent record's name, licence and the headshot/logo public_ids, which live in
+  the generator.
+
+Final: 8 slides — cover, kitchen, dining, CMA, three text, CTA. The lake, the
+short-term-rental history and the heated spa are the three best facts here and
+none of them can carry a room slide (the lake is only ever shot from 200 ft),
+so all three are text slides. Third run in a row to make that call.
 
 ## Pipeline
 
