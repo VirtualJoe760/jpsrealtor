@@ -1,7 +1,7 @@
 ---
 title: Copy and voice — writing the text slides and captions
 status: current
-last_verified: 2026-08-25
+last_verified: 2026-09-01
 owner: content
 related: [./README.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -151,6 +151,26 @@ white walls and the tile, all of which were in shot; a line naming the TV or
 the record player would have shipped a false slide. Name what the whole
 connected space contains, and let the label be the only thing that moves.
 
+**Writing to the space is not enough when the space is not uniform.** The rule
+above says write the caption to the room rather than to the frame you hope the
+stager picks. 27305 Hombria Drive found the hole in that: its `living` line read
+"Wood-look tile end to end, white walls, and no wall between the rooms" — three
+claims that are true of the whole open end and were checked against every frame
+of it. The stager returned #3, and the 4:5 crop is filled corner to corner by
+the one charcoal accent wall the house has. The white walls were out of shot and
+no second room was visible past it, so a caption written to be crop-proof still
+shipped a line its own picture contradicted.
+
+The house-wide claim only survives the crop when the house is actually
+homogeneous in that respect. Where a room has exactly one wall, one floor or one
+ceiling unlike the rest of it, that odd feature is the thing a tight crop is
+most likely to land on — it is what made the photographer frame the shot. So
+either name what is true of the room *including* its odd feature, or accept that
+the line is a coin flip and plan to reband. Rebanding is the cheap half:
+`reband-pending-post.ts` is a pure Cloudinary transform, costs no Gemini and
+re-rolls nothing, so this is a caption fault to fix after the build rather than
+a reason to decline it (9223 N Star Trail).
+
 **Judge a cover frame by its right half.** The cover panel covers the left ~45%
 of the photo, so a hero shot that composes its subject on the left survives as
 whatever happened to be on the right. The same listing's first build put the hook
@@ -173,6 +193,23 @@ the price at y:360. A cover queued before that fix keeps the old URL until it is
 re-rendered — `scripts/recover-pending-post.ts <slug> <postId>` rebuilds slide 1
 alone, no staging and no Gemini, the same way `reband-pending-post.ts` rebuilds
 the room bands.
+
+**The two address lines were the same bug, and one of them was also dropping
+data.** Neither carried a width cap either; they had simply never been long
+enough to run past the panel. What they *were* doing is losing the unit number:
+this feed puts it in its own comma segment — 5803 Los Santos Drive #19 arrives
+as `"5803 Los Santos Drive, 19, Palm Springs, CA 92264"` — and the cover took
+`split(",")[0]`, so every unit-numbered condo shipped a cover naming the
+building and not the door. 78250 Cortez Lane #129 and 255 S Avenida Caballeros
+#313 are already queued that way.
+
+**The unit goes on line 2, with the city.** Line 1 is 28pt with line 2 fixed 40
+px below it — barely one line of clearance — so unlike the city above it, line 1
+cannot afford to wrap: a cap there converts "runs onto the photo" into
+"overprints the city". `"5803 LOS SANTOS DRIVE #19"` measures ~388 of the 390
+available, which is a coin flip. Line 2 is 20pt and has the room:
+`"#19  ·  PALM SPRINGS, CA"` measures ~265. Both lines now carry the cap anyway,
+as a floor rather than a licence to fill it.
 
 **Never put a bed or bath count in the cover body.** The spec strip sits three
 lines above it and is built from the feed — `bedroomsTotal` and

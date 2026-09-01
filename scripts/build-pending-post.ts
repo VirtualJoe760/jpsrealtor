@@ -75,10 +75,28 @@ function compact(n: any) {
   if (v >= 10_000) return "$" + Math.round(v / 1000) + "K";
   return "$" + Math.round(v).toLocaleString("en-US");
 }
-function code() {
+// The approval code is what Joseph texts back — `POST L6` — so two live posts
+// sharing one is not a cosmetic problem, it is an ambiguous instruction to
+// publish. A blind draw could not avoid that: the alphabet is 23 letters by 8
+// digits, 184 codes, and with ~22 posts sitting in the queue the birthday odds
+// of a clash are already better than even. They had duly happened twice —
+// 2800 E Vista Chino and 71817 Samarkand Drive both hold R4, and this listing
+// drew Hepburn Drive's L6 on its first build. So the draw now excludes what is
+// already awaiting review, and widens to three characters rather than looping
+// forever if the space is ever genuinely full.
+function code(taken: Set<string> = new Set()) {
   const L = "ABCDEFGHJKLMNPQRTUVWXYZ";
   const D = "23456789";
-  return L[Math.floor(Math.random() * L.length)] + D[Math.floor(Math.random() * D.length)];
+  const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+  for (let i = 0; i < 500; i++) {
+    const c = pick(L) + pick(D);
+    if (!taken.has(c)) return c;
+  }
+  for (let i = 0; i < 500; i++) {
+    const c = pick(L) + pick(D) + pick(D);
+    if (!taken.has(c)) return c;
+  }
+  throw new Error("could not find a free approval code");
 }
 
 (async () => {
@@ -109,8 +127,22 @@ function code() {
     .map((m: any) => m.MediaURL || m.uri2048 || m.url)
     .filter(Boolean);
 
-  const addr = String(listing.unparsedAddress || "").split(",")[0].trim();
-  console.log(`\n=== ${addr} — ${money(listing.listPrice)} (${photoUrls.length} photos) ===`);
+  // On a unit-numbered listing this feed puts the unit in its OWN comma
+  // segment — 5803 Los Santos Drive #19 arrives as "5803 Los Santos Drive, 19,
+  // Palm Springs, CA 92264" — so `split(",")[0]` was silently dropping it and
+  // the cover named the building rather than the door. 78250 Cortez Lane #129
+  // and 255 S Avenida Caballeros #313 are already queued that way.
+  //
+  // The unit goes on address line 2 with the city, not appended to line 1.
+  // Line 1 is 28pt inside a 480px panel with line 2 fixed 40px under it, so a
+  // wrap there overprints the city; see the note in simple-luxury.ts. Line 2 is
+  // 20pt and has the room.
+  const streetLine = String(listing.unparsedAddress || "").split(",")[0].trim();
+  const unit = String(listing.unitNumber ?? listing.streetAdditionalInfo ?? "").trim();
+  const addr = streetLine;
+  const cityLine = [unit && `#${unit}`, `${listing.city}, ${listing.stateOrProvince}`]
+    .filter(Boolean).join("  ·  ");
+  console.log(`\n=== ${[streetLine, unit && `#${unit}`].filter(Boolean).join(" ")} — ${money(listing.listPrice)} (${photoUrls.length} photos) ===`);
 
   // ---- 1. LOOK -----------------------------------------------------------
   console.log("1. looking at photos…");
@@ -121,7 +153,20 @@ function code() {
   const WANT_SLIDES = 4;
   // Sample wide. With 87 photos on this listing a narrow sample keeps landing
   // on the same handful, and excluding those then leaves nothing.
-  const picked = await selectStagingPhotos({ photoUrls, want: 14, sample: 48 });
+  //
+  // Sample ALL of them, not a prefix. selectStagingPhotos does
+  // `photoUrls.slice(0, sample)`, so a fixed 48 silently discards the tail of
+  // any longer set — and MLS feeds routinely put the pool and the outdoor
+  // living last. 74586 Tesla Drive has 74 photos with every pool, spa and patio
+  // frame at index 62+, so a 48-photo prefix offered the selector no outdoor
+  // shot at all while `pool` sits third in its own room-priority list. The cap
+  // is only a runaway guard: classification is ~$0.0001/photo, so the whole
+  // sweep costs under a cent.
+  const picked = await selectStagingPhotos({
+    photoUrls,
+    want: 14,
+    sample: Math.min(photoUrls.length, 120),
+  });
   const selected = picked.selected.filter((s) => !EXCLUDE.has(s.index));
   for (const s of selected.slice(0, WANT_SLIDES + 4)) console.log(`   #${s.index} ${s.room}`);
   if (selected.length === 0) throw new Error("no stageable photos left after exclusions");
@@ -149,6 +194,30 @@ function code() {
     onProgress: (line) => console.log("   " + line),
   });
 
+  // The photo reader and the hand-written configs use different vocabularies
+  // for the same rooms, so room-keyed lookup silently missed and fell through
+  // to the spare line: an outdoor deck and a great room both shipped captioned
+  // "Beamed ceilings, arched windows". Keying by room only works if both sides
+  // agree what a room is called.
+  //
+  // Declared HERE, above the de-duplication, because de-duplicating on the raw
+  // key while captioning on the normalised one lets a pair through that the
+  // caption layer then collapses. 1062 E Via San Michael queued with slides 2
+  // and 5 both reading "THE GREAT ROOM / Vaulted ceilings, and room to spare
+  // around the grand piano" — the stager had called one frame `great_room` and
+  // the other `living`, distinct to this loop, identical by the time they were
+  // labelled. Slide 5 did not even have the piano in shot. Two rooms that share
+  // a caption are one room as far as the reader is concerned.
+  const ROOM_ALIASES: Record<string, string> = {
+    great_room: "living",
+    outdoor: "pool",
+    outdoor_living: "pool",
+    bedroom: "primary_bedroom",
+    office: "living",
+    other: "living",
+  };
+  const norm = (r: string) => ROOM_ALIASES[r] || r;
+
   const usedRooms = new Set<string>();
   for (const r of results) {
     if (staged.length >= WANT_SLIDES) break;
@@ -157,8 +226,8 @@ function code() {
       continue;
     }
     const room = r.room || "room";
-    if (usedRooms.has(room)) {
-      console.log(`   #${r.index} skipped — already have a ${room}`);
+    if (usedRooms.has(norm(room))) {
+      console.log(`   #${r.index} skipped — already have a ${norm(room)}`);
       continue;
     }
     const up = await cloudinary.uploader.upload(
@@ -168,7 +237,7 @@ function code() {
     console.log(`   #${r.index} PASS (${room}, ${r.tier}) — ${r.action}`);
     staged.push({ url: up.secure_url, publicId: up.public_id, room, index: r.index,
                   feature: r.feature, action: r.action });
-    usedRooms.add(room);
+    usedRooms.add(norm(room));
   }
 
   if (staged.length === 0) throw new Error("no photo survived staging");
@@ -193,26 +262,62 @@ function code() {
     game_room: "THE GAME ROOM",
     office: "THE OFFICE",
     outdoor_living: "OUTDOOR LIVING",
+    // stage_geometric.py emits `outdoor`, the selector emits `outdoor_living`,
+    // and only the latter had a label. The missing key fell through to
+    // ROOM_LABELS[norm("outdoor")] = pool, so a covered patio on a house with
+    // NO POOL was about to ship captioned "THE POOL DECK" — a false claim about
+    // another brokerage's listing. 46109 Roadrunner Lane (poolYN: false) is the
+    // listing that caught it.
+    outdoor: "OUTDOOR LIVING",
     pool: "THE POOL DECK",
     exterior: "THE GROUNDS",
     other: "INSIDE",
   };
 
-  // The photo reader and the hand-written configs use different vocabularies
-  // for the same rooms, so room-keyed lookup silently missed and fell through
-  // to the spare line: an outdoor deck and a great room both shipped captioned
-  // "Beamed ceilings, arched windows". Keying by room only works if both sides
-  // agree what a room is called.
-  const ROOM_ALIASES: Record<string, string> = {
-    great_room: "living",
-    outdoor: "pool",
-    outdoor_living: "pool",
-    bedroom: "primary_bedroom",
-    office: "living",
-    other: "living",
-  };
-  const norm = (r: string) => ROOM_ALIASES[r] || r;
+  // `pool` is the only label in that table that asserts a FEATURE rather than
+  // naming a space, and stage_geometric.py returns it for any outdoor frame —
+  // a patio, a hot-tub deck, a stretch of yard. On a listing with no pool that
+  // ships a false claim about another brokerage's inventory. The `outdoor`
+  // spelling of this was caught on 46109 Roadrunner Lane and fixed by giving
+  // `outdoor` its own label; the `pool` spelling was still live, and 9223 N
+  // Star Trail (poolYN false, spaYN true — a hot tub and a covered patio, no
+  // pool anywhere) would have tripped it.
+  //
+  // AND `poolYN` IS NOT "THIS HOME HAS A POOL". It is true whenever the feed
+  // records any pool at all, including a shared one: 28 Oak Tree is
+  // `poolFeatures: "Association"` — the Mission Hills community pool, a quarter
+  // mile away — and `poolYN: true`, while the condo itself has no water on the
+  // lot. Reading the flag alone was about to print THE POOL DECK over a
+  // golf-course patio, which is the same false claim about another brokerage's
+  // inventory that Roadrunner Lane and Star Trail caught, arriving through a
+  // field that reads true. So the flag is necessary and not sufficient: if
+  // every pool feature named is a shared-facility one, this property has no
+  // pool deck to label.
+  //
+  // AND THE TEST IS ABOUT OWNERSHIP, NOT ABOUT EVERY WORD IN THE FIELD. The
+  // first version of this guard demanded that EVERY comma-separated token look
+  // like a shared facility, which only ever worked because Oak Tree's field was
+  // the single word "Association". 5803 Los Santos Drive #19 is
+  // `poolFeatures: "Community, In Ground"` — the community pool, and it is in
+  // the ground — so `.every()` failed on " In Ground", the whole string read as
+  // private, and THE POOL DECK was about to print over an enclosed private
+  // patio on a condo whose own remarks say the pools are "steps from" it. "In
+  // Ground", "Gunite", "Heated", "Salt Water" and the rest describe how the
+  // water was BUILT; none of them says who owns it, and a token that says
+  // nothing about ownership must not be able to vote a shared pool back into
+  // private. So: a shared facility named and no private one named is shared.
+  const poolTokens = String(listing.poolFeatures || "")
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  const namesShared = poolTokens.some((f) => /association|community|shared/i.test(f));
+  const namesPrivate = poolTokens.some((f) => /private/i.test(f));
+  const namesNone = poolTokens.length > 0 && poolTokens.every((f) => /^none$/i.test(f));
+  const sharedPoolOnly = namesNone || (namesShared && !namesPrivate);
+  if (!listing.poolYN || sharedPoolOnly) ROOM_LABELS.pool = "OUTDOOR LIVING";
 
+  // ROOM_ALIASES / norm are declared above the staging de-duplication — see the
+  // comment there for why they cannot live down here.
   const roomSlides = staged.map((st) => {
     // Caption is looked up by room, falling back to any spare line rather than
     // to whatever happened to sit at this index.
@@ -276,7 +381,7 @@ function code() {
       city: String(listing.city || "").toUpperCase(),
       price: money(listing.listPrice),
       addressLine1: addr.toUpperCase(),
-      addressLine2: `${listing.city}, ${listing.stateOrProvince}`.toUpperCase(),
+      addressLine2: cityLine.toUpperCase(),
       specs,
       body: CFG.coverBody,
       listingCredit: credit,
@@ -288,23 +393,103 @@ function code() {
   const slides: any[] = [{ n: 1, kind: "cover", url: coverUrl, publicId: coverSrc.public_id }];
   roomSlides.forEach((r) => slides.push({ n: slides.length + 1, kind: "room", url: r.url, publicId: r.publicId }));
 
-  const sub: any = listing.subdivisionName && !/not applicable|not in a development/i.test(listing.subdivisionName)
+  // A CMA slide names a subdivision and attributes closed sales to it, so the
+  // name has to BE a subdivision. Several feed values are placeholders meaning
+  // "no subdivision", and `subdivisions` has a document for each of them, per
+  // city, holding that city's miscellaneous closings — 152 docs are literally
+  // named "Other". 76434 Encanto Drive is `subdivisionName: "Other"` in 29
+  // Palms; there is no Other/29 Palms doc so the name+city query missed and the
+  // slide was skipped by luck. Other/Desert Hot Springs, Other/Thermal,
+  // Other/Palm Desert and Other/Blythe all exist and are all cities this team
+  // lists in, so the next such listing would have printed a whole city's
+  // unrelated sales under a heading reading OTHER. Same family as the `poolYN`
+  // guard: a field that reads true through a value the guard did not name.
+  //
+  // Matched WHOLE-STRING, not by substring. "not applicable" is distinctive
+  // enough to test loosely; "other" and "none" are not — "Mother Lode Estates"
+  // is a real subdivision name and must not be struck.
+  const SUBDIVISION_PLACEHOLDERS = new Set([
+    "not applicable", "n/a", "na", "not in a development", "other", "unknown", "none",
+  ]);
+  const subName = String(listing.subdivisionName || "").trim().toLowerCase();
+  const sub: any = subName && !SUBDIVISION_PLACEHOLDERS.has(subName)
     ? await db.collection("subdivisions").findOne({
         name: new RegExp(`^${String(listing.subdivisionName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
         city: new RegExp(`^${String(listing.city).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
       })
     : null;
   const closed = sub?.cmaStats?.closed;
-  if (closed?.count) {
+
+  // `count` alone does not mean the slide has anything to print. Villa
+  // Caballeros carries `closed: {count: 25}` and NOTHING else — no median, no
+  // price/sqft, no top close — so three of the four stat tiles built as empty
+  // text overlays and Cloudinary rejected the whole transformation ("Must
+  // supply public_id for non-text overlay"), killing the run *after* staging
+  // had already been paid for in Gemini spend.
+  //
+  // The crash was the lucky half of that bug. The pitch is chosen by comparing
+  // the list price against those same absent numbers, and `354900 > undefined`
+  // and `354900 >= undefined` are both false, so the slide had already settled
+  // on "Below the median close in Villa Caballeros" — a comparative claim about
+  // another brokerage's listing, measured against a median that does not exist.
+  // copy-voice.md §9: market figures must come from real closed-sale data.
+  //
+  // So gate on the FIGURES the slide prints, not on the count that labels them.
+  // `> 0` rather than merely finite: Number(null) is 0, so a null median would
+  // otherwise pass the gate and print a $0 close on the one slide whose whole
+  // job is real figures.
+  const cmaFigures = [closed?.medianClosePrice, closed?.medianPricePerSqft, closed?.maxClosePrice];
+  const cmaReady = !!closed?.count && cmaFigures.every((v) => Number(v) > 0);
+
+  if (cmaReady) {
     console.log(`5. CMA — ${sub.name}: ${closed.count} closed`);
     const subj = Number(listing.listPrice);
+
+    // The window label has to describe the data that is actually ON the slide.
+    // `sampleWindow` is the QUERY window (12 months), but the closed set is
+    // capped at `listingCap` (25) listings, so in a busy subdivision it spans
+    // far less: Indian Palms' 25 most recent closings cover Apr–Jul 2026.
+    // Printing "LAST 12 MONTHS" over a three-month sample misstates the sample
+    // on the one slide whose whole job is real closed-sale figures
+    // (copy-voice.md §9). UTC, or a midnight-UTC date lands in the prior month.
+    const mon = (d: any) =>
+      new Date(d)
+        .toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })
+        .toUpperCase();
+    const period =
+      closed.sampleStartDate && closed.sampleEndDate
+        ? `${mon(closed.sampleStartDate)} - ${mon(closed.sampleEndDate)}`
+        : `LAST ${sub.cmaStats?.sampleWindow?.months || 12} MONTHS`;
+
+    // "Below the top close" was printed for EVERY listing at or above the
+    // median — including ones priced above the highest close in the
+    // subdivision, which is simply false. It is live in the current pool:
+    // 46109 Roadrunner Lane asks $940,000 in Westward Shadows, whose top close
+    // is $900,000. On another agent's listing that is a false comparative
+    // claim, so the over-the-top case drops the second sentence rather than
+    // inverting it — "above every close here" is true but reads as a valuation,
+    // which copy-voice.md §9 forbids just as firmly.
+    // "Recent" was doing unearned work. The sample is the last `listingCap`
+    // closings, however long they took to accumulate — Westward Shadows' 20 run
+    // SEP 2021 to NOV 2025, so "the recent median" described a four-year window
+    // as though it were this season's. The period label directly above the
+    // pitch already states the window; the sentence only has to be true of it.
+    // copy-voice.md §9: market figures must be described as what they are.
+    const pitch =
+      subj > closed.maxClosePrice
+        ? `Above the median close in ${sub.name}.`
+        : subj >= closed.medianClosePrice
+        ? `Above the median close in ${sub.name}. Below the top close.`
+        : `Below the median close in ${sub.name}.`;
+    console.log(`   window ${period} — ${pitch}`);
+
     slides.push({
       n: slides.length + 1, kind: "cma",
       url: cloudinary.url("sample", {
         transformation: buildCmaTransformation({
           color: CFG.accentColor,
           scope: String(sub.name).toUpperCase(),
-          period: `LAST ${sub.cmaStats?.sampleWindow?.months || 12} MONTHS`,
+          period,
           stats: [
             { value: String(closed.count), label: "HOMES SOLD" },
             { value: compact(closed.medianClosePrice), label: "MEDIAN CLOSE" },
@@ -313,13 +498,13 @@ function code() {
           ],
           listingLabel: "THIS LISTING",
           listingPrice: money(subj),
-          pitch: subj >= closed.medianClosePrice
-            ? `Above the recent median in ${sub.name}. Below the top close.`
-            : `Below the recent median in ${sub.name}.`,
+          pitch,
         }, HANDLE),
       }),
       publicId: null,
     });
+  } else if (closed?.count) {
+    console.log(`5. CMA — skipped (${sub.name} records ${closed.count} closed but carries no figures)`);
   } else {
     console.log("5. CMA — skipped (no closed-sale stats for this subdivision)");
   }
@@ -352,7 +537,15 @@ function code() {
   });
 
   // ---- 8. QUEUE -----------------------------------------------------------
-  const approvalCode = code();
+  // Draw against what is actually live. Only awaiting_review and approved
+  // matter: those are the two states `POST <code>` can act on. A posted or
+  // declined record is history and its code is free again.
+  const liveCodes = new Set<string>(
+    await db.collection("pendingposts").distinct("approvalCode", {
+      status: { $in: ["awaiting_review", "approved"] },
+    })
+  );
+  const approvalCode = code(liveCodes);
   const r = await db.collection("pendingposts").insertOne({
     agentId: user._id,
     template: "simple-luxury-carousel",

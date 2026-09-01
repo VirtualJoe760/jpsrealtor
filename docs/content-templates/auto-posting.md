@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-08-26
+last_verified: 2026-09-01
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -454,6 +454,322 @@ Final: 8 slides — cover, kitchen, dining, CMA, three text, CTA. The lake, the
 short-term-rental history and the heated spa are the three best facts here and
 none of them can carry a room slide (the lake is only ever shot from 200 ft),
 so all three are text slides. Third run in a row to make that call.
+
+### Re-measured 2026-08-27 — a listing can be shot entirely across its own counters
+
+40 team actives, 21 ever queued, 19 never queued. Ten of the never-queued are
+sales with `photosCount >= 12`, and four of those ten are already recorded
+unusable above (Calle San Antonio, Encanto and Barron vacant; Hombria set aside
+for wide-lens distortion), leaving six open names.
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **28 Oak Tree, Rancho Mirage, $479,900** | 41 | **Built twice.** Queued Z4; build T9 deleted |
+| 3470 Warren Vista, Yucca Valley, $399k | 64 | Checked as a contact sheet and passed over: a new manufactured home on a raw dirt lot, furnished sparsely, a third of the interiors bare white rooms, ten frames lot-boundary aerials with survey lines drawn on. Still the next fallback |
+| 5803 Los Santos Dr #19, Palm Springs, $415k | 56 | unchecked |
+| 1321 Sea Life Ave, Thermal, $315k | 48 | unchecked |
+| 7526 Apache Trail, Yucca Valley, $295k | 31 | unchecked |
+| 2502 Harbor Drive, Thermal, $230k | 17 | unchecked |
+
+Oak Tree passes every filter this doc has accumulated — furnished in every room,
+professionally lit, undistorted, on a golf course — and it returned **one usable
+room slide from nine staged candidates**. The reason is a property of the
+photography that none of the existing filters name.
+
+**`poolYN` IS NOT "THIS HOME HAS A POOL", AND IT IS THE FIRST THING TO CHECK ON
+A CONDO.** Oak Tree is `poolFeatures: "Association"` — the Mission Hills
+community pool, a quarter mile away and not on the lot — and `poolYN: true`.
+The guard 46109 Roadrunner Lane and 9223 N Star Trail wrote reads that flag
+alone, so it was about to print **THE POOL DECK** over a golf-course patio: the
+same false claim about another brokerage's inventory, arriving through a field
+that reads true rather than a label that was missing. `build-pending-post.ts`
+now also requires that not *every* named pool feature is a shared-facility one.
+`reband-pending-post.ts` still has no `poolYN` guard at all by design — when
+rebanding an outdoor frame, pass `outdoor`, never `pool`.
+
+**Every kitchen frame in a set can belong to the excluded category at once.**
+§9 of `actor-generation.md` says to exclude a galley shot across its peninsula.
+What Oak Tree adds is that on a 1,332 sqft condo whose kitchen opens to the
+living room through a pass-through bar, **all seven kitchen frames** — 13, 14,
+15, 16, 17, 18, 19 — are shot from the living-room side across that bar. There
+is no kitchen frame that is not that frame. Build T9 kept 15 as "the one with
+open floor between the lens and the standing spot", and the slide came back with
+the agent composited over the counter run, feet on the cabinet doors, hips at
+counter height, every gate passing. When the tell fires on *every* frame of a
+room, that room has no slide in it — plan the post without it rather than
+keeping the least-bad one.
+
+**And `--exclude` is written against a ranking that will not be the ranking.**
+§"Re-measured 2026-08-26" says to dump the selector's top 14 first, and that is
+still right — it is what identified the kitchen category here. But
+`selectStagingPhotos` is a model call, not a sort: the dump for this listing
+offered 6, 15, 1, 11, 3, 7, 8, 9, 10, 38, 13, 14, 16, 17, and the build minutes
+later staged 4, 18 and 19, none of which the dump had ranked at all. Photo 11
+came back `dining` in the dump and `living` in the build, and was dropped as a
+duplicate room. So the dump tells you the *categories* the selector reaches for;
+it does not pin the set. Exclude by category and expect the numbers to move —
+which is the same lesson §"Re-measured 2026-08-23" drew about reading the
+exclusion list as categories, arriving from the other direction.
+
+**The rebuild was right here, and the arithmetic is the same one Jamaica Sands
+did.** §"Re-measured 2026-08-23" says rebuilding is a lottery you can lose, and
+it is — but the stake is however many good renders are on the table. Build T9
+returned two room slides and the kitchen was the bad one, so dropping it left
+**one**. Re-gambling one render to try for four is a different bet from
+re-gambling four to fix one, and it paid: build Z4 came back dining, front
+elevation and great room, all three usable, from five candidates.
+
+The order matters and is worth copying. **Drop the bad slide from the first
+build BEFORE starting the second**, so the fallback is already clean and
+shippable if the rebuild returns nothing. Then judge, keep one, and delete the
+other — record *and* Cloudinary assets, checking first that the loser's
+`publicId`s are not shared with the winner. T9's cover and staged room were
+destroyed; the CMA, text and CTA slides carry no `publicId` because they are
+transforms over `sample`, so there is nothing to clean up for those.
+
+**Which frames survive is not which frames you would have picked.** The three
+that landed were 11 (dining), 3 (the front walkway) and 9 (the great room); 10
+and 8 — the two best living frames by eye, and the one the first build had
+already staged successfully — both failed every take. There is no reading of
+the contact sheet that predicts that.
+
+**A front elevation comes back `outdoor`, and `outdoor` is captioned as a
+patio.** Photo 3 is the entry walkway with the garage door in it; the stager
+called it `outdoor`, which normalises to `pool`, which took the outdoor-living
+caption — "Patio, lawn, and the golf course starts where the grass ends" over a
+driveway. The label was right (OUTDOOR LIVING) and the caption was false. The
+config had an `exterior` row written for exactly this, and it was unreachable
+because the stager never returned that key. Fixed with a caption-only reband —
+`reband-pending-post.ts oak-tree <postId> dining,exterior,great_room` — no
+Gemini, nothing re-rolled. **Read every PASS line's room key against what the
+frame actually is before accepting a build**; the room slide most likely to be
+mislabelled is the one shot outdoors.
+
+Final: 9 slides — cover, dining, the grounds, great room, CMA, three text, CTA.
+The golf frontage, the fee land and the $900 dues are the three best facts here
+and none of them can carry a room slide (the course is only ever shot past the
+lawn, and the other two are not photographable at all), so all three are text
+slides. Fourth run in a row to make that call.
+
+
+### Re-measured 2026-08-28 — the approval code is an instruction, and it was colliding
+
+39 team actives, 22 ever queued, 18 never queued. Nine of the never-queued are
+sales with `photosCount >= 12`. §"Re-measured 2026-08-27" had already struck
+four by name and left four unchecked; all four were pulled as contact sheets
+this run, so the unchecked column is finally down to one.
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **5803 Los Santos Dr #19, Palm Springs, $415k** | 56 | **Built.** Queued A8, 8 slides |
+| 3470 Warren Vista, Yucca Valley, $399k | 64 | Re-checked and confirmed as recorded above: still the fallback, still a raw dirt lot |
+| 1321 Sea Life Ave, Thermal, $315k | 48 | Checked and passed over — four bedrooms and almost every one empty, olive walls, oak cabinets, painted wall murals in three rooms |
+| 7526 Apache Trail, Yucca Valley, $295k | 31 | Checked and **kept in reserve** — genuinely furnished and lived-in, the right answer when the feed needs a high-desert post. 31 frames with aerials among them is a thin shortlist next to 56 |
+| 2502 Harbor Drive, Thermal, $230k | 17 | still unchecked |
+
+**THE APPROVAL CODE IS NOT DECORATION AND IT WAS COLLIDING.** §"Decisions" says
+the keyword carries a short code — `POST A4` — and bare `POST` works when
+exactly one is pending. The generator drew that code at random from 23 letters
+by 8 digits: 184 codes. With 22 posts already awaiting review the birthday odds
+of a clash are better than even, and two had duly happened — 2800 E Vista Chino
+and 71817 Samarkand Drive both hold **R4**, and this listing drew Hepburn
+Drive's **L6** on its first build. Two live posts sharing a code is not a
+cosmetic problem: `POST L6` is an ambiguous instruction to publish, and the
+thing it is ambiguous about is which of another brokerage's listings goes out.
+`build-pending-post.ts` now draws against the codes already held by
+`awaiting_review` and `approved` records and widens to three characters if the
+space is ever genuinely full. This build was reissued from L6 to **A8**.
+The pre-existing **R4** pair is left alone: those codes are from earlier runs
+and may already be written down.
+
+**THE `poolYN` GUARD HAD A HOLE, AND A CONDO WITH A COMMUNITY POOL FOUND IT.**
+§"Re-measured 2026-08-27" added the rule that not *every* named pool feature may
+be a shared-facility one. That test only ever worked because Oak Tree's field
+was the single word `"Association"`. Los Santos is `poolFeatures: "Community, In
+Ground"` — the community pool, and it is in the ground — so `.every()` failed on
+`" In Ground"`, the whole string read as private, and **THE POOL DECK** was
+about to print over an enclosed private patio on a condo whose own remarks say
+the pools are "steps from" it. `"In Ground"`, `"Gunite"`, `"Heated"`,
+`"Salt Water"` describe how the water was *built* and say nothing about who owns
+it. **Test ownership only:** a shared facility named and no private one named is
+shared. A token that is silent on ownership must not be able to vote a shared
+pool back into private.
+
+**A UNIT NUMBER LIVES IN ITS OWN COMMA SEGMENT AND WAS BEING THROWN AWAY.**
+`unparsedAddress` for this listing is `"5803 Los Santos Drive, 19, Palm Springs,
+CA 92264"`, and the cover took `split(",")[0]`. So every unit-numbered listing
+has been shipping a cover that names the building and not the door — 78250
+Cortez Lane #129 and 255 S Avenida Caballeros #313 are already queued that way.
+The unit now goes on **address line 2** with the city, not appended to line 1:
+line 1 is 28pt inside a 480px panel with line 2 fixed 40px below it, so
+`"5803 LOS SANTOS DRIVE #19"` at ~388 of 390 available would wrap and overprint
+the city. Both address lines also picked up the hook's `width: 390` +
+`crop: "fit"`, which they had never carried — the fourth member of the family
+`copy-voice.md` §8 traces from the CTA overprint through the three-line room
+caption to the bisected Evans Lane subtitle. Fixed in `simple-luxury.ts` and in
+both `build-pending-post.ts` and `recover-pending-post.ts`; already-queued
+covers need `recover-pending-post.ts` to pick it up.
+
+**The selector moved again, exactly as §"Re-measured 2026-08-27" warns.** The
+dump offered 1, 8, 48, 34, 7, 38, 3, 0, 4, 5, 6, 13, 16, 17; the build minutes
+later staged 2, 10, 45, 7, 44, 18, none of which but 7 the dump had ranked in
+that position. It returned **three of four** slots — living, kitchen, dining —
+and no outdoor slide at all, because the patio frame the dump had ranked third
+was never offered on the build. Exclude by category, expect the numbers to move,
+and expect a room you planned for to simply not appear.
+
+Final: 8 slides — cover, great room, kitchen, dining, three text, CTA. No CMA
+(the subdivision has no closed-sale stats) and no outdoor slide. Two captions
+were **rebanded rather than rebuilt**: the living line named a kitchen that the
+chosen frame faces away from, and the kitchen line named stainless appliances
+and the laundry stack, both of which are in the *dining* frame one slide later.
+Free, no Gemini, no re-roll — the §"Re-measured 2026-08-23" arithmetic, which
+here did not even need to be weighed.
+
+### Re-measured 2026-08-31 — the watermark was in the OTHER corner
+
+32 team actives, 26 ever queued, **four never-queued sales with ≥12 photos**.
+Every one was pulled as a contact sheet this run rather than taken on the notes
+above, and three of the four are out:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **1321 Sea Life Avenue, Thermal, $315k** | 48 | **Built.** Queued L3, 7 slides |
+| 2502 Harbor Drive, Thermal, $230k | 17 | The last unchecked name in the table above, and it is a **gut rehab**: bare studs, no drywall in two rooms, no flooring, no fixtures. Its own remarks say CASH ONLY, INVESTOR ONLY |
+| 58540 Barron Drive, Yucca Valley, $285k | 29 | Re-confirmed vacant |
+| 76434 Encanto Drive, 29 Palms, $325k | 26 | Re-confirmed vacant — a new build, empty in all 26 |
+
+Two builds are missing from this log entirely — 27305 Hombria Drive (A7,
+2026-08-29) and 4140 E Calle San Antonio (W6, 2026-08-30), both listings this
+doc had previously struck by name. The pool is thin enough now that runs are
+working back down the passed-over list, which is legitimate — those listings had
+never been queued — but it should be recorded when it happens.
+
+**THE "DIGITALLY ALTERED" CHECK READS THE TOP-LEFT CORNER AND THIS SET PUTS ITS
+BADGE IN THE BOTTOM-RIGHT.** `actor-generation.md` §10 and
+`scripts/tmp-watermark-strip.py` both come from 4140 E Calle San Antonio, whose
+watermark sits top-left. Sea Life's photos 0, 2 and 4 carry **"AI Enhanced"** in
+a rounded pill in the **bottom-right** corner — and those three are the only
+frames in 48 that look furnished. The sectional, the great-room sofa and the
+bunk beds are all generated; the house behind them is empty. The selector ranked
+#0 and #2 fifth and sixth and offered both as `living` candidates, so a build
+that trusted the shortlist would have shipped invented furniture with the badge
+printed on the slide. `scripts/tmp-corner-strip.py` reads the other corner.
+
+Three things generalise past this listing:
+
+- **The disclosure tell does not fire here.** §10 says a remarks paragraph
+  disclosing virtual staging is what makes the corner worth checking. Sea Life's
+  remarks disclose nothing, and `furnished` reads `Unfurnished` while three
+  photos show furniture — which is the same signal arriving through a field
+  instead of a sentence. **Check both corners on every set**, and treat
+  `furnished: Unfurnished` next to a furnished-looking frame as the tell.
+- **A vacant house with one furnished room is still a vacant house, and it can
+  still be worth building.** The `living` shortlist here was seven views of bare
+  rooms. What made it shippable is that two of them have large hand-painted wall
+  murals, so the empty room has a subject and the slide is about something. That
+  is a narrower exception than "furnished enough" — a bare room with a blank
+  wall (#6) was excluded for exactly the reason the rest were kept.
+- **Write the room caption to nothing at all when seven frames could land in
+  the slot.** The draft `living` line asserted only the floor material and the
+  square footage — no object, no wall, no time of day, nothing a crop could
+  contradict. Then the build picked the horse mural and the line was rebanded to
+  name it. Cheaper and more reliable than guessing which bare room wins.
+
+The §9 depth-ordering tell also paid for itself before any spend this time: the
+selector's own placement text for photo 13 read *"standing **behind** the
+kitchen island"*, which is the Palm Canyon and Oak Tree failure written out in
+advance, for free, in the dump. Excluded on that sentence alone.
+
+Yield was 2 of 4 — dining (#10) and the great room (#1), both clean composites,
+feet on the floor and no depth failure. Both room captions were **rebanded and
+neither render was touched**: the dining line named a kitchen that the chosen
+frame faces directly away from, and the great-room line was the deliberately
+object-free draft above. A third fix went through `tmp-retext-pending-post.ts`:
+text slide 2's first paragraph was 95 characters, wrapped to three lines where
+the generator had budgeted two, and paragraph 2 landed hard against it with no
+gap. Not an overprint like Hepburn's CTA, but the same family — **keep a text
+slide's first paragraph near 80 characters.**
+
+Final: 7 slides — cover, dining, great room, three text, CTA. No kitchen slide
+(#12 and #16 were both offered and neither passed), no CMA, no outdoor. The
+permanent foundation and the FHA/VA eligibility it buys, the two-thirds acre
+with eleven parking spaces, and the Salton Sea itself are the three best facts
+here and none can carry a room slide, so all three are text slides. Fifth run in
+a row to make that call.
+
+### Re-measured 2026-09-01 — a subdivision named "Other" is not a subdivision
+
+32 team actives, 21 ever queued, **11 never queued** — seven of them land
+(`propertyType: D`), one a duplex (`C`, out of scope), and **three sales**. All
+three were pulled as contact sheets again rather than taken on the notes above,
+and two are confirmed out: 58540 Barron Drive is bare in all 29 frames and 2502
+Harbor Drive is a gut rehab with no drywall or flooring in two rooms. That left
+the one this doc had struck by name twice.
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| **76434 Encanto Drive, 29 Palms, $325k** | 26 | **Built.** Queued F9, 8 slides |
+| 58540 Barron Drive, Yucca Valley, $285k | 29 | Re-confirmed vacant, third time |
+| 2502 Harbor Drive, Thermal, $230k | 17 | Re-confirmed gut rehab, second time |
+
+**A SUBDIVISION DOCUMENT NAMED "Other" HOLDS A WHOLE CITY'S UNRELATED SALES, AND
+THE CMA GUARD DID NOT KNOW THAT.** The guard skipped `not applicable` and `not
+in a development` and nothing else. Encanto's `subdivisionName` is the
+placeholder **"Other"**, and `subdivisions` has **152 documents literally named
+"Other"**, one per city, each holding that city's miscellaneous closings — the
+first one that came back on a name-only query was Other/San Jose, median close
+**$1,301,000** at **$725/sqft**. On a $325,000 house in 29 Palms that is a CMA
+slide asserting a market that does not exist, which is the valuation claim
+`copy-voice.md` §9 forbids.
+
+This particular build was saved by the *city* half of the query — there is no
+Other/29 Palms document, so the lookup missed and the slide was skipped by luck,
+not by the guard. Other/Desert Hot Springs, Other/Thermal, Other/Palm Desert and
+Other/Blythe all exist and are all cities this team lists in, so the next such
+listing would have printed one. `build-pending-post.ts` now tests
+`subdivisionName` against a placeholder set — `not applicable`, `n/a`, `na`,
+`not in a development`, `other`, `unknown`, `none` — **whole-string, not by
+substring**, because "other" and "none" are not distinctive and "Mother Lode
+Estates" is a real subdivision name. Same family as the `poolYN` guard: a field
+that reads true through a value the guard did not name.
+
+**THE EXCLUSION CATEGORY CAN MOVE *IN*, NOT ONLY OUT.**
+§"Re-measured 2026-08-27" says to exclude by category and expect the numbers to
+move, and every prior instance of that is a frame you kept not being offered.
+This run is the mirror image. Photos 7, 10 and 17 were excluded by hand as §3
+distant exteriors; **photo 8 is the same shot from the same distance, the
+selector's dump never ranked it at all, and the build staged and passed it.**
+The `pool` caption written for the covered porch then named a porch and a
+concrete slab that are nowhere in that frame — Oak Tree's driveway failure
+arriving through a frame no exclusion list could have been aimed at.
+
+Fixed by **reband, not rebuild**: `exterior` → THE GROUNDS, which is what the
+picture is. The composite itself was clean and it is the only slide in the post
+that shows the two acres the cover is about, so dropping it would have cost more
+than the eleven words did. Write an `exterior` row on every config even when the
+stager cannot return that key — it exists to be a reband target.
+
+**A vacant house is buildable when the subject is ARCHITECTURAL, which is a
+wider door than Sea Life's murals.** §"Re-measured 2026-08-31" allowed a vacant
+room with a hand-painted mural because the empty room had a subject. Encanto's
+great room has a stone-faced fireplace, and unlike a mural a fireplace is
+**telic** in the `actor-generation.md` §1 sense — there is something to *do* at
+it — so it supports an action slide rather than only a reaction. Yield was 3 of
+5 candidates against Sea Life's 2 of 4. The rule this pool has been applying,
+"vacant listings are effectively not in the pool", is really *rooms with no
+subject are not in the pool*; a fireplace, an island or a mural is enough.
+
+**The generator has outrun the reviewer, and that is now the binding
+constraint.** 27 posts sit `awaiting_review`, **zero approved**, and exactly one
+listing has ever been posted. This log has spent five weeks measuring the intake
+pool; the pool is not what is limiting the feed. Worth raising with the agent
+before another five weeks of builds.
+
+Final: 8 slides — cover, great room, kitchen, the grounds, three text, CTA. No
+CMA (see above). The solar, the 2,500-gallon tank and the sewer being connected
+and paid are the three best facts here and none can carry a room slide, so all
+three are text slides. Sixth run in a row to make that call.
 
 ## Pipeline
 

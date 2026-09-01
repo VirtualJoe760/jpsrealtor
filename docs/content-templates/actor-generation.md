@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-08-26
+last_verified: 2026-09-01
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -400,9 +400,99 @@ dropped — `scripts/tmp-drop-slide.js <postId> <n>` removes a slide, renumbers
 the rest, trims `generation.photoIndexes` and destroys the orphaned Cloudinary
 asset.
 
+**A whole room can be nothing but the excluded category, and then that room has
+no slide in it.** The galley note above says to exclude a kitchen shot across
+its peninsula. 28 Oak Tree is what happens when there is no other kind of
+kitchen frame: a 1,332 sqft condo whose kitchen opens to the living room
+through a pass-through bar, photographed seven times — 13, 14, 15, 16, 17, 18,
+19 — every one of them from the living-room side, across that bar. The selector
+offered four of the seven and described the placement itself as *leaning on the
+breakfast bar*, *standing behind the breakfast bar* and *at the counter near
+the sink*.
+
+The build kept 15, on the reading that it was the one frame with open tile
+between the lens and the standing spot. The composite came back with the agent
+over the counter run: feet on the cabinet doors, hips at counter height, no
+floor under him anywhere. feet-on-floor **100%**, scale 0.91×, face 0.409,
+every gate green.
+
+So the pre-spend question has a counting half as well as a category half. When
+the tell fires on *every* frame of a room rather than on some of them, the
+least-bad frame is not a candidate — it is the same frame. Drop the room from
+the plan, and let whatever that room was selling go in a text slide, the way
+the lake, the sport court and the balcony did on the three builds before this
+one.
+
 ---
 
-## 10. Disclosure
+## 10. Photos that are not photographs
+
+**Some frames in an MLS set are renderings, and the pipeline cannot tell.**
+Every gate in §9 measures the *composite* — is the figure standing on a real
+floor plane, is the face his, did the room drift. None of them asks whether the
+room was ever built. A rendering has a clean floor plane and lovely light, so it
+sails through, and the post ships a feature the property does not have.
+
+4140 E Calle San Antonio is the listing that made this concrete. Six of its 49
+photos carry a **"Digitally Altered"** watermark burned into the top-left
+corner:
+
+| # | What it shows | What is actually there |
+|---|---|---|
+| 7 | a pool, spa, waterfall, path lighting, planting | a poured slab under a corrugated shade structure |
+| 5 | a green front lawn | bare decomposed granite |
+| 20, 27, 34, 44 | virtual furniture staging | empty rooms |
+
+The selector ranked **#7 third, appeal 0.9**, and offered it as the `pool`
+slide — *"seated on the left white lounge chair within the pool's shallow
+end"*. A run that trusted the shortlist would have queued a fabricated pool
+onto another brokerage's listing, which is the compliance failure in §7 of
+`AGENTS.md`, not a taste one.
+
+**The `poolFeatures` guard cannot catch this.** `build-pending-post.ts:317`
+rewrites `ROOM_LABELS.pool` to OUTDOOR LIVING when the feed records no private
+pool — the guard that saved 46109 Roadrunner Lane, 9223 N Star Trail and 5803
+Los Santos Drive. It works because those listings' *labels* were wrong about a
+real field. Here the field is correctly empty and the *photograph* is the thing
+asserting the pool, so the label guard has nothing to fire on and the image
+carries the claim by itself.
+
+**Check the corner, not the contact sheet.** The watermark is white text over
+whatever is behind it and is illegible at thumbnail size — #7 read as an
+attractive twilight backyard on a 320px contact sheet. Crop the **top-left 30%
+× 6%** of every frame into one strip and read that:
+
+```python
+crop = im.crop((0, 0, int(im.width * 0.30), int(im.height * 0.06)))
+```
+
+Then exclude every watermarked index, the furniture ones included: the
+watermark is part of the pixels and would print on the finished slide.
+
+**AND THE BADGE IS NOT ALWAYS IN THAT CORNER.** 1321 Sea Life Avenue puts
+**"AI Enhanced"** in a rounded pill in the **bottom-right**, where the crop
+above never looks. Three of its 48 frames carry it — photos 0, 2 and 4 — and
+those three are the only ones in the set that appear furnished. The sectional,
+the great-room sofa and the bunk beds are generated; the rooms behind them are
+empty. The selector ranked #0 and #2 fifth and sixth and offered both as
+`living` candidates. `scripts/tmp-corner-strip.py` reads the bottom-right the
+way `tmp-watermark-strip.py` reads the top-left; **run both on every set**,
+because the corner is a vendor's house style and there is no reason to expect
+one MLS feed to be consistent about it.
+
+Sea Life also breaks the disclosure tell below: its remarks disclose nothing at
+all. What it has instead is a **field** that disagrees with a photograph —
+`furnished: Unfurnished` on a listing whose leading frame shows a full living
+room. Treat that pair as the same signal as the disclosure paragraph.
+
+**The tell that it is worth checking at all** is a remarks paragraph disclosing
+virtual staging — this listing's ends *"Furniture, décor, and other items
+depicted in staged images are digital enhancements and are not included with the
+property."* That disclosure is the listing agent doing the right thing, and it
+is also the signal that the set is mixed. It does not say which frames, and it
+does not distinguish added furniture from an added pool.
+
+## 11. Disclosure
 
 Meta's container endpoint accepts **`is_ai_generated`**. These are AI-generated
 images of a real person in a real property; set it. It costs nothing and it is
