@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-01
+last_verified: 2026-09-02
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -770,6 +770,95 @@ Final: 8 slides — cover, great room, kitchen, the grounds, three text, CTA. No
 CMA (see above). The solar, the 2,500-gallon tank and the sewer being connected
 and paid are the three best facts here and none can carry a room slide, so all
 three are text slides. Sixth run in a row to make that call.
+
+### Re-measured 2026-09-02 — nothing was built, and that is the correct output
+
+**33 team actives, 27 ever queued, 10 never queued — and no buildable candidate
+among the ten.** Seven are land (`propertyType: D`, 2–13 photos, no rooms), one
+is the duplex at 66550 San Diego Drive (`C`, out of scope since 2026-08-13), and
+the two remaining sales are the same two this log has already struck by name:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| 58540 Barron Drive, Yucca Valley, $285k | 29 | **Out — fourth confirmation.** See below |
+| 2502 Harbor Drive, Thermal, $230k | 17 | Out — third confirmation. Remarks still open "CASH ONLY. INVESTOR ONLY" |
+
+No new listing has come on since the 2026-09-01 run. 3048 Bahada Road carries an
+`onMarketDate` of 2026-09-01 and looks new in a sort, but it is a relist — it was
+queued (Z2/U8) on 2026-08-07. **Sort the pool on `onMarketDate` and it will hand
+you back listings you have already built.**
+
+**BARRON DRIVE IS THE CASE THAT MARKS THE OUTER EDGE OF THE 2026-09-01 RULE.**
+That entry widened the door: not "vacant listings are out" but *"rooms with no
+subject are out"* — a fireplace, an island or a mural is enough. Barron was
+pulled as a contact sheet this run to be tested against the widened rule rather
+than taken on the three prior strikes, and it fails it. What the 29 frames hold:
+
+- **Five exteriors** (0–4) and **two dirt-lot frames** (27, 28). No patio, no
+  hardscape, no structure — decomposed granite and Joshua trees.
+- **Two kitchen frames** (5, 6) and they are the *only* rooms in the house with
+  an object in them. Both are shot across the peninsula, which is the Oak Tree
+  case exactly: §"Re-measured 2026-08-27" and `actor-generation.md` §9 say that
+  when the depth-ordering tell fires on **every** frame of a room, the least-bad
+  frame is not a candidate, it is the same frame. #6 has open vinyl in its left
+  half, but the sink and counter — the only telic objects — sit behind the
+  peninsula's near face and the dishwasher, both of which run across the
+  foreground.
+- **Everything else is a bare box**: living and dining (7–11) are white walls
+  and dark carpet with a hallway through them, six bedrooms/closets (12, 13, 15,
+  19, 20, 24, 25) are carpet and blank wall shot from the doorway with the door
+  slab in the foreground, five are bathrooms (16, 17, 21, 22, 23 — never, §3),
+  #18 is a damaged vanity top in close-up, and #26 is a stained garage floor.
+
+So the widened rule and the original one agree here. Encanto had a stone-faced
+fireplace and Sea Life had hand-painted murals; **Barron has one kitchen that can
+only be photographed from the wrong side of its own counter, and eleven empty
+rooms.** Every slide it could produce would be a figure standing in a bare room
+over worn faux-parquet vinyl. Recording the frame numbers so the fifth run does
+not pay for a fifth contact sheet: this listing is out until it is re-shot.
+
+**AND THE REVIEW QUEUE IS STILL THE BINDING CONSTRAINT — UNCHANGED IN A DAY.**
+§"Re-measured 2026-09-01" raised it; nothing has moved.
+
+| | 2026-09-01 | 2026-09-02 |
+|---|---|---|
+| `awaiting_review` | 27 | **27** |
+| approved / scheduled | 0 | **0** |
+| distinct listings ever posted | 1 | **1** |
+
+The oldest unreviewed post (R4, 2800 Vista Chino) has been sitting **30 days**.
+And every listing that has ever been queued has a live `awaiting_review` build in
+that stack — **zero listings have only declined builds** — so there is no listing
+anywhere in the pool that could be rebuilt without putting a second version of
+one house in front of the agent, which `source-post.md` names as the agent's
+problem to untangle.
+
+That makes "build nothing" the correct output rather than a failure to find
+something. The alternative moves available were all worse than doing nothing:
+a fifth Barron attempt would ship bare rooms, a rebuild would duplicate a queue
+entry, and land and the duplex are out of scope. **A run that adds a 28th
+unreviewed post to a queue with zero approvals is not producing anything.**
+
+**What would actually refill this pool**, in the order it is worth doing:
+
+1. **The agent reviews the 27.** This is the whole constraint. Twenty-seven posts
+   at ~3 slots a week is nine weeks of feed already built and paid for.
+2. **New team listings.** Intake has been bursty (§"Re-measured 2026-08-25") and
+   the last one arrived 2026-08-26. Nothing is owed here — it arrives when it
+   arrives.
+3. **Re-shoots.** Barron and Harbor are both out on *photography and condition*,
+   not on the properties. Neither becomes buildable without new frames.
+
+**Tooling note: `scripts/tmp-pool-check.js` no longer completes.** It calls
+`.find(...).toArray()` on `unifiedlistings` with no projection, so it pulls every
+matched document's full `media` array — 33 listings × up to 87 photo records —
+and the DigitalOcean cluster now drops the connection mid-cursor with
+`PoolClearedOnNetworkError: server monitor timeout` after several minutes, having
+printed nothing. `scripts/tmp-pool3.js` is the replacement: same report, but the
+team query is an aggregation that projects the scalar fields and reduces the
+photos to `{ $size: "$media" }`, so nothing large crosses the wire. It returns in
+under a minute. `scripts/tmp-detail2.js` is the same fix for the per-listing
+detail dump.
 
 ## Pipeline
 
