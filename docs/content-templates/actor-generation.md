@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-09-01
+last_verified: 2026-09-04
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -491,6 +491,34 @@ depicted in staged images are digital enhancements and are not included with the
 property."* That disclosure is the listing agent doing the right thing, and it
 is also the signal that the set is mixed. It does not say which frames, and it
 does not distinguish added furniture from an added pool.
+
+**AND ONE WATERMARK DOES NOT MEAN ONE RENDERED FRAME.** Calle San Antonio had
+six of 49 and Sea Life three of 48, so both read as *find the badged frames and
+exclude them*. 3470 Warren Vista Avenue is the case where that arithmetic
+breaks: 36 interiors, exactly **one** — photo #50 — showed "Digitally Altered"
+in the top-left strip, and the set is plainly staged far more widely than that.
+Photos #48 and #49 are bare rooms and #50 is the same kind of room with a bed
+and nightstands in it; #40, #41 and #42 show three different dining
+arrangements in one space. **The set contains both the staged and the unstaged
+version of the same rooms**, which is what a photographer uploads when the
+staging vendor returns a partial set and nobody prunes the originals.
+
+So the strip read is a *lower bound*, not an inventory. Two rules follow:
+
+- **Count the badges against the furniture.** If a set looks furnished in
+  twenty frames and one frame carries the badge, the badge is not telling you
+  the other nineteen are real. It is telling you the vendor watermarked
+  inconsistently.
+- **The same room appearing both empty and furnished is itself the tell**, and
+  it needs no corner crop. It cannot be a photography decision — nobody
+  photographs a room, moves a bed in and photographs it again for one listing.
+
+Warren Vista also carries the field/photograph pair from the Sea Life paragraph
+above — `furnished: "Unfurnished"` on 2026 new construction "completed just
+weeks ago" — and its remarks disclose nothing. Establishing which of the 35
+unbadged interiors are real is a per-frame audit, not a strip read, and it is
+not worth paying for while any unstaged listing remains in the pool. Struck on
+2026-09-04 for that reason rather than on a frame count.
 
 ## 11. Disclosure
 

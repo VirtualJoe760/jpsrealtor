@@ -1,7 +1,7 @@
 ---
 title: Copy and voice — writing the text slides and captions
 status: current
-last_verified: 2026-09-01
+last_verified: 2026-09-04
 owner: content
 related: [./README.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -170,6 +170,27 @@ the line is a coin flip and plan to reband. Rebanding is the cheap half:
 `reband-pending-post.ts` is a pure Cloudinary transform, costs no Gemini and
 re-rolls nothing, so this is a caption fault to fix after the build rather than
 a reason to decline it (9223 N Star Trail).
+
+**But "name the odd feature" is not the safe branch — it is the other coin.**
+7526 Apache Trail read the rule above as an instruction and wrote its `living`
+line to the one terracotta wall in an otherwise white open plan: *"Terracotta on
+one wall, tile underfoot, and room to move around the furniture."* The stager
+returned a frame shot down the length of that room, and the 4:5 crop kept the
+white end — the terracotta survives as a sliver behind a curtain at the far left
+edge, and the slide reads as a white room whose caption opens by naming a colour
+that is not in it.
+
+Hombria and Apache are the same bet placed on opposite sides and both lost. The
+useful reading is narrower than either: **a caption cannot be written to a crop
+that has not happened yet.** Where a room is not uniform, every line about its
+surfaces is a coin flip, so write the draft to whatever is genuinely invariant
+(here: the tile, the open floor), and treat the reband as the step that makes it
+specific — not as the repair for a bad guess. The rebanded line names the tile,
+the slider and the kitchen, all of which are in the frame that actually shipped.
+
+The corollary is worth stating because it inverts the usual instinct: the
+*vaguer* draft is the better draft, because the specific one is only available
+after the build and costs nothing to apply then.
 
 **Judge a cover frame by its right half.** The cover panel covers the left ~45%
 of the photo, so a hero shot that composes its subject on the left survives as

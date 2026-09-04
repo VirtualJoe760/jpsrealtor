@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-02
+last_verified: 2026-09-04
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -859,6 +859,96 @@ team query is an aggregation that projects the scalar fields and reduces the
 photos to `{ $size: "$media" }`, so nothing large crosses the wire. It returns in
 under a minute. `scripts/tmp-detail2.js` is the same fix for the per-listing
 detail dump.
+
+### Re-measured 2026-09-04 — the pool was never empty, the QUERY was narrow
+
+**Four runs reported a shrinking pool and the last one reported none at all, and
+all four were reading a team query narrower than the one this document
+defines.** §"Identifying the team" says the pool is the union of (1) listings
+carrying the literal string "The Obsidian Group" in an agent-name field and (2)
+listings whose list or co-list agent is on the **derived roster**. What
+`tmp-pool-check.js` and its replacement `tmp-pool3.js` actually match is
+
+```js
+$or: [{ listAgentTeamKey: TEAM }, { coListAgentId: TEAM }]
+```
+
+— key equality only, no roster. The two are not the same set:
+
+| Query | Active team listings |
+|---|---|
+| key only (`tmp-pool3.js`) | 30 |
+| documented definition (`tmp-pool4.js`) | **37** |
+
+The seven it drops are listings where a **roster member is the list agent and
+the co-list slot holds someone other than the team entity**, or is empty. Three
+of them were already in the review queue and should have made this visible
+sooner: 84146 Azzura Way, 28 Oak Tree Drive and 5803 Los Santos Drive #19 all
+have live `awaiting_review` builds and none of the three matches the key query
+today. **A listing the pool report calls out-of-pool while the queue holds a
+build of it is the tell**, and it sat in two consecutive reports unremarked.
+
+Three of the seven had never been queued at all, so 2026-09-02's "no buildable
+candidate among the ten" was measuring the wrong ten:
+
+| Candidate | Photos | Verdict |
+|---|---|---|
+| 3470 Warren Vista Ave, Yucca Valley, $399k | 64 | Out — mixed virtual staging, `actor-generation.md` §10 |
+| 56616 Mountain View Trail, Yucca Valley, $378k | 44 | Out — vacant end to end, the 2026-09-01 rule |
+| 7526 Apache Trail, Yucca Valley, $294,999 | 31 | **Built — X2.** |
+
+Mountain View is Barron with new flooring: 44 frames, every interior a bare
+room, the kitchen the only room with an object in it. Warren Vista is the first
+set where the staged and unstaged versions of the *same rooms* both ship, with
+one watermark across 36 interiors — written up in `actor-generation.md` §10,
+because the lesson is about reading watermarks and not about this pool.
+
+**The fix is that the scratch scripts never implemented the derivation, not a
+new rule.** `tmp-pool4.js` does, and prints a `key` / `NAME` column so a future
+run can see which listings only the documented definition reaches. Note the
+field name: the roster derives from `listAgentName` / `coListAgentName`, **not**
+`listAgentFullName` — a first pass used the latter, matched zero documents,
+derived an empty roster, and printed a confident 30 that agreed exactly with the
+narrow query it was meant to check. Same trap as `photoCount` / `photosCount` in
+§"Gotchas when querying the pool", and worse, because here the wrong field name
+does not return an empty pool, it returns the wrong answer twice.
+
+**Four queued posts are for listings that have left `unifiedlistings`.** That
+collection holds Active only, so a listing that goes pending or is withdrawn
+stops matching; none of the four is in `unified_closed_listings` either.
+Publishing any of them would advertise a home that is no longer on the market.
+
+| Code | Queued | Listing |
+|---|---|---|
+| K6 | 2026-08-08 | 3010 N Chuperosa Road, Palm Springs |
+| E4 | 2026-08-11 | 7798 Acoma Trail, Yucca Valley |
+| V9 | 2026-08-13 | 9223 N Star Trail, Morongo Valley |
+| V2 | 2026-08-22 | 1522 Sutherland Street, Lancaster |
+
+So the queue is 28 `awaiting_review` and **24 publishable**, not 28. Those four
+are the cheapest four decisions in the stack — they can be declined without
+opening the slides. `scripts/tmp-stale-queue.js` prints this, and it is worth
+running before any report that quotes a queue depth, because the number decays
+on its own while nobody is looking at it.
+
+**The X2 build: 2 of 4 room slides survived, and it was queued anyway.** Both
+survivors are good renders with accurate captions, and one of the four losses
+was a Gemini **503**, not a gate. No kitchen slide reached the post — three
+kitchen frames were offered and every take was rejected for feet cropped or face
+match. Rebuilding to chase a kitchen re-gambles two good renders to add one,
+which is the Azzura arithmetic (§"Re-measured 2026-08-26") pointing the other
+way, so the 7-slide post stands. There is no "add one slide" tool — only
+`tmp-drop-slide.js` and `recover-pending-post.ts` — and building one was out of
+scope for a run that already had a queueable post.
+
+**`tmp-cover-preview.ts` composes the address differently from the generator.**
+The preview builds line 1 from `streetNumber + streetName` and this feed's
+`streetName` is `"Apache"` where `unparsedAddress` is `"7526 Apache Trail"`, so
+the preview rendered 7526 APACHE and the queued cover correctly reads 7526
+APACHE TRAIL. Harmless in production and actively misleading in review: a run
+that judges a cover from the preview is looking at text the build will not ship.
+Worth fixing in the preview before it is used to reject a cover over a defect
+that only exists in the scratch script.
 
 ## Pipeline
 
