@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-04
+last_verified: 2026-09-05
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -949,6 +949,86 @@ APACHE TRAIL. Harmless in production and actively misleading in review: a run
 that judges a cover from the preview is looking at text the build will not ship.
 Worth fixing in the preview before it is used to reject a cover over a defect
 that only exists in the scratch script.
+
+### Re-measured 2026-09-05 — the never-queued pool is exhausted, and the queue held a duplicate for 20 days
+
+**The broad query is now the one being run, and it does not change the answer
+today.** `tmp-pool4.js` returns the same 37 actives it returned yesterday — 30
+reached by the key query, 7 only by the roster derivation — so no new team
+listing arrived overnight. Thirteen of the 37 have never been queued, and they
+break down as:
+
+| Never-queued | Count | Buildable |
+|---|---|---|
+| Land (`propertyType` D) | 7 | no — nothing to stage |
+| Rental (B) | 1 | no |
+| Residential income (C) | 1 | struck below |
+| Sales (A) | 4 | all four struck |
+
+So the pool is empty of buildable candidates for the second time, and this time
+against the documented definition rather than a narrower one.
+
+**The duplex was struck on its photographs, not its category.** 66550 San Diego
+Dr, Desert Hot Springs, $599k, 34 frames — the only never-queued row this log
+had set aside on `propertyType` alone, so it was worth one sheet. Both units are
+occupied and photographed as lived in: #2–#6 are a front room given over to
+exercise equipment and several hundred potted plants, #16/#17 a hallway walled
+with them, #8/#9/#11/#12/#14 beds under personal effects, #18–#21 two kitchens
+with every counter in use. There is no frame the stager could place a figure
+into that would read as a listing slide, and the copy standard — sell being
+there — has nothing to take hold of. Frame numbers recorded so a second run does
+not pay for a second sheet.
+
+**56616 Mountain View Trail re-confirmed, with the frame numbers the first
+strike did not record.** Interiors are #3–#28 and every one is bare: #3–#12 the
+open living end, #13–#17 the kitchen, #19–#26 five empty bedrooms, #22/#27 the
+baths, #28 the laundry. The renovation is real — new flooring, new cabinets, new
+fixtures — and irrelevant, because the 2026-09-01 rule is about subjects in the
+room and not about condition. #29–#43 are exterior and aerial.
+
+**3470 Warren Vista re-confirmed the same way.** It is a new build on a bare
+dirt lot: #1 is a floor-plan render, #5–#10 are lot-boundary overlays with the
+parcel drawn in red, and the furnished interiors #15–#50 are renderings. The
+tell that needs no watermark read is in the set itself — #48 and #49 are empty
+rooms and #50 is the same room with a bed, and #34/#35 stage a canopy bed in a
+room #36 shows unfurnished. Nobody has lived in this house; there is no
+un-staged furnished frame to find.
+
+**The queue held two live builds of 71817 Samarkand Drive for 20 days.**
+`source-post.md` §4 says to pick the better build and delete the other *before
+reporting*, and both R4 and F2 were queued on 2026-08-16 and both left
+`awaiting_review`. That instruction is written as a step inside a build, so no
+later run looked for a duplicate it had not created itself — which is why one
+survived roughly a fortnight of daily runs. **The check belongs at the top of a
+run, not at the end of a build:** `awaiting_review` count against distinct
+`listingKey` count is one line of `tmp-stale-queue.js` output and it was already
+printing 28 posts / 27 listings.
+
+F2 kept, R4 deleted with its four Cloudinary derivatives
+(`tmp-retire-duplicate.js`, which refuses a keeper on a different `listingKey`
+or a `posted` record, and skips any `publicId` the keeper also references). Both
+builds carry identical text slides, CTA and caption; they differ in the cover
+crop and three staged frames, and F2 wins on both counts a reviewer would use:
+
+| | R4 (deleted) | F2 (kept) |
+|---|---|---|
+| Great room | seated on the arm of the sectional, small in frame behind a white ottoman | standing, arms crossed, full figure |
+| Kitchen | at the range — fine | at the sink counter — fine |
+| Dining | **bent at the waist over a chair back** | standing beside the table, upright |
+| Dining caption | "…with the living room right there and nothing between them" — no living room in the frame | "Solid wood table, high-backed chairs, and tile" — all three in frame |
+
+R4's dining slide is the two failure modes this document keeps separately: a bad
+pose *and* a caption naming something the crop does not contain. Choosing
+between two builds is the cheapest quality decision available in the whole
+pipeline — no Gemini, no rebuild, and it removes a post from the review stack
+instead of adding one.
+
+**Queue after this run: 27 `awaiting_review`, 27 distinct listings, 0 approved,
+23 publishable.** The four stale entries from 2026-09-04 (K6, E4, V9, V2) are
+unchanged — still no listing row, still the four cheapest declines in the stack.
+One listing has ever been posted, on 2026-07-28. The binding constraint has not
+moved in four days and is not a pool problem: **there is nothing left to build
+that would not be a second version of a house already waiting.**
 
 ## Pipeline
 

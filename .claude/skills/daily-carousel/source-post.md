@@ -17,21 +17,50 @@ Read these — they are the standard, not background reading:
 
 ## Steps
 
+### 0. Untangle the queue before you add to it
+
+```bash
+node scripts/tmp-stale-queue.js
+```
+
+Two numbers off the first line. **`awaiting_review` posts against distinct
+listings** — if they differ, some listing holds two live builds, and §4 says
+pick the better one and delete the loser. Do that *first*: it is the cheapest
+quality decision in the pipeline, it costs no Gemini, and it takes a post off
+the review stack rather than adding one. 71817 Samarkand queued twice on
+2026-08-16 and both builds sat there for 20 days, because §4 reads as a step
+inside a build and no later run went looking for a duplicate it had not made
+itself. `scripts/tmp-retire-duplicate.js <loserId> <keeperId>` does the delete,
+record and Cloudinary derivatives together.
+
+The same output flags posts whose listing has left `unifiedlistings` — no longer
+Active, so publishing one would advertise a home that is off the market. Report
+them; they are the cheapest declines in the stack.
+
 ### 1. Pick a listing that has never been posted
 
-Obsidian Group actives, excluding anything already posted. ~34 were available
-when this skill was written.
+Obsidian Group actives, excluding anything already posted.
+
+```bash
+node scripts/tmp-pool4.js
+```
+
+**Use that script, not a query you write from memory.** The pool is the union of
+the team-key match *and* the derived roster (`auto-posting.md` §"Identifying the
+team"), and the key half alone is the narrower set that made four consecutive
+runs report a shrinking pool and one report it empty:
 
 ```js
-// Team listings carry "The Obsidian Group" in the co-list slot, or the team key.
-const TEAM = "20230905131838052805000000";
-const posted = await db.collection("pendingposts").distinct("listingKey", { status: "posted" });
-const candidates = await db.collection("unifiedlistings").find({
-  standardStatus: "Active",
-  $or: [{ listAgentTeamKey: TEAM }, { coListAgentId: TEAM }],
-  listingKey: { $nin: posted },
-}).sort({ listPrice: -1 }).toArray();
+// The narrow query. It returns 30 where the documented definition returns 37.
+$or: [{ listAgentTeamKey: TEAM }, { coListAgentId: TEAM }]
 ```
+
+The roster derives from `listAgentName` / `coListAgentName` — **not**
+`listAgentFullName`, which exists on no document in this collection and so
+derives an empty roster and silently reproduces the narrow answer.
+
+The tell that a pool report is wrong: **a listing it calls out-of-pool while the
+queue holds a build of it.** That sat unremarked in two consecutive reports.
 
 Prefer a listing with **plenty of photos** (the stager rejects frames freely —
 it wants candidates to spare) and one that is **visually different from the
@@ -119,6 +148,17 @@ Two things the dump makes obvious that guessing does not:
   the foreground. A low *glass* coffee table is not that: it hides a standing
   figure from the shin down, through glass.
 
+**And some frames are renderings.** If the listing's remarks disclose virtual
+staging, crop the top-left 30% × 6% of every photo into one strip and read it:
+a "Digitally Altered" watermark sits there, white on whatever is behind it, and
+is illegible at contact-sheet size. 4140 E Calle San Antonio had six — a
+rendered pool, spa and waterfall on a house with no pool, and a rendered green
+lawn on a dirt lot. The selector ranked the pool frame **third, appeal 0.9**,
+and offered it as the `pool` slide. The `poolFeatures` guard cannot catch this:
+the feed is correctly empty and the photograph is the thing making the claim.
+Exclude all of them, the furniture-staged ones included — the watermark is in
+the pixels and prints on the slide. See `actor-generation.md` §10.
+
 ### 4. Look at what you made
 
 **Actually look at the images.** Pull the slide URLs from the queued
@@ -197,3 +237,10 @@ Tell Joseph, briefly:
   room; that is a compliance rule, not a taste one. Credit both listing agents.
 - If nothing suitable is left in the pool, say so and stop. Do not repost, and
   do not reach outside the team's listings.
+- **Record frame numbers when you strike a listing**, in the doc and not only in
+  the commit message. A strike written as "vacant end to end" costs the next run
+  another contact sheet to trust; "interiors are #3-#28, all bare" ends it. 58540
+  Barron was re-sheeted four times before anyone wrote the numbers down.
+- **A struck listing stays struck** unless its photo set changed. Re-verify one
+  only when its strike carries no frame numbers, or when the reason was a rule
+  that has since moved.
