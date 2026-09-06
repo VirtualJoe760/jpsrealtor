@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-05
+last_verified: 2026-09-06
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1029,6 +1029,70 @@ unchanged — still no listing row, still the four cheapest declines in the stac
 One listing has ever been posted, on 2026-07-28. The binding constraint has not
 moved in four days and is not a pool problem: **there is nothing left to build
 that would not be a second version of a house already waiting.**
+
+### Re-measured 2026-09-06 — nothing moved, and the daily run is now the wrong lever
+
+**Third consecutive run with no build, and every input is byte-identical to
+yesterday's.** `tmp-pool4.js` returns the same 37 actives, the same 30/7
+key/roster split, and the same 13 never-queued rows. `tmp-stale-queue.js`
+returns 27 `awaiting_review` against 27 distinct listings — no duplicate this
+time — and the same four stale entries. Nothing arrived overnight and nothing
+was reviewed overnight.
+
+**The four struck candidates were re-checked by photo count, not by contact
+sheet, which is the whole point of recording frame numbers.** A strike stands
+unless the photo set changed, so the cheap test is whether the count moved:
+
+| Struck candidate | Photos at strike | Photos today | Strike |
+|---|---|---|---|
+| 3470 Warren Vista Ave, Yucca Valley, $399k | 64 | 64 | mixed virtual staging, `actor-generation.md` §10 |
+| 56616 Mountain View Trail, Yucca Valley, $378k | 44 | 44 | interiors #3–#28, every one bare |
+| 58540 Barron Drive, Yucca Valley, $285k | 29 | 29 | bare in all 29, fourth confirmation |
+| 2502 Harbor Drive, Thermal, $230k | 17 | 17 | gut rehab, CASH ONLY / INVESTOR ONLY |
+| 66550 San Diego Dr, Desert Hot Springs, $599k | 34 | 34 | both units occupied, #2–#21 recorded |
+
+None moved, so none was re-sheeted. That is four contact sheets not paid for,
+and it only works because the previous two runs wrote the frame numbers down.
+The remaining eight never-queued rows are seven land parcels and one rental —
+nothing to stage, and no re-check is owed on a `propertyType`.
+
+**The binding constraint is review, and generating daily against it is the
+wrong lever.** The pool is not the problem and has not been for three days.
+The arithmetic:
+
+| | |
+|---|---|
+| Posted, ever | 1 listing (53806 Ridge Road), last on 2026-07-29 |
+| `awaiting_review` | 27 |
+| `approved` / `scheduled` | **0** |
+| Publish slots since the last post | ~17 (Tue/Thu/Sun since 2026-07-29) |
+
+The publish cron takes only `approved` posts, so it has had nothing to do for
+five weeks — every slot has fired against an empty approved set while the
+review stack grew to 27. A daily generation run against that can only do one
+of two things, and it has now done both: add a second build of a house already
+waiting (Samarkand, 20 days), or report an empty pool (three times).
+
+So the recommendation is **pause the daily generation cron until the queue is
+drawn down**, rather than log a fourth empty-pool entry. The work that is
+actually available is all on the review side and none of it needs a build:
+
+1. **Four declines that need no slides opened** — K6 (3010 N Chuperosa Road),
+   E4 (7798 Acoma Trail), V9 (9223 N Star Trail), V2 (1522 Sutherland Street).
+   All four have left `unifiedlistings`; publishing one would advertise a home
+   that is off the market.
+2. **23 publishable posts** waiting on an approve/decline that only Joseph can
+   give.
+3. At three slots a week, 23 approved posts is **roughly eight weeks** of feed
+   already built. Generation does not need to run again inside that window.
+
+**Approval-code reuse was checked and is not a defect.** Five codes appear on
+more than one record (L3, E4, Y7, L8, L7), which reads alarming next to an SMS
+path keyed on `POST <code>`. It is safe by construction: `build-pending-post.ts`
+draws the code from `distinct("approvalCode")` over live records only, and
+`post-approval-sms.ts` resolves it against `status: "awaiting_review"` only, so
+a code is unique among exactly the set that can answer to it. Zero ambiguous
+pairs today. Recorded here so the next run does not re-investigate it.
 
 ## Pipeline
 
