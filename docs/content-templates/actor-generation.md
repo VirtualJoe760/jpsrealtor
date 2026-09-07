@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-09-04
+last_verified: 2026-09-07
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -366,6 +366,40 @@ a rebuild, and the rebuild returned dining, great room and kitchen where the
 first had returned only outdoor and great room. Rebuilding is still a lottery
 (§"Re-measured 2026-08-23" in `auto-posting.md`), but a build that yielded 2/4
 has less to lose than one that yielded 4/4.
+
+**"Where the water dominates" is too narrow, and a tanning shelf is the proof.**
+57730 Cantata Drive staged photo **#60** — a lap pool shot down its length with
+the deck, a block wall, trees and sky filling most of the frame. Water is maybe
+40% of it, so the frame does not read as a water frame at contact-sheet size and
+was not excluded. The composite came back with the agent in a business suit
+**standing in the pool**, shoes on the submerged tanning shelf, an in-pool lounge
+chair floating beside him. feet-on-floor 100%, scale 0.74×, face 0.36, shadow
+transferred, every gate green.
+
+A tanning shelf is worse than open water, not better: it is a genuinely
+horizontal plane a few inches below the surface, so it fits cleanly, it sits at
+a plausible standing height relative to the deck, and the refraction that would
+give it away is exactly what the geometry pass is not looking at.
+
+So the test is not how much of the frame is water. It is:
+
+> **Is there any water at all in the lower half of the frame?** If yes, the
+> frame is a candidate for this failure regardless of how much else is in shot.
+
+Pool listings therefore need the whole water set excluded up front — Cantata's
+was `58,59,60,61,62,64,65,67,70` — and the outdoor slide taken from a patio, a
+pergola, a fire-pit corner, a planter bed or a lawn. That build's replacement
+outdoor frame was #51, a raised planter with cactus and block wall behind it,
+and it staged first time.
+
+**The same run produced the dining-room version of the near-face category.**
+Photo **#32**, the dining table shot down its own length with the cloth filling
+the lower right, returned the agent with both shoes resting on the tablecloth.
+The §"large opaque object across the bottom" rule already covers it; what is
+worth adding is that **a dressed dining table belongs on the list beside the
+galley-kitchen peninsula and the doorway bedroom**, because a cloth reads as a
+soft surface rather than an obstruction and does not look like the same category
+until the composite comes back.
 
 **Contact support says "next to furniture", not "on it".** 84146 Azzura Way
 returned a great-room take described as *seated comfortably on the plush

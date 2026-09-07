@@ -1,7 +1,7 @@
 ---
 title: Copy and voice — writing the text slides and captions
 status: current
-last_verified: 2026-09-04
+last_verified: 2026-09-07
 owner: content
 related: [./README.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -191,6 +191,34 @@ the slider and the kitchen, all of which are in the frame that actually shipped.
 The corollary is worth stating because it inverts the usual instinct: the
 *vaguer* draft is the better draft, because the specific one is only available
 after the build and costs nothing to apply then.
+
+**But a rebanded line is pinned to a render, and a render can be dropped.**
+57730 Cantata Drive queued with the stager's `outdoor` slot filled by photo #60,
+which is unmistakably the pool, so the deliberately-vague draft — *"13,068
+square feet of lot, and the back of it is the whole reason"* — was rebanded to
+*"Full-length pool, a tanning shelf along one side, and block wall all the way
+round."* Every word of that was in the frame, which is exactly what this section
+asks for.
+
+Then #60 turned out to have the agent standing in the water (`actor-generation.md`
+§9) and was dropped, and the replacement outdoor frame was #51: a raised planter,
+cactus, block wall, no water anywhere. The specific line stayed in the config,
+so it followed the **room key** into the new build and printed a full-length pool
+over a cactus bed.
+
+So rebanding has a direction of travel that has to be reversed when the render
+it was written for goes away:
+
+| Situation | The line should be |
+|---|---|
+| Drafting, before the build | the invariant — true of every frame that key can return |
+| Rebanding a slide that is shipping | specific to that frame |
+| **That slide is later dropped or the build is replaced** | **back to the invariant** |
+
+The config is the durable artefact and the render is not, so a specific caption
+left behind in a config is a loaded gun for the next build of the same listing.
+Either revert it, or write the comment above it saying which frame it assumes —
+Cantata's now does both.
 
 **Judge a cover frame by its right half.** The cover panel covers the left ~45%
 of the photo, so a hero shot that composes its subject on the left survives as

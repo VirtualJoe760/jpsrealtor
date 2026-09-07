@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-06
+last_verified: 2026-09-07
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1093,6 +1093,88 @@ draws the code from `distinct("approvalCode")` over live records only, and
 `post-approval-sms.ts` resolves it against `status: "awaiting_review"` only, so
 a code is unique among exactly the set that can answer to it. Zero ambiguous
 pairs today. Recorded here so the next run does not re-investigate it.
+
+### Built 2026-09-07 — 57730 Cantata Drive, and the pool that had to be excluded
+
+**The pool refilled by itself.** Four runs reported a shrinking or empty pool and
+the last three recommended pausing generation. `tmp-pool4.js` today returns 38
+broad actives against 31 key-matched, and one row in it is new: **57730 Cantata
+Drive, La Quinta, $899,000, 77 photos**, listed 2026-09-06 by Ashley N Robertson
+with The Obsidian Group co-listed. It is the first genuinely new name in the pool
+in a week, and it is the answer to the constraint that emptied it — the four
+standing strikes are all vacant, virtually staged, or a gut rehab, and Cantata is
+lived in and offered furnished (the exclusions field reads "Pac Man Table,
+personal items", which nobody writes about a staged house).
+
+The four struck candidates were re-checked by photo count, per the rule above.
+None moved: Warren Vista 64, Mountain View 44, Barron 29, Harbor 17. No contact
+sheets paid for.
+
+**Queued as K9, `6a9eca83d28360d85aa2c65a`, 9 slides.** Queue is now **28
+`awaiting_review` against 28 distinct listings**, 0 approved. The four stale
+entries are unchanged and unchanged for a fourth run — K6 Chuperosa, E4 Acoma,
+V9 Star Trail, V2 Sutherland. None of the four has a `unified_closed_listings`
+row either, so they did not sell; they simply left the Active feed.
+
+**It took two builds and cost about twice the usual Gemini, because a documented
+exclusion was not applied.** `actor-generation.md` §9 already said a frame whose
+largest horizontal surface is water will stage the agent standing on it, and
+already said to exclude those up front. The first build was run without that
+exclusion and returned two unusable renders out of four:
+
+| Frame | Gates said | The slide showed |
+|---|---|---|
+| #60 pool | feet-on-floor 100%, scale 0.74×, face 0.36 | agent in a suit standing **in the pool**, shoes on the submerged tanning shelf |
+| #32 dining | all gates passed | both shoes resting on the dining table's cloth |
+
+The water rule was written as "where the water dominates", and #60's water is
+about 40% of the frame, which is why it was not read as a water frame. It has
+been rewritten to "any water in the lower half" and the dining table has been
+added to the near-face category. Cantata's exclusion list is recorded in the
+config: `30,31,32,58,59,60,61,62,64,65,67,70`.
+
+**The second build fixed the renders and lost the kitchen**, which is the
+rebuild lottery working as documented: #21 came back keyed `great_room` rather
+than `kitchen` and was deduped against #8, #37 (the primary bedroom, the one
+frame this listing had never offered before) died on a Gemini 503, and only 2 of
+4 survived. Build 1 held a good kitchen and a good great room; build 2 held a
+good outdoor frame and nothing else new. **Neither was shippable alone at two
+room slides.**
+
+So the slide was **grafted** rather than a third build run —
+`scripts/tmp-graft-slide.js <keeperId> <donorId> <donorSlideN> <room>`. A staged
+slide is self-contained: the Cloudinary asset is a finished composite of this
+listing's own photo and the band over it is a pure transform read from the
+keeper's config, so moving one between two builds of the *same listing*
+fabricates nothing. Both builds upload into the same `pending/<slug>/staged`
+folder, so no copy is needed, and `tmp-retire-duplicate.js` already skips any
+`publicId` the keeper still serves — it reported "shared with keeper, kept" and
+destroyed only the loser's own assets. K2 is deleted; K9 carries photo indexes
+`[22, 8, 51]`.
+
+**Two things worth carrying forward beyond this listing:**
+
+1. **The §8 cover test is run against the wrong image.** "Judge a cover frame by
+   its right half" reads as a test on the listing photo, and that is how #60 was
+   chosen — its right half is pool and sky. But the cover applies `ar_4:5,
+   c_fill, g_auto` *first* and hangs the panel on the portrait crop, and `g_auto`
+   scores saliency, which flat pool water has almost none of. It cropped to the
+   trees and the cinderblock wall, and POOL DAY shipped over a block wall. The
+   test is: **crop to 4:5 with g_auto, then look at the right ~56%.** Six
+   candidates were rendered that way before #65 was chosen; the render costs a
+   Cloudinary upload and no Gemini.
+2. **A Gemini 503 prints the API key in the error URL.** The #37 rejection line
+   carries `...generateContent?key=...` in full. It only reached a scratchpad log
+   outside the repo this time, but it means **a build log is a secret-bearing
+   artefact** and must never be committed, pasted into a report, or attached to a
+   bug. Worth stripping the query string from that error before it is logged.
+
+**The review queue is still the binding constraint and this run did not change
+that** — 28 waiting, 0 approved, one listing ever posted. The difference from the
+last three entries is that there was finally something new to build, so the
+"pause generation" recommendation is narrowed rather than withdrawn: **generate
+only when `tmp-pool4.js` shows a listing that has never been queued.** On a day
+it does not, the four stale declines are still the cheapest work in the stack.
 
 ## Pipeline
 
