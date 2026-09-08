@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1175,6 +1175,53 @@ last three entries is that there was finally something new to build, so the
 "pause generation" recommendation is narrowed rather than withdrawn: **generate
 only when `tmp-pool4.js` shows a listing that has never been queued.** On a day
 it does not, the four stale declines are still the cheapest work in the stack.
+
+### No build 2026-09-08 — the pool is back to five standing strikes, and none moved
+
+**Nothing new arrived overnight.** `tmp-pool4.js` returns **38 broad actives
+against 31 key-matched**, byte-identical to yesterday's split — Cantata is still
+the newest row and it was built yesterday. Thirteen of the 38 have never been
+queued and they break down exactly as they did on 2026-09-05:
+
+| Never-queued | Count | Buildable |
+|---|---|---|
+| Land (`propertyType` D) | 7 | no — nothing to stage |
+| Rental (B) | 1 | no |
+| Residential income (C) | 1 | struck, both units occupied |
+| Sales (A) | 4 | all four struck |
+
+**All five strikes re-checked by photo count, no contact sheet paid for.** This
+is the cheap test the frame-number rule exists to make possible:
+
+| Struck candidate | Photos at strike | Photos today | Strike |
+|---|---|---|---|
+| 3470 Warren Vista Ave, Yucca Valley, $399k | 64 | 64 | mixed virtual staging; #1 floor-plan render, #5–#10 lot overlays, #15–#50 rendered interiors |
+| 56616 Mountain View Trail, Yucca Valley, $378k | 44 | 44 | interiors #3–#28, every one bare |
+| 58540 Barron Drive, Yucca Valley, $285k | 29 | 29 | bare in all 29, fifth confirmation |
+| 2502 Harbor Drive, Thermal, $230k | 17 | 17 | gut rehab, remarks open CASH ONLY / INVESTOR ONLY |
+| 66550 San Diego Dr, Desert Hot Springs, $599k | 34 | 34 | both units occupied and lived in, #2–#21 recorded |
+
+**No rule moved in a direction that would unstrike any of them.** Yesterday's
+two edits to `actor-generation.md` — water broadened from "dominates" to "any
+water in the lower half", and the dining table added to the near-face category —
+both *add* exclusions. The 2026-09-01 subjects-in-the-room rule, which is what
+Barron and Mountain View fail, is unchanged. So no re-verification is owed and
+none was run.
+
+**The queue is clean of duplicates for the second consecutive run.**
+`tmp-stale-queue.js` prints **28 `awaiting_review` against 28 distinct
+listings**, so no listing holds two live builds. The four stale entries are
+unchanged for a fifth run — K6 (3010 N Chuperosa Road), E4 (7798 Acoma Trail),
+V9 (9223 N Star Trail), V2 (1522 Sutherland Street). None has a
+`unified_closed_listings` row; they left the Active feed rather than selling.
+**24 of the 28 are publishable.**
+
+**The 2026-09-07 narrowing holds and today is the day it bites:** generate only
+when `tmp-pool4.js` shows a listing that has never been queued. It does not, so
+no build was run and no Gemini was spent. The binding constraint is still
+review — 28 waiting, **0 approved**, one listing ever posted (53806 Ridge Road,
+2026-07-29), and every Tue/Thu/Sun slot since has fired against an empty
+approved set.
 
 ## Pipeline
 
