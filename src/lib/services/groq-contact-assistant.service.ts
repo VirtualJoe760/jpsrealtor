@@ -386,7 +386,7 @@ export async function processContactCleaningRequest(
     // Step 1: Send request to Groq
     console.log('🚀 Sending request to Groq API...');
     const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile", // High-quality Groq model
+      model: "openai/gpt-oss-120b", // High-quality Groq model
       messages,
       tools: CONTACT_CLEANING_TOOLS,
       tool_choice: "auto", // Let LLM decide when to use tools
@@ -461,7 +461,7 @@ export async function processContactCleaningRequest(
 
       // Step 4: Send tool result back to LLM for interpretation
       const finalResponse = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           {
             role: "system",

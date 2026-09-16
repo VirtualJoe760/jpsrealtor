@@ -1,7 +1,7 @@
 ---
 title: Chat Tools Index
 status: current
-last_verified: 2026-05-23
+last_verified: 2026-09-15
 related: [README.md]
 supersedes: docs/archive/chat-production/TOOLS_INDEX.md
 ---
@@ -116,7 +116,7 @@ above. Worth knowing about before reinventing.
 
 - `parse(message)` → `ParsedQuery` — Phase A parser (re-exports chat-v2 `parseQuery`)
 - `runPreview(parsed, {origin})` → `PreviewResult` — the big intent dispatcher
-- `narrate(input)` / `streamNarration(input)` — Groq narrator (llama-3.1-8b-instant default)
+- `narrate(input)` / `streamNarration(input)` — Groq narrator (openai/gpt-oss-20b default, reasoning_effort=low)
 - `describeContext(input)` — builds the AUTHORITATIVE block the narrator quotes
 - `fetchNearbyPOIs(name, type, radiusMiles?)` → `POIBundle` — POI fetch for snapshots
 - `describePOIBundle(bundle)` → markdown — drop-in for system prompt

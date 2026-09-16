@@ -17,7 +17,8 @@ const groq = new Groq({
 // Model configuration for different tiers
 export const GROQ_MODELS = {
   // Free tier: Fast and cheap
-  FREE: "llama-3.1-8b-instant", // 840 TPS, ~$0.013/month per user
+  // 2026-09-15: was llama-3.1-8b-instant until Groq decommissioned all Llama chat models.
+  FREE: "openai/gpt-oss-20b", // fastest remaining Groq chat model, ~90ms TTFT
 
   // Premium tier: GPT-OSS 120B (best reasoning, function calling support)
   PREMIUM: "openai/gpt-oss-120b", // 500 TPS, 131K context, function calling support

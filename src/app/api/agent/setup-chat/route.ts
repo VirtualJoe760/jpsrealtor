@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
 
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
-const MODEL = process.env.SETUP_CHAT_MODEL || "llama-3.3-70b-versatile";
+const MODEL = process.env.SETUP_CHAT_MODEL || "openai/gpt-oss-120b";
 
 // The only fields the model may write, mapped to their schema paths.
 const FIELD_PATHS: Record<string, string> = {

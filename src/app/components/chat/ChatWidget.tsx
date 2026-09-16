@@ -451,6 +451,10 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
       // assistant message. Layer 3 fallback (agent loop) leaves this
       // undefined and renders via the legacy `components` map instead.
       let receivedPreview: any = undefined;
+      // Set when the server reports a narration failure mid-stream. Checked in
+      // the done branch so the user gets a visible explanation instead of an
+      // empty bubble above a component.
+      let streamError: string | null = null;
 
       // Read SSE stream
       const reader = response.body?.getReader();
@@ -587,6 +591,17 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     }
                   }
 
+                  if (data.error) {
+                    // The server packs `error` and `done` into ONE event when
+                    // narration fails after the preview was already sent. This
+                    // used to be checked after the done branch and thrown, where
+                    // the "malformed chunk" catch swallowed it — so a narrator
+                    // outage (Groq decommissioning llama-3.1-8b-instant, Sept
+                    // 2026) showed as a component with no text and no error.
+                    console.error('[ChatWidget] ❌ Stream error:', data.error);
+                    streamError = String(data.error);
+                  }
+
                   if (data.done) {
                     // Stream complete
                     console.log('[ChatWidget] ✅ Stream complete. Components:', components);
@@ -604,8 +619,15 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       .replace(/\[CONTACT_IMPORT_SUCCESS\]/g, '')
                       .trim();
 
+                    const hasResults = receivedPreview !== undefined || (components && Object.keys(components).length > 0);
+                    const finalText = cleanText || (streamError
+                      ? (hasResults
+                          ? "I found results but couldn't write a summary just now. Here's what came back:"
+                          : "Sorry, I couldn't put together a response just now. Please try again in a moment.")
+                      : cleanText);
+
                     // Add message with tool_calls + preview for conversation context
-                    addMessage(cleanText, "assistant", undefined, components, receivedToolCalls, undefined, undefined, receivedPreview);
+                    addMessage(finalText, "assistant", undefined, components, receivedToolCalls, undefined, undefined, receivedPreview);
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
                     // Tutorial mode: notify when results received
@@ -707,10 +729,6 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                     }
                   }
 
-                  if (data.error) {
-                    // Error message from stream
-                    throw new Error(data.error);
-                  }
                 } catch (parseError) {
                   // Skip malformed JSON chunks
                   console.warn('[SSE] Skipped malformed chunk:', parseError);

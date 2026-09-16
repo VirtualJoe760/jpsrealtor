@@ -1,7 +1,7 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-05-23
+last_verified: 2026-09-15
 related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md]
 supersedes: docs/chat-production/CHAT_V3.md
 ---
@@ -54,7 +54,7 @@ Intents: `listing-detail`, `listing-search`, `street-listings`, `aggregate`, `co
 
 Two entry points: `narrate(input)` returns the full JSON; `streamNarration(input)` is an async generator yielding tokens for SSE. Both call Groq with a system prompt that bans meta-narration ("the search router found..."), bans robot openings ("I pulled..."), forbids fabrication, and enforces per-intent rules (lead with the headline for aggregate, lead with the answer for insights, single sentence for CMA, etc.). The narrator quotes `totalListings` from the Layer 1 stats block verbatim — if Layer 1 says 28, the LLM must say 28, even if autocomplete only returned 6 disambiguation rows.
 
-Default model: `llama-3.1-8b-instant` on Groq, ~1s for a 1–4 sentence response. The narrator never sees raw documents — it sees `describeContext()` output, a labeled `AUTHORITATIVE` block of numbers.
+Default model: `openai/gpt-oss-20b` on Groq with `reasoning_effort: "low"`, ~0.2s for a 1–4 sentence response. (Was `llama-3.1-8b-instant` until Groq decommissioned every Llama chat model in Sept 2026 — see Gotchas.) The narrator never sees raw documents — it sees `describeContext()` output, a labeled `AUTHORITATIVE` block of numbers.
 
 ### Layer 3 — UI / Agent loop fallback
 
@@ -104,7 +104,8 @@ The root home (`/`) uses `?view=` params (`chat`, `map`) — insights is the def
 - **TOOLS_INDEX sync.** New `tools.ts` entries, new `preview.ts` intents, new `chatv3:*` events MUST update `docs/chat/TOOLS_INDEX.md` in the same commit. This is the most common drift in this subsystem.
 - **Map view is session-scoped.** New Chat resets `viewState`; the spawn point re-resolves on next toggle. Don't try to persist map state across chats — it's intentional.
 - **URL wins over saved state for `?view=map`.** Clicking the sidebar "Chat" link closes the map even if session state had it open. Don't add code that re-adds `?view=map` from state.
-- **Narrator uses Groq (`llama-3.1-8b-instant`).** ~1s response, ~$0.0001/call. Per memory, the operator was experimenting with `openai/gpt-oss-120b` for higher quality — confirm current model against `DEFAULT_MODEL` in narrate.ts before quoting cost. The narrator can ONLY use data in the context block — it's prompted hard against fabrication, but cheap models still sometimes break the rule on edge cases. The `AUTHORITATIVE` label is doing real work.
+- **Narrator uses Groq (`openai/gpt-oss-20b`, `reasoning_effort: "low"`).** ~0.2s response. Confirm current model against `DEFAULT_MODEL` in narrate.ts before quoting cost.
+- **Groq removes models without warning.** In Sept 2026 `llama-3.1-8b-instant` and `llama-3.3-70b-versatile` both vanished (404 `model_not_found`) and every chat reply on live rendered as a component with no text — the route sends `preview` first, then the narrator call fails and emits `{error, done}` in one event. If chat goes text-less again, `curl -X POST https://www.chatrealty.io/api/chat-v3` and look for an `error` event before blaming the widget. `GET https://api.groq.com/openai/v1/models` lists what the key can still use. Don't pick `qwen/*` for the narrator: it streams a `<think>` block into `delta.content`. The narrator can ONLY use data in the context block — it's prompted hard against fabrication, but cheap models still sometimes break the rule on edge cases. The `AUTHORITATIVE` label is doing real work.
 - **Layer 1 stats vs. autocomplete count.** When Layer 1 returns 28 listings and autocomplete only returned 6 rows, the narrator MUST quote 28. The narrator prompt forbids counting the autocomplete candidates, but if you tweak `describeContext()` you can accidentally break this guarantee — review tests after any context-block change.
 - **chat-v3 SUPERSEDED chat-v2 entirely** (intent-classifier era). The legacy `/docs/chat/` and `/docs/chat-v2/` directories are all stale — the parser primitive in `chat-v2/query-parser.ts` is still used (re-exported by Layer 0), but everything else in those docs (tool conflicts, intent classification troubleshooting, chat-v2 rewrite plans) is history.
 - **The "agent loop" still exists** as the Layer 3 fallback, but most production traffic never hits it. If you're debugging "why is the chat slow / why is it inventing stuff", first confirm whether the request went through Layer 1 (deterministic, fast, AUTHORITATIVE) or fell through to Layer 3 (agent loop, slower, freer-form).
@@ -185,5 +186,5 @@ The three roadmap/architecture/registry docs are the **current canonical referen
 | File | Classification | Action |
 |---|---|---|
 | `F:\web-clients\joseph-sardella\jpsrealtor\docs\architecture\CHAT_ARCHITECTURE.md` | OUTDATED (Dec 2025, pre-v3) | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\GROQ_CONTEXT_GUIDE.md` | PARTIAL (Dec 2025) — model table OUTDATED (chat-v3 uses `llama-3.1-8b-instant`, not the listed models), context-building principles may still apply | Re-derive the model table from `narrate.ts` then archive the rest |
+| `F:\web-clients\joseph-sardella\jpsrealtor\docs\GROQ_CONTEXT_GUIDE.md` | PARTIAL (Dec 2025) — model table OUTDATED (chat-v3 uses `openai/gpt-oss-20b`, not the listed models), context-building principles may still apply | Re-derive the model table from `narrate.ts` then archive the rest |
 | `F:\web-clients\joseph-sardella\jpsrealtor\docs\AI_ARCHITECTURE_CONTEXT_AWARE.md` | OUTDATED (Dec 2025, pre-v3) | Archive |

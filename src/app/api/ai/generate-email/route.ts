@@ -39,7 +39,7 @@ Return ONLY the HTML email body content, no additional text or explanations.`;
           content: prompt,
         },
       ],
-      model: 'llama-3.3-70b-versatile', // Using Groq's fast model
+      model: 'openai/gpt-oss-120b', // Using Groq's fast model
       temperature: 0.7,
       max_tokens: 1024,
     });

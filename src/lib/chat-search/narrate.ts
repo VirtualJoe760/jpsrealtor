@@ -2,7 +2,7 @@
 //
 // Layer 2 of the search-first chat architecture. Takes the parser output,
 // the resolved Layer 1 preview, and the raw search results, and produces a
-// short narration using a fast Groq model (llama-3.1-8b-instant).
+// short narration using a fast Groq model (openai/gpt-oss-20b).
 //
 // Two entry points:
 //   narrate(input)       → one-shot, returns full narration as JSON
@@ -382,7 +382,14 @@ export function describeContext(input: NarrationInput): string {
 // Non-streaming entry point — used by /api/test-chat/narrate
 // =============================================================================
 
-const DEFAULT_MODEL = "llama-3.1-8b-instant";
+// openai/gpt-oss-20b replaced llama-3.1-8b-instant on 2026-09-15: Groq
+// decommissioned every Llama chat model (8b-instant AND 3.3-70b-versatile),
+// so the narrator 404'd with model_not_found and every chat reply on live
+// rendered as a component with no text. gpt-oss-20b measured ~90ms to first
+// token / ~200ms total for a 3-sentence narration with reasoning_effort=low.
+// Reasoning tokens arrive on delta.reasoning, not delta.content, so the
+// streaming loop below stays correct.
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
 
 export async function narrate(input: NarrationInput): Promise<NarrationResult> {
   const t0 = Date.now();
@@ -398,6 +405,7 @@ export async function narrate(input: NarrationInput): Promise<NarrationResult> {
         { role: "user", content: context },
       ],
       temperature: 0.55,
+      reasoning_effort: "low",
       max_tokens: 400,
       stream: false,
     });
@@ -437,6 +445,7 @@ export async function* streamNarration(
       { role: "user", content: context },
     ],
     temperature: 0.55,
+    reasoning_effort: "low",
     max_tokens: 400,
     stream: true,
   });
