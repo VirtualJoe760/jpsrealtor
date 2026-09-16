@@ -69,6 +69,19 @@ last few posted**, so the feed does not read as the same house repeatedly.
 Check the archive before choosing: `GET /api/agent/pending-posts/archive`, or
 query `pendingposts` where `status: "posted"` directly.
 
+**`FRESH` means the key has never been queued, not that the house has never been
+built.** A listing that leaves the Active feed and comes back arrives on a *new*
+`listingKey`, so every key-based test — the pool report, and the publish cron's
+already-posted guard — reads a relist as a listing nobody has ever touched.
+48423 Hepburn Drive was the only FRESH stageable row on 2026-09-15 and was
+already sitting in the queue as **L6**, built five weeks earlier.
+
+The cheap check is in the repo, not the database: **if
+`scripts/data/pending/<slug>.ts` already exists for that address, it has been
+built.** Look there before spending a build on any row the pool calls FRESH.
+`scripts/tmp-relist-check.js` does the reverse pass — it finds queued posts
+whose listing left the feed and came back.
+
 ### 2. Write the copy
 
 Config goes in `scripts/data/pending/<slug>.ts` — copy the shape of

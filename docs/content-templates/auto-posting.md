@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-08
+last_verified: 2026-09-15
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1222,6 +1222,90 @@ no build was run and no Gemini was spent. The binding constraint is still
 review — 28 waiting, **0 approved**, one listing ever posted (53806 Ridge Road,
 2026-07-29), and every Tue/Thu/Sun slot since has fired against an empty
 approved set.
+
+### No build 2026-09-15 — the one FRESH row is a house already in the queue, relisted under a new key
+
+**`tmp-pool4.js` returns 36 broad actives against 29 key-matched, and five FRESH
+stageable rows (type A, ≥12 photos).** Four of the five are the standing
+strikes. The fifth is new and is the trap:
+
+```
+20260914030856526270000000 | A | $529,000 | ph51 | 48423 Hepburn, Indio | key | FRESH
+```
+
+**It is not fresh. It is L6.** 48423 Hepburn Drive has been sitting in the
+review queue since 2026-08-09 with 9 slides, under listing key
+`20260616192248643487000000`. That key left the Active feed, and the property
+came back on **2026-09-14 at the same $529,000 under a new key**,
+`20260914030856526270000000`. Same house, same price, 51 photos.
+
+**`FRESH` is computed against `pendingposts.listingKey`, so a relist reads as
+never-queued.** Nothing in the pool report is wrong — the key genuinely has
+never been queued — but the answer it gives to "has this house been built?" is
+wrong, and building it would have put a second live build of one listing in
+front of the agent, which §0 of the skill exists to remove.
+
+The tell was in the repo, not the database: `scripts/data/pending/hepburn-drive.ts`
+was already there, dated 2026-08-09, naming the same address, the same price and
+the exclusion list from its build. **A config file in `scripts/data/pending/`
+is a record that this listing has been built, and it survives the key change
+that the listingKey test does not.** Check it before spending a build on any row
+the pool calls FRESH.
+
+**The same blind spot is in the publish cron, where it matters more.** The
+already-posted guard at `src/app/api/cron/publish-pending/route.ts:126` finds a
+prior `posted` record by `listingKey`. Two keys for one house defeat it, so a
+relist is the one route by which this system could publish the same property
+twice — the exact failure the guard was written for. Not fixed here; recorded
+because the fix is an address match, not a key match, and that is a change to
+the publish path rather than to a daily run.
+
+**What the cron does *not* do is check that the listing is still Active** — it
+only looks for a prior posted record. So L6 needs no repair to publish and its
+stale key costs nothing at publish time. It was deliberately left untouched:
+repointing a queued record at a new key is the agent's call, not a scheduled
+run's.
+
+**So the stale-decline stack is six, not seven, and it grew by two.** Since
+2026-09-08, C4 (46109 Roadrunner Lane), Y7 (83633 Lapis Drive) and L6 left the
+Active feed; L6 came back. None of the six has a `unified_closed_listings` row —
+they left the feed rather than selling.
+
+| Code | Listing | Built | Status |
+|---|---|---|---|
+| C4 | 46109 Roadrunner Lane, La Quinta | 08-06 | gone, no row at that address |
+| K6 | 3010 N Chuperosa Road, Palm Springs | 08-08 | gone |
+| **L6** | **48423 Hepburn Drive, Indio** | **08-09** | **relisted 09-14, publishable** |
+| Y7 | 83633 Lapis Drive, Coachella | 08-10 | gone |
+| E4 | 7798 Acoma Trail, Yucca Valley | 08-11 | gone |
+| V9 | 9223 N Star Trail, Morongo Valley | 08-13 | gone |
+| V2 | 1522 Sutherland Street, Lancaster | 08-22 | gone |
+
+`scripts/tmp-relist-check.js` does this pass: it takes every stale
+`awaiting_review` post, reads the address out of `listingSnapshot` (which has
+`address`/`city`/`price`, **not** `streetNumber`/`streetName` — a query keyed on
+those matches every document in the collection and prints a plausible-looking
+wall of unrelated listings) and looks for a live row at that address.
+
+**All five strikes re-checked by photo count. None moved, no contact sheet
+paid for:** Warren Vista 64, Mountain View 44, Barron 29, Harbor 17, San Diego
+34 — byte-identical to 2026-09-08. And no rule moved that could unstrike one:
+zero commits to `docs/content-templates/` since that entry.
+
+**`tmp-pool4.js` died at its 180s socket timeout, and the failure looks like a
+result.** The roster aggregate is a full scan of `unifiedlistings` with two
+regexes and no index, and it printed the roster line, then `ERR connection
+timed out`, then **exited 0** — a run that scrolls past as "roster derived, no
+pool". Socket timeout raised to 900s. Worth knowing because this script is the
+skill's single source of truth for the pool, and its cheapest failure mode is
+looking like an empty one.
+
+**No build, no Gemini spent.** The queue is **28 `awaiting_review` against 28
+distinct listings** — no duplicates, fourth consecutive clean run — of which
+**22 are publishable**, still **0 approved**, and still one listing ever posted
+(53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds and is doing its
+job: generate only when the pool shows a listing that has never been queued, and
+today's candidate had been.
 
 ## Pipeline
 

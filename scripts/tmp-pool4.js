@@ -6,8 +6,11 @@ const PROJ = { listingKey:1, streetNumber:1, streetName:1, unitNumber:1, city:1,
   coListAgentName:1, listAgentTeamKey:1, coListAgentId:1, listAgentMlsId:1, coListAgentMlsId:1,
   listOfficeName:1, photos: { $size: { $ifNull: ["$media", []] } } };
 
+// The roster aggregate is a full scan of unifiedlistings (~85k) with two regexes
+// and no index to help it; on 2026-09-15 it ran past the old 180s socket timeout
+// and died AFTER printing the roster, which reads like a completed run. 900s.
 (async () => {
-  const c = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 60000, socketTimeoutMS: 180000 });
+  const c = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 120000, socketTimeoutMS: 900000, connectTimeoutMS: 120000 });
   await c.connect(); const db = c.db();
 
   // 1. derive the roster: agents appearing opposite "The Obsidian Group" on ANY listing (active or closed-ish)
