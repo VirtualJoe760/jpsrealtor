@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-15
+last_verified: 2026-09-16
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1306,6 +1306,124 @@ distinct listings** — no duplicates, fourth consecutive clean run — of which
 (53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds and is doing its
 job: generate only when the pool shows a listing that has never been queued, and
 today's candidate had been.
+
+### No build 2026-09-16 — a relist two days running, and this one came back at a different price
+
+**Yesterday's trap, one day later and a different house.** `tmp-pool4.js` returns
+**35 broad actives against 28 key-matched** and five FRESH stageable rows (type
+A, ≥12 photos). Four are the standing strikes. The fifth is new and is the same
+shape as yesterday's Hepburn Drive:
+
+```
+20260915183238136289000000 | A | $699,000 | ph41 | 3010 Chuperosa, Palm Springs | key | FRESH
+```
+
+**It is K6.** 3010 N Chuperosa Road has been in the review queue since
+2026-08-08 with 8 slides under key `20260203160658521251000000`. That key left
+the Active feed and the property came back on **2026-09-15** under
+`20260915183238136289000000` — same 1,584 sqft, same 41 photos, same Peyson
+Robertson / The Obsidian Group. `scripts/data/pending/chuperosa-road.ts` was
+already there, dated 2026-08-08, naming the same address and carrying the
+exclusion list from the build that queued as K6. **The repo check caught it
+before any Gemini was spent, for the second consecutive run.**
+
+Two relists in two days is enough to stop calling this a coincidence. The
+2026-09-15 entry recommended checking `scripts/data/pending/` before spending a
+build on any FRESH row; that should be read as a required step, not a
+precaution.
+
+**AND A RELIST CAN COME BACK AT A DIFFERENT PRICE, WHICH SPLITS THE CLASS IN
+TWO.** Hepburn relisted at the same $529,000, so the 2026-09-15 entry concluded
+a relisted post "needs no repair to publish" — the queued slides were still
+accurate and only the key was stale. **Chuperosa relisted $50,000 lower**, and
+K6's cover prints the old number in the panel
+(`l_text:Poppins_60_medium:%24749%252C000`) with `$749,000` closing the caption
+as well. So:
+
+| | Stale key | Slides still accurate | Publishable as-is |
+|---|---|---|---|
+| L6 Hepburn, relisted at $529,000 | yes | yes | yes |
+| **K6 Chuperosa, relisted at $699,000** | yes | **no — cover and caption both assert $749,000** | **no** |
+
+A post whose cover overstates another brokerage's list price by $50,000 is the
+same category of false claim as THE POOL DECK over a golf-course patio
+(§"Re-measured 2026-08-27"), arriving through a field that was true when it was
+written. **A stale key is cosmetic; a stale price is not.** The repair is cheap
+— the cover is a pure Cloudinary transform over a stored `publicId` and the
+caption is a text field, so `recover-pending-post.ts` picks both up — but
+repointing a queued record at a new key is the agent's call and not a scheduled
+run's, which is the same line the 2026-09-15 entry drew for L6 and did not
+cross.
+
+**L6 itself has already left again.** Yesterday it was Active under
+`20260914030856526270000000` and recorded here as publishable; today
+`48423 Hepburn Drive, Indio` returns no row at all. A relist is not a state that
+settles — it lasted two days. **Anything this log records as "relisted,
+publishable" has to be re-checked on the day it is acted on**, not taken from
+the entry that recorded it.
+
+**`tmp-relist-check.js` was offering a neighbour's front door as a relist.** U5
+(255 S Avenida Caballeros **#313**, $354,900, Alan E Mckeefry) is newly stale
+this run, and the checker answered it with 255 S Avenida Caballeros **#305** —
+$320,000, listed by Deewayne Sowels / Robert A Wills, who are not on the roster.
+Same complex, same 1,046 sqft floor plan, different door, different brokerage.
+Taken at face value that reads as "U5 relisted, cheaper", which is the Chuperosa
+conclusion drawn about a unit the team does not list. Two defects, both fixed:
+
+- **A leading directional blanked the street filter.** The name comparison took
+  `streetName.split(" ")[0]` and mapped a bare `"n"` to `""`, so
+  `"N Chuperosa Road"` compared as the empty string, matched nothing, and fell
+  through to the *unfiltered* list — every listing sharing the street number.
+  That is why K6's row printed 3010 N Redwood Drive and 3010 North Avenida
+  Caballeros as candidates. Directionals are now stripped, not blanked.
+- **First-token comparison is wrong for Spanish-convention names.** In
+  `"Avenida Caballeros"` the first token is the street *type*, so it collapsed
+  to `"avenida"` and matched `"Avenida Granada"`. The comparison is now the whole
+  name minus a trailing type suffix — `"Chuperosa Road"` still equals
+  `"Chuperosa"`, and Caballeros no longer equals Granada.
+
+The checker now also prints **unit number, sqft, listing agents, and an explicit
+`sqft MATCH / price MOVED` line** per candidate. Sqft alone cannot separate two
+units of one floor plan — #305 and #313 are both 1,046 — so **the unit number
+and the agents are the discriminators**, and they have to be on screen to be
+used. K6 now returns exactly one candidate instead of four.
+
+**All five strikes re-checked by photo count. None moved, no contact sheet paid
+for:** Warren Vista 64, Mountain View 44, Barron 29, Harbor 17, San Diego 34 —
+byte-identical to 2026-09-08 and 2026-09-15. No rule moved that could unstrike
+one either: the only commit to `docs/content-templates/` since the last entry is
+that entry itself.
+
+**One broad-pool row left the feed unaccounted for.** Yesterday was 36 broad /
+29 key; today is 35 / 28. Hepburn leaving (−1) and Chuperosa arriving (+1) net
+to zero, so a second key-matched row also left. Yesterday's entry recorded only
+the counts and the FRESH rows, so the pool cannot be diffed after the fact.
+**Worth having `tmp-pool4.js` write its full key list to a dated file** so a
+one-row drift is attributable rather than noticed and dropped, as it is here.
+
+**The stale stack is eight posts, and the split matters more than the count:**
+
+| Code | Listing | Built | Status |
+|---|---|---|---|
+| C4 | 46109 Roadrunner Lane, La Quinta | 08-06 | gone |
+| **K6** | **3010 N Chuperosa Road, Palm Springs** | **08-08** | **relisted 09-15 at $699,000 — slides assert $749,000** |
+| L6 | 48423 Hepburn Drive, Indio | 08-09 | relisted 09-14, **gone again 09-16** |
+| Y7 | 83633 Lapis Drive, Coachella | 08-10 | gone |
+| E4 | 7798 Acoma Trail, Yucca Valley | 08-11 | gone |
+| V9 | 9223 N Star Trail, Morongo Valley | 08-13 | gone |
+| **U5** | **255 S Avenida Caballeros #313, Palm Springs** | **08-14** | **gone — #305 is a different door, not a relist** |
+| V2 | 1522 Sutherland Street, Lancaster | 08-22 | gone |
+
+None of the eight has a `unified_closed_listings` row; they left the Active feed
+rather than selling. Seven are clean declines that need no slides opened. K6 is
+a decline *or* a price correction, and that is Joseph's call.
+
+**No build, no Gemini spent.** The queue is **28 `awaiting_review` against 28
+distinct listings** — no duplicates, fifth consecutive clean run — of which
+**20 are publishable**, still **0 approved**, and still one listing ever posted
+(53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds for the second
+day running: generate only when the pool shows a listing that has never been
+queued, and today's candidate had been.
 
 ## Pipeline
 

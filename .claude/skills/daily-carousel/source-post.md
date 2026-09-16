@@ -37,6 +37,16 @@ The same output flags posts whose listing has left `unifiedlistings` — no long
 Active, so publishing one would advertise a home that is off the market. Report
 them; they are the cheapest declines in the stack.
 
+**But run `scripts/tmp-relist-check.js` before calling one a decline, and read
+the price it prints.** A stale post whose house has relisted is not dead — and
+whether it is still *publishable* depends on the new price, not on the key. K6
+(3010 N Chuperosa) relisted $50,000 below the $749,000 its cover and caption
+both print, so publishing it would overstate another brokerage's list price;
+L6 (48423 Hepburn) relisted at the same number and needed nothing. Report which
+kind it is. Do not repoint a queued record at a new key — that is the agent's
+call, not a scheduled run's. And re-check on the day you act: L6 was recorded
+publishable on 2026-09-15 and had left the feed again by 2026-09-16.
+
 ### 1. Pick a listing that has never been posted
 
 Obsidian Group actives, excluding anything already posted.
