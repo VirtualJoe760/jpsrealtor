@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-16
+last_verified: 2026-09-17
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1424,6 +1424,82 @@ distinct listings** — no duplicates, fifth consecutive clean run — of which
 (53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds for the second
 day running: generate only when the pool shows a listing that has never been
 queued, and today's candidate had been.
+
+### No build 2026-09-17 — the pool is byte-identical, and the third relist is a different brokerage
+
+**Third consecutive run with no build, and for the third consecutive run the
+repo check is what stopped it.** `tmp-pool4.js` returns **35 broad actives
+against 28 key-matched** and five FRESH stageable rows (type A, >=12 photos) —
+the same five as yesterday. Four are the standing strikes. The fifth is
+`20260915183238136289000000 | $699,000 | ph41 | 3010 Chuperosa` — **still K6**,
+still relisted, still carrying `scripts/data/pending/chuperosa-road.ts` dated
+2026-08-08. Nothing arrived overnight and nothing was reviewed overnight.
+
+**All five strikes re-checked by photo count. None moved, no contact sheet paid
+for:** Warren Vista 64, Mountain View 44, Barron 29, Harbor 17, San Diego 34 —
+byte-identical to 2026-09-08, 09-15 and 09-16. And no rule moved that could
+unstrike one: the only commit touching `docs/content-templates/` since the last
+entry is that entry itself.
+
+**The pool now records its own membership, so the next run can diff it.** The
+2026-09-16 entry closed on a one-row drift it could see but not attribute —
+36/29 became 35/28 with one arrival and one departure netting to zero, and no
+run had ever written down *which* keys it saw. `tmp-pool4.js` now writes
+`scripts/data/pool-snapshots/<date>.json` (every key with address, price, photo
+count, type and key/NAME match) and prints a `POOL DIFF` block against the most
+recent prior snapshot: `LEFT`, `ARRIVED`, and `PRICE` for a row that stayed but
+repriced. Today is the baseline, so today's diff is empty by construction and
+tomorrow's is the first real one. **The price line is the part that earns its
+keep** — a queued post whose listing repriced under the same key is the K6
+failure mode arriving without a relist to announce it, and nothing in the
+pipeline was watching for it.
+
+**The third relist in three days, and this one is not the team's listing.** V9
+(9223 N Star Trail, Morongo Valley) has been a clean decline since 2026-09-08.
+Today `tmp-relist-check.js` answers it with a live row, and the discriminators
+added yesterday are what make it readable in one line:
+
+```
+-> 20260916201000004332000000 Active $349000 9223 Star Morongo Valley ph47 765sf
+   2026-09-16 | Christopher Kreiling / undefined
+   sqft DIFFERS | price MOVED $359,000 -> $349,000
+```
+
+**765 sqft against the queued 345, and Christopher Kreiling is not on the
+derived roster** — the row does not appear anywhere in `tmp-pool4.js`'s 35
+broad actives, which is the independent confirmation. V9 credits Ashley N
+Robertson, who is. So this is the Avenida Caballeros shape rather than the
+Chuperosa shape: **a live row at the queued address that belongs to someone
+else.** Publishing V9 off the back of it would credit the wrong brokerage on
+another agent's listing. It stays a decline.
+
+That makes three consecutive runs in which a stale post's address came back
+live, and only one of the three (L6 Hepburn, and only for two days) was the
+queued house at the queued price. **The address matching is now doing real
+work, and its value is in the rows it rejects**, not the ones it returns.
+
+**The stale stack is eight, unchanged in membership for a second run:**
+
+| Code | Listing | Built | Status today |
+|---|---|---|---|
+| C4 | 46109 Roadrunner Lane, La Quinta | 08-06 | gone |
+| **K6** | **3010 N Chuperosa Road, Palm Springs** | **08-08** | **relisted 09-15 at $699,000 — slides assert $749,000** |
+| L6 | 48423 Hepburn Drive, Indio | 08-09 | gone again, confirmed second day |
+| Y7 | 83633 Lapis Drive, Coachella | 08-10 | gone |
+| E4 | 7798 Acoma Trail, Yucca Valley | 08-11 | gone |
+| **V9** | **9223 N Star Trail, Morongo Valley** | **08-13** | **gone — the live row is 765sf under a non-roster agent** |
+| U5 | 255 S Avenida Caballeros #313, Palm Springs | 08-14 | gone — #305 is a different door |
+| V2 | 1522 Sutherland Street, Lancaster | 08-22 | gone |
+
+Seven are clean declines that need no slides opened. K6 is a decline *or* a
+price correction, and that is Joseph's call — repointing a queued record at a
+new key is not a scheduled run's to make.
+
+**No build, no Gemini spent.** The queue is **28 `awaiting_review` against 28
+distinct listings** — no duplicates, sixth consecutive clean run — of which
+**20 are publishable**, still **0 approved**, and still one listing ever posted
+(53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds for the third day
+running: generate only when the pool shows a listing that has never been queued.
 
 ## Pipeline
 

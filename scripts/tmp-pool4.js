@@ -56,5 +56,38 @@ const PROJ = { listingKey:1, streetNumber:1, streetName:1, unitNumber:1, city:1,
     const addr = [r.streetNumber, r.streetName, r.unitNumber?("#"+r.unitNumber):""].filter(Boolean).join(" ");
     console.log("  ", r.listingKey, "$"+r.listPrice, addr+", "+r.city, "ph"+r.photos, "|", r.listAgentName, "/", r.coListAgentName);
   }
+  // The pool is reported as two counts, and two runs that print the same counts
+  // can still hold different listings. 2026-09-16 went 36/29 -> 35/28 with one
+  // arrival and one departure that netted to zero, and the drift was noticed but
+  // not attributable, because no run had ever recorded WHICH keys it saw. Snapshot
+  // the membership so the next run can diff it instead of re-deriving it.
+  const fs = require("fs"), path = require("path");
+  const SNAPDIR = "F:/web-clients/joseph-sardella/jpsrealtor/scripts/data/pool-snapshots";
+  fs.mkdirSync(SNAPDIR, { recursive: true });
+  const today = new Date().toISOString().slice(0, 10);
+  const snap = { date: today, broad: rows.length, keyMatched: keyMatch.size,
+    keys: rows.map(r => ({ k: r.listingKey, a: [r.streetNumber, r.streetName].filter(Boolean).join(" ") + ", " + r.city,
+      p: r.listPrice, ph: r.photos, t: r.propertyType, m: keyMatch.has(r.listingKey) ? "key" : "NAME" })) };
+
+  const prior = fs.readdirSync(SNAPDIR).filter(f => f.endsWith(".json") && f.slice(0, 10) < today).sort().pop();
+  if (prior) {
+    const was = JSON.parse(fs.readFileSync(path.join(SNAPDIR, prior), "utf8"));
+    const wasK = new Map(was.keys.map(r => [r.k, r]));
+    const nowK = new Map(snap.keys.map(r => [r.k, r]));
+    const gone = was.keys.filter(r => !nowK.has(r.k));
+    const came = snap.keys.filter(r => !wasK.has(r.k));
+    const moved = snap.keys.filter(r => wasK.has(r.k) && wasK.get(r.k).p !== r.p);
+    console.log("\n=== POOL DIFF vs " + prior.replace(".json", "") +
+      " (was " + was.broad + "/" + was.keyMatched + ", now " + rows.length + "/" + keyMatch.size + ") ===");
+    if (!gone.length && !came.length && !moved.length) console.log("   no change — same listings, same prices");
+    for (const r of gone) console.log("   LEFT   " + r.k + " $" + r.p + " " + r.a);
+    for (const r of came) console.log("   ARRIVED" + " " + r.k + " $" + r.p + " " + r.a + " ph" + r.ph);
+    for (const r of moved) console.log("   PRICE  " + r.k + " $" + wasK.get(r.k).p + " -> $" + r.p + " " + r.a);
+  } else {
+    console.log("\n=== POOL DIFF: no prior snapshot — this run is the baseline ===");
+  }
+  fs.writeFileSync(path.join(SNAPDIR, today + ".json"), JSON.stringify(snap, null, 1));
+  console.log("snapshot written: scripts/data/pool-snapshots/" + today + ".json");
+
   await c.close();
 })().catch(e=>{console.error("ERR",e.message);process.exit(1);});
