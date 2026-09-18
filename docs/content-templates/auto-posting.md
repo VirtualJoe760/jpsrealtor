@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-17
+last_verified: 2026-09-18
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1500,6 +1500,34 @@ distinct listings** — no duplicates, sixth consecutive clean run — of which
 **20 are publishable**, still **0 approved**, and still one listing ever posted
 (53806 Ridge Road, 2026-07-29). The 2026-09-07 narrowing holds for the third day
 running: generate only when the pool shows a listing that has never been queued.
+
+### No build 2026-09-18 — the first real pool diff, and it is A7 leaving the feed
+
+**Fourth consecutive run with no build.** `tmp-pool4.js` returns **34 broad
+actives against 27 key-matched** and the same five FRESH stageable rows as
+2026-09-17. Four are the standing strikes — Warren Vista 64, Mountain View 44,
+Barron 29, Harbor 17 photos, none moved, so no contact sheet paid for. The fifth
+is still `20260915183238136289000000 | 3010 Chuperosa | $699,000` — **K6
+relisted**, caught again by `scripts/data/pending/chuperosa-road.ts`.
+
+**The snapshot diff did its first job.** Yesterday's baseline let today's run
+name the one-row drop instead of guessing at it:
+
+```
+LEFT   20260821015844740586000000 $429000 27305 Hombria, Cathedral City
+```
+
+That key is **A7** (27305 Hombria Drive, built 2026-08-29). `tmp-relist-check.js`
+finds no active or any row at the address and nothing in the closed collection
+under the original key — the same shape as the other clean declines. A7 joins
+the stale stack, which is now **nine**: C4, K6, L6, Y7, E4, V9, U5, V2, A7.
+Nothing else in the stack changed — K6 still $699,000 against the $749,000 its
+slides print, V9 still the 765sf non-roster row, U5 still other doors.
+
+**No build, no Gemini spent.** The queue is **28 `awaiting_review` against 28
+distinct listings** — no duplicates, seventh consecutive clean run — of which
+**19 are publishable** (down one, A7), still **0 approved**, and still one
+listing ever posted (53806 Ridge Road, 2026-07-29).
 
 ## Pipeline
 
