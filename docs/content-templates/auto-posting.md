@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-18
+last_verified: 2026-09-19
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1528,6 +1528,26 @@ slides print, V9 still the 765sf non-roster row, U5 still other doors.
 distinct listings** — no duplicates, seventh consecutive clean run — of which
 **19 are publishable** (down one, A7), still **0 approved**, and still one
 listing ever posted (53806 Ridge Road, 2026-07-29).
+
+### No build 2026-09-19 — the pool diff is empty, so there is nothing to decide
+
+**Fifth consecutive run with no build.** `tmp-pool4.js` prints `POOL DIFF vs
+2026-09-18 … no change — same listings, same prices`: **34 broad / 27
+key-matched**, the same five FRESH stageable rows. Four are the standing strikes
+(Warren Vista 64, Mountain View 44, Barron 29, Harbor 17 — photo counts
+unchanged, no contact sheet paid for). The fifth is K6 Chuperosa relisted at
+$699,000, caught again by `scripts/data/pending/chuperosa-road.ts`.
+
+`tmp-relist-check.js` reads the stale stack exactly as yesterday: nine posts
+(C4, K6, L6, Y7, E4, V9, U5, V2, A7), K6 still $50,000 under the price its
+slides print, V9 still the non-roster 765sf row, U5 still other doors, the rest
+gone with nothing in the closed collection.
+
+A byte-identical diff is the snapshot's cheapest answer: with no LEFT, ARRIVED
+or PRICE line, every conclusion from 2026-09-18 carries forward unchanged and
+nothing needed re-checking by hand. **No build, no Gemini spent.** Queue: **28
+`awaiting_review` / 28 distinct**, **19 publishable**, **0 approved**; the only
+`posted` records are the two for 53806 Ridge Road (Y5 and the MCP post).
 
 ## Pipeline
 
