@@ -54,6 +54,7 @@ export type Branding = {
   navLogo?: string | null;
   navLogoDark?: string | null;
   navWordmark?: { thin?: string; bold?: string } | null;
+  brandMark?: { thin?: string; bold?: string } | null;
   brokerLogo?: string;
   brokerLogoDark?: string;
 };

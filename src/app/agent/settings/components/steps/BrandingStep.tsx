@@ -90,6 +90,7 @@ export default function BrandingStep({
         // Must be listed: this payload is a whitelist, so a field edited in the
         // form but missing here is silently discarded on Save.
         navWordmark: formData.agentProfile?.navWordmark,
+        brandMark: formData.agentProfile?.brandMark,
         ogBackgroundImage,
       },
     });
@@ -273,6 +274,62 @@ export default function BrandingStep({
               thin={formData.agentProfile?.navWordmark?.thin || ""}
               bold={formData.agentProfile?.navWordmark?.bold || ""}
             />
+          </div>
+        )}
+      </div>
+
+      {/* Brand Mark — the standalone badge in hero corners and on the chat page. */}
+      <div className="mb-6">
+        <label className={labelClass}>Brand Mark</label>
+        <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          The badge in your banner corner and on your chat page — e.g. a short monogram like
+          {" "}<span className="font-semibold">JPS</span>. Leave both empty to show your brokerage
+          logo there instead, or nothing if you have not set one.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Light half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.brandMark?.thin || ""}
+              onChange={(e) => updateField("agentProfile.brandMark.thin", e.target.value)}
+              placeholder="JPS"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Bold half (optional)</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.brandMark?.bold || ""}
+              onChange={(e) => updateField("agentProfile.brandMark.bold", e.target.value)}
+              placeholder=""
+              className={inputClass}
+            />
+          </div>
+        </div>
+        {(formData.agentProfile?.brandMark?.thin || formData.agentProfile?.brandMark?.bold) && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[
+              { bg: "#111827", fg: "text-white", caption: "On a dark banner" },
+              { bg: "#ffffff", fg: "text-gray-900", caption: "On a light banner" },
+            ].map((p) => (
+              <div key={p.caption}>
+                <p className={`text-[10px] uppercase tracking-wider mb-1.5 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
+                  {p.caption}
+                </p>
+                <div
+                  className="flex h-20 items-center justify-center rounded-lg border border-gray-700/40"
+                  style={{ background: p.bg }}
+                >
+                  <Wordmark
+                    className={`text-[30px] ${p.fg}`}
+                    thin={formData.agentProfile?.brandMark?.thin || ""}
+                    bold={formData.agentProfile?.brandMark?.bold || ""}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

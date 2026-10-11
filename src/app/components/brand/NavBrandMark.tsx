@@ -59,7 +59,10 @@ export default function NavBrandMark({
     );
   }
 
-  const logo = isLight ? branding?.navLogo : branding?.navLogoDark || branding?.navLogo;
+  // Symmetric: a neutral mark uploaded to either slot serves both themes.
+  const logo = isLight
+    ? branding?.navLogo || branding?.navLogoDark
+    : branding?.navLogoDark || branding?.navLogo;
   if (logo) {
     // eslint-disable-next-line @next/next/no-img-element
     return (

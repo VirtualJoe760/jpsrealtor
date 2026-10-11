@@ -44,6 +44,7 @@ import type { MapListing } from "@/types/types";
 import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
 import YouTube from "@/app/components/mdx/YouTube";
 import { useBranding } from "@/app/contexts/BrandingContext";
+import BrandCornerMark from "@/app/components/brand/BrandCornerMark";
 
 // Contact import props
 interface ContactImportContext {
@@ -77,11 +78,6 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   // also hardcoded a brokerage asset pair once, so the chat landing kept
   // showing a brokerage the agent had left. Undefined = render no mark.
   const { branding: sharedBranding } = useBranding();
-  const brokerLogos = {
-    light: sharedBranding?.brokerLogo,
-    dark: sharedBranding?.brokerLogoDark || sharedBranding?.brokerLogo,
-    name: sharedBranding?.brokerageName,
-  };
   useEffect(() => {
     if (typeof window === "undefined") return;
     // Hostname default first, then the agent's own siteName once it resolves.
@@ -1487,16 +1483,15 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   whileHover={{ scale: 1.1, rotateY: 15, rotateX: 5 }}
                   className="w-22 h-22 md:w-24 md:h-24"
                 >
-                  {(isLight ? brokerLogos.light : brokerLogos.dark) && (
-                    <Image
-                      src={(isLight ? brokerLogos.light : brokerLogos.dark) as string}
-                      alt={brokerLogos.name || "Brokerage"}
-                      width={96}
-                      height={96}
-                      className="object-contain"
-                      priority
-                    />
-                  )}
+                  {/* Text brand mark when the agent has one, brokerage logo
+                      otherwise — same component the hero corners use, so the
+                      chat page cannot drift from the rest of the site. */}
+                  <BrandCornerMark
+                    isLight={isLight}
+                    className="flex h-full w-full items-center justify-center"
+                    wordmarkClassName={`text-[34px] md:text-[40px] ${isLight ? "text-gray-900" : "text-white"}`}
+                    logoClassName="h-full w-full object-contain"
+                  />
                 </motion.div>
 
                 <div

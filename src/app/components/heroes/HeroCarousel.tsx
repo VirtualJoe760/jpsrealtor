@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { getHeroData, HeroShell, HeroCTAs, HeroBusinessCard } from "./heroShared";
 import HeroFullWidth from "./HeroFullWidth";
+import BrandCornerMark from "@/app/components/brand/BrandCornerMark";
 
 export default function HeroCarousel({ agentProfile }: { agentProfile: any }) {
   const { currentTheme } = useThemeClasses();
@@ -46,10 +47,12 @@ export default function HeroCarousel({ agentProfile }: { agentProfile: any }) {
       </div>
 
       {/* Brokerage mark — from the agent record, never a hardcoded asset. */}
-      {data.brokerLogo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={data.brokerLogo} alt={data.brokerageName || "Brokerage"} className="absolute top-6 right-6 md:top-10 md:right-10 h-16 md:h-24 w-auto object-contain opacity-95 z-20" />
-      )}
+      <BrandCornerMark
+        isLight={isLight}
+        className="absolute top-6 right-6 md:top-8 md:right-10 z-20"
+        wordmarkClassName="text-[22px] md:text-[30px] text-white"
+        logoClassName="h-12 md:h-16 w-auto object-contain opacity-95"
+      />
 
       <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
         <h1

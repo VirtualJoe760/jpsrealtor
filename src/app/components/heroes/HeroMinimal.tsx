@@ -6,6 +6,7 @@
 
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { getHeroData, HeroShell, HeroCTAs } from "./heroShared";
+import BrandCornerMark from "@/app/components/brand/BrandCornerMark";
 
 export default function HeroMinimal({ agentProfile }: { agentProfile: any }) {
   const { currentTheme } = useThemeClasses();
@@ -24,14 +25,12 @@ export default function HeroMinimal({ agentProfile }: { agentProfile: any }) {
       {/* Brokerage mark — from the agent record, never a hardcoded asset.
           This style rendered no brokerage mark at all until 2026-10-11, so
           switching hero style silently dropped the agent's brokerage. */}
-      {data.brokerLogo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={data.brokerLogo}
-          alt={data.brokerageName || "Brokerage"}
-          className="absolute top-6 right-6 md:top-8 md:right-10 h-12 md:h-16 w-auto object-contain opacity-95 z-20"
-        />
-      )}
+      <BrandCornerMark
+        isLight={isLight}
+        className="absolute top-6 right-6 md:top-8 md:right-10 z-20"
+        wordmarkClassName="text-[22px] md:text-[30px] text-white"
+        logoClassName="h-12 md:h-16 w-auto object-contain opacity-95"
+      />
 
       {/* Soft brand wash */}
       <div

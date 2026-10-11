@@ -138,6 +138,7 @@ export async function GET(request: NextRequest) {
         navLogo: profile?.navLogo,
         navLogoDark: profile?.navLogoDark,
         navWordmark: profile?.navWordmark,
+        brandMark: profile?.brandMark,
         brokerLogo: profile?.brokerLogo,
         brokerLogoDark: profile?.brokerLogoDark,
         galleryPhotos: profile?.galleryPhotos,

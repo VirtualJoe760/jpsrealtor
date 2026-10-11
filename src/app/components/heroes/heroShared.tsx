@@ -40,8 +40,12 @@ export function getHeroData(agentProfile: any, isLight: boolean): HeroData {
   // is how a brokerage Joseph left stayed stamped on the hero of every tenant
   // site this platform renders.
   const brk = ap.brokerage || {};
+  // Symmetric fallback. Many brokerage marks are NEUTRAL — designed to read on
+  // either background — and for those the agent should upload one asset, not
+  // the same file twice. Light used to fall back to nothing, so a neutral mark
+  // stored only in the dark slot vanished in light mode.
   const brokerLogo = isLight
-    ? brk.logo || ap.brokerLogo
+    ? brk.logo || brk.logoDark || ap.brokerLogo || ap.brokerLogoDark
     : brk.logoDark || brk.logo || ap.brokerLogoDark || ap.brokerLogo;
 
   return {

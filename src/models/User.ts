@@ -199,6 +199,7 @@ export interface IUser extends Document {
     navLogo?: string;
     navLogoDark?: string;
     navWordmark?: { thin?: string; bold?: string };
+    brandMark?: { thin?: string; bold?: string };
 
     // Domain & Branding (for multi-tenancy)
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
@@ -800,6 +801,15 @@ const UserSchema = new Schema<IUser>(
       // image because it stays pixel-crisp at every size and inherits the
       // theme's colour, so it needs no light/dark pair at all.
       navWordmark: {
+        thin: String,
+        bold: String,
+      },
+      // brandMark is the STANDALONE corner mark — the badge in the hero/banner
+      // corner and on the chat page. It is the agent's own, not the
+      // brokerage's: a brokerage logo there is optional, and many agents would
+      // rather show a monogram. Same two-weight treatment as navWordmark.
+      // When unset, the corner falls back to the brokerage logo image.
+      brandMark: {
         thin: String,
         bold: String,
       },
