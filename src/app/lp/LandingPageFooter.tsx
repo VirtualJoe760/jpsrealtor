@@ -59,8 +59,12 @@ export default function LandingPageFooter() {
   // this footer renders on every agent's landing pages, so a baked-in
   // brokerage would stamp one agency onto another agent's site.
   const brk = agent.agentProfile?.brokerage || {};
+  // Symmetric fallback. Many brokerage marks are NEUTRAL — designed to read on
+  // either background — and for those the agent should upload one asset, not
+  // the same file twice. Light used to fall back to nothing, so a neutral mark
+  // stored only in the dark slot vanished in light mode.
   const logo = isLight
-    ? (brk.logo || agent.agentProfile?.brokerLogo)
+    ? (brk.logo || brk.logoDark || agent.agentProfile?.brokerLogo || agent.agentProfile?.brokerLogoDark)
     : (brk.logoDark || brk.logo || agent.agentProfile?.brokerLogoDark || agent.agentProfile?.brokerLogo);
   const agentWebsite = agent.agentProfile?.customDomain
     || (agent.agentProfile?.subdomain ? `${agent.agentProfile.subdomain}.chatrealty.io` : null)
