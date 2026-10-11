@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Wordmark from "@/app/components/brand/Wordmark";
 import NavBrandMark from "@/app/components/brand/NavBrandMark";
+import { useBranding } from "@/app/contexts/BrandingContext";
 import { isPlatformDomain } from "@/lib/domain-classify";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -58,23 +59,11 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Agent/team branding data
-  const [branding, setBranding] = useState<{
-    agentName?: string;
-    affiliation?: "solo" | "team";
-    brokerageName?: string;
-    teamName?: string;
-    licenseNumber?: string;
-    phone?: string;
-    email?: string;
-    teamLogo?: string;
-    teamLogoDark?: string;
-    navLogo?: string;
-    navLogoDark?: string;
-    navWordmark?: { thin?: string; bold?: string } | null;
-    brokerLogo?: string;
-    brokerLogoDark?: string;
-  }>({});
+  // Branding comes from the shared provider, not a per-component fetch.
+  // Four components each fetched /api/agent-branding and each rendered the
+  // ChatRealty wordmark while waiting; see BrandingContext.
+  const { branding: brandingValue } = useBranding();
+  const branding = brandingValue || {};
 
   // Prevent hydration mismatch - wait for client-side mount
   useEffect(() => {
@@ -103,42 +92,6 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch agent branding data — from the domain owner (subdomain OR apex),
-  // not the currently logged-in user. The /api/agent-branding endpoint
-  // resolves the owner via subdomain -> customDomain -> DomainRegistry ->
-  // PRIMARY_AGENT_EMAIL fallback, so it returns the right agent for
-  // jpsrealtor.com (Joseph) just as well as bethanyklier.chatrealty.io.
-  useEffect(() => {
-    const host = typeof window !== "undefined" ? window.location.hostname : "";
-    let subdomain: string | null = null;
-    if (host.includes("chatrealty")) {
-      const parts = host.split("chatrealty")[0]?.replace(/\.$/, "");
-      subdomain = parts?.split(".").filter((s) => s && s !== "www").pop() || null;
-    } else if (host.endsWith(".localhost")) {
-      const sub = host.split(".localhost")[0];
-      if (sub && sub !== "www") subdomain = sub;
-    }
-
-    // Always show the DOMAIN OWNER's branding, not the visitor's. The
-    // /api/agent-branding endpoint resolves the owner from subdomain ->
-    // customDomain -> DomainRegistry -> PRIMARY_AGENT_EMAIL fallback.
-    const qs = subdomain ? `?subdomain=${encodeURIComponent(subdomain)}` : "";
-    fetch(`/api/agent-branding${qs}`)
-      .then((r) => {
-        if (!r.ok) {
-          // LOUD on purpose: this endpoint feeds the required agency
-          // treatment (agent name + DRE#). A middleware-gate regression
-          // 401'd it silently for three weeks in July 2026 — never again.
-          console.error(`[EnhancedSidebar] /api/agent-branding failed: ${r.status}`);
-          return null;
-        }
-        return r.json();
-      })
-      .then((data) => {
-        if (data?.branding) setBranding(data.branding);
-      })
-      .catch((e) => console.error("[EnhancedSidebar] /api/agent-branding fetch error:", e));
-  }, [status]);
 
   const effectivelyCollapsed = isMobile ? false : isCollapsed;
 
@@ -245,10 +198,6 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       <div className="relative flex min-h-[68px] items-center py-5 pl-7 pr-5">
         {!effectivelyCollapsed && (
           <NavBrandMark
-            navLogo={branding.navLogo}
-            navLogoDark={branding.navLogoDark}
-            navWordmark={branding.navWordmark}
-            brandName={branding.brokerageName}
             isLight={isLight}
             wordmarkClassName={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
             logoClassName="h-12 w-auto max-w-[224px] object-contain"

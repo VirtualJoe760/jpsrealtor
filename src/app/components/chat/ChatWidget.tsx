@@ -43,6 +43,7 @@ import EndOfQueueModal from "./EndOfQueueModal";
 import type { MapListing } from "@/types/types";
 import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
 import YouTube from "@/app/components/mdx/YouTube";
+import { useBranding } from "@/app/contexts/BrandingContext";
 
 // Contact import props
 interface ContactImportContext {
@@ -71,38 +72,21 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
   // Site name: from agent profile (siteName field) or domain default
   const [siteName, setSiteName] = useState("chatRealty");
-  // Brokerage mark, theme-resolved. The widget used to hardcode a brokerage
-  // asset pair, so the chat landing kept showing a brokerage the agent had
-  // left. Undefined = render no mark rather than a stale one.
-  const [brokerLogos, setBrokerLogos] = useState<{ light?: string; dark?: string; name?: string }>({});
+  // Brokerage mark and site name come from the shared branding provider.
+  // This used to be a fourth independent /api/agent-branding fetch; the widget
+  // also hardcoded a brokerage asset pair once, so the chat landing kept
+  // showing a brokerage the agent had left. Undefined = render no mark.
+  const { branding: sharedBranding } = useBranding();
+  const brokerLogos = {
+    light: sharedBranding?.brokerLogo,
+    dark: sharedBranding?.brokerLogoDark || sharedBranding?.brokerLogo,
+    name: sharedBranding?.brokerageName,
+  };
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // Set hostname-based default first
-    setSiteName(getDefaultSiteName(window.location.hostname));
-    // Then resolve this host's agent. The endpoint walks subdomain ->
-    // customDomain -> DomainRegistry -> primary agent, so it answers on owner
-    // domains (jpsrealtor.com) too — the old subdomain-only guard meant the
-    // owner's own site never fetched its branding at all.
-    const hostname = window.location.hostname;
-    const isSubdomain =
-      hostname.endsWith(".localhost") ||
-      (hostname.includes("chatrealty") && hostname !== "chatrealty.io" && hostname !== "www.chatrealty.io");
-    const sub = isSubdomain
-      ? (hostname.includes("chatrealty")
-          ? hostname.split("chatrealty")[0]?.replace(/\.$/, "").split(".").pop()
-          : hostname.split(".localhost")[0])
-      : null;
-    const qs = sub ? `?subdomain=${encodeURIComponent(sub)}` : "";
-    fetch(`/api/agent-branding${qs}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        const b = data?.branding;
-        if (!b) return;
-        if (b.siteName) setSiteName(b.siteName);
-        setBrokerLogos({ light: b.brokerLogo, dark: b.brokerLogoDark || b.brokerLogo, name: b.brokerageName });
-      })
-      .catch(() => {});
-  }, []);
+    // Hostname default first, then the agent's own siteName once it resolves.
+    setSiteName(sharedBranding?.siteName || getDefaultSiteName(window.location.hostname));
+  }, [sharedBranding?.siteName]);
 
   // Cycling placeholder text (conditional based on mode)
   const placeholders = mode === 'contact_import'
