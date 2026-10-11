@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     "agentProfile.officePhone agentProfile.licenseNumber agentProfile.brokerageName " +
     "agentProfile.teamLogo agentProfile.teamLogoDark " +
     "agentProfile.brokerLogo agentProfile.brokerLogoDark " +
-    "agentProfile.navLogo agentProfile.navLogoDark " +
+    "agentProfile.navLogo agentProfile.navLogoDark agentProfile.navWordmark " +
     "agentProfile.affiliation agentProfile.brokerage";
 
   let agent: any = null;
@@ -145,6 +145,7 @@ export async function GET(request: NextRequest) {
       // before navLogo existed working, but only while they are still on a
       // team; for a solo agent the team pair is exactly the stale ex-team
       // artwork we are suppressing above.
+      navWordmark: ap.navWordmark?.thin || ap.navWordmark?.bold ? ap.navWordmark : null,
       navLogo: ap.navLogo || (isTeam ? ap.teamLogo : null),
       navLogoDark: ap.navLogoDark || (isTeam ? ap.teamLogoDark : null),
       brokerLogo: brk.logo || ap.brokerLogo,

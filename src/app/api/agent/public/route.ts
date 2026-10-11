@@ -137,6 +137,7 @@ export async function GET(request: NextRequest) {
         // The nav mark is the agent's own and is NOT affiliation-gated.
         navLogo: profile?.navLogo,
         navLogoDark: profile?.navLogoDark,
+        navWordmark: profile?.navWordmark,
         brokerLogo: profile?.brokerLogo,
         brokerLogoDark: profile?.brokerLogoDark,
         galleryPhotos: profile?.galleryPhotos,

@@ -71,6 +71,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     teamLogoDark?: string;
     navLogo?: string;
     navLogoDark?: string;
+    navWordmark?: { thin?: string; bold?: string } | null;
     brokerLogo?: string;
     brokerLogoDark?: string;
   }>({});
@@ -246,6 +247,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
           <NavBrandMark
             navLogo={branding.navLogo}
             navLogoDark={branding.navLogoDark}
+            navWordmark={branding.navWordmark}
             brandName={branding.brokerageName}
             isLight={isLight}
             wordmarkClassName={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}

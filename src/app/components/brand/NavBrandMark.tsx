@@ -21,6 +21,7 @@ import { isPlatformDomain } from "@/lib/domain-classify";
 export default function NavBrandMark({
   navLogo,
   navLogoDark,
+  navWordmark,
   isLight,
   brandName,
   wordmarkClassName = "",
@@ -28,6 +29,8 @@ export default function NavBrandMark({
 }: {
   navLogo?: string;
   navLogoDark?: string;
+  /** Text mark, e.g. { thin: "JPS", bold: "REALTOR" }. Takes precedence. */
+  navWordmark?: { thin?: string; bold?: string } | null;
   isLight: boolean;
   brandName?: string;
   wordmarkClassName?: string;
@@ -35,8 +38,22 @@ export default function NavBrandMark({
 }) {
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   const logo = isLight ? navLogo : navLogoDark || navLogo;
+  const onAgentSite = Boolean(host) && !isPlatformDomain(host);
 
-  if (logo && host && !isPlatformDomain(host)) {
+  // A text wordmark beats an uploaded image when both are set: it is the more
+  // specific choice, it stays crisp at any size, and it inherits the theme
+  // colour so it needs no light/dark pair. Clear it to fall back to the image.
+  if (onAgentSite && (navWordmark?.thin || navWordmark?.bold)) {
+    return (
+      <Wordmark
+        className={wordmarkClassName}
+        thin={navWordmark.thin || ""}
+        bold={navWordmark.bold || ""}
+      />
+    );
+  }
+
+  if (logo && onAgentSite) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={logo} alt={brandName || "Logo"} className={logoClassName} />;
   }

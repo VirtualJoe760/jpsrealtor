@@ -198,6 +198,7 @@ export interface IUser extends Document {
     teamLogoDark?: string;
     navLogo?: string;
     navLogoDark?: string;
+    navWordmark?: { thin?: string; bold?: string };
 
     // Domain & Branding (for multi-tenancy)
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
@@ -793,6 +794,15 @@ const UserSchema = new Schema<IUser>(
       // LIGHT backgrounds (dark ink), `navLogoDark` for DARK backgrounds.
       navLogo: String,
       navLogoDark: String,
+      // navWordmark is the TEXT alternative to navLogo: the same two-weight
+      // treatment as the ChatRealty mark (thin + medium Jost, uppercase, wide
+      // tracking), e.g. thin "JPS" + bold "REALTOR". Text beats an uploaded
+      // image because it stays pixel-crisp at every size and inherits the
+      // theme's colour, so it needs no light/dark pair at all.
+      navWordmark: {
+        thin: String,
+        bold: String,
+      },
 
       // Declared so Mongoose stops silently dropping them. These remain the
       // MIGRATION fallbacks only — new writes belong on `brokerage.name` and,

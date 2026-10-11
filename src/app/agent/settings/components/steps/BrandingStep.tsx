@@ -1,6 +1,7 @@
 "use client";
 
 import LogoUploadField from "../LogoUploadField";
+import Wordmark from "@/app/components/brand/Wordmark";
 
 import { Loader2, Sun, Moon, SunMoon, PanelLeft, PanelTop, Columns2, Image as ImageIcon, Film, Images, LayoutTemplate, CircleUserRound } from "lucide-react";
 
@@ -86,6 +87,9 @@ export default function BrandingStep({
         heroStyle,
         navLogo,
         navLogoDark,
+        // Must be listed: this payload is a whitelist, so a field edited in the
+        // form but missing here is silently discarded on Save.
+        navWordmark: formData.agentProfile?.navWordmark,
         ogBackgroundImage,
       },
     });
@@ -228,6 +232,49 @@ export default function BrandingStep({
         <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
           {NAV_OPTIONS.find((o) => o.id === navLayout)?.desc} · Mobile always uses the bottom nav bar.
         </p>
+      </div>
+
+      {/* Nav Wordmark — the text alternative to an uploaded logo. */}
+      <div className="mb-6">
+        <label className={labelClass}>Nav Wordmark</label>
+        <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          Set your name as type instead of an image — first half light, second half bold, e.g.
+          {" "}<span className="font-semibold">JPS</span> + <span className="font-semibold">REALTOR</span>.
+          Stays sharp at any size and follows the theme, so it needs no light/dark pair.
+          If set, this is used instead of the uploaded logo below.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Light half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.navWordmark?.thin || ""}
+              onChange={(e) => updateField("agentProfile.navWordmark.thin", e.target.value)}
+              placeholder="JPS"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Bold half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.navWordmark?.bold || ""}
+              onChange={(e) => updateField("agentProfile.navWordmark.bold", e.target.value)}
+              placeholder="REALTOR"
+              className={inputClass}
+            />
+          </div>
+        </div>
+        {(formData.agentProfile?.navWordmark?.thin || formData.agentProfile?.navWordmark?.bold) && (
+          <div className={`mt-3 rounded-lg px-4 py-3 ${isLight ? "bg-white border border-gray-200" : "bg-neutral-900 border border-gray-700"}`}>
+            <p className={`text-[10px] uppercase tracking-wider mb-1.5 ${isLight ? "text-gray-400" : "text-gray-500"}`}>Preview</p>
+            <Wordmark
+              className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
+              thin={formData.agentProfile?.navWordmark?.thin || ""}
+              bold={formData.agentProfile?.navWordmark?.bold || ""}
+            />
+          </div>
+        )}
       </div>
 
       {/* Navigation Bar Logo — uploaded by the agent, not chosen from a list.

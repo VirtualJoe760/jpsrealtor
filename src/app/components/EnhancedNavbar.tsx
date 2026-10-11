@@ -62,6 +62,7 @@ export default function EnhancedNavbar() {
     teamLogoDark?: string;
     navLogo?: string;
     navLogoDark?: string;
+    navWordmark?: { thin?: string; bold?: string } | null;
   }>({});
 
   useEffect(() => {
@@ -170,6 +171,7 @@ export default function EnhancedNavbar() {
         <NavBrandMark
           navLogo={branding.navLogo}
           navLogoDark={branding.navLogoDark}
+          navWordmark={branding.navWordmark}
           brandName={branding.brokerageName}
           isLight={isLight}
           wordmarkClassName={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
