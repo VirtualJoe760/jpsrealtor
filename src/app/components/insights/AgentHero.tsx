@@ -28,7 +28,13 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   // the same asset path, so the brokerage could not change without a deploy.
   const brk = ap?.brokerage || {};
   const brokerageName = brk.name || agentProfile?.brokerageName || ap?.brokerageName;
-  const brokerLogoMark = brk.logoDark || brk.logo || ap?.brokerLogoDark || ap?.brokerLogo;
+  // Theme-aware, like every other logo slot: `logo` is the dark-ink artwork
+  // for LIGHT backgrounds, `logoDark` the light-ink artwork for dark ones.
+  // This picked logoDark unconditionally, so light mode got the chrome
+  // variant, which is near-invisible on a pale hero.
+  const brokerLogoMark = isLight
+    ? (brk.logo || ap?.brokerLogo)
+    : (brk.logoDark || brk.logo || ap?.brokerLogoDark || ap?.brokerLogo);
   const heroLight = ap?.heroImage || ap?.heroPhoto;
   const heroDark = ap?.heroImageDark || ap?.heroPhotoDark;
   const heroImage = (isLight ? heroLight : (heroDark || heroLight)) ||

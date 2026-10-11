@@ -16,6 +16,18 @@ export default function HeroSpotlight({ agentProfile }: { agentProfile: any }) {
 
   return (
     <HeroShell bare className={isLight ? "bg-gradient-to-b from-gray-50 to-gray-100" : "bg-gradient-to-b from-neutral-900 to-black"}>
+      {/* Brokerage mark — from the agent record, never a hardcoded asset.
+          This style rendered no brokerage mark at all until 2026-10-11, so
+          switching hero style silently dropped the agent's brokerage. */}
+      {data.brokerLogo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={data.brokerLogo}
+          alt={data.brokerageName || "Brokerage"}
+          className="absolute top-6 right-6 md:top-8 md:right-10 h-12 md:h-16 w-auto object-contain opacity-95 z-20"
+        />
+      )}
+
       {/* Brand glow */}
       <div
         className="absolute inset-0"
