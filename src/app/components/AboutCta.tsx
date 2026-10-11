@@ -41,7 +41,7 @@ export default function AboutCta() {
             Coachella Valley Realtor
           </p>
           <p className="text-xl mt-2 tracking-tight text-white sm:text-5xl">
-            eXp Realty | DRE# 02106916
+            Fathom Realty | DRE# 02106916
           </p>
           <p className="mt-8 text-lg font-medium text-gray-200 sm:text-xl">
           Whether you&apos;re looking to buy your dream home, sell your property for maximum value, or simply explore the possibilities within the real estate market, I&apos;m here to guide you with expert advice and unwavering support. My goal is to ensure every step of the process is smooth, informed, and tailored to meet your unique needs.

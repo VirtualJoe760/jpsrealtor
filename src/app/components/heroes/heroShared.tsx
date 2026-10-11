@@ -12,6 +12,8 @@ import { MessageCircle, UserPlus, Search } from "lucide-react";
 export interface HeroData {
   name?: string;
   brokerageName?: string;
+  /** Brokerage mark for the hero corner, theme-resolved. Undefined = render none. */
+  brokerLogo?: string;
   licenseNumber?: string;
   phone?: string;
   email?: string;
@@ -32,9 +34,20 @@ export function getHeroData(agentProfile: any, isLight: boolean): HeroData {
   const ap = agentProfile?.agentProfile || {};
   const heroLight = ap.heroImage || ap.heroPhoto;
   const heroDark = ap.heroImageDark || ap.heroPhotoDark;
+  // Brokerage mark: the new agentProfile.brokerage pair first, the legacy
+  // brokerLogo pair as the migration fallback. Resolved here so all four hero
+  // variants agree — they each used to hardcode the same eXp asset path, which
+  // is how a brokerage Joseph left stayed stamped on the hero of every tenant
+  // site this platform renders.
+  const brk = ap.brokerage || {};
+  const brokerLogo = isLight
+    ? brk.logo || ap.brokerLogo
+    : brk.logoDark || brk.logo || ap.brokerLogoDark || ap.brokerLogo;
+
   return {
     name: agentProfile?.name,
-    brokerageName: agentProfile?.brokerageName || ap.brokerageName,
+    brokerageName: brk.name || agentProfile?.brokerageName || ap.brokerageName,
+    brokerLogo,
     licenseNumber: agentProfile?.licenseNumber || ap.licenseNumber,
     phone: agentProfile?.phone || ap.cellPhone || ap.phone,
     email: agentProfile?.email,

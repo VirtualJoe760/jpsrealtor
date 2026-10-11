@@ -177,6 +177,28 @@ export interface IUser extends Document {
       expiresAt?: Date;
     }>;
 
+    // Affiliation & brokerage. Every agent has a brokerage; only a "team"
+    // agent has a Team. See the schema block for why this exists.
+    affiliation?: "solo" | "team";
+    brokerage?: {
+      name?: string;          // display, e.g. "Fathom Realty"
+      legalName?: string;     // compliance, e.g. "Fathom Realty Group, Inc."
+      licenseNumber?: string; // the brokerage's licence, not the agent's
+      address?: string;
+      phone?: string;
+      logo?: string;          // light backgrounds (dark artwork)
+      logoDark?: string;      // dark backgrounds (light artwork)
+    };
+    // Legacy, migration fallback only — prefer `brokerage.name` / the Team doc.
+    brokerageName?: string;
+    teamName?: string;
+    brokerLogo?: string;
+    brokerLogoDark?: string;
+    teamLogo?: string;
+    teamLogoDark?: string;
+    navLogo?: string;
+    navLogoDark?: string;
+
     // Domain & Branding (for multi-tenancy)
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
     customDomain?: string; // e.g., "josephsardella.com"
@@ -725,11 +747,58 @@ const UserSchema = new Schema<IUser>(
       videoIntro: String,
       insightsBannerImage: String,
 
+      // AFFILIATION + BROKERAGE (declared 2026-10-10).
+      //
+      // Every licensed agent has a BROKERAGE. Not every agent has a TEAM.
+      // Brokerage used to live only on the Team model, which left solo agents
+      // nowhere structured to put theirs — hence the ad-hoc top-level
+      // `User.brokerageName` and an `agentProfile.brokerageName` that
+      // /api/agent-branding read and projected but which was NEVER DECLARED
+      // here. Under Mongoose strict mode an undeclared path is dropped on
+      // write, so that field could only ever be set by a raw-driver write that
+      // bypassed the schema. Declaring both properly is the fix.
+      //
+      // `affiliation` is the explicit switch:
+      //   "solo" — brokerage, no team. `User.team` MUST be unset.
+      //   "team" — brokerage AND a `User.team` reference.
+      // Default "solo": a new agent has a brokerage before they have a team,
+      // and defaulting the other way would render an empty team slot.
+      affiliation: { type: String, enum: ["solo", "team"], default: "solo" },
+      brokerage: {
+        name: String,          // e.g. "Fathom Realty" — display name
+        legalName: String,     // e.g. "Fathom Realty Group, Inc." — compliance/legal docs
+        licenseNumber: String, // the BROKERAGE's licence, not the agent's
+        address: String,
+        phone: String,
+        logo: String,          // light backgrounds (dark artwork)
+        logoDark: String,      // dark backgrounds (light artwork)
+      },
+
       // Logos
+      // brokerLogo/brokerLogoDark are the LEGACY pair, still read by
+      // /api/agent-branding as a fallback while agents migrate onto
+      // `brokerage.logo`/`brokerage.logoDark`. teamLogo/teamLogoDark apply
+      // only when affiliation === "team".
       brokerLogo: String,
       brokerLogoDark: String,
       teamLogo: String,
       teamLogoDark: String,
+      // navLogo/navLogoDark are the SITE brand mark — the top-left logo in the
+      // nav and on share cards. Deliberately NOT a team field: it was stored in
+      // teamLogo until 2026-10-11, which meant a solo agent's own wordmark was
+      // suppressed along with their former team's branding and the nav silently
+      // fell back to the ChatRealty wordmark. A brokerage move must not erase an
+      // agent's personal mark, so this has its own pair.
+      // Convention, same as everywhere else here: `navLogo` is the artwork for
+      // LIGHT backgrounds (dark ink), `navLogoDark` for DARK backgrounds.
+      navLogo: String,
+      navLogoDark: String,
+
+      // Declared so Mongoose stops silently dropping them. These remain the
+      // MIGRATION fallbacks only — new writes belong on `brokerage.name` and,
+      // for a team, on the referenced Team document.
+      brokerageName: String,
+      teamName: String,
 
       // Share-card (OG image) background photo — rendered under a light
       // scrim on /api/og. Empty = flat soft-neutral card.

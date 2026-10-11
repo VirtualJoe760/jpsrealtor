@@ -71,28 +71,37 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
 
   // Site name: from agent profile (siteName field) or domain default
   const [siteName, setSiteName] = useState("chatRealty");
+  // Brokerage mark, theme-resolved. The widget used to hardcode a brokerage
+  // asset pair, so the chat landing kept showing a brokerage the agent had
+  // left. Undefined = render no mark rather than a stale one.
+  const [brokerLogos, setBrokerLogos] = useState<{ light?: string; dark?: string; name?: string }>({});
   useEffect(() => {
     if (typeof window === "undefined") return;
     // Set hostname-based default first
     setSiteName(getDefaultSiteName(window.location.hostname));
-    // Then check if agent has a custom siteName via branding API
+    // Then resolve this host's agent. The endpoint walks subdomain ->
+    // customDomain -> DomainRegistry -> primary agent, so it answers on owner
+    // domains (jpsrealtor.com) too — the old subdomain-only guard meant the
+    // owner's own site never fetched its branding at all.
     const hostname = window.location.hostname;
     const isSubdomain =
       hostname.endsWith(".localhost") ||
       (hostname.includes("chatrealty") && hostname !== "chatrealty.io" && hostname !== "www.chatrealty.io");
-    if (isSubdomain) {
-      const sub = hostname.includes("chatrealty")
-        ? hostname.split("chatrealty")[0]?.replace(/\.$/, "").split(".").pop()
-        : hostname.split(".localhost")[0];
-      if (sub) {
-        fetch(`/api/agent-branding?subdomain=${sub}`)
-          .then((r) => r.ok ? r.json() : null)
-          .then((data) => {
-            if (data?.branding?.siteName) setSiteName(data.branding.siteName);
-          })
-          .catch(() => {});
-      }
-    }
+    const sub = isSubdomain
+      ? (hostname.includes("chatrealty")
+          ? hostname.split("chatrealty")[0]?.replace(/\.$/, "").split(".").pop()
+          : hostname.split(".localhost")[0])
+      : null;
+    const qs = sub ? `?subdomain=${encodeURIComponent(sub)}` : "";
+    fetch(`/api/agent-branding${qs}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const b = data?.branding;
+        if (!b) return;
+        if (b.siteName) setSiteName(b.siteName);
+        setBrokerLogos({ light: b.brokerLogo, dark: b.brokerLogoDark || b.brokerLogo, name: b.brokerageName });
+      })
+      .catch(() => {});
   }, []);
 
   // Cycling placeholder text (conditional based on mode)
@@ -1494,14 +1503,16 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                   whileHover={{ scale: 1.1, rotateY: 15, rotateX: 5 }}
                   className="w-22 h-22 md:w-24 md:h-24"
                 >
-                  <Image
-                    src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
-                    alt="eXp Realty"
-                    width={96}
-                    height={96}
-                    className="object-contain"
-                    priority
-                  />
+                  {(isLight ? brokerLogos.light : brokerLogos.dark) && (
+                    <Image
+                      src={(isLight ? brokerLogos.light : brokerLogos.dark) as string}
+                      alt={brokerLogos.name || "Brokerage"}
+                      width={96}
+                      height={96}
+                      className="object-contain"
+                      priority
+                    />
+                  )}
                 </motion.div>
 
                 <div

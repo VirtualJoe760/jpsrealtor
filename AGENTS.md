@@ -12,29 +12,92 @@ Edit **this** file; never duplicate rules into `CLAUDE.md`.
 
 ## 1. Hard rules
 
-1. **Absolute Windows paths for every file operation.**
-   `F:\web-clients\joseph-sardella\jpsrealtor\...` — there is a Claude Code bug
-   with relative paths on Windows.
+1. **Absolute paths for every file operation.**
+   The repo is checked out on two machines and the correct prefix differs:
+   - macOS (current primary): `/Users/averagexjoe/Documents/websites/jpsrealtor/...`
+   - Windows: `F:\web-clients\joseph-sardella\jpsrealtor\...`
 
-2. **Read before writing.** For anything non-trivial: `docs/ARCHITECTURE.md`,
+   Use the one matching the machine you are on — a hardcoded `F:\` path silently
+   creates a junk file on macOS instead of editing the real one. Absolute, not
+   relative, either way: there is a Claude Code bug with relative paths on Windows.
+
+2. **Do the task asked, not the refactor next to it.**
+   Scope creep here is the most expensive failure mode, because the work
+   *looks* finished and has to be unpicked. Before touching a file, ask whether
+   the request named it. If not, don't.
+
+   - **A branding change is strings and assets.** It is not a pipeline, a
+     schema migration, or an ID. If the ask is "we changed brokerage", do not
+     touch MLS agent IDs, team keys, listing-pool queries, or the carousel
+     generator's source definition. Those are identity of a *different* kind
+     and they keep working across a brokerage move. (2026-10-10: a Fathom
+     rebrand gutted `scripts/tmp-pool4.js` and halted the daily carousel over
+     a team key that never needed to change.)
+   - **Check the UI before writing a script.** Most per-agent data has an
+     editor at `/agent/settings`. A one-record change is a form field, not a
+     `scripts/*.js` with a dry-run flag. Write a script only for something
+     bulk, repeated, or impossible in the product.
+   - **One wrong constant is not a mandate to re-architect.** Fixing it is in
+     scope; migrating every caller onto a new model is a separate task. Say
+     you found it, then ask.
+   - **Flag, don't fix, outside the blast radius.** Stale comments, unrelated
+     dead code and pre-existing bugs go in `docs/tech-debt.md` or a sentence in
+     the reply. They do not go in this diff.
+
+   When unsure whether something is in scope, the cheap move is one question,
+   not fifty files.
+
+3. **Never hand the task back.** A finished job never looks like a to-do list
+   for Joe. If the work needs a credential, a value, or a click, get it with
+   the tools that are already available — do not write instructions for him to
+   run.
+
+   - **Never ask Joe to fetch a credential. Ever.** Not from a dashboard, not
+     from a password manager, not by pasting a command. The tools exist:
+     `~/.claude/tools/ask-secret.sh "Label" --env KEY /path/to/.env` opens a
+     masked dialog and writes the value straight into the env file without it
+     ever entering the transcript, and `vercel env pull` reads anything already
+     in the Vercel environment (`virtualjoe760`, project `jpsrealtor`).
+   - **Never paste a shell command for him to run.** If you can run it, run it.
+     Handing over a one-liner is the same failure wearing a helpful costume.
+   - **A permission denial is not a delegation.** When the sandbox refuses a
+     call, say in one line that the *permission layer* blocked it, then
+     re-attempt so the approval prompt reaches him. Do not restate the block as
+     a chore for him, and do not blame project policy for something policy does
+     not forbid — rule 9 is about git, not about moving a variable between
+     environments.
+   - **Report a block first, not last.** A denial buried under three paragraphs
+     of progress reads as success. He will act on the success, and the real
+     state stays broken.
+
+   The test before sending: if the reply ends with something he has to do that
+   you could have done, it is not finished.
+
+   (2026-10-11: a stale `MONGODB_URI` cost four round trips because I pasted
+   two "run this yourself" one-liners and a "sign in there and tell me", then
+   reported a `vercel link` success line as though the pull had happened.
+   Joe: "you are never supposed to direct me to get credentials for you...
+   ever" and "a finished job never looks like you delegating me a task.")
+
+4. **Read before writing.** For anything non-trivial: `docs/ARCHITECTURE.md`,
    then the relevant `docs/{area}/README.md`. State back what you understood
    before writing code.
 
-3. **Update the docs you read, in the same commit.** Bump `last_verified`. If
+5. **Update the docs you read, in the same commit.** Bump `last_verified`. If
    the area had no doc, create one per `docs/AGENTS.md`.
 
-4. **Doc drift is a bug.** If a doc contradicts the code, the doc is wrong —
+6. **Doc drift is a bug.** If a doc contradicts the code, the doc is wrong —
    fix it the same session.
 
-5. **Mongoose strict mode drops undeclared fields silently.** Add the field to
+7. **Mongoose strict mode drops undeclared fields silently.** Add the field to
    the schema *before* writing to it. This has twice produced a "successful"
    write that persisted nothing.
 
-6. **Verify the result, not the exit code.** String-replacement edits have
+8. **Verify the result, not the exit code.** String-replacement edits have
    silently no-op'd here (matching zero lines while reporting success) and have
    corrupted file encodings. Read back what you changed.
 
-7. **Env files never reach GitHub. Ever.** `.env`, `.env.local`, `env.local`,
+9. **Env files never reach GitHub. Ever.** `.env`, `.env.local`, `env.local`,
    and anything else holding live keys stay local, permanently. Before any
    `git add`/`commit`/`push`:
    - **Stage by explicit path.** Never `git add -A`, never `git add .`.

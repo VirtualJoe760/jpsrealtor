@@ -61,6 +61,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
   // Agent/team branding data
   const [branding, setBranding] = useState<{
     agentName?: string;
+    affiliation?: "solo" | "team";
     brokerageName?: string;
     teamName?: string;
     licenseNumber?: string;
@@ -68,6 +69,8 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
     email?: string;
     teamLogo?: string;
     teamLogoDark?: string;
+    navLogo?: string;
+    navLogoDark?: string;
     brokerLogo?: string;
     brokerLogoDark?: string;
   }>({});
@@ -241,9 +244,9 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
       <div className="relative flex min-h-[68px] items-center py-5 pl-7 pr-5">
         {!effectivelyCollapsed && (
           <NavBrandMark
-            teamLogo={branding.teamLogo}
-            teamLogoDark={branding.teamLogoDark}
-            teamName={branding.teamName}
+            navLogo={branding.navLogo}
+            navLogoDark={branding.navLogoDark}
+            brandName={branding.brokerageName}
             isLight={isLight}
             wordmarkClassName={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
             logoClassName="h-12 w-auto max-w-[224px] object-contain"
@@ -531,7 +534,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
                 </>
               )}
               <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
-              {branding.brokerageName || "eXp Realty"}
+              {branding.brokerageName}
               <span className={`mx-1 ${isLight ? "text-gray-300" : "text-neutral-600"}`}>|</span>
               {branding.teamName || <Wordmark className="text-[10px]" />}
             </p>

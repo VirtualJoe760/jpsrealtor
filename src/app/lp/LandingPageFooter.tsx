@@ -12,6 +12,12 @@ interface AgentProfile {
   agentProfile?: {
     headshot?: string;
     profilePhoto?: string;
+    brokerage?: {
+      name?: string;
+      legalName?: string;
+      logo?: string;
+      logoDark?: string;
+    };
     brokerageName?: string;
     licenseNumber?: string;
     teamLogo?: string;
@@ -48,10 +54,14 @@ export default function LandingPageFooter() {
   if (!agent) return null;
 
   const headshot = agent.agentProfile?.headshot || agent.agentProfile?.profilePhoto;
-  // Use agent's broker logo if available, fall back to platform eXp logo
+  // Brokerage mark straight off the agent record — new `brokerage` pair first,
+  // legacy `brokerLogo` pair as the migration fallback. No hardcoded default:
+  // this footer renders on every agent's landing pages, so a baked-in
+  // brokerage would stamp one agency onto another agent's site.
+  const brk = agent.agentProfile?.brokerage || {};
   const logo = isLight
-    ? (agent.agentProfile?.brokerLogo || "/images/brand/exp-Realty-Logo-black.png")
-    : (agent.agentProfile?.brokerLogoDark || agent.agentProfile?.brokerLogo || "/images/brand/EXP-white-square.png");
+    ? (brk.logo || agent.agentProfile?.brokerLogo)
+    : (brk.logoDark || brk.logo || agent.agentProfile?.brokerLogoDark || agent.agentProfile?.brokerLogo);
   const agentWebsite = agent.agentProfile?.customDomain
     || (agent.agentProfile?.subdomain ? `${agent.agentProfile.subdomain}.chatrealty.io` : null)
     || agent.website
@@ -110,16 +120,18 @@ export default function LandingPageFooter() {
           </div>
         </div>
 
-        {/* eXp Realty logo — right */}
-        <div className="relative flex-shrink-0 w-20 h-20 md:w-28 md:h-28 mb-8">
-          <Image
-            src={logo}
-            alt="eXp Realty"
-            fill
-            className="object-contain"
-            sizes="(max-width: 768px) 80px, 112px"
-          />
-        </div>
+        {/* Brokerage logo — right */}
+        {logo && (
+          <div className="relative flex-shrink-0 w-20 h-20 md:w-28 md:h-28 mb-8">
+            <Image
+              src={logo}
+              alt={brk.name || agent.agentProfile?.brokerageName || "Brokerage"}
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 80px, 112px"
+            />
+          </div>
+        )}
       </div>
     </footer>
   );

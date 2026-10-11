@@ -29,7 +29,21 @@ async function dbConnect() {
     });
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    // Drop the FAILED promise. Without this, `cached.promise` stays
+    // permanently rejected and every later dbConnect() awaits that same
+    // rejection — so one bad connect (rotated password, DNS blip, cold-start
+    // timeout) poisons the process for its entire lifetime. Fixing the
+    // credential then changes nothing until the server is restarted, which
+    // reads as "the fix didn't work". On Vercel it means one lambda instance
+    // 500ing every request until it is recycled.
+    // (2026-10-11: a stale .env.local plus this cache turned a one-line
+    // password fix into four rounds of chasing /api/agent-branding.)
+    cached.promise = null;
+    throw err;
+  }
   return cached.conn;
 }
 

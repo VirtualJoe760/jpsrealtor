@@ -52,6 +52,7 @@ export default function EnhancedNavbar() {
 
   const [branding, setBranding] = useState<{
     agentName?: string;
+    affiliation?: "solo" | "team";
     brokerageName?: string;
     teamName?: string;
     licenseNumber?: string;
@@ -59,6 +60,8 @@ export default function EnhancedNavbar() {
     email?: string;
     teamLogo?: string;
     teamLogoDark?: string;
+    navLogo?: string;
+    navLogoDark?: string;
   }>({});
 
   useEffect(() => {
@@ -165,9 +168,9 @@ export default function EnhancedNavbar() {
       {/* Logo → home */}
       <button onClick={() => handleNavigate("/")} className="flex items-center shrink-0" aria-label="Home">
         <NavBrandMark
-          teamLogo={branding.teamLogo}
-          teamLogoDark={branding.teamLogoDark}
-          teamName={branding.teamName}
+          navLogo={branding.navLogo}
+          navLogoDark={branding.navLogoDark}
+          brandName={branding.brokerageName}
           isLight={isLight}
           wordmarkClassName={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
           logoClassName="h-9 w-auto max-w-[200px] object-contain"
@@ -272,7 +275,7 @@ export default function EnhancedNavbar() {
             {branding.agentName}
             {branding.licenseNumber && <> · DRE# {branding.licenseNumber}</>}
             <br />
-            eXp Realty · chatRealty
+            {branding.brokerageName}{branding.brokerageName && " · "}chatRealty
           </span>
         )}
 

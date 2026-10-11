@@ -2,7 +2,11 @@
 // Combined: NextAuth route protection + Multi-domain hostname routing
 //
 // Domain hierarchy:
-//   chatrealty.io (+ localhost in dev) → platform homepage (/chat-landing)
+//   chatrealty.io / chatrealty.localhost → platform homepage (/chat-landing)
+//   NOTE: bare `localhost` is NOT the platform — isPlatform requires the host
+//   to contain "chatrealty", so localhost:3000 falls through and renders the
+//   primary agent (jpsrealtor.com). This comment claimed otherwise until
+//   2026-10-11. Use http://chatrealty.localhost:3000 to preview the platform.
 //   jpsrealtor.com / josephsardella.com → owner homepage (insights page)
 //   agent.chatrealty.io (+ agent.localhost) → admin-only owner preview
 //   {slug}.chatrealty.io (+ {slug}.localhost) → agent public site
@@ -405,7 +409,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------
-  // 5. Platform root (chatrealty.io, www.chatrealty.io, bare localhost)
+  // 5. Platform root (chatrealty.io, www.chatrealty.io, chatrealty.localhost)
   //    Show the ChatRealty platform landing page at /
   // -----------------------------------------------------------------------
   // Bare apex OR www on chatrealty = the platform. Real subdomains (agent

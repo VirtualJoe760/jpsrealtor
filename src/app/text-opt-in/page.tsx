@@ -113,7 +113,7 @@ export default function TextOptInPage() {
             Communication Consent
           </h1>
           <p className="text-gray-600 dark:text-gray-300 text-lg">
-            Joseph Sardella Real Estate - eXp Realty
+            Joseph Sardella Real Estate - Fathom Realty
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function TextOptInPage() {
             <div className="space-y-4 text-gray-700 dark:text-gray-300">
               <p>
                 By providing your contact information and agreeing to these terms, you consent to receive communications
-                from Joseph Sardella Real Estate, operating through eXp Realty.
+                from Joseph Sardella Real Estate, operating through Fathom Realty Group, Inc.
               </p>
 
               {/* SMS Section */}
@@ -270,8 +270,8 @@ export default function TextOptInPage() {
         {/* Footer Info */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Joseph Sardella, DRE# 02105816<br />
-            eXp Realty - Obsidian Group<br />
+            Joseph Sardella, DRE# 02106916<br />
+            Fathom Realty Group, Inc.<br />
             Palm Desert, CA
           </p>
         </div>

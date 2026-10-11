@@ -35,7 +35,10 @@ const FALLBACK: AgentProfile = {
   name: "Joseph Sardella",
   email: "josephsardella@gmail.com",
   phone: "(760) 333-3676",
-  brokerageName: "eXp Realty",
+  // No brokerage here on purpose. This FALLBACK renders for whichever agent
+  // owns the host, so naming one agency stamps it onto every other agent's
+  // site when their fetch is slow or fails. Empty renders nothing.
+  brokerageName: "",
   licenseNumber: "02106916",
   headshot: "",
   heroPhoto: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png",

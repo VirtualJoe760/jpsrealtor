@@ -16,7 +16,31 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 
 export async function GET(request: NextRequest) {
-  await dbConnect();
+  try {
+    await dbConnect();
+  } catch (err: any) {
+    // The database being unreachable is an upstream dependency failing, not a
+    // fault in this route's logic. It used to escape as an unhandled throw,
+    // which Next.js turned into a bare 500 with a stack trace that never named
+    // the cause — four separate debugging rounds on 2026-10-11 all started
+    // here and the real answer was a rotated MONGODB_URI password.
+    //
+    // 503 (not 200-with-empty-branding) is deliberate: an empty 200 would be
+    // indistinguishable from "this agent has genuinely set no brokerage", and
+    // every consumer would render blank as though that were the truth.
+    // no-store because vercel.json's /api/(.*) header does not apply in local
+    // dev, and a cached error would outlive the outage.
+    console.error(
+      "[agent-branding] database unavailable:",
+      err?.name,
+      err?.codeName || err?.code || "",
+      err?.message,
+    );
+    return NextResponse.json(
+      { error: "Branding temporarily unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const subdomain =
     request.nextUrl.searchParams.get("subdomain") ||
@@ -35,7 +59,9 @@ export async function GET(request: NextRequest) {
     "agentProfile.siteName agentProfile.teamName agentProfile.cellPhone " +
     "agentProfile.officePhone agentProfile.licenseNumber agentProfile.brokerageName " +
     "agentProfile.teamLogo agentProfile.teamLogoDark " +
-    "agentProfile.brokerLogo agentProfile.brokerLogoDark";
+    "agentProfile.brokerLogo agentProfile.brokerLogoDark " +
+    "agentProfile.navLogo agentProfile.navLogoDark " +
+    "agentProfile.affiliation agentProfile.brokerage";
 
   let agent: any = null;
 
@@ -86,6 +112,18 @@ export async function GET(request: NextRequest) {
   }
 
   const ap = agent.agentProfile || {};
+  const brk = ap.brokerage || {};
+
+  // AFFILIATION decides whether the team slots mean anything. A solo agent has
+  // a brokerage and no team, so their team fields are suppressed here rather
+  // than left to each consumer — NavBrandMark renders agentProfile.teamLogo
+  // whenever it is truthy, so a stale logo from a former team would otherwise
+  // keep showing in the nav long after the agent left it.
+  const isTeam = ap.affiliation === "team";
+
+  // Brokerage resolution, newest model first. The legacy pair is the migration
+  // fallback for agents not yet moved onto agentProfile.brokerage.
+  const brokerageName = brk.name || ap.brokerageName || agent.brokerageName;
 
   return NextResponse.json({
     agentName: agent.name,
@@ -94,13 +132,23 @@ export async function GET(request: NextRequest) {
       siteName: ap.siteName,
       email: agent.email,
       phone: ap.cellPhone || ap.officePhone || agent.phone,
-      brokerageName: ap.brokerageName || agent.brokerageName,
-      teamName: ap.teamName || agent.teamName,
+      affiliation: ap.affiliation || "solo",
+      brokerageName,
+      // Legal entity for compliance copy; falls back to the display name.
+      brokerageLegalName: brk.legalName || brokerageName,
+      teamName: isTeam ? ap.teamName || agent.teamName : null,
       licenseNumber: ap.licenseNumber || agent.licenseNumber,
-      teamLogo: ap.teamLogo,
-      teamLogoDark: ap.teamLogoDark,
-      brokerLogo: ap.brokerLogo,
-      brokerLogoDark: ap.brokerLogoDark,
+      teamLogo: isTeam ? ap.teamLogo : null,
+      teamLogoDark: isTeam ? ap.teamLogoDark : null,
+      // The nav mark is NOT affiliation-gated — it is the agent's own site
+      // brand. Falling back to the team pair keeps agents who set a nav logo
+      // before navLogo existed working, but only while they are still on a
+      // team; for a solo agent the team pair is exactly the stale ex-team
+      // artwork we are suppressing above.
+      navLogo: ap.navLogo || (isTeam ? ap.teamLogo : null),
+      navLogoDark: ap.navLogoDark || (isTeam ? ap.teamLogoDark : null),
+      brokerLogo: brk.logo || ap.brokerLogo,
+      brokerLogoDark: brk.logoDark || ap.brokerLogoDark,
     },
   });
 }

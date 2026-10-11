@@ -32,9 +32,11 @@ export default function HeroFullWidth({ agentProfile }: { agentProfile: any }) {
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${data.brandColor}, #111827)` }} />
       )}
 
-      {/* eXp logo */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/brand/EXP-white-square.png" alt="eXp Realty" className="absolute top-6 right-6 md:top-10 md:right-10 h-16 md:h-24 w-auto object-contain opacity-95 z-20" />
+      {/* Brokerage mark — from the agent record, never a hardcoded asset. */}
+      {data.brokerLogo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={data.brokerLogo} alt={data.brokerageName || "Brokerage"} className="absolute top-6 right-6 md:top-10 md:right-10 h-16 md:h-24 w-auto object-contain opacity-95 z-20" />
+      )}
 
       {/* Centered content */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">

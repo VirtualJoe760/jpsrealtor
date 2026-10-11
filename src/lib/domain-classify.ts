@@ -5,6 +5,14 @@
 const PLATFORM_DOMAINS = new Set([
   "chatrealty.io",
   "www.chatrealty.io",
+  // Dev: the proxy treats any host containing "chatrealty" with no subdomain
+  // as the platform, so http://chatrealty.localhost:3000 previews chatrealty.io
+  // locally. Listing it here keeps the CLIENT-side check agreeing with the
+  // proxy — otherwise the platform preview renders the primary agent's nav
+  // logo instead of the ChatRealty wordmark. Bare `localhost` is deliberately
+  // NOT here: it resolves to the primary agent, which is how jpsrealtor.com is
+  // previewed.
+  "chatrealty.localhost",
 ]);
 
 function normalize(host: string): string {

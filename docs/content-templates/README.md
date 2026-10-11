@@ -1,8 +1,8 @@
 ---
 title: ChatRealty Content Templates
 status: current
-last_verified: 2026-07-26
-last_verified_note: Slides 2-10 moved to src/ and exposed via MCP 2026-07-26; reel pipeline and storage layer unchanged since 2026-06-05.
+last_verified: 2026-10-10
+last_verified_note: Slides 2-10 moved to src/ and exposed via MCP 2026-07-26; reel pipeline and storage layer unchanged since 2026-06-05. Broker logo repointed to Fathom 2026-10-10.
 owner: content
 related: [./cover-slide.md, ./carousel-slides.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -94,7 +94,7 @@ module.exports = {
     italicLast: "DM me. Let's ...",
     handle: "@instadella",
     headshotPublicId: "jpsrealtor:agents:joseph-circular",
-    brokerLogoPublicId: "jpsrealtor:logos:EXP-white-square",
+    brokerLogoPublicId: "jpsrealtor:logos:fathom-logo-white",
     color,
   },
 };

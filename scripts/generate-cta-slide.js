@@ -36,7 +36,7 @@ const D = {
   paragraphs: [
     "Most agents tell you what you want to hear.",
     "I'll tell you what will close the deal — and what won't.",
-    "In the Coachella Valley since 2019. eXp Realty. 760·333·3676.",
+    "In the Coachella Valley since 2019. Fathom Realty. 760·333·3676.",
   ],
   italicLast: "Trust. Empathy. Action.",
   handle: "@instadella",

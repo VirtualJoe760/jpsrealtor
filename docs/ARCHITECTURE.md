@@ -1,7 +1,7 @@
 ---
 title: Architecture Index
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-11
 ---
 
 # Architecture Index
@@ -17,7 +17,9 @@ etc.) is owned by an agent (`User`). Public pages scope content to the **domain
 owner** — jpsrealtor.com → Joseph, bethanyklier.chatrealty.io → Bethany — via
 `src/lib/resolveDomainOwner.ts`. Identity is NextAuth JWT; cross-domain sessions
 use a transfer → receive handshake; signout is a chained multi-apex flow. MongoDB
-Atlas is the source of truth; Cloudinary holds all images.
+is the source of truth — a DigitalOcean **Managed MongoDB** cluster
+(`jpsrealtor-mongodb-911080c1`), **not Atlas**, despite what this line said
+until 2026-10-10. Cloudinary holds all images.
 
 ## Subsystem map
 
@@ -27,6 +29,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Theming (system-pref default, Dynamic Island sync) | `src/app/contexts/ThemeContext.tsx` | [theming/](./theming/) |
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
 | Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |
+| Agent identity (affiliation / brokerage / team) | `src/models/User.ts` (`agentProfile.brokerage`) + `src/app/api/agent-branding/route.ts` | [agent-identity/](./agent-identity/) |
 | CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
 | CRM | `src/models/Contact.ts` | [crm/](./crm/) — *not yet written* |
 | Listings / MLS | `src/models/UnifiedListing.ts` | [listings/](./listings/) — *not yet written* |
@@ -43,9 +46,10 @@ These bite hardest when forgotten. Read every time.
 
 - **Multi-tenant scoping.** Any public endpoint displaying content MUST use `resolveDomainOwner` — not `session.user.id`. Failure mode: visitors see the wrong agent's data, or empty pages on apex domains. See [multi-tenant/](./multi-tenant/).
 - **Vercel `after()`.** Background work on serverless functions needs `after()` from `next/server` to survive the 200 response. Bare fire-and-forget is killed when the function returns. Used in `/api/crm/contacts/import/confirm` and similar.
-- **`vercel.json` cache trap.** The catch-all sets `Cache-Control: public, max-age=31536000, immutable` on every path including `/api/*`. Any dynamic API route MUST set explicit `Cache-Control: no-store` on its response, or per-user data freezes in browser caches for a year.
+- **`vercel.json` caching — FIXED, and this entry used to be wrong.** It claimed the catch-all put `max-age=31536000, immutable` on every path "including `/api/*`". It does not: the catch-all source is `/((?!api/|_next/).*)`, which *excludes* `api/`, and a later `/api/(.*)` rule already sets `no-store, max-age=0`. Verified against `vercel.json` 2026-10-11. So an API route does **not** need its own `no-store` for production — but note those headers are Vercel-only and do not apply in `next dev`, so set it explicitly on responses that must never be cached locally either (e.g. error responses).
 - **Middleware file is `src/proxy.ts`**, not `middleware.ts` (Next.js 16 renamed the convention; many legacy docs still say middleware).
-- **Windows absolute paths** for all file ops (Claude Code bug with relative paths).
+- **Absolute paths** for all file ops (Claude Code bug with relative paths). The prefix differs per machine — macOS `/Users/averagexjoe/Documents/websites/jpsrealtor/...`, Windows `F:\web-clients\joseph-sardella\jpsrealtor\...`. See AGENTS.md rule 1.
+- **No component hardcodes a brokerage.** One deployment serves many agents, so a literal brokerage name or logo asset in shared code stamps one agency onto every other agent's site. Resolve from `/api/agent-branding`. See [agent-identity/](./agent-identity/).
 - **CMS source of truth is MongoDB.** The MDX files in `src/posts/` are a git-stored mirror; production reads from Mongo only.
 - **Cookies are domain-scoped.** Sign-in on `jpsrealtor.com` does NOT carry to `chatrealty.io`. Cross-domain transfer goes through `/api/auth/transfer` → `/api/auth/receive`.
 - **Two content paths, and they are not interchangeable.** Joseph's own posts ship from the LOCAL scripts (`scripts/carousel-build.js` → `scripts/carousel-upload-and-publish.js`), which read `.env.local` and hit the Meta Graph API directly — no MCP, no token scopes, no connector. The MCP tools (`create_listing_cover`, `create_carousel_slide`, `post_instagram_carousel`) are the PRODUCT, for other agents. When the job is "get a post out", use the scripts; when the job is "make the product work", use the MCP path and verify it separately. Conflating the two turns a 20-minute task into a day. See [content-templates/](./content-templates/).
@@ -66,7 +70,6 @@ These bite hardest when forgotten. Read every time.
 ## Known tech debt
 
 See [tech-debt.md](./tech-debt.md) for the live list. Most recent entries from the May 2026 work:
-- `vercel.json` over-aggressive cache catch-all
 - Several public-facing API routes still scope by `session.user.id`
 - `AGENT_DOMAIN_MAP` in `proxy.ts` is hardcoded empty
 - `Campaign` model has a duplicate `campaignId` index warning
