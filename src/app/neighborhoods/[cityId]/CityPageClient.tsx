@@ -14,6 +14,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { coachellaValleyCities } from "@/app/constants/cities";
 import generatedCityContent from "@/data/city-content-generated.json";
 import { createSlug } from "@/lib/utils/slug";
+import { trackViewCity } from "@/lib/meta-pixel";
 
 interface CityPageClientProps {
   city: {
@@ -52,6 +53,17 @@ export default function CityPageClient({
   const shadow = isLight ? "shadow-lg" : "shadow-xl shadow-black/20";
   const buttonPrimary = isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-blue-500 text-white hover:bg-blue-600";
   const buttonSecondary = isLight ? "bg-gray-200 text-gray-900 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600";
+
+  // Track city view for retargeting. City pages carried no pixel event at all,
+  // so the market-level intent signal (someone browsing Palm Desert) never
+  // reached an audience even though the base pixel was loading fine.
+  useEffect(() => {
+    trackViewCity({
+      name: city.name,
+      county: countyName,
+      listingCount: initialStats?.listingCount,
+    });
+  }, [city.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if city is favorited
   useEffect(() => {

@@ -198,3 +198,44 @@ export const trackViewTopListings = (listings: Array<{
     num_items: listings.length,
   });
 };
+
+// Custom event: View City page (for retargeting)
+//
+// Deliberately NOT routed through trackViewContent: that helper stamps
+// content_type "property" and a listingKey, so a city would enter the audience
+// as a listing that no catalog can ever match. A city is a place — the intent
+// signal worth retargeting is "shopping this market", not "viewed this home".
+export const trackViewCity = (city: {
+  name: string;
+  county?: string;
+  listingCount?: number;
+}) => {
+  trackEvent("ViewContent", {
+    content_ids: [`city:${city.name}`],
+    content_type: "destination",
+    content_name: city.name,
+    content_category: "city",
+    city: city.name,
+    region: city.county,
+    num_items: city.listingCount ?? 0,
+  });
+};
+
+// Custom event: View Article (for retargeting)
+//
+// content_category carries the article's own category so audiences can be built
+// per topic — a buyer reading financing guides is a different campaign from a
+// seller reading market reports. Articles are the highest-CTR pages on the site
+// (1.74% vs 0.35% for city pages), so this is the cheapest audience to fill.
+export const trackViewArticle = (article: {
+  slug: string;
+  title?: string;
+  category?: string;
+}) => {
+  trackEvent("ViewContent", {
+    content_ids: [`article:${article.slug}`],
+    content_type: "article",
+    content_name: article.title || article.slug,
+    content_category: article.category || "insights",
+  });
+};

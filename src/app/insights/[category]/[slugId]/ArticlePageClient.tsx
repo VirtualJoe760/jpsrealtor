@@ -5,8 +5,9 @@ import { Post } from "@/types/post";
 import { ArrowLeft, Calendar, BookOpen, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { trackViewArticle } from "@/lib/meta-pixel";
 
 interface ArticlePageClientProps {
   post: Post;
@@ -17,6 +18,19 @@ interface ArticlePageClientProps {
 export default function ArticlePageClient({ post, category, mdxContent }: ArticlePageClientProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
+
+  // Articles are the highest-CTR pages on the site but fired no pixel event, so
+  // the best-qualified readers never entered a retargeting audience. Keyed on
+  // the slug so a client-side navigation between articles reports each one.
+  useEffect(() => {
+    trackViewArticle({
+      // slugId is the URL segment (/insights/{category}/{slugId}), so the content
+      // id lines up with URL-based audiences as well as event-based ones.
+      slug: post.slugId || post.slug,
+      title: post.title,
+      category,
+    });
+  }, [post.slugId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen py-12 px-4">

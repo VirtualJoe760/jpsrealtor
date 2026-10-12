@@ -1,7 +1,7 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-10-11
+last_verified: 2026-10-12
 related: [../multi-tenant/README.md, ../routing/README.md]
 ---
 
@@ -124,12 +124,41 @@ nothing keeps the previous behaviour.
   `GET|PATCH /api/skill/site/tracking` (scope `site:manage`); MCP tools
   `get_tracking` / `set_tracking`.
 
+### Which pages fire a pixel event
+
+A loaded pixel only yields a PageView. Retargeting audiences that segment by
+intent need a per-page `ViewContent`, so these are wired explicitly:
+
+| Page | Helper | `content_type` |
+|---|---|---|
+| Listing detail | `trackViewContent` | `property` |
+| Subdivision (+ buy/sell) | `trackViewContent` | `property` |
+| City | `trackViewCity` | `destination` |
+| Insights article | `trackViewArticle` | `article` |
+| Landing page | `trackViewContent` + `trackLead` | `property` |
+| Favourites | `trackViewTopListings` | `product_group` |
+
+City and article pages fired **nothing** until 2026-10-12 — the base pixel was
+loading, so the tags looked healthy, but the two page types with the clearest
+topic intent never entered an audience.
+
+Cities and articles get their own helpers on purpose: `trackViewContent` stamps
+`content_type: "property"` and a `listingKey`, so routing a place or an article
+through it files them as homes that no product catalog can ever match.
+
+**Known wart:** subdivision pages still report as `property` with the slug as
+the `listingKey`. It works for a plain "viewed content" audience but will not
+match a catalog feed. Left as-is deliberately — changing the event shape would
+break any audience already built on it. Revisit when a catalog is connected.
+
 ## Pending (dashboard/user actions, not code)
 
 - Vercel: chatrealty.io→www and www.josephsardella.com→apex are 307; switch to
   permanent (jpsrealtor's www→apex 308 is the model).
-- GSC: verify sc-domain:josephsardella.com (no property exists), resubmit the
-  jpsrealtor.com sitemap, URL-inspect listing pages post-deploy.
+- GSC: verify sc-domain:josephsardella.com (no property exists), then
+  URL-inspect listing pages post-deploy. Sitemap resubmission needs an ADC
+  grant carrying `auth/webmasters` (not `webmasters.readonly`) — a browser
+  consent, so it cannot be scripted unattended.
 - Planned endgame: host-level 301 josephsardella.com → jpsrealtor.com AFTER
   the corporate-filter recategorization of jpsrealtor.com lands (see
   multi-tenant README, "Special domains").
