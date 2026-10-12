@@ -1,7 +1,7 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-07-25
+last_verified: 2026-10-11
 related: [../multi-tenant/README.md, ../routing/README.md]
 ---
 
@@ -40,6 +40,89 @@ The 2026-07-25 audit + fixes are the baseline; GSC context: 165 clicks /
   RealEstateAgent (name, phone, headshot, CA DRE identifier, brokerage,
   sameAs, areaServed). Listing pages emit `PropertyListingJsonLd`
   (RealEstateListing + Offer). Placeholder-shell fallback only on error.
+
+## 2026-10-11 audit — the 7% index rate
+
+GSC showed 3,707 indexed against 126,407 not-indexed, and 220 clicks / 21,239
+impressions over 16 months. Root cause was **declaration, not quality**: the
+sitemap declared 2,360 URLs out of ~100K renderable ones, because
+`getScopeCities()` was limited to the agent's 6 service-area cities. A random
+URL-inspection sample measured the gap exactly:
+
+| | sampled | indexed | rate |
+|---|---|---|---|
+| In the sitemap | 62 | 35 | **56%** |
+| Renderable, not in the sitemap | 55 | 2 | **3.6%** |
+
+45 of those 55 came back "URL is unknown to Google" — never discovered at all,
+because no page linked to them either. Fixes:
+
+- **Sitemap scope is now the `City`/`Subdivision` collections, not a hardcoded
+  city list** — Southern California (8 counties), Coachella Valley first so CV
+  is never the part that gets truncated at the 50K ceiling. 2,360 → ~33,300.
+- **Server-rendered link hubs** (`components/seo/CrawlableLinks` +
+  `lib/crawl-index.ts`). `/neighborhoods` rendered 0 city anchors and city
+  pages rendered 0 listing anchors, so the sitemap was the only discovery path.
+- **Non-place subdivisions are filtered out.** "Not Applicable", "N/A",
+  "Other" etc. are MLS filler; 41 of them would have become URLs. The list is
+  `NON_PLACE_SUBDIVISION_NAMES` in `lib/neighborhoods-data.ts` — one source of
+  truth, because the directory page filtered them and the sitemap did not.
+- **14 duplicated `<loc>`s and 4 dead subdivision URLs are gone.** The old
+  hardcoded subdivision constant paired neighborhoods with the wrong cities
+  (`la-morada` is in Coachella, not Indio; `desert-horizons-country-club` is in
+  Indian Wells, not Palm Desert), and the route resolves by
+  `createSlug(subdivision.city)`, so each mismatch was a declared 404. Deriving
+  the city from the subdivision record fixes it by construction: all 970 in-scope
+  subdivision URLs were verified to resolve.
+- **Articles got a self-canonical** (`insights/[category]/[slugId]`). They had
+  none at all, and they are the highest-CTR pages on the site (1.74% vs 0.35%
+  for city pages).
+- **Three soft 404s in the article route became real 404s.** Missing/invalid/
+  wrong-domain articles rendered an apology at HTTP 200. Note the ordering: the
+  existence checks sit BEFORE the try/catch, because `notFound()` throws and the
+  catch would otherwise convert it straight back into a 200.
+
+Still open (deliberately — flagged, not fixed):
+
+- Root layout calls `cookies()`/`headers()`, forcing full dynamic rendering and
+  a sitewide `private, no-store`. `vercel.json` declares
+  `public, max-age=0, must-revalidate` but is overridden at runtime.
+- No compound index on `unifiedlistings` for
+  `{city, standardStatus, propertyType, modificationTimestamp}`. Sorting city
+  listings measured **37.7s** (Los Angeles), so `getCityListingLinks()` runs
+  unsorted on purpose. Add the index and the sort can come back.
+- `/mls-listings` still renders no server-side listing anchors (full-screen map
+  layout); `/neighborhoods`, `/mls-listings`, `/selling`, `/contact`,
+  `/book-appointment` have no self-canonical (harmless — Google self-canonicalises
+  — but inconsistent).
+- Pre-crawl canonical damage is still in GSC: sampled pages last crawled
+  2026-04 → 2026-07 report `userCanonical: https://jpsrealtor.com/` from the old
+  root-layout canonical. Live HTML is correct; it clears on recrawl.
+- `Unknown`-county hygiene in `cities` (599 rows duplicating CV/Joshua Tree).
+
+## Tracking & retargeting tags
+
+Per-tenant measurement IDs live at `agentProfile.tracking` (User model), are
+resolved server-side by `getServerTenantConfig()` in `lib/nav-layout.ts`, and
+render via `components/seo/GoogleTags.tsx` (GA4 + Google Ads on one gtag.js
+load) and the `pixelId` prop on `components/MetaPixel.tsx`. Env vars
+(`NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`,
+`NEXT_PUBLIC_GOOGLE_ADS_ID`) remain the platform fallback, so an agent who sets
+nothing keeps the previous behaviour.
+
+- These are **public** IDs — they ship in the HTML by design. That is why they
+  are agent-editable settings and not secrets.
+- `enabled: false` is an explicit opt-out and must NOT fall back to the platform
+  IDs; `sanitizeTracking()` handles that case separately.
+- Malformed IDs are rejected rather than rendered. A bad tag loads, reports
+  nothing, and looks installed.
+- **GA4 cannot build Google Ads audiences on its own.** YouTube and Display
+  remarketing need the `AW-` tag, which the site did not render anywhere before
+  this change. `capabilities.youtubeRetargeting` on the skill endpoint reports
+  this directly.
+- Surfaces: `/agent/settings` → "Tracking & Ads";
+  `GET|PATCH /api/skill/site/tracking` (scope `site:manage`); MCP tools
+  `get_tracking` / `set_tracking`.
 
 ## Pending (dashboard/user actions, not code)
 

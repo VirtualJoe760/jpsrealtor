@@ -12,6 +12,23 @@ import { City } from '@/models/cities';
 import Subdivision from '@/models/subdivisions';
 import { createSlug } from '@/lib/utils/slug';
 
+/**
+ * Subdivision names the MLS uses to mean "no subdivision". They are not places,
+ * so they must never become a URL: a /neighborhoods/<city>/not-applicable page
+ * is thin duplicate content, and the sitemap used to declare 41 of them across
+ * Southern California. Exported so sitemap-generator.ts filters on exactly the
+ * same list this directory does — a URL in the sitemap but not in the directory
+ * has no inbound link, which is how pages land in "crawled, not indexed".
+ */
+export const NON_PLACE_SUBDIVISION_NAMES = [
+  'Not Applicable', 'N/A', 'NA', 'None', 'NONE',
+  'Other', 'Unknown', 'Custom', 'not applicable',
+];
+
+export function isNonPlaceSubdivision(name?: string | null): boolean {
+  return !name || NON_PLACE_SUBDIVISION_NAMES.includes(name);
+}
+
 interface SubdivisionData {
   name: string;
   slug: string;
@@ -143,7 +160,7 @@ export async function getNeighborhoodsDirectory(): Promise<RegionData[] | null> 
     for (const sub of subdivisions) {
       const cityName = (sub as any).city;
       const name = (sub as any).name;
-      if (!name || ['Not Applicable', 'N/A', 'NA', 'None', 'NONE', 'Other', 'Unknown', 'Custom', 'not applicable'].includes(name)) {
+      if (isNonPlaceSubdivision(name)) {
         continue;
       }
       if (!subsByCity[cityName]) subsByCity[cityName] = [];

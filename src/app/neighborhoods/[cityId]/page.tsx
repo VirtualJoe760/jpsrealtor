@@ -10,11 +10,22 @@ import { FaqJsonLd, getCityFaqs } from "@/app/components/seo/FaqJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { getNeighborhoodsDirectory, findCityBySlug } from "@/lib/neighborhoods-data";
 import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import CrawlableLinks from "@/app/components/seo/CrawlableLinks";
+import { getCityListingLinks } from "@/lib/crawl-index";
+
+interface SubdivisionData {
+  name: string;
+  slug: string;
+  listings: number;
+}
 
 interface CityData {
   name: string;
   slug: string;
   listings: number;
+  // Populated by getNeighborhoodsDirectory(); used for the crawlable
+  // neighborhood index at the foot of the page.
+  subdivisions?: SubdivisionData[];
 }
 
 interface CountyData {
@@ -188,6 +199,15 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
         };
 
     const baseUrl = await getBaseUrlFromHeaders();
+    // The only internal links a listing page gets. Without these, a listing is
+    // reachable solely via the sitemap — which is why 82% of undeclared
+    // listings came back "URL is unknown to Google" on 2026-10-11.
+    const listingLinks = await getCityListingLinks(cityData.name);
+    const subdivisionLinks = (cityData.subdivisions || []).map((sub: any) => ({
+      href: `/neighborhoods/${cityId}/${sub.slug}`,
+      label: sub.name,
+      meta: sub.listings || undefined,
+    }));
     const faqs = getCityFaqs(cityData.name, initialStats.listingCount);
     const breadcrumbItems = [
       { name: "Home", url: baseUrl },
@@ -205,6 +225,19 @@ export default async function CityPage({ params }: { params: Promise<{ cityId: s
           cityId={cityId}
           cityDoc={serializedCityDoc}
           initialStats={initialStats}
+        />
+        {subdivisionLinks.length > 0 ? (
+          <CrawlableLinks
+            title={`Neighborhoods in ${cityData.name}`}
+            links={subdivisionLinks}
+            columns={4}
+          />
+        ) : null}
+        <CrawlableLinks
+          title={`Homes for sale in ${cityData.name}`}
+          description={`${listingLinks.length.toLocaleString()} active listings`}
+          links={listingLinks}
+          columns={3}
         />
       </>
     );
