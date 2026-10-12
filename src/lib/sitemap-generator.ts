@@ -208,20 +208,51 @@ async function getScopeCities(): Promise<ScopeCity[]> {
 // splitting into a sitemap index (generateSitemaps), not raising the number.
 const SITEMAP_URL_CEILING = 49_500
 
+// How many listing URLs we are willing to spend wall-clock on in ONE request.
+//
+// This is a cluster limit, not a sitemap limit. Measured against Atlas on
+// 2026-10-11: projected, unsorted reads stream at roughly 1,000 docs/sec, so
+// all 60,551 active SoCal listings (39,555 GPS + 20,996 CRMLS) take ~52s and
+// blow the function timeout — the first deploy of the widened scope returned
+// 504 FUNCTION_INVOCATION_TIMEOUT in production and served Google nothing at
+// all, which is worse than the 2,360 URLs it replaced.
+//
+// Per-county parallelism was tried and is WORSE (70.9s for the same work): the
+// cluster is I/O bound, so concurrent cursors contend instead of overlapping.
+// Sequential with a hard limit is the only thing that behaves.
+//
+// 12,000 costs ~12s, leaving headroom under maxDuration for the CV pass and the
+// city/subdivision queries. Raising it needs a faster cluster or the sitemap
+// index described in docs/seo/README.md, not just a bigger number here.
+const LISTING_FETCH_BUDGET = 12_000
+
+// A generated sitemap is identical for every visitor on a host, and Googlebot
+// refetches it often. ISR cannot help here because sitemap.ts reads headers()
+// for multi-tenant host resolution, which forces dynamic rendering — so cache
+// in-process instead. A warm lambda then answers instantly; only a cold start
+// pays the full generation cost.
+const SITEMAP_TTL_MS = 6 * 60 * 60 * 1000
+const sitemapCache = new Map<string, { at: number; entries: MetadataRoute.Sitemap }>()
+
 /**
  * Main entry point: generate sitemap entries for the requesting domain.
  */
 export async function generateSitemapForDomain(hostname: string): Promise<MetadataRoute.Sitemap> {
+  const cached = sitemapCache.get(hostname)
+  if (cached && Date.now() - cached.at < SITEMAP_TTL_MS) return cached.entries
+
   const domain = await resolveDomain(hostname)
 
-  switch (domain.type) {
-    case 'platform':
-      return generatePlatformSitemap(domain)
-    case 'agent':
-      return generateAgentSitemap(domain)
-    default:
-      return generatePlatformSitemap(domain)
-  }
+  const entries =
+    domain.type === 'agent'
+      ? await generateAgentSitemap(domain)
+      : await generatePlatformSitemap(domain)
+
+  // Only cache a result worth caching. If the DB was unreachable the generators
+  // fall back to the static pages alone, and caching that for six hours would
+  // turn a transient blip into a six-hour outage of the whole sitemap.
+  if (entries.length > 50) sitemapCache.set(hostname, { at: Date.now(), entries })
+  return entries
 }
 
 function getCityPages(baseUrl: string, now: Date, scope: ScopeCity[]): MetadataRoute.Sitemap {
@@ -311,24 +342,20 @@ async function getListingPages(
     await dbConnect()
 
     const cvNames = scope.filter(c => c.isCV).map(c => c.name)
-    const allNames = scope.map(c => c.name)
 
     const baseFilter = {
       standardStatus: 'Active',
       propertyType: 'A',
       slugAddress: { $exists: true, $ne: null },
     }
-
-    // Two passes so the CV inventory is never the part that gets truncated
-    // when the 50K-per-file sitemap ceiling bites.
     const select = 'slugAddress modificationTimestamp city'
-    const [cvGps, cvCrmls] = await Promise.all([
-      UnifiedListing.find({ ...baseFilter, city: { $in: cvNames } } as any)
-        .select(select).sort({ modificationTimestamp: -1 }).limit(budget).lean(),
-      CRMLSListing.find({ ...baseFilter, city: { $in: cvNames } } as any)
-        .select(select).sort({ modificationTimestamp: -1 }).limit(budget).lean(),
-    ])
 
+    // NO .sort() on any of these, deliberately — the same trap documented in
+    // lib/crawl-index.ts. There is no index covering these filters plus
+    // modificationTimestamp, so a sort forces a full scan and an in-memory sort
+    // (37.7s measured) instead of letting Mongo stream the first `limit` matches
+    // and stop. Sitemap entries carry their own lastModified, so document order
+    // is meaningless here and the sort bought nothing.
     const seen = new Set<string>()
     const push = (listing: any, priority: number) => {
       const slug = listing?.slugAddress
@@ -345,21 +372,51 @@ async function getListingPages(
       })
     }
 
-    for (const l of [...cvGps, ...cvCrmls]) {
-      if (pages.length >= budget) break
+    // One cap governs every pass. `budget` is the room left under the 50K
+    // sitemap ceiling; LISTING_FETCH_BUDGET is what the cluster can actually
+    // serve in one request. The smaller of the two wins, and every loop below
+    // breaks on it — an earlier version broke on `budget` alone and was only
+    // bounded by the .limit() on each query, which made the real ceiling an
+    // accident of arithmetic rather than a stated rule.
+    const cap = Math.min(budget, LISTING_FETCH_BUDGET)
+
+    // Pass 1 — Coachella Valley, by city. A ~20-name $in is cheap, and this is
+    // the inventory that must never be the part that gets dropped, so it is
+    // bought first regardless of what is left for the rest.
+    const cvGps = await UnifiedListing.find({ ...baseFilter, city: { $in: cvNames } } as any)
+      .select(select).limit(cap).lean()
+    for (const l of cvGps) {
+      if (pages.length >= cap) break
       push(l, 0.8)
     }
 
-    if (pages.length < budget) {
-      const remaining = budget - pages.length
-      const [gps, crmls] = await Promise.all([
-        UnifiedListing.find({ ...baseFilter, city: { $in: allNames } } as any)
-          .select(select).sort({ modificationTimestamp: -1 }).limit(remaining + seen.size).lean(),
-        CRMLSListing.find({ ...baseFilter, city: { $in: allNames } } as any)
-          .select(select).sort({ modificationTimestamp: -1 }).limit(remaining + seen.size).lean(),
-      ])
-      for (const l of [...gps, ...crmls]) {
-        if (pages.length >= budget) break
+    // Pass 2 — the rest of Southern California, by county so it rides
+    // idx_county_status instead of a 200-name $in on city.
+    //
+    // The remaining room is split evenly between the two pools on purpose. GPS
+    // covers the desert and CRMLS covers most of LA / Orange / San Diego, so
+    // filling the budget from GPS first starved CRMLS to zero and quietly made
+    // "Southern California" mean "the Coachella Valley plus whatever GPS had".
+    // Sequential, not parallel: concurrent cursors measured slower (70.9s vs
+    // 52s) because the cluster is I/O bound.
+    const countyFilter = { ...baseFilter, countyOrParish: { $in: SOCAL_COUNTIES } }
+    const share = Math.max(0, Math.floor((cap - pages.length) / 2))
+
+    if (share > 0) {
+      const gps = await UnifiedListing.find(countyFilter as any)
+        .select(select).limit(share + seen.size).lean()
+      const gpsStop = pages.length + share
+      for (const l of gps) {
+        if (pages.length >= gpsStop) break
+        push(l, 0.6)
+      }
+    }
+
+    if (pages.length < cap) {
+      const crmls = await CRMLSListing.find(countyFilter as any)
+        .select(select).limit(cap - pages.length + seen.size).lean()
+      for (const l of crmls) {
+        if (pages.length >= cap) break
         push(l, 0.6)
       }
     }

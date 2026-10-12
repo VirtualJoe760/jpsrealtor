@@ -14,6 +14,14 @@ import { generateSitemapForDomain } from '@/lib/sitemap-generator'
 //
 // All stay well within the 50K sitemap spec limit.
 
+// The widened SoCal scope makes this a genuinely expensive route: tens of
+// thousands of listing rows off an I/O-bound Atlas cluster. The default 15s
+// function limit returned 504 FUNCTION_INVOCATION_TIMEOUT on first deploy and
+// served Google nothing, so give it room. generateSitemapForDomain() caches the
+// result in-process for 6h, which is what keeps the steady-state cost near zero
+// (ISR cannot cache this route because headers() forces dynamic rendering).
+export const maxDuration = 60
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const headersList = await headers()
   const hostname = headersList.get('host') || 'chatrealty.io'
