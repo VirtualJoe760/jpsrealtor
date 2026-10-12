@@ -156,9 +156,15 @@ break any audience already built on it. Revisit when a catalog is connected.
 - Vercel: chatrealty.io→www and www.josephsardella.com→apex are 307; switch to
   permanent (jpsrealtor's www→apex 308 is the model).
 - GSC: verify sc-domain:josephsardella.com (no property exists), then
-  URL-inspect listing pages post-deploy. Sitemap resubmission needs an ADC
-  grant carrying `auth/webmasters` (not `webmasters.readonly`) — a browser
-  consent, so it cannot be scripted unattended.
+  URL-inspect listing pages post-deploy.
+- jpsrealtor.com sitemap resubmitted 2026-10-12T08:09Z (`isPending: true`,
+  warnings 3 → 0 — the 3 warnings were the 14 duplicate `<loc>` entries).
+  Resubmission needs an ADC grant carrying `auth/webmasters`, NOT
+  `webmasters.readonly`, and gcloud's `print-access-token --scopes` allowlist
+  excludes webmasters — so it takes a browser consent and cannot run
+  unattended. `PUT .../sitemaps/{feedpath}` returning 204 is the whole API;
+  "Request Indexing" is UI-only and the Indexing API covers only
+  JobPosting/BroadcastEvent.
 - Planned endgame: host-level 301 josephsardella.com → jpsrealtor.com AFTER
   the corporate-filter recategorization of jpsrealtor.com lands (see
   multi-tenant README, "Special domains").
