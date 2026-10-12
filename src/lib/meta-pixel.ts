@@ -8,14 +8,26 @@ declare global {
   }
 }
 
+// Platform fallback. Per-tenant IDs come from agentProfile.tracking.metaPixelId
+// and are passed in at init time, because this module is loaded in the browser
+// where only NEXT_PUBLIC_* env vars exist and they are the same for every tenant.
 export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 
+// The pixel actually in use for this request's tenant. Set by initMetaPixel so
+// that pageView()/trackEvent() report against the agent's own pixel rather than
+// the platform's — without it, every agent site fed one shared audience.
+let activePixelId = FB_PIXEL_ID;
+
+export const getActivePixelId = () => activePixelId;
+
 // Initialize Meta Pixel
-export const initMetaPixel = () => {
-  if (!FB_PIXEL_ID) {
+export const initMetaPixel = (pixelId?: string) => {
+  const id = (pixelId || "").trim() || FB_PIXEL_ID;
+  if (!id) {
     console.warn("Meta Pixel ID not found. Skipping initialization.");
     return;
   }
+  activePixelId = id;
 
   (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
     if (f.fbq) return;
@@ -47,23 +59,27 @@ export const initMetaPixel = () => {
   // map view (/chap?view=map&lat=…&lng=…) that auto-collection is what kept tripping Meta's
   // "parameters blocked by Meta" warnings (lat & lng) even after manual events were suppressed.
   // Turning autoConfig off means only the events we explicitly fire reach Meta.
-  window.fbq?.("set", "autoConfig", false, FB_PIXEL_ID);
+  window.fbq?.("set", "autoConfig", false, id);
 
-  window.fbq?.("init", FB_PIXEL_ID);
+  window.fbq?.("init", id);
   // Initial PageView is dispatched by MetaPixel.tsx so it goes through the lat/lng guard.
 };
 
-// Meta flags lat/lng as PII. Suppress any Pixel event when those params are in the URL,
-// because fbq always attaches event_source_url = window.location.href.
-const hasBlockedUrlParams = (): boolean => {
-  if (typeof window === "undefined") return false;
-  const params = new URL(window.location.href).searchParams;
-  return params.has("lat") || params.has("lng");
-};
+// NOTE: there is deliberately no lat/lng suppression here any more.
+//
+// fbq always attaches event_source_url = window.location.href, and MapLayer writes
+// lat/lng into the URL on every pan/zoom (on /chap and on /). Gating events on those
+// params therefore silenced the pixel across the entire map experience and the
+// homepage — every Lead, ViewContent and Search fired from there was dropped before
+// it left the browser. Meta strips suspected PII from event_source_url on their side
+// and still records the event, so the gate destroyed data to avoid a cosmetic
+// Events Manager warning.
+//
+// The real protection is autoConfig: false in initMetaPixel() above, which stops the
+// query string being collected as event parameters in the first place. Keep it off.
 
 // Track page view
 export const pageView = () => {
-  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", "PageView");
   }
@@ -71,7 +87,6 @@ export const pageView = () => {
 
 // Track standard events
 export const trackEvent = (name: string, options: Record<string, any> = {}) => {
-  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", name, options);
   }

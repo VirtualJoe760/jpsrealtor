@@ -20,7 +20,7 @@ import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
 
-function LayoutContent({ children, navLayout = "sidebar" }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar" }) {
+function LayoutContent({ children, navLayout = "sidebar", metaPixelId }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar"; metaPixelId?: string }) {
   // Sync favorites status on login (once per session)
   useFavoritesSync();
   const { isCollapsed } = useSidebar();
@@ -71,7 +71,7 @@ function LayoutContent({ children, navLayout = "sidebar" }: { children: React.Re
 
   return (
     <>
-      <MetaPixel />
+      <MetaPixel pixelId={metaPixelId} />
 
       {/* Global Spatial Background - Persists across navigation */}
       {shouldShowSpatialBackground && (
@@ -146,6 +146,9 @@ interface ClientLayoutWrapperProps {
   initialTheme?: ThemeName;
   initialPreference?: ThemePreference;
   navLayout?: "sidebar" | "navbar";
+  /** Resolved server-side from agentProfile.tracking so the agent's own pixel
+   *  fires instead of the single shared platform pixel. */
+  metaPixelId?: string;
   themeLocked?: boolean;
   forcedTheme?: ThemeName;
 }
@@ -155,6 +158,7 @@ export default function ClientLayoutWrapper({
   initialTheme,
   initialPreference,
   navLayout = "sidebar",
+  metaPixelId,
   themeLocked = false,
   forcedTheme,
 }: ClientLayoutWrapperProps) {
@@ -195,7 +199,7 @@ export default function ClientLayoutWrapper({
         <MapStateProvider>
           <Providers>
             <SidebarProvider>
-              <LayoutContent navLayout={navLayout}>{children}</LayoutContent>
+              <LayoutContent navLayout={navLayout} metaPixelId={metaPixelId}>{children}</LayoutContent>
             </SidebarProvider>
           </Providers>
         </MapStateProvider>

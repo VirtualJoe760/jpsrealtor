@@ -63,3 +63,40 @@ export const set_site_live: ToolDef = {
     return await request(config, "/api/skill/site/go-live", { method: "POST" });
   },
 };
+
+export const get_tracking: ToolDef = {
+  name: "get_tracking",
+  description:
+    "The agent's visitor-tracking / retargeting tag IDs (Meta Pixel, GA4, Google Ads) as rendered on their site, plus a `capabilities` block saying which retargeting channels are actually usable. Use this before advising on ads: GA4 alone CANNOT build Google Ads audiences, so youtubeRetargeting is false until a Google Ads (AW-) tag is set.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  },
+  async handler(_input, config) {
+    return await request(config, "/api/skill/site/tracking");
+  },
+};
+
+export const set_tracking: ToolDef = {
+  name: "set_tracking",
+  description:
+    "Set the agent's tracking tag IDs. These are PUBLIC measurement IDs (they ship in the page HTML), not secrets. Pass only the fields to change; an empty string clears a field back to the platform default. Formats are validated server-side and a malformed ID is rejected rather than silently installed. Setting enabled:false renders no tags at all.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      metaPixelId: { type: "string", description: 'Meta Pixel ID, digits only, e.g. "1378421466770456"' },
+      ga4MeasurementId: { type: "string", description: 'GA4 measurement ID, e.g. "G-ABC1234567"' },
+      googleAdsId: { type: "string", description: 'Google Ads tag ID, e.g. "AW-123456789". Required for YouTube/Display remarketing.' },
+      googleAdsConversionLabel: { type: "string", description: "Conversion label from a Google Ads conversion action" },
+      enabled: { type: "boolean", description: "Master switch; false renders no tracking tags at all" },
+    },
+    additionalProperties: false,
+  },
+  async handler(input, config) {
+    return await request(config, "/api/skill/site/tracking", {
+      method: "PATCH",
+      body: input as Record<string, unknown>,
+    });
+  },
+};

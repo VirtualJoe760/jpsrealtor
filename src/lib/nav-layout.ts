@@ -16,15 +16,60 @@ import User from "@/models/User";
 export type NavLayout = "sidebar" | "navbar";
 export type ThemeMode = "both" | "light" | "dark";
 
+/**
+ * Public measurement IDs for this tenant. Resolved server-side so the tags are
+ * in the first HTML response — a pixel injected after hydration misses the
+ * bounce traffic, which is most of it.
+ */
+export interface TenantTracking {
+  metaPixelId: string;
+  ga4MeasurementId: string;
+  googleAdsId: string;
+  googleAdsConversionLabel: string;
+}
+
 export interface TenantConfig {
   navLayout: NavLayout;
   themeMode: ThemeMode;
+  tracking: TenantTracking;
 }
+
+// Platform-level fallbacks. An agent who has not set their own IDs inherits the
+// platform's, which is the pre-existing behaviour (a single global pixel) —
+// keeping it means this change cannot silently switch off the live pixel.
+const ENV_TRACKING: TenantTracking = {
+  metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
+  ga4MeasurementId: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "",
+  googleAdsId: process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "",
+  googleAdsConversionLabel: process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL || "",
+};
 
 const DEFAULTS: TenantConfig = {
   navLayout: "sidebar",
   themeMode: "both",
+  tracking: ENV_TRACKING,
 };
+
+/** Accepts only well-formed IDs; a typo'd tag is worse than no tag. */
+function sanitizeTracking(t?: Record<string, any>): TenantTracking {
+  if (!t || t.enabled === false) {
+    // enabled:false is an explicit opt-out, so it must NOT fall back to the
+    // platform IDs — that would keep tracking the agent's visitors anyway.
+    return t?.enabled === false
+      ? { metaPixelId: "", ga4MeasurementId: "", googleAdsId: "", googleAdsConversionLabel: "" }
+      : ENV_TRACKING;
+  }
+  const pick = (v: any, re: RegExp, fallback: string) => {
+    const s = typeof v === "string" ? v.trim() : "";
+    return s && re.test(s) ? s : fallback;
+  };
+  return {
+    metaPixelId: pick(t.metaPixelId, /^\d{8,20}$/, ENV_TRACKING.metaPixelId),
+    ga4MeasurementId: pick(t.ga4MeasurementId, /^G-[A-Z0-9]{6,15}$/i, ENV_TRACKING.ga4MeasurementId),
+    googleAdsId: pick(t.googleAdsId, /^AW-\d{6,15}$/i, ENV_TRACKING.googleAdsId),
+    googleAdsConversionLabel: pick(t.googleAdsConversionLabel, /^[A-Za-z0-9_-]{5,40}$/, ENV_TRACKING.googleAdsConversionLabel),
+  };
+}
 
 export async function getServerTenantConfig(): Promise<TenantConfig> {
   try {
@@ -38,13 +83,14 @@ export async function getServerTenantConfig(): Promise<TenantConfig> {
 
     await dbConnect();
     const owner = await User.findById(ownerId)
-      .select("agentProfile.navLayout agentProfile.themeMode")
-      .lean<{ agentProfile?: { navLayout?: string; themeMode?: string } }>();
+      .select("agentProfile.navLayout agentProfile.themeMode agentProfile.tracking")
+      .lean<{ agentProfile?: { navLayout?: string; themeMode?: string; tracking?: Record<string, any> } }>();
 
     const ap = owner?.agentProfile || {};
     return {
       navLayout: ap.navLayout === "navbar" ? "navbar" : "sidebar",
       themeMode: ap.themeMode === "light" || ap.themeMode === "dark" ? ap.themeMode : "both",
+      tracking: sanitizeTracking(ap.tracking),
     };
   } catch {
     // Any failure (DB, header parsing) falls back to safe defaults.
@@ -55,4 +101,9 @@ export async function getServerTenantConfig(): Promise<TenantConfig> {
 /** Back-compat thin wrapper. */
 export async function getServerNavLayout(): Promise<NavLayout> {
   return (await getServerTenantConfig()).navLayout;
+}
+
+/** Thin wrapper for callers that only need the measurement IDs. */
+export async function getServerTenantTracking(): Promise<TenantTracking> {
+  return (await getServerTenantConfig()).tracking;
 }

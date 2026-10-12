@@ -24,6 +24,7 @@ import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
+import GoogleTags from "@/app/components/seo/GoogleTags";
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
 import { getServerTenantConfig } from "@/lib/nav-layout";
 
@@ -272,28 +273,18 @@ export default async function RootLayout({
         <PersonJsonLd />
         <WebSiteJsonLd />
 
-        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}');
-              `}
-            </Script>
-          </>
-        )}
+        {/* Was hardwired to NEXT_PUBLIC_GA_MEASUREMENT_ID, i.e. one analytics
+            property for every tenant and no Google Ads tag at all. Now resolved
+            per tenant from agentProfile.tracking, with the env values as the
+            platform fallback. */}
+        <GoogleTags tracking={tenant.tracking} />
         <ClientLayoutWrapper
           initialTheme={serverTheme}
           initialPreference={serverPreference}
           navLayout={navLayout}
           themeLocked={themeLocked}
           forcedTheme={themeLocked ? serverTheme : undefined}
+          metaPixelId={tenant.tracking.metaPixelId}
         >
           {children}
           <Footer />

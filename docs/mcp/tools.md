@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-11
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -43,6 +43,8 @@ Smallest possible surface to confirm auth works and orient Claude.
 | `site_status` | `site:manage` | `GET /api/skill/site/status` | External-site lifecycle state: `status` (none/preview/live), deployment URL, subdomain URL, `licenseOnFile`. |
 | `connect_site` | `site:manage` | `POST /api/skill/site/connect` | Point `{subdomain}.chatrealty.io` at the agent's own deployment ("Option A: point, don't host"). Sets status `preview` (agent + admins only, signed link) and **registers the subdomain on the Vercel edge** — response carries `subdomainRegistered`. See `docs/chatrealty-api/external-site.md`. |
 | `set_site_live` | `site:manage` | `POST /api/skill/site/go-live` | Flip preview → live (public). **License-gated server-side** — 409 `license_required` without a license number on file. |
+| `get_tracking` | `site:manage` | `GET /api/skill/site/tracking` | The tenant's visitor-tracking tag IDs (Meta Pixel, GA4, Google Ads) plus a `capabilities` block. Read it before advising on ads: **GA4 alone cannot build Google Ads audiences**, so `capabilities.youtubeRetargeting` stays false until an `AW-` tag is set. |
+| `set_tracking` | `site:manage` | `PATCH /api/skill/site/tracking` | Set those IDs. They are **public** measurement IDs (they ship in the page HTML), not secrets. Partial update; empty string clears a field back to the platform default; malformed IDs are rejected rather than silently installed; `enabled: false` renders no tags at all. |
 
 ### 2. MLS / Listings · `Phase 1`
 

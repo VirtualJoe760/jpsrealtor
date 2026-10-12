@@ -233,6 +233,24 @@ export interface IUser extends Document {
     metaDescription?: string; // Meta description for SEO
     metaKeywords?: string[]; // SEO keywords
 
+    // Visitor tracking / ad platform tags, rendered into this tenant's pages.
+    //
+    // These are PUBLIC measurement IDs, not secrets — they ship in the HTML by
+    // design, which is why they live on agentProfile (agent-editable) rather
+    // than in env vars. The site previously read a single global
+    // NEXT_PUBLIC_META_PIXEL_ID, so every tenant shared one pixel and no agent
+    // could build an audience of their own visitors.
+    //
+    // googleAdsId is the piece that unblocks YouTube/Display remarketing: GA4
+    // alone cannot build Google Ads audiences without the AW- tag on the page.
+    tracking?: {
+      metaPixelId?: string; // e.g. "1378421466770456"
+      ga4MeasurementId?: string; // e.g. "G-XXXXXXXXXX"
+      googleAdsId?: string; // e.g. "AW-123456789" — required for YouTube remarketing
+      googleAdsConversionLabel?: string; // e.g. "AbC-D_efG" for conversion events
+      enabled?: boolean; // master switch; false renders no tags at all
+    };
+
     // AI Integrations (per-agent bring-your-own-key + API tokens for desktop skill)
     aiIntegrations?: {
       // Agent's own Anthropic API key — used for in-CMS Claude chat builder
@@ -939,6 +957,17 @@ const UserSchema = new Schema<IUser>(
         primary: String,
         secondary: String,
         accent: String,
+      },
+
+      // Visitor tracking / ad platform tags (public measurement IDs — see interface).
+      // Mongoose strict mode silently drops undeclared fields, so these must be
+      // declared here or the settings PUT would report success and persist nothing.
+      tracking: {
+        metaPixelId: String,
+        ga4MeasurementId: String,
+        googleAdsId: String,
+        googleAdsConversionLabel: String,
+        enabled: { type: Boolean, default: true },
       },
 
       // SEO & Marketing
