@@ -19,6 +19,7 @@ import { resolveAdapter } from "@/lib/tenant/resolve-connection";
 import { mapErrorToResponse } from "@/lib/skill-api/errors";
 import type { ListingFilter } from "@/lib/db/adapter";
 import { buildTenantListingFilter } from "@/lib/skill-api/tenant-listing-filter";
+import { listingPartyClauses } from "@/lib/skill-api/listing-party-filter";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_LIMIT = 50;
@@ -116,6 +117,11 @@ export async function GET(req: NextRequest) {
     .map((c) => c.trim())
     .filter(Boolean);
   const subdivision = sp.get("subdivision")?.trim();
+  // `subdivisions=PGA West,Indian Ridge` — match ANY, like `cities`. `subdivision` wins when both are set.
+  const subdivisions = (sp.get("subdivisions") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const propertyType = sp.get("propertyType")?.trim();
   const status = (sp.get("status")?.trim() || "Active");
   // "true" / "false" — true requires a poolFeatures string; false excludes it.
@@ -150,6 +156,7 @@ export async function GET(req: NextRequest) {
   if (city) query.city = city;
   else if (cities.length > 0) query.city = { $in: cities };
   if (subdivision) query.subdivisionName = subdivision;
+  else if (subdivisions.length > 0) query.subdivisionName = { $in: subdivisions };
 
   // Default to "A" (Residential sale) when caller omits propertyType so
   // rentals ($2k/mo) don't pollute under-$1.5M searches. Pass "all" to mix.
@@ -218,6 +225,12 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  const party = await listingPartyClauses(sp, auth.user);
+  if (party.ok === false) {
+    return NextResponse.json({ error: party.error, message: party.message }, { status: 422, headers: NO_STORE });
+  }
+  andClauses.push(...party.clauses);
+
   if (andClauses.length > 0) query.$and = andClauses;
 
   // Resolve `near` to a center and constrain the query to its bounding box.
@@ -265,6 +278,7 @@ export async function GET(req: NextRequest) {
     // path below already carries them in its DTO, so this closes the gap on
     // the legacy/dogfood path too.
     listAgentName: 1, listOfficeName: 1,
+    listAgentMlsId: 1, listOfficeMlsId: 1,
   } as const;
 
   const col = UnifiedListing.collection;
@@ -346,6 +360,8 @@ export async function GET(req: NextRequest) {
         // IDX attribution — display as "Listed by {office} — {agent}".
         listAgentName: l.listAgentName || null,
         listOfficeName: l.listOfficeName || null,
+        listAgentMlsId: l.listAgentMlsId || null,
+        listOfficeMlsId: l.listOfficeMlsId || null,
         primaryPhotoUrl: rawPhotoUrl(l),
         // Render-ready optimized thumbnail — use this for <img> in an artifact.
         thumbUrl: optimizedThumb(rawPhotoUrl(l)),

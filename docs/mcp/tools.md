@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-10-11
+last_verified: 2026-10-14
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -53,7 +53,7 @@ All searches scope to the agent's licensed territories where applicable.
 
 | Tool | Scope | Route | Description |
 |---|---|---|---|
-| `search_listings` | `listings:read` | `GET /api/skill/listings/search` | Filter by city, zip, subdivision, beds, baths, price range, property type, status. Returns paginated list with key fields + slug, **including `listAgentName` / `listOfficeName`** so any surface rendering results can satisfy the IDX "Listed by {office} — {agent}" rule (added 2026-08-04 — search omitted them while detail returned them, so scaffolded sites showed attribution on detail pages and nothing on cards). |
+| `search_listings` | `listings:read` | `GET /api/skill/listings/search` | Filter by city, zip, subdivision, beds, baths, price range, property type, status. Returns paginated list with key fields + slug, **including `listAgentName` / `listOfficeName`** so any surface rendering results can satisfy the IDX "Listed by {office} — {agent}" rule (added 2026-08-04 — search omitted them while detail returned them, so scaffolded sites showed attribution on detail pages and nothing on cards). Route-only filters (the MCP tool does not expose them yet): `subdivisions=A,B` (any of); `mine=true` (the token owner's own listings - the licence on the profile resolves through the MLS roster to the agent id listings carry, 422 `no_agent_id` without one); `listAgentMlsIds=` (listed or co-listed by) and `listOfficeMlsIds=`. Results also carry `listAgentMlsId` / `listOfficeMlsId`. Legacy Mongo path only; the tenant path ignores them. See `src/lib/skill-api/listing-party-filter.ts`. |
 | `get_listing` | `listings:read` | `GET /api/skill/listings/[slug]` | Full listing detail incl. description, lot/structure, days-on-market, list price history. |
 | `get_listing_photos` | `listings:read` | `GET /api/skill/listings/[slug]/photos` | Cloudinary URLs ordered by display priority. Use for hero photo selection in landing pages. |
 | `find_comparables` | `listings:read` | `GET /api/skill/listings/[slug]/comparables` | Computed comps for a listing — closed sales within radius, beds/baths range, time window. Returns the same shape as the agent CRM's "Comparables" panel. |
