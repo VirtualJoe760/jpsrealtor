@@ -22,7 +22,10 @@ import { isPlatformDomain } from '@/lib/domain-utils'
 import { getChildSitemaps, renderSitemapIndex, renderUrlset } from '@/lib/sitemap-sources'
 import { generateSitemapForDomain } from '@/lib/sitemap-generator'
 
-export const maxDuration = 30
+// The index does no DB work at all now (the county list is static), so this
+// is generous. It was 30 while getChildSitemaps() ran a countDocuments that
+// made the index an 18.6s request.
+export const maxDuration = 15
 
 const XML_HEADERS = {
   'Content-Type': 'application/xml; charset=utf-8',
@@ -54,7 +57,7 @@ export async function GET() {
     )
   }
 
-  const children = await getChildSitemaps()
+  const children = getChildSitemaps()
   // No `lastmod` on the index rows. Computing one honestly would mean building
   // every child to find its newest entry — the whole cost the split exists to
   // avoid — and stamping "now" on them is the exact lie this change removes.

@@ -17,7 +17,7 @@ import {
   getArticleEntries,
   getCityEntries,
   getListingEntries,
-  getListingPageCount,
+  countyFromSlug,
   getStaticEntries,
   getSubdivisionEntries,
   renderUrlset,
@@ -69,13 +69,14 @@ export async function GET(
     const domain = await resolveDomain(host)
     entries = await getArticleEntries(baseUrl, domain.agentName)
   } else if (slug.startsWith('listings-')) {
-    const page = Number(slug.slice('listings-'.length))
-    if (!Number.isInteger(page) || page < 1) return notFound()
-    // Reject pages past the end rather than serving an empty urlset: an empty
-    // child in a declared index reads as a broken sitemap in Search Console.
-    const pages = await getListingPageCount()
-    if (page > pages) return notFound()
-    entries = await getListingEntries(baseUrl, page)
+    // Partitioned by COUNTY, not by page number — a page-number split used
+    // `skip`, which is O(n) in Mongo and made listings-2/3/4 return 504 in
+    // production. See LISTING_COUNTY_PARTITIONS.
+    const county = countyFromSlug(slug.slice('listings-'.length))
+    // An unknown county is a 404 rather than an empty urlset: an empty child
+    // inside a declared index reads as a broken sitemap in Search Console.
+    if (!county) return notFound()
+    entries = await getListingEntries(baseUrl, county)
   } else {
     return notFound()
   }

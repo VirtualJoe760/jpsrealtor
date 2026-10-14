@@ -198,9 +198,28 @@ invocation could not do three things the audit required:
   `date`, i.e. the PUBLISH date, so an edited article never signalled a change).
   Measured: 186 city URLs carry 109 distinct lastmod values.
 - **More than ~12,000 listing URLs.** That cap was wall clock, not spec; one
-  invocation reading all ~60K active SoCal listings takes ~52s and returned
-  504 FUNCTION_INVOCATION_TIMEOUT. Listings now split across 4 children of
-  10,000.
+  invocation reading all active SoCal listings takes ~52s and returned
+  504 FUNCTION_INVOCATION_TIMEOUT.
+
+  **Listings are partitioned BY COUNTY, and the first attempt at this was
+  wrong.** It split by page number using `skip: (page - 1) * 10_000` with a
+  `modificationTimestamp` sort, and shipped — listings-2/3/4 returned 504 in
+  production while listings-1 worked. Two compounding causes:
+  `skip` is O(n) in MongoDB (page 4 walks and discards 30,000 rows first), and
+  the sort was NOT index-covered because the filter also constrains
+  `countyOrParish` and `slugAddress`, so the planner either scanned the sort
+  index row by row or sorted in memory. Measured: the page-2 query took
+  **55,082ms** behind a 60s limit.
+
+  County partitioning rides `idx_county_status`, needs no skip and no sort, and
+  is STABLE — a URL never migrates between children as inventory shifts, which
+  a page-number split does on every crawl. Worst child is Los Angeles at
+  15,728 URLs / ~12s. Measured after the fix: all 8 counties 200, totalling
+  **39,401 listing URLs** against 9,981 under the broken split.
+
+  The index route is also DB-free now (the county list is static). It was
+  calling `countDocuments` over the whole filter, which made the single
+  document Googlebot fetches most often an 18.6s request; it is now 0.27s.
 - **Dropping `changefreq` / `priority`.** Google ignores both, and priority was
   serialising as `0.49999999999999994`.
 

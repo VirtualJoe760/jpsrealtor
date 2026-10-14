@@ -81,9 +81,46 @@ const TRAILING_DAYS = 365
  */
 const STATIC_PAGES_LAST_MODIFIED = '2026-10-14T00:00:00.000Z'
 
-/** URLs per listing child sitemap. Under the spec's 50,000 and under the
- *  cluster's comfortable read budget for one invocation. */
-export const LISTING_PAGE_SIZE = 10_000
+/**
+ * Listing sitemaps are partitioned BY COUNTY, not by a page number.
+ *
+ * The first version of this used `skip: (page - 1) * 10_000` with a
+ * `modificationTimestamp` sort, and listings-2/3/4 returned 504 in production
+ * — the exact FUNCTION_INVOCATION_TIMEOUT this whole split was meant to end.
+ * Two compounding reasons, measured 2026-10-14:
+ *
+ *   - `skip` is O(n) in MongoDB. It walks and discards every skipped document,
+ *     so page 4 pays for 30,000 rows before returning one.
+ *   - The sort was NOT index-covered. `modificationTimestamp_desc` indexes the
+ *     sort key alone, but the filter also constrains `countyOrParish` and
+ *     `slugAddress`, so the planner either scans the sort index and filters
+ *     row by row, or filters first and sorts in memory. Either way the
+ *     "the sort is free here" claim in the original comment was wrong.
+ *
+ *   page-2 query, as shipped:        55,082ms  (504s behind a 60s limit)
+ *   per-county, no sort, no skip:    14,959ms worst case (Los Angeles)
+ *
+ * County is the right partition because `idx_county_status` already covers
+ * {countyOrParish, standardStatus}, the split is deterministic and stable
+ * (a URL never migrates between children as inventory changes, which a
+ * page-number split does on every crawl), and the largest county is 15,728
+ * URLs — comfortably under the spec's 50,000.
+ *
+ * Counts on 2026-10-14: LA 15,728 · Riverside 7,883 · San Bernardino 6,353 ·
+ * Orange 4,890 · San Diego 2,761 · Ventura 1,545 · Santa Barbara 281 ·
+ * Imperial 63. Total 39,504.
+ */
+export const LISTING_COUNTY_PARTITIONS = SOCAL_COUNTIES
+
+/** `Los Angeles` → `los-angeles`, for the child sitemap's URL. */
+function countySlug(county: string): string {
+  return county.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+/** Reverse of countySlug, so the route can resolve a child back to a county. */
+export function countyFromSlug(slug: string): string | null {
+  return LISTING_COUNTY_PARTITIONS.find((c) => countySlug(c) === slug) || null
+}
 
 const TTL_MS = 6 * 60 * 60 * 1000
 const cache = new Map<string, { at: number; value: unknown }>()
@@ -445,40 +482,41 @@ export async function getSubdivisionEntries(baseUrl: string): Promise<SitemapEnt
 // ─────────────────────────────────────────────────────
 
 /**
- * Active listing URLs for one page of the split.
+ * Active listing URLs for one county.
  *
  * `lastmod` is the listing's own `modificationTimestamp`, which is the one
- * place the old generator already got right.
+ * thing the original single-file generator already got right.
  *
- * Sorted by `modificationTimestamp` descending so paging is STABLE and
- * meaningful: page 1 is always the freshest inventory, which is what Google
- * should see first. This is a deliberate reversal of the "never sort" rule in
- * lib/crawl-index.ts — that rule applies to city-filtered queries, where no
- * index covers the filter plus the sort key (37.7s measured for Los Angeles).
- * Here the filter is status/type only and `modificationTimestamp_desc` covers
- * the sort directly.
+ * NO `.sort()` and NO `.skip()`, both deliberately — see the note on
+ * LISTING_COUNTY_PARTITIONS for the 55s measurement that killed the previous
+ * shape. This is the same rule as lib/crawl-index.ts: let Mongo stream matches
+ * off an index and stop. Sitemap entries carry their own lastmod, so document
+ * order is meaningless to the consumer anyway.
  */
 export async function getListingEntries(
   baseUrl: string,
-  page: number,
+  county: string,
 ): Promise<SitemapEntry[]> {
-  return cached(`listings:${baseUrl}:${page}`, async () => {
+  return cached(`listings:${baseUrl}:${county}`, async () => {
     try {
       const conn = await db()
       const rows = await conn
         .collection('unified_listings')
         .find(
           {
+            // Field order matches idx_county_status so the planner has an
+            // obvious choice.
+            countyOrParish: county,
             standardStatus: 'Active',
             propertyType: 'A',
-            countyOrParish: { $in: SOCAL_COUNTIES },
             slugAddress: { $exists: true, $ne: null },
           },
           {
             projection: { slugAddress: 1, modificationTimestamp: 1 },
-            sort: { modificationTimestamp: -1 },
-            skip: (page - 1) * LISTING_PAGE_SIZE,
-            limit: LISTING_PAGE_SIZE,
+            // A ceiling, not a page size: the largest county is 15,728 and the
+            // sitemap spec allows 50,000. If a county ever crosses this, split
+            // THAT county (by postal code, say) rather than raising the number.
+            limit: 50_000,
           },
         )
         .toArray()
@@ -498,27 +536,8 @@ export async function getListingEntries(
       }
       return entries
     } catch (error) {
-      console.error('[sitemap-sources] getListingEntries failed:', error)
+      console.error('[sitemap-sources] getListingEntries failed:', county, error)
       return []
-    }
-  })
-}
-
-/** How many listing child sitemaps the index should declare. */
-export async function getListingPageCount(): Promise<number> {
-  return cached('listings:pages', async () => {
-    try {
-      const conn = await db()
-      const total = await conn.collection('unified_listings').countDocuments({
-        standardStatus: 'Active',
-        propertyType: 'A',
-        countyOrParish: { $in: SOCAL_COUNTIES },
-        slugAddress: { $exists: true, $ne: null },
-      })
-      return Math.max(1, Math.ceil(total / LISTING_PAGE_SIZE))
-    } catch (error) {
-      console.error('[sitemap-sources] getListingPageCount failed:', error)
-      return 1
     }
   })
 }
@@ -617,16 +636,19 @@ export interface ChildSitemap {
  * even though the audit suggested root-level `sitemap-cities.xml` names. Google
  * does not care about the filenames, only the index structure.
  */
-export async function getChildSitemaps(): Promise<ChildSitemap[]> {
-  const pages = await getListingPageCount()
+export function getChildSitemaps(): ChildSitemap[] {
+  // Synchronous and DB-free on purpose. The previous version called
+  // getListingPageCount(), a countDocuments over the whole filter, which made
+  // the INDEX itself an 18.6s request — the one document Googlebot fetches
+  // most often. The county list is static, so the index is now instant.
   return [
     { slug: 'static', label: 'Static pages' },
     { slug: 'cities', label: 'City pages' },
     { slug: 'subdivisions', label: 'Subdivision pages' },
     { slug: 'articles', label: 'Articles and landing pages' },
-    ...Array.from({ length: pages }, (_, i) => ({
-      slug: `listings-${i + 1}`,
-      label: `Listings, page ${i + 1}`,
+    ...LISTING_COUNTY_PARTITIONS.map((county) => ({
+      slug: `listings-${countySlug(county)}`,
+      label: `Listings — ${county} County`,
     })),
   ]
 }
