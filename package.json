@@ -18,7 +18,8 @@
     "db:optimize-indexes": "npx tsx src/scripts/optimize-indexes.ts",
     "pwa:icons": "node scripts/generate-pwa-icons.js",
     "test:dropcowboy": "npx tsx scripts/test-dropcowboy-rvm.ts",
-    "analyze:contacts": "npx tsx scripts/analyze-messy-contacts.ts"
+    "analyze:contacts": "npx tsx scripts/analyze-messy-contacts.ts",
+    "lh:seo": "npx --yes @lhci/cli@0.14.x autorun --config=./lighthouserc.json --collect.url=https://jpsrealtor.com/neighborhoods/indio --collect.url=https://jpsrealtor.com/neighborhoods/riverside"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

@@ -42,8 +42,8 @@ export default function DataDeletionPage() {
                 <p className={text}>
                   You have the right to request deletion of any personal data we hold about you, including
                   information collected through Facebook Login, Meta Business integration, or any other use
-                  of the chatRealty platform (operated by Joseph Sardella, DRE# 02106916, through eXp
-                  Realty of Southern California).
+                  of the chatRealty platform (operated by Joseph Sardella, DRE# 02106916, through
+                  Fathom Realty Group, Inc.).
                 </p>
                 <p className={`${text} mt-3`}>
                   To request deletion, please follow one of the two methods below.

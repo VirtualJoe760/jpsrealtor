@@ -87,6 +87,14 @@ const PUBLIC_API_EXACT = new Set([
   // "makeshift" card from 2026-07-02 until 2026-07-25. Public by design —
   // renders only public branding (name, brokerage, DRE, headshot).
   "/api/og",
+  // The PLACE share card (city / subdivision pages). A separate entry because
+  // "/api/og" above is an EXACT match, not a prefix — so this route was
+  // 401'ing on its first request, which is the same failure the comment above
+  // records: an og:image URL that returns 401 is an og:image that does not
+  // exist, and every city and community page would have shared no card at all.
+  // Public by the same reasoning: it renders a place name and two numbers that
+  // are already on the page.
+  "/api/og/place",
   "/api/appointments/available-slots",
   "/api/appointments/book",
   "/api/articles/list",

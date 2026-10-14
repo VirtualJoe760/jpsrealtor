@@ -179,6 +179,57 @@ const nextConfig = {
         destination: "/agent/settings?section=:section",
         permanent: false,
       },
+
+      // ── Per-city and per-community buy/sell pages → the city page ────────
+      //
+      // These were ~460 URLs (two per city across ~230 cities, plus a pair per
+      // subdivision) whose ONLY city-specific content was the <title>, the
+      // meta description and one CTA heading. "Why Work With Joseph", the
+      // five-step journey and the agent bio were byte-identical between /buy
+      // and /sell AND across every city — no listings, no market data, no
+      // local content. Beyond being thin, they competed with the city page
+      // they were linked from for the same queries.
+      //
+      // The forms now render as #buy and #sell sections of the city page
+      // (CityBuySellSections), and the generic case for working with the agent
+      // is stated once at /buy and /sell. 301 rather than 404 because these
+      // URLs have been in the sitemap and some are indexed: a permanent
+      // redirect passes their equity to the city page, where a 404 would bin
+      // it.
+      //
+      // Declared here rather than as route-level redirect() calls so the hop
+      // happens before rendering and costs nothing. The route directories are
+      // deleted, so these are the only thing answering these paths.
+      {
+        source: "/neighborhoods/:cityId/buy",
+        destination: "/neighborhoods/:cityId#buy",
+        permanent: true,
+      },
+      {
+        source: "/neighborhoods/:cityId/sell",
+        destination: "/neighborhoods/:cityId#sell",
+        permanent: true,
+      },
+      {
+        source: "/neighborhoods/:cityId/:slug/buy",
+        destination: "/neighborhoods/:cityId#buy",
+        permanent: true,
+      },
+      {
+        source: "/neighborhoods/:cityId/:slug/sell",
+        destination: "/neighborhoods/:cityId#sell",
+        permanent: true,
+      },
+
+      // /selling was a declared sitemap URL whose component rendered the
+      // literal text "page" in a div. It is replaced by /sell, which is a real
+      // page; 301 rather than delete because /selling has been in the sitemap
+      // since launch.
+      {
+        source: "/selling",
+        destination: "/sell",
+        permanent: true,
+      },
     ];
   },
 };

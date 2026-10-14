@@ -4,6 +4,26 @@
  * Each domain gets a sitemap reflecting only its relevant content:
  *   - chatrealty.io                         => platform pages only
  *   - agent custom domains / subdomains     => agent-specific pages (includes jpsrealtor.com, etc.)
+ *
+ * ── SCOPE NARROWED 2026-10-14 ───────────────────────────────────────────────
+ *
+ * AGENT HOSTS NO LONGER COME THROUGH HERE. They are served by the sitemap
+ * INDEX at app/sitemap.xml/route.ts + app/sitemap/[slug]/route.ts, which this
+ * file could not become: one invocation cannot afford per-URL `lastmod` for
+ * ~33,000 entries (cities and subdivisions need a 22s bulk aggregation each)
+ * and it ran out of wall clock at ~12,000 listing URLs, which is why
+ * LISTING_FETCH_BUDGET exists below.
+ *
+ * What is still live here:
+ *   - `resolveDomain()`, imported by the new routes for the customDomain +
+ *     DomainRegistry owner chain;
+ *   - `generatePlatformSitemap()`, for chatrealty.io's ~6 static pages, where
+ *     none of the above applies.
+ *
+ * `generateAgentSitemap()` and its helpers are retained as the fallback path
+ * for a host that resolves to an agent while the index route is unavailable.
+ * Do not add URLs to it without adding them to lib/sitemap-sources.ts first —
+ * that file is what Google actually reads now.
  */
 
 import { MetadataRoute } from 'next'
@@ -259,10 +279,12 @@ function getCityPages(baseUrl: string, now: Date, scope: ScopeCity[]): MetadataR
   return scope.flatMap((city) => {
     // CV stays the priority tier; the rest of SoCal is reach.
     const base = city.isCV ? 0.9 : 0.7
+    // The /buy and /sell variants are GONE from here: those ~460 URLs 301 to
+    // the city page's #buy / #sell sections, and listing a redirect in a
+    // sitemap is a declared error. Their old `priority: base - 0.2` is also
+    // the float that serialised as 0.49999999999999994.
     return [
       { url: `${baseUrl}/neighborhoods/${city.slug}`, lastModified: now, changeFrequency: 'weekly' as const, priority: base },
-      { url: `${baseUrl}/neighborhoods/${city.slug}/buy`, lastModified: now, changeFrequency: 'weekly' as const, priority: base - 0.2 },
-      { url: `${baseUrl}/neighborhoods/${city.slug}/sell`, lastModified: now, changeFrequency: 'weekly' as const, priority: base - 0.2 },
     ]
   })
 }
@@ -468,7 +490,10 @@ async function generateAgentSitemap(domain: DomainInfo): Promise<MetadataRoute.S
     { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/book-appointment`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${baseUrl}/mls-listings`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${baseUrl}/selling`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    // /selling rendered the literal string "page" in a div and now 301s to
+    // /sell. A sitemap must never list a URL that redirects.
+    { url: `${baseUrl}/buy`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${baseUrl}/sell`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/neighborhoods`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
   ]

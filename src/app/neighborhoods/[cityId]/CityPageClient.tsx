@@ -11,8 +11,6 @@ import HOASection from "@/app/components/cities/HOASection";
 import NeighborhoodErrorBoundary from "@/app/components/neighborhoods/NeighborhoodErrorBoundary";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { coachellaValleyCities } from "@/app/constants/cities";
-import generatedCityContent from "@/data/city-content-generated.json";
 import { createSlug } from "@/lib/utils/slug";
 import { trackViewCity } from "@/lib/meta-pixel";
 
@@ -24,17 +22,36 @@ interface CityPageClientProps {
     population?: number;
   };
   countyName: string;
+  /**
+   * The county as a reader should see it. `countyName` is the directory's
+   * internal label and is also used to build the slug, so it stays; this is
+   * the display form. The back-link on the Riverside page read "Back to
+   * Riverside" while pointing at the COUNTY page, which is a different place
+   * with the same name — the single most confusing link on that page.
+   */
+  countyLabel: string;
   cityId: string;
   cityDoc: any;
   initialStats: any;
+  /** `cities.region`, e.g. "Coachella Valley" — NOT assumed, passed in. */
+  regionName?: string;
+  /**
+   * Hand-curated local notes, where they exist. The server decides what counts
+   * as curated; this component only renders what it is given. Generated
+   * `about` text is no longer passed at all — see the note in page.tsx.
+   */
+  curatedAbout?: string;
 }
 
 export default function CityPageClient({
   city,
   countyName,
+  countyLabel,
   cityId,
   cityDoc,
   initialStats,
+  regionName,
+  curatedAbout,
 }: CityPageClientProps) {
   const { data: session } = useSession();
   const [isFavorite, setIsFavorite] = useState(false);
@@ -143,7 +160,7 @@ export default function CityPageClient({
           }`}
         >
           <ChevronLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">Back to {countyName}</span>
+          <span className="text-sm font-medium">Back to {countyLabel}</span>
         </Link>
 
         {/* Hero Section */}
@@ -154,7 +171,10 @@ export default function CityPageClient({
                 {city.name}
               </h1>
               <h2 className={`text-xl md:text-2xl font-medium ${textSecondary} mt-1`}>
-                Residential Listings
+                {/* Region comes from `cities.region`, so it says "Inland Empire
+                    & Desert" on Riverside instead of asserting Coachella
+                    Valley the way the old templates did. */}
+                Homes for Sale{regionName ? ` \u00b7 ${regionName}` : ""}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -236,25 +256,28 @@ export default function CityPageClient({
             <CityStats cityId={cityId} initialStats={initialStats} />
           </NeighborhoodErrorBoundary>
 
-          {/* About City — SEO content from constants (CV cities) or generated content (all others) */}
-          {(() => {
-            const cvCity = coachellaValleyCities.find(c => c.id === cityId);
-            const generatedCity = (generatedCityContent as Record<string, any>)[cityId];
-            const aboutText = cvCity?.about || generatedCity?.about;
-            if (!aboutText) return null;
-            return (
-              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4`}>
-                  About {city.name} Real Estate
-                </h2>
-                <div className={`text-base leading-relaxed ${textSecondary} space-y-4`}>
-                  {aboutText.split('\n\n').map((paragraph: string, idx: number) => (
-                    <p key={idx}>{paragraph}</p>
-                  ))}
-                </div>
+          {/* About City — CURATED notes only.
+              The old version fell back to src/data/city-content-generated.json
+              whenever a city had no hand-written entry, which was ~270 of the
+              ~293 cities. That text opened with a verbatim Wikipedia paragraph
+              (the JSON still carries the `wikiExtract` field it came from),
+              closed with "contact Joseph", and hardcoded a listing count that
+              had gone stale — Riverside's said "571 active listings" while the
+              live figure was 709. Original prose for those markets is a content
+              task, not a template one; until it exists, the computed paragraphs
+              in MarketStatsBlock carry the page and cannot go stale. */}
+          {curatedAbout ? (
+            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4`}>
+                About {city.name} Real Estate
+              </h2>
+              <div className={`text-base leading-relaxed ${textSecondary} space-y-4`}>
+                {curatedAbout.split('\n\n').map((paragraph: string, idx: number) => (
+                  <p key={idx}>{paragraph}</p>
+                ))}
               </div>
-            );
-          })()}
+            </div>
+          ) : null}
 
           {/* Dynamic Community Data Sections */}
           <NeighborhoodErrorBoundary sectionName="Subdivisions">
@@ -264,58 +287,50 @@ export default function CityPageClient({
             <HOASection cityId={cityId} />
           </NeighborhoodErrorBoundary>
 
-          {/* FAQ Section — matches FAQPage schema for rich snippets */}
-          {(() => {
-            const faqs = [
-              { q: `How much do homes cost in ${city.name}?`, a: `Home prices in ${city.name} vary widely depending on the neighborhood, property type, and amenities. Contact Joseph Sardella for a current market analysis tailored to your budget and preferences.` },
-              { q: `Is ${city.name} a good place to buy a home?`, a: `${city.name} is a popular choice for homebuyers in the Coachella Valley, offering a mix of lifestyle amenities, climate, and community. Whether you're looking for a primary residence, vacation home, or investment property, ${city.name} has options across price ranges.` },
-              { q: `What neighborhoods are popular in ${city.name}?`, a: `${city.name} has many desirable neighborhoods and gated communities, each with unique character and price points. Visit our ${city.name} neighborhoods page to explore subdivisions with listing counts, average prices, and community details.` },
-              { q: `Do I need a real estate agent to buy in ${city.name}?`, a: `While not legally required, working with a local real estate agent gives you access to market expertise, negotiation skills, and off-market listings. Joseph Sardella specializes in ${city.name} and the broader Coachella Valley — call (760) 333-3676 for a free consultation.` },
-            ];
-            return (
-              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-                  Frequently Asked Questions
-                </h2>
-                <div className="space-y-4">
-                  {faqs.map((faq, idx) => (
-                    <details key={idx} className={`group ${cardBorder} border rounded-lg`}>
-                      <summary className={`flex items-center justify-between cursor-pointer p-4 font-semibold ${textPrimary} hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors`}>
-                        {faq.q}
-                        <span className="ml-2 text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-                      </summary>
-                      <div className={`px-4 pb-4 text-sm leading-relaxed ${textSecondary}`}>
-                        {faq.a}
-                      </div>
-                    </details>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
+          {/* The FAQ moved OUT of this component on 2026-10-14.
+              It was hardcoded here with four Coachella-Valley-flavoured answers
+              while components/seo/FaqJsonLd emitted FIVE differently worded ones
+              into the FAQPage schema. Structured data that does not match the
+              visible page is a rich-results violation, and two copies of the
+              same block guarantee they drift. Both now render from a single
+              server-built array — see FaqSection in page.tsx. */}
 
           {/* Branded Buy/Sell CTA Section */}
           <div className={`${cardBg} ${cardBorder} border rounded-2xl p-8 md:p-12 ${shadow}`}>
             <h2 className={`text-3xl md:text-4xl font-bold ${textPrimary} mb-4 text-center`}>
               Ready to Make Your Move in {city.name}?
             </h2>
+            {/* Was "Joey Sardella is your trusted local expert in {city}".
+                This template renders on ~230 city pages, and the agent's
+                declared service areas are six Coachella Valley cities — so on
+                ~224 of them that sentence asserted local expertise in a market
+                he does not work. ServiceAreaNote (rendered above, on
+                out-of-area pages only) states how those markets are actually
+                served; this line no longer contradicts it. */}
             <p className={`text-lg ${textSecondary} mb-8 text-center max-w-3xl mx-auto`}>
-              Whether you're buying your dream home or selling your property, Joey
-              Sardella is your trusted local expert in {city.name}.
+              Whether you&apos;re buying or selling in {city.name}, start with
+              the numbers above — then tell us what you&apos;re trying to do.
             </p>
+            {/* Anchors, not routes. These used to link to
+                /neighborhoods/{city}/buy and /{city}/sell — two pages per city
+                across ~230 cities whose only city-specific content was the
+                title, the meta description and one heading. Those URLs now 301
+                to these anchors, and the forms they held render further down
+                this page. A plain <a> is correct for a same-page target; next/
+                Link would push a history entry for a scroll. */}
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                href={`/neighborhoods/${cityId}/buy`}
+              <a
+                href="#buy"
                 className={`px-8 py-4 ${buttonPrimary} font-bold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
               >
                 Buy a Home in {city.name}
-              </Link>
-              <Link
-                href={`/neighborhoods/${cityId}/sell`}
+              </a>
+              <a
+                href="#sell"
                 className={`px-8 py-4 ${buttonSecondary} font-bold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
               >
                 Sell Your {city.name} Home
-              </Link>
+              </a>
             </div>
             <p className={`text-sm ${textMuted} mt-6 text-center`}>
               Expert service • Local market knowledge • Proven results

@@ -108,6 +108,31 @@ function getCountyNameForCity(county: string, city: string): string {
 }
 
 /**
+ * Sub-county AREA labels. `getCountyNameForCity` returns either a real county
+ * name ("Riverside", "Los Angeles") or one of these area names, and the two
+ * read differently in a sentence: "Riverside County" needs the suffix,
+ * "Coachella Valley County" is nonsense.
+ */
+const AREA_LABELS = new Set(['Coachella Valley', 'Joshua Tree Area']);
+
+/**
+ * Human label for a tier-2 slug such as `riverside-county` or
+ * `coachella-valley-county`.
+ *
+ * The slug always ends in `-county` because that is how the directory builds
+ * it, but the LABEL must not blindly follow. The back-link on the Riverside
+ * city page read "Back to Riverside" — pointing at the county page, which is a
+ * different place from the city of the same name and the single most confusing
+ * link on the page. Indio's read "Back to Coachella Valley" and was already
+ * right, which is why this needs to be a function and not a suffix.
+ */
+export function formatCountyLabel(name: string): string {
+  if (!name) return '';
+  if (AREA_LABELS.has(name)) return name;
+  return /\bcounty\b/i.test(name) ? name : `${name} County`;
+}
+
+/**
  * Find a city by slug in the neighborhoods directory.
  * Returns the city data and county name, or null if not found.
  */

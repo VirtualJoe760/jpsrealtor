@@ -20,7 +20,7 @@ import "@fontsource/jost/400.css";
 import "@fontsource/jost/500.css";
 import "@fontsource/jost/600.css";
 import "@fontsource/jost/700.css";
-import Footer from "./components/Footer";
+import SiteFooter from "./components/SiteFooter";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
@@ -86,10 +86,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: cfg.siteDescription,
     metadataBase: new URL(cfg.baseUrl),
-    keywords:
-      cfg.type === "platform"
-        ? ["real estate platform", "AI real estate", "find a realtor", "ChatRealty"]
-        : ["real estate", "homes for sale", "local realtor"],
+    // NO `keywords`. Google has ignored the meta keywords tag since 2009, and
+    // because metadata merges field by field, a sitewide value is inherited by
+    // every page that does not override it — which is how a Coachella Valley
+    // keyword list ended up on the Riverside page. Nothing reads it, so the
+    // only thing it can do is be wrong. See lib/seo-metadata.ts.
     authors: [{ name: cfg.siteName, url: cfg.baseUrl }],
     creator: cfg.siteName,
     publisher: cfg.siteName,
@@ -287,7 +288,7 @@ export default async function RootLayout({
           metaPixelId={tenant.tracking.metaPixelId}
         >
           {children}
-          <Footer />
+          <SiteFooter />
         </ClientLayoutWrapper>
       </body>
     </html>
