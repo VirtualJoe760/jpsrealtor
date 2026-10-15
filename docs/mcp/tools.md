@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-10-14
+last_verified: 2026-10-15
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -54,7 +54,9 @@ All searches scope to the agent's licensed territories where applicable.
 | Tool | Scope | Route | Description |
 |---|---|---|---|
 | `search_listings` | `listings:read` | `GET /api/skill/listings/search` | Filter by city, zip, subdivision, beds, baths, price range, property type, status. Returns paginated list with key fields + slug, **including `listAgentName` / `listOfficeName`** so any surface rendering results can satisfy the IDX "Listed by {office} — {agent}" rule (added 2026-08-04 — search omitted them while detail returned them, so scaffolded sites showed attribution on detail pages and nothing on cards). Route-only filters (the MCP tool does not expose them yet): `subdivisions=A,B` (any of); `mine=true` (the token owner's own listings: the licence on the profile finds every registration in the `agents` collection, 422 `no_agent_id` without one); `agentIds=GPS:d22668` (`agents._id`, matched as mlsSource + listAgentMlsId, the shape of the `agentlookup_listAgent` index); `brokerages=compass` (`brokerages._id`, any of its offices); raw `listAgentMlsIds=` / `listOfficeMlsIds=`. Results also carry `listAgentMlsId` / `listOfficeMlsId`. Without the listing indexes (`build-agents.py --listing-indexes` on the VPS, and none yet on `listOfficeMlsId`) these filters scan and can time out. Legacy Mongo path only. See `src/lib/skill-api/listing-party-filter.ts`. |
-| (route only) | `listings:read` | `GET /api/skill/agents/search?q=` | Type-ahead over the `agents` and `brokerages` collections (chatrealty-backend `docs/tools/agents.md`): name prefix, placeholders excluded, busiest first. Returns the ids `agentIds=` / `brokerages=` take. |
+| (route only) | `listings:read` | `GET /api/skill/agents/search?q=&kind=&city=&sort=&limit=` | Agents and brokerages from the `agents` / `brokerages` collections (chatrealty-backend `docs/tools/agents.md`, `frontend-agent-prompt.md`): a name prefix, and/or a city slug. With a city the rank is the city's OWN count (deals closed there, or active there with `sort=active`) — agents with 3+ there are fetched by 5-year volume and re-sorted, since a whole-window total can belong to other cities. One row per person (`identity.personId`), placeholders excluded, counts from `production`. Returns the ids `agentIds=` / `brokerages=` take. |
+| (route only) | `listings:read` | `GET /api/skill/agents/profile?id=` | One agent (`_id` or slug): the card, roster contact, office, top cities, the 5-year closed record by side and by year, coverage notes, and the person's other registrations. |
+| (route only) | `listings:read` | `GET /api/skill/brokerages/profile?id=` | One brokerage brand: size (a floor — Unknown Office listings are unattributed), live and closed totals, offices, cities, top agents. |
 | (route only) | `listings:read` | `GET /api/skill/market/places?q=` | Type-ahead over the `cities` and `subdivisions` collections; the names are what `cities=` / `subdivisions=` match. |
 | `get_listing` | `listings:read` | `GET /api/skill/listings/[slug]` | Full listing detail incl. description, lot/structure, days-on-market, list price history. |
 | `get_listing_photos` | `listings:read` | `GET /api/skill/listings/[slug]/photos` | Cloudinary URLs ordered by display priority. Use for hero photo selection in landing pages. |
