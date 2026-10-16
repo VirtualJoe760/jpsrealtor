@@ -74,6 +74,22 @@ Read-only. Aggregated data that doesn't tie to a single listing.
 | `get_neighborhood_info` | `market:read` | `GET /api/skill/market/neighborhoods/[slug]` | POIs, demographics, schools — same data backing the public neighborhood page. |
 | `get_mortgage_rates` | `market:read` | `GET /api/skill/market/mortgage-rates` | Live rates from API Ninjas + FRED. Useful for landing page CTAs. |
 
+### 3a. Investment · rental cash-flow · `shipped`
+
+Read-only, and **no analysis at request time**. Every figure is precomputed by
+the `chatrealty-backend` repo's PyMongo jobs on the VPS (Tue + Fri ~2 AM) and
+stored on the documents; the routes read it (shared read layer:
+`src/lib/listings/cashflow-query.ts`). The data contract — block shapes,
+coverage, reading rules — is `chatrealty-backend/docs/tools/`. If the AI has to
+do the math, the tool is wrong: it should be reading a block.
+
+| Tool | Scope | Route | Description |
+|---|---|---|---|
+| `get_area_cashflow` | `listings:read` | `GET /api/skill/rentals/area-cashflow` | **Whole-area answer in one `findOne`.** Returns `subdivisions`/`cities.cashflowProfile` (from `build-cashflow-profile.py`) whole: verdicts for long-term, seasonal-asking, seasonal-achieved and short-term (always `unclear`), median + best break-even down payment, per-bedroom economics, rent provenance, top cash-flowing listings, caveats in `verdict.notes`. Takes `slug`, or `name` (+ `city`), optional `scope`. Misses and empty areas are **200s** (`found:false` + `candidates`, or `available:false` + `parentCity`/`childSubdivisions`) — a 404 surfaces as an MCP error and invites a `report_bug` for a routine miss. 77 subdivision slugs equal a city slug (`chula-vista`); without a scope the city wins and the community is returned in `alsoMatches`. Coverage 2026-10-15: 746 / 1,426 subdivisions, 837 / 1,047 cities. |
+| `find_cashflowing_listings` | `listings:read` | `GET /api/skill/listings/cashflow` | Active listings that cash-flow in an area, sorted by cash flow / cap rate / cash-on-cash / price. Reads `cashflowStats.scenarios`; re-derives from stored `fixedCosts` for a custom down payment or rate (the one sanctioned request-time calculation). |
+| `analyze_listing_cashflow` | `listings:read` | `GET /api/skill/listings/[listingKey]/cashflow` | One listing's `cashflowStats`: rent estimate + confidence, cap rate, NOI, both down-payment scenarios, `fixedCosts`. `null` means no rent signal — never `$0`. |
+| `get_going_rate` | `listings:read` | `GET /api/skill/rentals/going-rate` | Long-term rent going rate for a subdivision (`rentStats`) or ZIP (`rent_rates`). |
+
 ### 4. CMS · Landing pages · `Phase 1` (partly shipped)
 
 Shipped today: `create_landing_page` via `POST /api/skill/landing-pages`.

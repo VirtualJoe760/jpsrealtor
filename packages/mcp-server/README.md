@@ -79,6 +79,14 @@ in `docs/mcp/` at the ChatRealty repo.
 | `get_neighborhood_info` | Neighborhood snapshot — schools, amenities, market trend. |
 | `get_mortgage_rates` | Current published mortgage rates (refreshed daily). |
 
+### Investment — rental cash-flow (precomputed; no math at request time)
+| Tool | Description |
+|---|---|
+| `get_area_cashflow` | Whole-area cash-flow answer for a subdivision or city: four strategies, break-even down payments, per-bedroom economics, rent provenance and caveats. |
+| `find_cashflowing_listings` | Active listings that cash-flow in an area, sorted by cash flow, cap rate or cash-on-cash. |
+| `analyze_listing_cashflow` | Full cash-flow breakdown for one listing by `listingKey`. |
+| `get_going_rate` | Long-term rent going rate for a subdivision or ZIP. |
+
 ### CMS — landing pages
 | Tool | Description |
 |---|---|

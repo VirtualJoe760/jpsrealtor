@@ -6,15 +6,20 @@
 //   • the MCP skill routes (/api/skill/listings/cashflow, …) → Claude tools
 //   • the web-chat tool executors (src/lib/chat-v2/tool-executors.ts) → app chat
 //
-// Data shapes (written by build-cashflow.py / build-rent-rates.py):
+// Data shapes (written by build-cashflow.py / build-rent-rates.py /
+// build-cashflow-profile.py in the chatrealty-backend repo):
 //   • unified_listings.cashflowStats  — rentEstimate, capRatePct, fixedCosts,
 //     scenarios.down20/down25 (each with monthlyCashflow + cashflows flag),
 //     assumptions.
 //   • rent_rates (by postalCode) + subdivisions.rentStats — going rate.
+//   • subdivisions/cities.cashflowProfile — the whole-area rollup (four
+//     strategies, per-bedroom economics, verdicts + caveats). Contract:
+//     chatrealty-backend docs/tools/cashflow-profile.md.
 
 import dbConnect from "@/lib/mongoose";
 import UnifiedListing from "@/models/unified-listing";
 import Subdivision from "@/models/subdivisions";
+import { City } from "@/models/cities";
 import RentRate from "@/models/rent-rate";
 import { getCurrentMortgageRate } from "@/lib/listings/mortgage-rate";
 
@@ -332,5 +337,215 @@ export async function analyzeListingCashflow(listingKey: string) {
     hoaFee: l.associationFee ?? null,
     // null → the chat should say "cash-flow analysis unavailable" (don't invent).
     cashflowStats: l.cashflowStats ?? null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Area cash-flow — one findOne on the precomputed cashflowProfile rollup.
+//
+// The block is returned WHOLE: its verdict.notes / quality.notes carry the
+// provenance ("seasonal rates come from ZIP 92211, not the subdivision"), and
+// cherry-picking a verdict without them is how a 2-comp number gets quoted as
+// fact. No math here — every figure is a median over per-listing cashflowStats
+// the backend already wrote, so the rollup can't disagree with listing detail.
+// ---------------------------------------------------------------------------
+
+export type AreaScope = "subdivision" | "city";
+
+export interface AreaCashflowParams {
+  slug?: string;
+  name?: string;
+  city?: string; // disambiguates a subdivision name — names repeat across cities
+  scope?: AreaScope;
+}
+
+export interface AreaRef {
+  scope: AreaScope;
+  name: string;
+  slug: string;
+  city: string | null;
+  hasCashflowProfile: boolean;
+}
+
+type AreaFound = {
+  found: true;
+  area: AreaRef;
+  // Same slug/name, other scope (77 subdivision slugs equal a city slug — e.g.
+  // "chula-vista" is both). Lets the caller switch without guessing.
+  alsoMatches?: AreaRef[];
+};
+
+export type AreaCashflowResult =
+  | { found: false; reason: string; candidates: AreaRef[] }
+  | (AreaFound & { available: true; cashflowProfile: any })
+  | (AreaFound & {
+      available: false;
+      reason: string;
+      parentCity?: AreaRef;
+      childSubdivisions?: AreaRef[];
+    });
+
+// Projecting one leaf of the block tells us it exists without hauling 10-20 KB
+// per row — every block carries lastUpdated (verified 2026-10-15: 0 without).
+const PRESENCE = "cashflowProfile.lastUpdated";
+
+function subRef(s: any): AreaRef {
+  return { scope: "subdivision", name: s.name, slug: s.slug, city: s.city ?? null, hasCashflowProfile: !!s.cashflowProfile };
+}
+
+function cityRef(c: any): AreaRef {
+  return { scope: "city", name: c.name, slug: c.slug, city: c.name, hasCashflowProfile: !!c.cashflowProfile };
+}
+
+async function areaResult(doc: any, scope: AreaScope): Promise<AreaCashflowResult> {
+  const area = scope === "city" ? cityRef(doc) : subRef(doc);
+  if (doc.cashflowProfile) {
+    return { found: true, available: true, area, cashflowProfile: doc.cashflowProfile };
+  }
+  if (scope === "city") {
+    return {
+      found: true,
+      available: false,
+      area,
+      reason: `No cash-flow profile for ${doc.name}: it has no active for-sale listings with an estimated rent right now. This means unknown, not zero.`,
+    };
+  }
+
+  // Absent on a subdivision. Two things can still answer the question:
+  // children (PGA West-style parents carry no block; their courses do) and
+  // the parent city's rollup.
+  const [kids, parent] = await Promise.all([
+    Subdivision.find({ parentSubdivision: doc._id })
+      .select(`name slug city ${PRESENCE}`)
+      .sort({ name: 1 })
+      .limit(50)
+      .lean<any[]>(),
+    doc.city
+      ? City.findOne({ normalizedName: String(doc.city).toLowerCase() }).select(`name slug ${PRESENCE}`).lean<any>()
+      : null,
+  ]);
+  const childSubdivisions = kids.filter((k) => k.slug).map(subRef);
+  const parentCity = parent ? cityRef(parent) : undefined;
+  const reason = childSubdivisions.length
+    ? `${doc.name} is a parent community — cash-flow profiles live on its child communities (childSubdivisions). Call again with one of their slugs.`
+    : `No cash-flow profile for ${doc.name}: it has no active for-sale listings with an estimated rent right now. This means unknown, not zero.`;
+  return {
+    found: true,
+    available: false,
+    area,
+    reason,
+    ...(childSubdivisions.length ? { childSubdivisions } : {}),
+    ...(parentCity ? { parentCity } : {}),
+  };
+}
+
+/** Closest areas for words that matched nothing exactly — offered, never auto-picked. */
+async function suggestAreas(text: string, cityName: string | undefined, wantSub: boolean, wantCity: boolean) {
+  const out: AreaRef[] = [];
+  if (wantCity) {
+    const cities = await City.find({ normalizedName: new RegExp(escapeRegex(text.toLowerCase())) })
+      .select(`name slug ${PRESENCE}`)
+      .sort({ listingCount: -1 })
+      .limit(5)
+      .lean<any[]>();
+    out.push(...cities.map(cityRef));
+  }
+  if (wantSub) {
+    const q: any = { $text: { $search: text } };
+    if (cityName) q.city = new RegExp(`^${escapeRegex(cityName)}$`, "i");
+    const subs = await Subdivision.find(q)
+      .select({ score: { $meta: "textScore" }, name: 1, slug: 1, city: 1, [PRESENCE]: 1 })
+      .sort({ score: { $meta: "textScore" } })
+      .limit(8)
+      .lean<any[]>();
+    out.push(...subs.filter((s) => s.slug).map(subRef));
+  }
+  return out;
+}
+
+/**
+ * Resolve an area (slug, or name [+ city]) and return its precomputed
+ * cashflowProfile whole. Resolution never guesses: an exact slug or exact name
+ * wins; anything else returns candidates for the caller to pick from.
+ */
+export async function getAreaCashflow(params: AreaCashflowParams): Promise<AreaCashflowResult> {
+  await dbConnect();
+  const { scope } = params;
+  const slug = params.slug?.trim().toLowerCase() || undefined;
+  const name = params.name?.trim() || undefined;
+  const cityName = params.city?.trim() || undefined;
+  const wantSub = scope !== "city";
+  const wantCity = scope !== "subdivision";
+  const subFields = "_id name slug city cashflowProfile";
+  const cityFields = "name slug cashflowProfile";
+
+  // A city hit that also names a community: answer for the city (what a bare
+  // "Chula Vista" means) and name the community so the caller can switch.
+  const withAlso = async (c: any, subs: any[]) => {
+    const r = await areaResult(c, "city");
+    return subs.length && r.found ? { ...r, alsoMatches: subs.map(subRef) } : r;
+  };
+
+  // 1 · Exact slug. 77 subdivision slugs equal a city slug ("chula-vista" is
+  // both), so without a scope look in both and let the city win.
+  if (slug) {
+    const [sub, c] = await Promise.all([
+      wantSub ? Subdivision.findOne({ slug }).select(subFields).lean<any>() : null,
+      wantCity ? City.findOne({ slug }).select(cityFields).lean<any>() : null,
+    ]);
+    if (c) return withAlso(c, sub ? [sub] : []);
+    if (sub) return areaResult(sub, "subdivision");
+  }
+
+  // 2 · Exact name (normalizedName is the lowercased name). A bare city name
+  // ("Palm Desert") means the city; a name given WITH a city means a community
+  // inside it. normalizedName alone is not unique for subdivisions (152 are
+  // named "other"), so several hits come back as candidates, not a pick.
+  if (name) {
+    const normalized = name.toLowerCase();
+    const cityFirst = wantCity && !cityName;
+    if (cityFirst) {
+      const c = await City.findOne({ normalizedName: normalized }).select(cityFields).lean<any>();
+      if (c) {
+        const same = wantSub
+          ? await Subdivision.find({ normalizedName: normalized }).select(`name slug city ${PRESENCE}`).limit(10).lean<any[]>()
+          : [];
+        return withAlso(c, same);
+      }
+    }
+    if (wantSub) {
+      const q: any = { normalizedName: normalized };
+      if (cityName) q.city = new RegExp(`^${escapeRegex(cityName)}$`, "i");
+      const subs = await Subdivision.find(q).select(`_id name slug city ${PRESENCE}`).limit(10).lean<any[]>();
+      if (subs.length === 1) {
+        const sub = await Subdivision.findById(subs[0]._id).select(subFields).lean<any>();
+        if (sub) return areaResult(sub, "subdivision");
+      }
+      if (subs.length > 1) {
+        return {
+          found: false,
+          reason: `"${name}" names ${subs.length} subdivisions in different cities. Pass city, or call again with one of these slugs.`,
+          candidates: subs.map(subRef),
+        };
+      }
+    }
+    if (wantCity && !cityFirst) {
+      const c = await City.findOne({ normalizedName: normalized }).select(cityFields).lean<any>();
+      if (c) return areaResult(c, "city");
+    }
+  }
+
+  // 3 · Nothing exact — offer the closest areas instead of guessing one.
+  const text = name || slug?.replace(/-/g, " ");
+  if (!text) {
+    return { found: false, reason: "Pass a slug, or a name (plus city for a subdivision).", candidates: [] };
+  }
+  const candidates = await suggestAreas(text, cityName, wantSub, wantCity);
+  return {
+    found: false,
+    reason: candidates.length
+      ? `No ${scope ?? "subdivision or city"} matches "${text}" exactly. Closest matches are in candidates — call again with one of their slugs.`
+      : `No ${scope ?? "subdivision or city"} matches "${text}".`,
+    candidates,
   };
 }

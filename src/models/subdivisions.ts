@@ -129,6 +129,7 @@ export interface ISubdivision extends Document {
 
   // === CMA STATS (Pre-computed by VPS nightly cron) ===
   rentStats?: any; // rental "going rate" stats (pre-computed by VPS cron)
+  cashflowProfile?: any; // area rental cash-flow rollup (build-cashflow-profile.py)
   cmaStats?: {
     lastUpdated: Date;
     sampleWindow: {
@@ -328,6 +329,11 @@ const SubdivisionSchema = new Schema<ISubdivision>(
     // Rental "going rate" stats (pre-computed by the VPS cron). Mixed so strict
     // mode doesn't drop it on .lean() reads.
     rentStats: { type: Schema.Types.Mixed },
+
+    // Area rental cash-flow rollup — four strategies, per-bedroom economics,
+    // verdicts + caveats. Written by the chatrealty-backend PyMongo job
+    // build-cashflow-profile.py (Tue + Fri); read whole by get_area_cashflow.
+    cashflowProfile: { type: Schema.Types.Mixed },
 
     // Data sources
     mlsSources: { type: [String], required: true, default: [] },
