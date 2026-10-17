@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-10-16
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -23,6 +23,12 @@ Every external API the platform talks to is wrapped in a single file under `src/
 | **Runway ML** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\ai\runway\route.ts` | AI video gen (curb-appeal feature) | `RUNWAY_API_KEY` | `/api/ai/runway/*`, `/curb-appeal` | Async task model — poll `/api/ai/runway/[id]` for completion. State persisted on `RunwayTask`. |
 | **Anthropic (platform)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-article\route.ts` | Admin article drafter (streaming) | `ANTHROPIC_API_KEY` | `/api/claude/draft-article` (admin only) | SSE streaming via `@anthropic-ai/sdk`. Uses global platform key, not per-agent. |
 | **Anthropic (BYOK)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\claude\draft-landing-page\route.ts` | Conversational landing-page builder for agents using **their own** Anthropic key | per-agent `User.agentProfile.aiIntegrations.anthropic.apiKeyEncrypted` | `/api/claude/draft-landing-page`, surfaced in `/agent/cms/new` when category=landing-page and the agent has chosen "Claude · chat" | Key is AES-256-GCM encrypted at rest via `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\secrets.ts`. Requires `SECRETS_ENCRYPTION_KEY` env. Tool-call architecture — Claude fires `set_article_field`, `set_landing_page_option`, `add_form_field`, `finalize` as the chat progresses, and the client live-updates the form. |
+
+### MLS data (bring-your-own-data)
+
+| Name | File | Purpose | Credential | Notes |
+|---|---|---|---|---|
+| **Agent MLS feed (RESO / Spark replication)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\mls-feed.ts`, `src\app\api\integrations\mls-feed\route.ts` (+ `verify\route.ts`), UI `src\app\agent\settings\components\steps\MlsFeedCard.tsx` | The agent's own MLS replication key — what seeds their tenant database. Pasted in Settings → Integrations → **MLS Data Feed**. | per-agent **top-level** `User.mlsFeed` (NOT under `agentProfile`). Secret half = one AES-256-GCM blob `credentialsEncrypted` (JSON `{bearerToken}` or `{clientId, clientSecret}`), schema `select:false`. Plaintext beside it: `authMode`, `baseUrl`, `tokenUrl`, `scope`, `last4`, `status`, `lastError`, timestamps. Requires `SECRETS_ENCRYPTION_KEY`. | **Tested before it is stored**: POST makes one `GET {baseUrl}/Property?$top=1` (after an OAuth client-credentials exchange in `oauth` mode); 401/403/404/429/redirect → not saved, plain-language reason returned. Same two auth modes and request shape as `@chatrealty/sync` (`RESO_BEARER_TOKEN` vs `RESO_TOKEN_URL`+`RESO_CLIENT_ID`+`RESO_CLIENT_SECRET`[+`RESO_SCOPE`]). Pasting `RESO_*=` lines from an `.env.local` fills the matching fields; `NAME=`, quotes and `Bearer ` are stripped server-side too. **SSRF guard**: the server fetches agent-supplied URLs, so `assertSafeFeedUrl()` requires https, refuses IP literals / localhost / `.internal`-style hosts / credentials-in-URL, resolves DNS and refuses private ranges, and fetches with `redirect: "manual"`. Plaintext leaves the module only via server-only `getMlsFeedCredentials()` — no route returns it. **Not yet consumed**: the sync CLI still reads env vars only. |
 
 ### Media / Storage
 
@@ -122,6 +128,8 @@ Every external API the platform talks to is wrapped in a single file under `src/
 - **Stripe API version is pinned** to `2025-12-15.clover`. Bumping requires re-testing all webhook handlers.
 - **Drop Cowboy has no shared lib wrapper** — the fetch + auth is inline in `src/app/api/dropcowboy/campaign/route.ts`. If we extract a helper, model it on `thanksio.ts`.
 - **Webhook auth is asymmetric across providers.** Twilio inbound/status webhooks are cryptographically verified (`X-Twilio-Signature`). DropCowboy has no signing mechanism, so its two webhooks fall back to a shared-secret gate (`DROPCOWBOY_WEBHOOK_SECRET`) — a weaker control that only works if the secret is actually set in env and configured on the DropCowboy webhook URL. If `DROPCOWBOY_WEBHOOK_SECRET` is unset, the DropCowboy webhooks reject **all** traffic (fail-closed), so delivery-status metrics silently stop updating until it's configured. **Env-var naming is inconsistent: send-side uses `DROP_COWBOY_TEAM_ID`/`DROP_COWBOY_SECRET` (underscore), the webhook secret is `DROPCOWBOY_WEBHOOK_SECRET` (no underscore) per the security-fix spec.**
+- **Never store a secret under `agentProfile`.** `/api/user/profile` GET returns the whole `agentProfile` to the browser (and `console.log`s it), and its PUT deep-merges whatever the client sends into it. That is why `User.mlsFeed` is top-level. `aiIntegrations` (Anthropic ciphertext, API-token hashes) still lives under `agentProfile` and is exposed by both — open follow-up.
+- **`select:false` on a nested path does not survive selecting its parent.** `User.findById(id).select("mlsFeed")` returns `mlsFeed.credentialsEncrypted` anyway (verified 2026-10-16). Select subpaths, as `getMlsFeedStatus()` does.
 - **OpenCage, Yelp, API Ninjas, FRED — no shared wrappers either.** All inline in their respective route handlers. Fine for now; revisit if usage spreads.
 
 ## Reference implementations
