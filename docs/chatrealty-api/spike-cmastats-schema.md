@@ -1,7 +1,7 @@
 ---
 title: "Spike — Subdivision cmaStats Strict Postgres Schema"
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-10-17
 related:
   - ./build_plan.md
   - ./architecture.md
@@ -16,6 +16,10 @@ related:
 > proposes a **strict, denormalized Postgres schema** (3 CMA tables + 1 rent table)
 > that the per-tenant Neon data plane can adopt. **No code was changed.** This gates
 > the neighborhoods/subdivisions schema (build_plan §8.2, Agents 04/09/14/18).
+>
+> **Outcome (verified 2026-10-17):** adopted. `src/lib/reso/migrations/0003_neighborhoods.sql`
+> creates `cma_stats` and its siblings "verbatim" from this spike (its header
+> says so). This page is the design record behind that migration.
 
 ## TL;DR
 

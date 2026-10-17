@@ -1,8 +1,8 @@
 ---
 title: Instagram carousel posting via MCP
 status: current
-last_verified: 2026-06-04
-related: [./README.md, ./scopes-and-safety.md, ./tools.md]
+last_verified: 2026-10-17
+related: [./README.md, ./scopes-and-safety.md, ./tools.md, ../content-templates/README.md]
 ---
 
 # Instagram carousel posting via MCP
@@ -10,6 +10,13 @@ related: [./README.md, ./scopes-and-safety.md, ./tools.md]
 `post_instagram_carousel` publishes a 2-10 image carousel to the agent's
 Instagram Business Account via the Meta Graph API. **Publishes
 immediately** — there is no draft step.
+
+**Where it is available (2026-10-17):** only on the **hosted** connector
+(`/api/mcp/mcp`) for a token holding `social:post`. The stdio server's default
+agent tier hides it, along with the carousel/image tools
+(`MARKETING_TOOL_NAMES` in `packages/mcp-server/src/tiers.ts`). First-party
+posting for Joseph runs through the local content-template scripts instead
+(`docs/content-templates/`).
 
 ## Architecture
 
@@ -84,7 +91,8 @@ Look for two entries: `{permission: 'instagram_basic', status: 'granted'}` and
 | Posts per IG account per day | ~25 (Meta soft limit) | 429 from Meta once you hit it |
 
 ChatRealty doesn't enforce a per-token cap separately; the write-tier rate
-limit (60 req / hour at the token level) is the safety rail. If you find
+limit (30 requests / minute per token, in-memory per instance —
+`src/lib/skill-auth.ts`) is the only rail. If you find
 agents spamming, tighten the limiter or add a dedicated `social:posts/day`
 counter.
 

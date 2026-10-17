@@ -1,11 +1,19 @@
 ---
 title: Prompt — finish Instagram publish setup
-status: current
-last_verified: 2026-06-04
+status: outdated
+last_verified: 2026-10-17
 related: [./instagram-posting.md, ./README.md]
 ---
 
 # Prompt — finish Instagram publish setup
+
+> **Historical one-shot handoff prompt (2026-06-04).** Its "current state"
+> (`@chatrealty/mcp-server@0.6.0`, code "not deployed yet", branch
+> `feat/landing-page-claude-byok-and-skill`) is long past: the route, the
+> `social:post` scope and the Instagram OAuth scopes in
+> `src/app/api/auth/meta-ads/connect/route.ts` are all on main, and the tool is
+> now hosted-connector-only. Use [instagram-posting.md](./instagram-posting.md)
+> for the live setup. Candidate for `docs/archive/`.
 
 Hand this entire document to whoever is finishing the Instagram setup
 (a browser-controlling Claude, another Claude instance, or a human).

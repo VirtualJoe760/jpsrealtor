@@ -1,13 +1,16 @@
 ---
 title: Web-Design Judge Loop — full operational reference
 status: current
-last_verified: 2026-08-05
-related: [../../agents/tom/, ../../tom.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md]
+last_verified: 2026-10-17
+related: [../../agents/tom/, ../../tom.md, ../../README.md, ../../../content-templates/copy-voice.md, ../../../AGENTS.md, ../../../mcp/site-building.md]
 ---
 
 # The web-design feedback loop, end to end
 
-Automated QA for ChatRealty test sites. `docs/testing/README.md` is the
+**TL;DR.** Automated QA for ChatRealty test sites: Tom (the judge agent)
+dispatches a Test Claude to build a site with the ChatRealty MCP, scores it,
+and submits a report through `/api/skill/testing`; a 5-minute routine fixes
+what the report names and re-arms testing. `docs/testing/README.md` is the
 overview; this is the complete operational reference — every endpoint, the
 report format, the judging standard, and how to unstick the loop.
 
@@ -41,8 +44,17 @@ report format, the judging standard, and how to unstick the loop.
    session and leads the report; a silent fallback to sample listings is a
    wasted one.
 
+   **Two real-data paths since 2026-10-17 — brief the one the test account is
+   on.** (a) The account already seeded its listings in Settings →
+   Integrations (`whoami` → `dataSource: "tenant"`): Test Claude must NOT run
+   `@chatrealty/sync` or ask for credentials; after scaffolding it calls
+   `get_site_claim_code` and runs the returned script, which writes the site's
+   key into `.env.local`. Judge that `CHATREALTY_TEST_DATA` is gone and the
+   browse shows the account's own listings. (b) No database yet: the path
+   below. Flow reference: [../../../mcp/site-building.md](../../../mcp/site-building.md).
+
    **There are no `SPARK_*` env vars — don't write briefs that ask for them.**
-   The build guide's real-data path is `npx @chatrealty/sync init --token
+   Path (b) is `npx @chatrealty/sync access` (choose scope) then `init --token
    crt_live_…` (provisions the tenant DB) plus feed credentials in `.env.local`
    under RESO names: a Spark access token goes in as `RESO_BEARER_TOKEN` with
    `RESO_BASE_URL=https://replication.sparkapi.com/Reso/OData`, or RESO OAuth as

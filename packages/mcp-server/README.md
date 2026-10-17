@@ -1,131 +1,107 @@
 # @chatrealty/mcp-server
 
-Model Context Protocol server for ChatRealty. Lets any Claude client (Claude Code, Claude Desktop, claude.ai) read and write to your ChatRealty platform using **your own Claude subscription** — no Anthropic API key needed.
+Model Context Protocol server for ChatRealty. Lets any Claude client (Claude Code, Claude Desktop, claude.ai) read and write your ChatRealty workspace using **your own Claude subscription** — no Anthropic API key needed.
 
-**v0.7.0** — 25 tools across agent meta, MLS search, market data, CMS landing pages, CMS articles, CRM contact reads, Instagram carousel posting, AI agent-staged listing photos, and (new) **`create_listing_cover`** — templated Instagram cover slides (4:5 portrait) with a configurable accent color, agent headshot, and Claude-written hook + body copy. First template is `simple-luxury`. See `docs/mcp/cover-templates.md` in the ChatRealty repo. v0.6.0 added Instagram carousel posting. v0.6.0 adds `post_instagram_carousel` — publishes a 2-10 image carousel to the agent's IG Business Account via the Meta Graph API. Requires the new `social:post` token scope AND a one-time Meta reauthorization (adds `instagram_basic` + `instagram_content_publish` scopes). See `docs/mcp/instagram-posting.md` in the ChatRealty repo for setup. v0.5.0 added `maxDaysOnMarket` / `minDaysOnMarket` filters on `search_listings`. v0.4.0 added `hasPool` + `pool` / `currentPrice` / `latitude` / `longitude` / agent/office on listing responses. v0.3.0 fixed the propertyType resolver and the photo URL camelCase mismatch. Backed by per-token scopes and tiered rate limits on the ChatRealty side. Roadmap (analytics reads, hosted MCP endpoint, CRM writes, campaign drafts and sends) lives in `docs/mcp/rollout-plan.md` in the ChatRealty repo.
+**43 tools**: MLS listings and sold history, rental cash-flow analysis, market data, landing pages and articles, CRM contact reads, and the full **website-building flow** — a step-by-step build guide (`get_build_guide`) that drives [`create-chatrealty-site`](https://www.npmjs.com/package/create-chatrealty-site), connects the finished site to your own listings (`get_site_claim_code`), and puts it live on your ChatRealty subdomain (`connect_site`, `set_site_live`). Every tool is a thin wrapper over the ChatRealty REST API; scopes, rate limits and business rules are enforced there.
 
 ## Get your token
 
 Mint a ChatRealty API token in your agent dashboard at
-**Settings → Integrations → ChatRealty Desktop Skill → Generate token**.
-The token is shown once. Copy it. Per-token scopes let you grant only the
-domains you need (e.g. MLS read but not contact PII).
+**Settings → Integrations** (the "ChatRealty Desktop Skill" card). The token is
+shown once. Pick a preset:
+
+- **Website** — listings, market data, your blog, and site management. Use this
+  one to build and launch a website: it is the only preset that includes
+  `site:manage`, which `connect_site` / `set_site_live` / `site_status` need.
+- **Content drafting / Lead-aware / Full workspace** — landing pages, articles,
+  and (lead-aware and up) contact PII. These do not include `site:manage`.
+- **Custom** — pick individual scopes.
 
 ## Install — Claude Code
 
 ```bash
-claude mcp add chatrealty -- npx -y @chatrealty/mcp-server
-claude mcp add-env chatrealty CHATREALTY_API_TOKEN=crt_live_xxxxxxxxxxxx
+claude mcp add chatrealty -e CHATREALTY_API_TOKEN=crt_live_xxxxxxxxxxxx -- npx -y @chatrealty/mcp-server
 ```
 
-Restart Claude Code. The ChatRealty tools appear in the tool tray.
+Restart Claude Code. The ChatRealty tools appear in the tool list.
 
 ## Install — Claude Desktop
 
-Open Claude Desktop → Settings → Connectors → Add Custom Connector → Local, and paste:
+Add to your Claude Desktop MCP config:
 
 ```json
 {
-  "chatrealty": {
-    "command": "npx",
-    "args": ["-y", "@chatrealty/mcp-server"],
-    "env": {
-      "CHATREALTY_API_TOKEN": "crt_live_xxxxxxxxxxxx"
+  "mcpServers": {
+    "chatrealty": {
+      "command": "npx",
+      "args": ["-y", "@chatrealty/mcp-server"],
+      "env": {
+        "CHATREALTY_API_TOKEN": "crt_live_xxxxxxxxxxxx"
+      }
     }
   }
 }
 ```
 
-Restart Claude Desktop. Confirm the connector loads and lists the tools.
+Restart Claude Desktop and confirm the server lists its tools.
 
-## Self-hosted / staging
+## No install — hosted connector (web and mobile)
 
-```bash
-CHATREALTY_API_BASE=https://staging.chatrealty.io
-```
+In the Claude app: **Settings → Connectors → Add custom connector**, URL
+`https://www.chatrealty.io/api/mcp/mcp` (use `www`), then paste your token on the
+ChatRealty sign-in screen. The hosted connector always runs the latest code and
+also offers the carousel-image and Instagram-posting tools when your token has
+their scopes.
 
-Defaults to `https://jpsrealtor.com`.
+## Configuration
 
-## Architecture
+| Env var | Default | Meaning |
+|---|---|---|
+| `CHATREALTY_API_TOKEN` | — (required) | Your `crt_live_` token |
+| `CHATREALTY_API_BASE` | `https://jpsrealtor.com` | API host, e.g. `http://localhost:3000` for local development |
+| `CHATREALTY_TIER` | `agent` | `research` exposes only the read-only client-research tools |
 
-This package is a **thin stdio transport** over the existing ChatRealty REST API.
-Every tool maps 1:1 to a `/api/skill/*` endpoint. Business logic, auth, scopes,
-rate limiting, audit logging — all live in the backend, not here. Full design
-in `docs/mcp/` at the ChatRealty repo.
+## Tools
 
-## Available tools (v0.2.0)
+Listed by the default `agent` tier of this package.
 
-### Agent meta
-| Tool | Description |
+| Group | Tools |
 |---|---|
-| `whoami` | Returns the authenticated agent + token info. Call this first. |
-| `my_agent_profile` | Full agent profile (bio, service areas, specialties, contact info). |
-| `my_stats` | Listing counts, recent activity, lead totals — quick agent dashboard summary. |
+| Identity & help | `whoami` (call first), `my_agent_profile`, `my_stats`, `get_build_guide`, `report_bug`, `report_data_issue`, `give_feedback` |
+| Website | `get_site_claim_code`, `site_status`, `connect_site`, `set_site_live`, `get_tracking`, `set_tracking` |
+| MLS listings | `search_listings`, `show_listing_board`, `get_listing`, `get_listing_photos`, `find_comparables`, `search_closed_listings` |
+| Rental cash-flow | `get_area_cashflow`, `find_cashflowing_listings`, `analyze_listing_cashflow`, `get_going_rate` |
+| Market data | `get_market_stats`, `get_subdivision_cma`, `get_neighborhood_info`, `get_mortgage_rates` |
+| Landing pages | `create_landing_page`, `list_my_landing_pages`, `get_landing_page`, `update_landing_page` |
+| Articles | `create_article`, `list_my_articles`, `get_article`, `update_article` (can publish a draft — only on your say-so) |
+| CRM (needs `contacts:read`) | `search_my_contacts`, `get_contact`, `my_recent_leads` |
+| Hosted connector only | `plan_listing_carousel`, `stage_listing_with_agent`, `create_listing_cover`, `create_carousel_slide`, `post_instagram_carousel` (publishes immediately; needs `social:post`) |
 
-### MLS / Listings
-| Tool | Description |
-|---|---|
-| `search_listings` | Search active MLS listings by city, price range, bed/bath, property type. |
-| `get_listing` | Full listing detail by `listingKey`. |
-| `get_listing_photos` | Photo URLs + captions for a listing. |
-| `find_comparables` | Comparable listings within a radius / price band. |
-| `search_closed_listings` | Search closed (sold) MLS records for CMA work. |
+The build guide is also served as MCP resources under `guide://chatrealty/build-guide`.
 
-### Market data
-| Tool | Description |
-|---|---|
-| `get_market_stats` | Median price, DOM, inventory for a city / zip. |
-| `get_subdivision_cma` | Pre-computed CMA stats for a named subdivision (1,400+ in the dataset). |
-| `get_neighborhood_info` | Neighborhood snapshot — schools, amenities, market trend. |
-| `get_mortgage_rates` | Current published mortgage rates (refreshed daily). |
+## Building a website
 
-### Investment — rental cash-flow (precomputed; no math at request time)
-| Tool | Description |
-|---|---|
-| `get_area_cashflow` | Whole-area cash-flow answer for a subdivision or city: four strategies, break-even down payments, per-bedroom economics, rent provenance and caveats. |
-| `find_cashflowing_listings` | Active listings that cash-flow in an area, sorted by cash flow, cap rate or cash-on-cash. |
-| `analyze_listing_cashflow` | Full cash-flow breakdown for one listing by `listingKey`. |
-| `get_going_rate` | Long-term rent going rate for a subdivision or ZIP. |
-
-### CMS — landing pages
-| Tool | Description |
-|---|---|
-| `create_landing_page` | Draft a new landing page with sections, hero, CTAs. |
-| `list_my_landing_pages` | List your drafts and published landing pages. |
-| `get_landing_page` | Full LP content by slug. |
-| `update_landing_page` | Edit an existing LP draft. |
-
-### CMS — articles
-| Tool | Description |
-|---|---|
-| `create_article` | Draft a market-insight / how-to / community article. |
-| `list_my_articles` | List your articles by status, topic, date. |
-| `get_article` | Full article content by slug. |
-| `update_article` | Edit an existing article draft. |
-
-### CRM — contacts (requires `contacts:read` scope)
-| Tool | Description |
-|---|---|
-| `search_my_contacts` | Search your contacts by name / phone / email / label. |
-| `get_contact` | Full contact profile + notes + interaction history. |
-| `my_recent_leads` | Recent inbound leads with source. |
+Ask Claude to build you a website. It reads the build guide, checks whether your
+listings are connected (`whoami`), scaffolds with
+`npx create-chatrealty-site@latest my-site --test-data`, and — if your listings
+are seeded in ChatRealty — connects the site to them with a one-time claim code,
+so you never handle a key. Sample (test) data never goes live: deploying it is
+blocked on purpose. Going live requires your license number on your ChatRealty
+profile.
 
 ## Privacy / data flow
 
 When you call a tool, the response goes into Claude's context. That means:
 
-- **MLS / market data**: Public-ish data; no concern.
-- **Landing-page / article drafts**: Visible to Claude.
-- **CRM reads**: Surface lead PII (name, phone, email). Gated behind the
-  separate `contacts:read` scope you opt into when minting a token. Don't
-  grant it on tokens you don't fully trust the client of.
-
-Full disclosure: `docs/mcp/scopes-and-safety.md` in the ChatRealty repo.
+- **MLS / market data**: licensed listing data; no contact PII.
+- **Landing-page / article drafts**: visible to Claude.
+- **CRM reads**: surface lead PII (name, phone, email). Gated behind the
+  separate `contacts:read` scope you opt into when minting a token.
 
 ## Revoking access
 
 Revoke the token in your ChatRealty dashboard (Settings → Integrations).
-Any device using that token loses access immediately. Restart Claude after revoking.
+Any device using that token loses access immediately.
 
 ## License
 

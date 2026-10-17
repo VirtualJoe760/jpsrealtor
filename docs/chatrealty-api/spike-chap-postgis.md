@@ -1,7 +1,7 @@
 ---
 title: "Spike 1 — CHAP → Postgres/PostGIS feasibility"
-status: current
-last_verified: 2026-06-25
+status: partial
+last_verified: 2026-10-17
 related:
   - ./build_plan.md
   - ./architecture.md
@@ -17,6 +17,16 @@ related:
 > code is changed by this spike** — it is the design that Agent 14 (`listing-repo` +
 > `postgres-listing-repo`), Agent 15 (entity search), Agent 18 (preview/POI), and Agent 19
 > (map data) implement.
+>
+> **What landed (checked 2026-10-17).** Only the area-stats half:
+> `src/lib/chap/area-stats.ts` + `search-pg.ts` (see
+> [chap-search-pg.md](./chap-search-pg.md)), and those are not called by any
+> route yet. The repo layer this spike designs — `src/lib/chat-search/repo/`
+> (`listing-repo.ts`, `postgres-listing-repo.ts`, `postgres-map-queries.ts`,
+> `entity-search.ts`), `src/lib/chat-search/map-data.ts`, `poi-repo.ts` — does
+> not exist. Tenant sites get listing search from the `/api/skill/*` routes
+> through `DbAdapter` instead. The analysis below is still the reference for
+> anyone porting the Mongo CHAP engine.
 
 ## Verdict (TL;DR)
 
