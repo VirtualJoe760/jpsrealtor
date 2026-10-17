@@ -292,6 +292,11 @@ export interface IUser extends Document {
     lastError?: string;              // reason code from the last failed verify
     addedAt?: Date;
     lastVerifiedAt?: Date;
+    networkField?: string;           // field associations are grouped on (OriginatingSystemName)
+    availableNetworks?: Array<{ name: string; count: number | null }>; // last discovery
+    totalListings?: number;          // everything the key reaches
+    networksCheckedAt?: Date;
+    networks?: string[];             // the agent's pick; empty = all (RESO_NETWORKS semantics)
   };
 
   // Per-agent Twilio SMS identity (multi-tenant). See the schema for details.
@@ -973,6 +978,14 @@ const UserSchema = new Schema<IUser>(
       lastError: String,
       addedAt: Date,
       lastVerifiedAt: Date,
+      // Which associations (data networks) the key reaches, and which the
+      // agent picked. `networks` has RESO_NETWORKS semantics in
+      // @chatrealty/sync: empty = everything the key reaches.
+      networkField: String,          // grouping field, e.g. OriginatingSystemName
+      availableNetworks: [{ _id: false, name: String, count: Number }],
+      totalListings: Number,
+      networksCheckedAt: Date,
+      networks: [String],
     },
 
     // Per-agent Twilio SMS identity (multi-tenant). The platform account
