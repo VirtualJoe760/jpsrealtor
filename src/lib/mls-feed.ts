@@ -50,6 +50,12 @@ export type MlsFeedStatus = {
   lastError: string | null;
   addedAt: string | null;
   lastVerifiedAt: string | null;
+  networkField: string | null;
+  availableNetworks: Array<{ name: string; count: number | null }>;
+  totalListings: number | null;
+  networksCheckedAt: string | null;
+  /** The agent's pick. Empty = everything the key reaches (RESO_NETWORKS semantics). */
+  networks: string[];
 };
 
 export type MlsFeedReason =
@@ -62,9 +68,9 @@ export type MlsFeedReason =
   | "feed_error"
   | "network";
 
-export type MlsFeedTestResult =
-  | { ok: true; sampleCount: number }
-  | { ok: false; reason: MlsFeedReason; message: string; httpStatus?: number };
+export type FeedFailure = { ok: false; reason: MlsFeedReason; message: string; httpStatus?: number };
+
+export type MlsFeedTestResult = { ok: true; sampleCount: number } | FeedFailure;
 
 const TIMEOUT_MS = 15_000;
 
@@ -191,7 +197,7 @@ async function fetchNoRedirect(url: string, init: RequestInit): Promise<Response
   return fetch(url, { ...init, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
 }
 
-function statusFailure(status: number, stage: "token" | "feed"): MlsFeedTestResult {
+function statusFailure(status: number, stage: "token" | "feed"): FeedFailure {
   if (status >= 300 && status < 400) {
     return { ok: false, reason: "redirect", httpStatus: status, message: "That URL redirects somewhere else. Use the final address your MLS documents." };
   }
@@ -223,40 +229,55 @@ function statusFailure(status: number, stage: "token" | "feed"): MlsFeedTestResu
   return { ok: false, reason: "feed_error", httpStatus: status, message: `Your MLS answered with an error (HTTP ${status}). Nothing was saved.` };
 }
 
-export async function testMlsFeed(input: MlsFeedInput): Promise<MlsFeedTestResult> {
+async function checkUrls(input: MlsFeedInput): Promise<FeedFailure | null> {
   for (const url of input.authMode === "oauth" ? [input.baseUrl, input.tokenUrl] : [input.baseUrl]) {
     const safe = await assertSafeFeedUrl(url);
     // `in`, not `!safe.ok`: tsconfig is strict:false, and without
     // strictNullChecks a boolean-literal discriminant doesn't narrow.
     if ("message" in safe) return { ok: false, reason: "unsafe_url", message: safe.message };
   }
+  return null;
+}
 
+/** Bearer mode: the token itself. OAuth mode: one client-credentials exchange. */
+async function resolveAccessToken(input: MlsFeedInput): Promise<{ token: string } | FeedFailure> {
+  if (input.authMode === "bearer") return { token: input.bearerToken };
+  const form = new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: input.clientId,
+    client_secret: input.clientSecret,
+  });
+  if (input.scope) form.set("scope", input.scope);
+  const tokRes = await fetchNoRedirect(input.tokenUrl, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    body: form.toString(),
+  });
+  if (!tokRes.ok) return statusFailure(tokRes.status, "token");
+  const tokJson = (await tokRes.json().catch(() => null)) as { access_token?: string } | null;
+  if (!tokJson?.access_token) {
+    return { ok: false, reason: "feed_error", message: "The login server answered but didn't return an access token." };
+  }
+  return { token: tokJson.access_token };
+}
+
+function networkFailure(err: any): FeedFailure {
+  const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
+  return {
+    ok: false,
+    reason: "network",
+    message: timedOut ? "Your MLS didn't answer within 15 seconds. Try again shortly." : "Couldn't reach your MLS. Check the URL and try again.",
+  };
+}
+
+export async function testMlsFeed(input: MlsFeedInput): Promise<MlsFeedTestResult> {
+  const unsafe = await checkUrls(input);
+  if (unsafe) return unsafe;
   try {
-    let accessToken: string;
-    if (input.authMode === "bearer") {
-      accessToken = input.bearerToken;
-    } else {
-      const form = new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: input.clientId,
-        client_secret: input.clientSecret,
-      });
-      if (input.scope) form.set("scope", input.scope);
-      const tokRes = await fetchNoRedirect(input.tokenUrl, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-        body: form.toString(),
-      });
-      if (!tokRes.ok) return statusFailure(tokRes.status, "token");
-      const tokJson = (await tokRes.json().catch(() => null)) as { access_token?: string } | null;
-      if (!tokJson?.access_token) {
-        return { ok: false, reason: "feed_error", message: "The login server answered but didn't return an access token." };
-      }
-      accessToken = tokJson.access_token;
-    }
-
+    const tok = await resolveAccessToken(input);
+    if ("reason" in tok) return tok;
     const res = await fetchNoRedirect(`${input.baseUrl}/Property?$top=1`, {
-      headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" },
+      headers: { authorization: `Bearer ${tok.token}`, accept: "application/json" },
     });
     if (!res.ok) return statusFailure(res.status, "feed");
     const json = (await res.json().catch(() => null)) as { value?: unknown[] } | null;
@@ -265,12 +286,85 @@ export async function testMlsFeed(input: MlsFeedInput): Promise<MlsFeedTestResul
     }
     return { ok: true, sampleCount: json.value.length };
   } catch (err: any) {
-    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
-    return {
-      ok: false,
-      reason: "network",
-      message: timedOut ? "Your MLS didn't answer within 15 seconds. Try again shortly." : "Couldn't reach your MLS. Check the URL and try again.",
+    return networkFailure(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Associations — which data networks a key reaches
+// ---------------------------------------------------------------------------
+
+/**
+ * The field associations are grouped on — the same one @chatrealty/sync's
+ * RESO_NETWORKS filters (`networkField` default in reso-fetch.ts), so what the
+ * agent picks here means exactly what it means to the sync. It names the MLS a
+ * listing originates from. NOT ListOfficeAOR / ListAgentAOR: those name the
+ * listing office's REALTOR association, and filtering a site on them would hide
+ * valid MLS listings (GPS tags both "California Desert Association of Realtors"
+ * and "Greater Palm Springs Realtors" inside one MLS).
+ */
+export const NETWORK_FIELD = "OriginatingSystemName";
+const MAX_NETWORKS = 50;
+
+export type MlsNetwork = { name: string; count: number | null };
+export type MlsNetworkDiscovery =
+  | { ok: true; field: string; total: number | null; networks: MlsNetwork[]; capped: boolean }
+  | FeedFailure;
+
+const odataLiteral = (v: string) => `'${v.replace(/'/g, "''")}'`;
+
+/**
+ * Every association a key reaches, each with an exact listing count.
+ *
+ * WHY NOT SAMPLE, as the sync's describeAccess() does: OData has no DISTINCT,
+ * and sampling reads the first pages — the OLDEST records — so an association
+ * with only recent listings never shows up (the sync's own comment records a
+ * session misled by exactly this). Instead: ask for ONE record whose network is
+ * none of the names found so far, until the feed returns nothing. One cheap
+ * request per association — complete, not a sample — then one $count each.
+ * Against GPS on Spark that is 4 requests, ~3s.
+ */
+export async function discoverMlsNetworks(input: MlsFeedInput, field = NETWORK_FIELD): Promise<MlsNetworkDiscovery> {
+  const unsafe = await checkUrls(input);
+  if (unsafe) return unsafe;
+  try {
+    const tok = await resolveAccessToken(input);
+    if ("reason" in tok) return tok;
+    const get = async (params: Record<string, string>): Promise<{ failure?: FeedFailure; json?: any }> => {
+      const res = await fetchNoRedirect(`${input.baseUrl}/Property?${new URLSearchParams(params).toString()}`, {
+        headers: { authorization: `Bearer ${tok.token}`, accept: "application/json" },
+      });
+      if (!res.ok) return { failure: statusFailure(res.status, "feed") };
+      return { json: await res.json().catch(() => null) };
     };
+    const count = async (filter?: string): Promise<number | null> => {
+      const r = await get(filter ? { $top: "0", $count: "true", $filter: filter } : { $top: "0", $count: "true" });
+      const n = r.json?.["@odata.count"];
+      return typeof n === "number" ? n : null;
+    };
+
+    const names: string[] = [];
+    let capped = false;
+    for (;;) {
+      if (names.length >= MAX_NETWORKS) {
+        capped = true;
+        break;
+      }
+      const filter = [`${field} ne null`, ...names.map((n) => `${field} ne ${odataLiteral(n)}`)].join(" and ");
+      const r = await get({ $top: "1", $select: field, $filter: filter });
+      if (r.failure) return r.failure;
+      const v = r.json?.value?.[0]?.[field];
+      if (v == null || v === "") break;
+      names.push(String(v));
+    }
+
+    const total = await count();
+    const networks: MlsNetwork[] = [];
+    for (const name of names) networks.push({ name, count: await count(`${field} eq ${odataLiteral(name)}`) });
+    networks.sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
+    return { ok: true, field, total, networks, capped };
+  } catch (err: any) {
+    return networkFailure(err);
   }
 }
 
@@ -279,7 +373,8 @@ export async function testMlsFeed(input: MlsFeedInput): Promise<MlsFeedTestResul
 // ---------------------------------------------------------------------------
 
 const STATUS_FIELDS =
-  "mlsFeed.status mlsFeed.authMode mlsFeed.baseUrl mlsFeed.tokenUrl mlsFeed.scope mlsFeed.last4 mlsFeed.lastError mlsFeed.addedAt mlsFeed.lastVerifiedAt";
+  "mlsFeed.status mlsFeed.authMode mlsFeed.baseUrl mlsFeed.tokenUrl mlsFeed.scope mlsFeed.last4 mlsFeed.lastError mlsFeed.addedAt mlsFeed.lastVerifiedAt " +
+  "mlsFeed.networkField mlsFeed.availableNetworks mlsFeed.totalListings mlsFeed.networksCheckedAt mlsFeed.networks";
 
 function toStatus(f: any): MlsFeedStatus {
   return {
@@ -292,6 +387,13 @@ function toStatus(f: any): MlsFeedStatus {
     lastError: f?.lastError ?? null,
     addedAt: f?.addedAt ? new Date(f.addedAt).toISOString() : null,
     lastVerifiedAt: f?.lastVerifiedAt ? new Date(f.lastVerifiedAt).toISOString() : null,
+    networkField: f?.networkField ?? null,
+    availableNetworks: Array.isArray(f?.availableNetworks)
+      ? f.availableNetworks.map((n: any) => ({ name: String(n.name), count: typeof n.count === "number" ? n.count : null }))
+      : [],
+    totalListings: typeof f?.totalListings === "number" ? f.totalListings : null,
+    networksCheckedAt: f?.networksCheckedAt ? new Date(f.networksCheckedAt).toISOString() : null,
+    networks: Array.isArray(f?.networks) ? f.networks.map(String) : [],
   };
 }
 
@@ -384,4 +486,61 @@ export async function verifyStoredMlsFeed(userId: string): Promise<{ result: Mls
   if (result.ok) $set["mlsFeed.lastVerifiedAt"] = new Date();
   await User.updateOne({ _id: new mongoose.Types.ObjectId(userId) }, { $set });
   return { result, status: await getMlsFeedStatus(userId) };
+}
+
+/**
+ * Re-discover which associations the STORED key reaches and cache the answer
+ * on the record, so the picker loads instantly and a pick can be validated
+ * without asking the MLS again.
+ */
+export async function refreshMlsNetworks(
+  userId: string
+): Promise<{ result: MlsNetworkDiscovery; status: MlsFeedStatus }> {
+  const creds = await getMlsFeedCredentials(userId);
+  if (!creds) {
+    return {
+      result: { ok: false, reason: "format", message: "Save an MLS key first." },
+      status: await getMlsFeedStatus(userId),
+    };
+  }
+  const result = await discoverMlsNetworks(creds);
+  if ("reason" in result) return { result, status: await getMlsFeedStatus(userId) };
+
+  const current = await getMlsFeedStatus(userId);
+  const reachable = new Set(result.networks.map((n) => n.name));
+  await User.updateOne(
+    { _id: new mongoose.Types.ObjectId(userId) },
+    {
+      $set: {
+        "mlsFeed.networkField": result.field,
+        "mlsFeed.availableNetworks": result.networks,
+        "mlsFeed.totalListings": result.total,
+        "mlsFeed.networksCheckedAt": new Date(),
+        // A pick the key no longer reaches would filter the sync down to
+        // nothing, silently — drop it rather than keep a dead filter.
+        "mlsFeed.networks": current.networks.filter((n) => reachable.has(n)),
+      },
+    }
+  );
+  return { result, status: await getMlsFeedStatus(userId) };
+}
+
+/**
+ * Save the agent's pick. Every name must be one the last discovery found —
+ * the sync turns these into an OData filter, and a name the feed doesn't carry
+ * matches zero listings without any error.
+ */
+export async function setMlsNetworks(userId: string, picked: string[]): Promise<{ error: string } | MlsFeedStatus> {
+  const current = await getMlsFeedStatus(userId);
+  if (current.status !== "connected") return { error: "Connect an MLS key first." };
+  const reachable = new Set(current.availableNetworks.map((n) => n.name));
+  const unknown = picked.filter((n) => !reachable.has(n));
+  if (unknown.length > 0) {
+    return { error: `Not reachable with this key: ${unknown.join(", ")}. Refresh the list and pick again.` };
+  }
+  await User.updateOne(
+    { _id: new mongoose.Types.ObjectId(userId) },
+    { $set: { "mlsFeed.networks": Array.from(new Set(picked)) } }
+  );
+  return getMlsFeedStatus(userId);
 }

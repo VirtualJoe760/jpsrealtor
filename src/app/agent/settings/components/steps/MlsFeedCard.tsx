@@ -8,7 +8,7 @@
 // after saving, this card only ever knows the host, the auth mode and the last
 // four characters.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Database, Check, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -22,7 +22,14 @@ type FeedStatus = {
   lastError: string | null;
   addedAt: string | null;
   lastVerifiedAt: string | null;
+  networkField: string | null;
+  availableNetworks: Array<{ name: string; count: number | null }>;
+  totalListings: number | null;
+  networksCheckedAt: string | null;
+  networks: string[];
 };
+
+const fmt = (n: number) => n.toLocaleString();
 
 type Form = {
   baseUrl: string;
@@ -99,6 +106,12 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
   const [replacing, setReplacing] = useState(false);
   const [result, setResult] = useState<null | { ok: boolean; message: string }>(null);
   const [pasteNote, setPasteNote] = useState<string | null>(null);
+  // Associations picker
+  const [discovering, setDiscovering] = useState(false);
+  const [networksError, setNetworksError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [savingPick, setSavingPick] = useState(false);
+  const autoDiscovered = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -156,6 +169,8 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
       const data = await res.json();
       if (data.ok) {
         const { ok: _ok, sampleCount: _n, ...status } = data;
+        // A new key may reach different associations — let the picker ask again.
+        autoDiscovered.current = false;
         setFeed(status as FeedStatus);
         // Drop the plaintext from memory as soon as the server has it.
         setForm(EMPTY_FORM);
@@ -203,9 +218,75 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
     }
   };
 
+  const handleDiscover = async () => {
+    setDiscovering(true);
+    setNetworksError(null);
+    try {
+      const res = await fetch("/api/integrations/mls-feed/networks", { method: "POST" });
+      const data = await res.json();
+      const { ok, reason: _r, message, httpStatus: _h, capped, ...status } = data;
+      if (status?.status) setFeed(status as FeedStatus);
+      if (!ok) setNetworksError(message || "Couldn't list the associations.");
+      else if (capped) setNetworksError("This key reaches more than 50 associations — only the first 50 are listed.");
+    } catch {
+      setNetworksError("Network error — try again.");
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleSavePick = async () => {
+    setSavingPick(true);
+    setNetworksError(null);
+    try {
+      const res = await fetch("/api/integrations/mls-feed/networks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ networks: Array.from(picked) }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const { ok: _ok, ...status } = data;
+        setFeed(status as FeedStatus);
+        toast.success("Associations saved");
+      } else {
+        setNetworksError(data.message || "Couldn't save the selection.");
+      }
+    } catch {
+      setNetworksError("Network error — nothing was saved.");
+    } finally {
+      setSavingPick(false);
+    }
+  };
+
   const connected = feed?.status === "connected";
   const invalid = feed?.status === "invalid";
   const showForm = !loading && (!connected || replacing);
+
+  // The checkboxes follow whatever the server last saved.
+  const savedNetworks = feed?.networks ?? [];
+  const savedKey = savedNetworks.join("\u0000");
+  useEffect(() => {
+    setPicked(new Set(savedNetworks));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedKey]);
+
+  // First time a key is connected, ask the MLS what it reaches without making
+  // the agent find a button. Once per mount; the list is cached server-side.
+  useEffect(() => {
+    if (connected && !feed?.networksCheckedAt && !autoDiscovered.current && !discovering) {
+      autoDiscovered.current = true;
+      handleDiscover();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, feed?.networksCheckedAt]);
+
+  const available = feed?.availableNetworks ?? [];
+  const pickChanged =
+    picked.size !== savedNetworks.length || savedNetworks.some((n) => !picked.has(n));
+  const savedCount = available
+    .filter((n) => savedNetworks.includes(n.name))
+    .reduce((t, n) => t + (n.count ?? 0), 0);
 
   return (
     <div className={cardClass}>
@@ -278,6 +359,121 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
               Remove
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Associations the key reaches — pick which ones the site uses */}
+      {connected && !replacing && (
+        <div className={`mt-4 p-4 rounded-lg border ${isLight ? "border-gray-200" : "border-gray-800"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className={`text-sm font-semibold ${textPrimary}`}>Which associations should your site show?</div>
+              <p className={`text-xs mt-0.5 ${textMuted}`}>
+                One key can reach several MLS associations. Pick the ones your site should pull listings from.
+              </p>
+            </div>
+            <button
+              onClick={handleDiscover}
+              disabled={discovering}
+              className={`text-xs px-3 py-1.5 rounded-md inline-flex items-center gap-1.5 disabled:opacity-50 ${
+                isLight ? "text-gray-700 hover:bg-gray-100" : "text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              {discovering ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Refresh list
+            </button>
+          </div>
+
+          {discovering && available.length === 0 && (
+            <div className={`flex items-center gap-2 mt-3 text-sm ${textMuted}`}>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Asking your MLS which associations this key reaches…
+            </div>
+          )}
+
+          {networksError && (
+            <div
+              className={`flex items-start gap-2 p-3 mt-3 rounded-lg text-sm ${
+                isLight ? "bg-red-50 text-red-800" : "bg-red-950/20 text-red-300"
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{networksError}</span>
+            </div>
+          )}
+
+          {available.length > 0 && (
+            <>
+              {feed?.totalListings != null && (
+                <p className={`text-xs mt-3 ${textMuted}`}>
+                  This key reaches {fmt(feed.totalListings)} listings across {available.length} association
+                  {available.length === 1 ? "" : "s"}
+                  {feed.networksCheckedAt && ` · checked ${new Date(feed.networksCheckedAt).toLocaleDateString()}`}.
+                </p>
+              )}
+              <div className="mt-2 space-y-1.5">
+                {available.map((n) => {
+                  const on = picked.has(n.name);
+                  return (
+                    <label
+                      key={n.name}
+                      className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border cursor-pointer transition ${
+                        on
+                          ? isLight
+                            ? "border-sky-500 bg-sky-50"
+                            : "border-sky-500 bg-sky-950/20"
+                          : isLight
+                          ? "border-gray-200 hover:border-gray-300"
+                          : "border-gray-700 hover:border-gray-600"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => {
+                            const next = new Set(picked);
+                            if (e.target.checked) next.add(n.name);
+                            else next.delete(n.name);
+                            setPicked(next);
+                          }}
+                        />
+                        <span className={`text-sm ${textPrimary} break-words`}>{n.name}</span>
+                      </span>
+                      <span className={`text-xs whitespace-nowrap ${textMuted}`}>
+                        {n.count != null ? `${fmt(n.count)} listings` : "count unavailable"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                <button
+                  onClick={handleSavePick}
+                  disabled={!pickChanged || savingPick}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50 ${
+                    isLight ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  {savingPick ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving
+                    </span>
+                  ) : (
+                    "Save selection"
+                  )}
+                </button>
+                <span className={`text-xs ${textMuted}`}>
+                  {savedNetworks.length === 0
+                    ? "Nothing picked yet — until you pick, your site would take everything this key reaches."
+                    : `Using ${savedNetworks.length} association${savedNetworks.length === 1 ? "" : "s"}${
+                        savedCount > 0 ? ` · ${fmt(savedCount)} listings` : ""
+                      }.`}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
 

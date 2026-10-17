@@ -1,7 +1,7 @@
 ---
 title: Auth
 status: current
-last_verified: 2026-07-23
+last_verified: 2026-10-16
 related: [../routing/README.md, ../multi-tenant/README.md]
 supersedes: docs/features/AUTHENTICATION.md
 ---
@@ -30,6 +30,10 @@ because each apex has its own cookie that needs to be cleared independently.
 | `src/lib/turnstile.ts` | Cloudflare Turnstile CAPTCHA verification |
 | `src/lib/rate-limit.ts` | Per-IP + per-email sliding window limits |
 | `src/lib/spam-defenses.ts` | Gibberish-name detection, honeypot helpers |
+| `src/app/api/auth/impersonate/route.ts` | Admin impersonation — start (become an agent) / stop (back to admin). See [Admin impersonation](#admin-impersonation) |
+| `src/app/components/ImpersonationBanner.tsx` | Amber "Viewing as … — Exit to Admin" bar shown during impersonation |
+| `src/lib/hooks/useImpersonation.ts` | Client hook: is this session an impersonation, and of whom |
+| `src/lib/admin-impersonate.ts` | Server helper for the *other* path: admin on an agent subdomain, resolved by header, no session swap |
 
 ## Session strategy
 
@@ -106,6 +110,52 @@ If only one clear is issued, the other variant survives and the user appears sti
 - 6-digit codes stored in `TwoFactorToken` (TTL 10 min via MongoDB TTL index)
 - Methods: SMS (via Twilio) or email (via Resend), switchable per user
 - Endpoints: `/api/auth/2fa/{enable, disable, send-code, verify-code, verify-phone, confirm-phone, switch-method}`
+
+## Admin impersonation
+
+An admin can sign in **as** an agent to see and change exactly what that agent
+sees — settings, integrations, CMS, CRM — then return to their own account.
+
+**Where:** Admin → Users (`/admin/users`) → select the user → **User Details**
+panel → orange **"Log in as {name}"** button. On success the browser goes to
+`/agent/dashboard` as that agent. A second entry point, `/auth/admin-access?subdomain=…`,
+is shown when an admin visits an agent's subdomain and offers **View as Agent**
+(impersonate) or **View as Administrator** (own account).
+
+**How it works** (`POST /api/auth/impersonate`):
+
+- `{ action: "start", subdomain }` — admins only (`josephsardella@gmail.com` is
+  hard-coded in `ADMIN_EMAILS`, or a token with `isAdmin: true`). Looks the
+  target up by `agentProfile.subdomain` — **a user with no subdomain can't be
+  impersonated** ("User has no subdomain — cannot impersonate"). Mints a fresh
+  NextAuth JWT *as the target* (`id`, `email`, `name`, `roles` of the agent;
+  `isAdmin: false`) carrying `impersonatedBy` / `impersonatedByName`, and
+  overwrites the session cookie with it.
+- `{ action: "stop" }` — re-mints the admin's own JWT from `impersonatedBy`
+  and sends the browser to `/admin`. This is what **Exit to Admin** in the
+  banner calls.
+- No nesting: starting while already impersonating returns 400.
+
+**While impersonating, `session.user.id` IS the agent.** Every session-scoped
+route reads and writes the agent's record — e.g. saving a key in Settings →
+Integrations stores it on the agent, not the admin. Server code that must tell
+the two apart checks `impersonatedBy` (the `isAdmin && !isImpersonating`
+pattern in `../multi-tenant/README.md`).
+
+Gotchas:
+
+- **Exit when done.** The impersonated cookie has the normal 30-day lifetime.
+  Close the tab without clicking Exit to Admin and that browser stays signed in
+  as the agent — and JWTs can't be revoked (see Gotchas below).
+- **2FA is skipped both ways by design:** the agent's token is minted with
+  `twoFactorEnabled: false`, and "stop" restores the admin with
+  `requiresTwoFactor: false`.
+- **Nothing is audited.** Start/stop write no record anywhere; the only trace
+  is the `impersonatedBy` claim inside the live JWT.
+- `src/lib/admin-impersonate.ts` (`resolveAgentForRequest`) is a different
+  mechanism despite the name: an admin browsing an agent's subdomain is
+  resolved to that agent via the `x-agent-subdomain` header, without swapping
+  the session.
 
 ## Anti-abuse
 
