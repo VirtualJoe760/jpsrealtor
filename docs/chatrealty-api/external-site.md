@@ -87,7 +87,7 @@ anyone handling it.
    Admin keys are never auto-bound — admin reads the dogfood corpus
    ([ship-strategy.md](./ship-strategy.md)). Revoking a key in Settings pulls it
    from the tenant mirror too.
-3. **`get_site_claim_code`** (scope `site:manage`, `POST
+3. **`get_site_claim_code`** (scope `listings:read`, `POST
    /api/skill/site/claim-code`) mints a one-time code: `XXXX-XXXX-XXXX`, 12
    characters from an alphabet without 0/O/1/I/L, valid 15 minutes, one use,
    only its sha256 stored (`src/models/SiteClaim.ts`, TTL-indexed). 409
@@ -97,11 +97,23 @@ anyone handling it.
    `chatrealty-claim.mjs` in the site root, runs `node chatrealty-claim.mjs
    <code>`, deletes it. The script calls `POST /api/skill/site/claim`
    (public; 10 tries per 15 min per IP), which spends the code atomically and
-   mints a **website-preset** key **bound to the tenant at birth**, then
+   mints a website key **bound to the tenant at birth** — the website preset
+   **capped to the scopes of the key that asked** — then
    rewrites `.env.local`: drops any `CHATREALTY_API_TOKEN` /
    `CHATREALTY_TEST_DATA` line, appends the new key, and prints only
    "Connected … (N listings)". The key goes ChatRealty → disk; the conversation
    sees the code and the count.
+
+**Why `listings:read` and a cap, not `site:manage`** (same day, after the first
+push): no Claude-access preset carries `site:manage` — only the Website preset
+does, and `full_workspace` excludes it on purpose — and the hosted MCP shows a
+tool only if the key holds its scope. Gated on `site:manage`, the tool was
+invisible to almost every agent's Claude, and so is `connect_site` (see
+`docs/review/` for that gap). The cap is what makes the lower gate safe: the
+code stores the asking key's scopes (`SiteClaim.scopes`) and the claimed key
+gets `PRESETS.website.scopes ∩ those`. A content-drafting key yields listings,
+market and articles; only a key that already had `site:manage` passes it on. A
+built site calls no `/api/skill/site/*` route, so it loses nothing.
 
 Refusals: 410 `invalid_or_used` (expired, spent or wrong — call the tool
 again), 409 `token_limit` (10 active keys; checked **before** the code is spent,

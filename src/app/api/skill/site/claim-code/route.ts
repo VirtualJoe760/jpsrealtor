@@ -16,13 +16,17 @@ export async function POST(req: NextRequest) {
   if (auth.ok === false) {
     return NextResponse.json({ error: auth.reason }, { status: auth.status, headers: NO_STORE });
   }
-  const scopeError = requireScope(auth, "site:manage");
+  // listings:read, not site:manage: no Claude preset carries site:manage, so
+  // gating on it hid this tool from almost every agent. The claimed key is
+  // capped to the asking key's scopes (lib/site-claim.ts), so this grants
+  // nothing new.
+  const scopeError = requireScope(auth, "listings:read");
   if (scopeError) return scopeError;
   const rateLimited = skillRateLimit(auth, "write");
   if (rateLimited) return rateLimited;
 
   const userId = String((auth.user as any)._id);
-  const claim = await createSiteClaim(userId);
+  const claim = await createSiteClaim(userId, auth.scopes as string[]);
   if (!("code" in claim)) {
     return NextResponse.json({ ok: false, reason: claim.reason, message: claim.message }, { status: 409, headers: NO_STORE });
   }

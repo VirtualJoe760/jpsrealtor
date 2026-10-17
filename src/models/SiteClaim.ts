@@ -12,6 +12,9 @@ export interface ISiteClaim {
   codeHash: string;
   userId: string;
   tenantId: string;
+  /** Scopes of the key that asked for the code. The claimed key gets the
+   *  website preset CAPPED to these — claiming never adds a permission. */
+  scopes: string[];
   expiresAt: Date;
   usedAt?: Date | null;
   createdAt: Date;
@@ -22,6 +25,7 @@ const SiteClaimSchema = new Schema<ISiteClaim>(
     codeHash: { type: String, required: true, unique: true },
     userId: { type: String, required: true },
     tenantId: { type: String, required: true },
+    scopes: { type: [String], default: [] },
     // TTL: the document disappears shortly after it expires.
     expiresAt: { type: Date, required: true, index: { expires: 0 } },
     usedAt: { type: Date, default: null },

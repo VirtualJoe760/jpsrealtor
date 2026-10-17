@@ -8,9 +8,16 @@
 //   2. A script in the site's folder trades the code for a key
 //      (POST /api/skill/site/claim) and writes it straight into .env.local.
 //      Claude only ever sees the code.
-//   3. The key is a WEBSITE key (website preset scopes), already bound to the
-//      agent's seeded database — so the site reads their own listings from its
-//      first request, no `sync init`, no sample data.
+//   3. The key is a WEBSITE key, already bound to the agent's seeded database —
+//      so the site reads their own listings from its first request, no
+//      `sync init`, no sample data. Its scopes are the website preset CAPPED to
+//      the scopes of the key that asked for the code. The tool needs only
+//      `listings:read`, because no Claude preset carries `site:manage` (only the
+//      Website preset does) and a typical agent's Claude could not see a
+//      site:manage tool at all; the cap is what makes that safe — a content key
+//      yields listings/market/articles, never `site:manage` (connect / go
+//      live). A built site calls no /api/skill/site/* route, so it loses
+//      nothing.
 //
 // Only agents with an ACTIVE tenant get codes: the whole point is building on
 // a database they already seeded in Settings → Integrations.
@@ -40,7 +47,8 @@ function newCode(): string {
 const normalize = (code: string) => String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 export async function createSiteClaim(
-  userId: string
+  userId: string,
+  askerScopes: string[]
 ): Promise<{ ok: true; code: string; expiresAt: string; tenantId: string } | { ok: false; reason: "no_database"; message: string }> {
   await dbConnect();
   const tenant: any = await TenantModel.findOne({ ownerUserId: userId, status: "active" }).select("tenantId").lean();
@@ -54,7 +62,13 @@ export async function createSiteClaim(
   }
   const code = newCode();
   const expiresAt = new Date(Date.now() + CODE_TTL_MS);
-  await SiteClaim.create({ codeHash: hashToken(normalize(code)), userId, tenantId: tenant.tenantId, expiresAt });
+  await SiteClaim.create({
+    codeHash: hashToken(normalize(code)),
+    userId,
+    tenantId: tenant.tenantId,
+    scopes: Array.isArray(askerScopes) ? askerScopes : [],
+    expiresAt,
+  });
   return { ok: true, code, expiresAt: expiresAt.toISOString(), tenantId: tenant.tenantId };
 }
 
@@ -97,7 +111,9 @@ export async function redeemSiteClaim(code: string): Promise<RedeemResult> {
   }
 
   const { plaintext, hash, last4 } = generateApiToken();
-  const scopes = [...PRESETS.website.scopes];
+  // Never more than the asking key held (see the header).
+  const asked = new Set<string>(claimed.scopes || []);
+  const scopes = PRESETS.website.scopes.filter((s) => asked.has(s));
   const name = `Website (claimed ${new Date().toISOString().slice(0, 10)})`;
   await User.updateOne(
     { _id: new mongoose.Types.ObjectId(claimed.userId) },
