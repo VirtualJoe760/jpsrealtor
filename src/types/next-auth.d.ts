@@ -37,5 +37,7 @@ declare module "next-auth/jwt" {
     transferAuth?: boolean;
     impersonation?: boolean;
     targetUserId?: string;
+    /** Bare host a normal hand-off was minted for; receive refuses any other host. */
+    handoffHost?: string;
   }
 }

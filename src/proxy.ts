@@ -19,7 +19,10 @@ import {
   agentOrigin,
   isAgentWorkspacePath,
   isPlatformHubHost,
+  isPlatformPinnedApi,
   isPlatformSessionCookie,
+  isPlatformSurfacePath,
+  platformOrigin,
 } from "@/lib/agent-host";
 
 // ---------------------------------------------------------------------------
@@ -250,6 +253,40 @@ function sendAgentHome(request: NextRequest, sub: string): NextResponse {
 }
 
 /**
+ * Is this subdomain handed to the agent's external site (live or in preview)?
+ * Asked on www before sending an agent home. FAIL-CLOSED: if the lookup fails,
+ * say yes — the agent stays on www, where the portal always works. Sending them
+ * on a guess could bounce www ⇄ subdomain when the subdomain's own lookup
+ * succeeds and sends them back.
+ */
+async function externalSiteOwns(request: NextRequest, sub: string): Promise<boolean> {
+  const cfg = await resolveExternalSite(request, sub, null);
+  if (!cfg) return true;
+  return !!cfg.url && (cfg.status === "live" || cfg.status === "preview");
+}
+
+/**
+ * A platform page requested on a subdomain that serves an external site (doc
+ * audit M2): serve it on www instead — the same path. Always via
+ * /api/auth/transfer on THIS host (platform-pinned), which carries a plain
+ * session across, refuses an impersonation one (the admin lands on www as
+ * themselves), and with no session just redirects.
+ *
+ * Why not redirect straight to www: `next dev` rewrites a middleware redirect
+ * whose origin equals its own (http://localhost:3000) into a RELATIVE
+ * Location, so from {sub}.localhost the browser stayed on the subdomain and
+ * looped. A route handler's redirect isn't rewritten, and the hop to transfer
+ * is same-host, where relative is correct.
+ */
+function sendToPlatform(request: NextRequest): NextResponse {
+  const host = request.headers.get("host") || "localhost";
+  const target = `${platformOrigin(request.nextUrl.protocol, host)}${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const url = new URL("/api/auth/transfer", request.url);
+  url.searchParams.set("target", target);
+  return NextResponse.redirect(url);
+}
+
+/**
  * Reverse-proxy to an agent's OWN deployment, minus the platform session.
  * The browser sends every cookie for the host, and since agents now keep their
  * session on their subdomain (host-only), forwarding it would hand a working
@@ -280,6 +317,9 @@ export async function proxy(request: NextRequest) {
     // site-config lookup always targets the platform host, so no recursion;
     // fallback mode (status none / no valid preview credential) falls
     // through to the normal gate.
+    // NOT the session hand-off routes (isPlatformPinnedApi): they always run
+    // here. Forwarding them handed hand-off tokens to the agent's own code
+    // (doc audit M1, 2026-10-17).
     const apiHost = (request.headers.get("host") || "").split(":")[0];
     const apiSub = detectSubdomainFromHost(apiHost);
     if (apiSub && !ADMIN_ONLY_SUBDOMAINS.has(apiSub) && pathname !== "/api/site-config") {
@@ -288,7 +328,22 @@ export async function proxy(request: NextRequest) {
         request.cookies.get("cr_site_preview")?.value ||
         null;
       const cfg = await resolveExternalSite(request, apiSub, pv);
-      if (cfg?.url && (cfg.status === "live" || (cfg.status === "preview" && cfg.previewOk))) {
+      const serving = !!cfg?.url && (cfg.status === "live" || (cfg.status === "preview" && cfg.previewOk));
+      if (serving && isPlatformPinnedApi(pathname)) {
+        // The agent's code runs on this origin, so the platform must not
+        // CREATE a session here: a session cookie on this host is usable by
+        // that code against the pinned routes (e.g. an admin's, against
+        // /api/auth/impersonate). Moving a session OFF the host (transfer,
+        // host-bound) and signing out stay allowed.
+        if (pathname.startsWith("/api/auth/receive") || pathname.startsWith("/api/auth/impersonate")) {
+          return NextResponse.json(
+            { error: "This site is hosted by the agent; ChatRealty sign-in happens on www.chatrealty.io." },
+            { status: 403, headers: { "Cache-Control": "no-store" } }
+          );
+        }
+        return handleApiGate(request, pathname);
+      }
+      if (serving && cfg?.url) {
         return rewriteToExternal(request, new URL(pathname + request.nextUrl.search, cfg.url));
       }
     }
@@ -369,6 +424,22 @@ export async function proxy(request: NextRequest) {
     );
 
     if (isPassthrough) {
+      // A subdomain serving an external site: its /api is the agent's
+      // deployment (incl. its own NextAuth), so these platform pages can't
+      // work here — serve them on www (doc audit M2, 2026-10-17). Same test as
+      // the rewrite below: live, or preview with a valid credential. A failed
+      // lookup keeps the old behaviour (platform page here).
+      if (isPlatformSurfacePath(pathname)) {
+        const pvHere =
+          request.nextUrl.searchParams.get("crpv") ||
+          request.cookies.get("cr_site_preview")?.value ||
+          null;
+        const ext = await resolveExternalSite(request, subdomain, pvHere);
+        if (ext?.url && (ext.status === "live" || (ext.status === "preview" && ext.previewOk))) {
+          return sendToPlatform(request);
+        }
+      }
+
       // For protected routes on subdomains, enforce auth
       const protectedPrefixes = ["/agent", "/admin", "/dashboard"];
       const isProtected = protectedPrefixes.some(
@@ -475,7 +546,7 @@ export async function proxy(request: NextRequest) {
 
   if (isPlatform && pathname === "/") {
     const homeSub = agentHomeSubdomain(await getToken({ req: request }), bareHost, pathname);
-    if (homeSub) return sendAgentHome(request, homeSub);
+    if (homeSub && !(await externalSiteOwns(request, homeSub))) return sendAgentHome(request, homeSub);
     const url = request.nextUrl.clone();
     url.pathname = "/chat-landing";
     return NextResponse.rewrite(url);
@@ -504,11 +575,12 @@ export async function proxy(request: NextRequest) {
 // Shared auth protection logic
 // -----------------------------------------------------------------------
 async function handleAuthProtection(request: NextRequest, pathname: string) {
-  // A signed-in agent on the platform host works on their own subdomain.
+  // A signed-in agent on the platform host works on their own subdomain —
+  // unless that subdomain serves their external site (then www is home).
   const bareHost = (request.headers.get("host") || "").split(":")[0];
   if (isPlatformHubHost(bareHost) && isAgentWorkspacePath(pathname)) {
     const homeSub = agentHomeSubdomain(await getToken({ req: request }), bareHost, pathname);
-    if (homeSub) return sendAgentHome(request, homeSub);
+    if (homeSub && !(await externalSiteOwns(request, homeSub))) return sendAgentHome(request, homeSub);
   }
 
   const isAuthPage = pathname.startsWith("/auth");

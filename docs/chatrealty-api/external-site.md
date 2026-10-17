@@ -46,9 +46,18 @@ platform-rendered page is the fallback whenever no external site is connected.
    └─ otherwise                          → platform-rendered fallback
 ```
 
-The external site owns its subdomain's **whole `/api` surface** too
-(`/api/site-config` excluded to prevent recursion) — the built site's own API
-routes answer, not the platform's.
+The external site owns its subdomain's **`/api` surface** too — the built
+site's own API routes answer, not the platform's — with two exclusions:
+`/api/site-config` (prevents recursion) and the four **platform-pinned
+hand-off routes** (`/api/auth/transfer`, `receive`, `impersonate`,
+`signout-chain`). Forwarding those handed session tokens to the agent's code
+(review M1, fixed 2026-10-17); on a serving host `receive` / `impersonate`
+answer 403 so the platform never creates a session where the agent's code
+runs. The platform's own pages (`/auth`, `/agent`, `/admin`, `/dashboard`)
+move to www on such a subdomain, and an agent with an external site works on
+www — see `../multi-tenant/README.md`. Client account pages on the agent's
+own site (`/dashboard` served by the deployment) are a separate, open piece
+of work.
 
 ## The lifecycle (MCP tools ↔ skill routes)
 

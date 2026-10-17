@@ -66,7 +66,10 @@ reach Mongo):
 1. `externalSite.status` `live` (or `preview` + valid signed preview credential,
    `?crpv=` → 15-min `cr_site_preview` cookie) → `rewriteToExternal()` onto
    `externalSite.deploymentUrl`, with NextAuth session cookies stripped. The
-   same check runs first for `/api/*`, so the external site owns its whole API.
+   same check runs first for `/api/*`, so the external site owns its whole API
+   — except the four platform-pinned hand-off routes (`/api/auth/transfer`,
+   `receive`, `impersonate`, `signout-chain`), and on such a host `receive` /
+   `impersonate` answer 403 (see auth/README.md, "Host-bound hand-offs").
    Full lifecycle: [../chatrealty-api/external-site.md](../chatrealty-api/external-site.md).
 2. Agent exists but `isSiteReady()` (the profile checklist,
    `src/lib/agent-site-readiness.ts`) is false → rewrite to `/coming-soon`.
@@ -146,11 +149,17 @@ other agents' tokens.
 - **A public endpoint must also be in the proxy allowlist**
   (`PUBLIC_API_EXACT` / `PUBLIC_API_PREFIXES`) or anonymous visitors get 401.
   Verify public routes with a cookie-less request, not a signed-in browser.
-- **External-site agents vs. the portal.** The external rewrite covers *every*
-  `/api/*` path on the subdomain except `/api/site-config` — including
-  `/api/auth/*` and the portal's own API calls — while `/agent/*` pages still
-  render from the platform. An agent with a live external site who is sent
-  home to their subdomain lands on a portal whose API is their own deployment.
+- **External-site agents work on www (2026-10-17, review M2).** Their
+  subdomain's `/api` is their deployment — the scaffold even runs its own
+  NextAuth at `/api/auth/[...nextauth]` — so the platform portal can't run
+  there. www sends an agent home only after `/api/site-config` confirms the
+  subdomain serves no external site (live or preview); a failed lookup keeps
+  them on www (fail-closed: www always works, and guessing could bounce
+  www ⇄ subdomain). On a subdomain that IS serving an external site,
+  `/auth`, `/agent`, `/admin` and `/dashboard` go to the same path on www via
+  that host's (pinned) `/api/auth/transfer`. Going straight to www from the
+  proxy loops in `next dev`, which rewrites a middleware redirect to its own
+  origin into a relative Location. The scaffold has no pages at those paths.
 - **Strip `www.` before host lookups** — all owner resolvers match apex + www.
 - **`agent` is reserved** (admin preview host and `generate-subdomain`'s
   reserved list).

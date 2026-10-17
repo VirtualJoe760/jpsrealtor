@@ -96,6 +96,13 @@ export async function GET(req: NextRequest) {
   } else {
     // --- A normal session moving hosts -------------------------------------
     if (!decoded.email) return NextResponse.redirect(absoluteRedirectUrl);
+    // Host-bound (doc audit M1, 2026-10-17): only the host the token was minted
+    // for may redeem it. A token with no host (minted before this check) is
+    // refused too — they live 30 seconds.
+    if (typeof decoded.handoffHost !== "string" || decoded.handoffHost !== hostname) {
+      console.warn("[Auth Receive] Hand-off refused: minted for another host", { hostname });
+      return NextResponse.redirect(absoluteRedirectUrl);
+    }
     const user: any = await User.findOne({ email: String(decoded.email).toLowerCase() })
       .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain")
       .lean();

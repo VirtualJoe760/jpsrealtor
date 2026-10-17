@@ -136,11 +136,26 @@ export async function POST(req: NextRequest) {
   // Look up the target agent by subdomain
   await dbConnect();
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain")
+    .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain agentProfile.externalSite.status")
     .lean();
 
   if (!agent) {
     return NextResponse.json({ error: `Agent with subdomain "${subdomain}" not found` }, { status: 404 });
+  }
+
+  // An agent whose subdomain serves their own external site: that host runs
+  // the agent's code, and the proxy refuses to create a session there (doc
+  // audit M1/M2, 2026-10-17). Impersonating them needs a www-hosted
+  // impersonation mode that doesn't exist yet — say so instead of dead-ending.
+  const extStatus = (agent as any).agentProfile?.externalSite?.status;
+  if (extStatus === "live" || extStatus === "preview") {
+    return NextResponse.json(
+      {
+        error: `${agent.name || "This agent"}'s subdomain serves their own site, so "Log in as" isn't available for them yet.`,
+        reason: "external_site",
+      },
+      { status: 409 }
+    );
   }
 
   // Started anywhere but the agent's own subdomain (normally www): hand off to

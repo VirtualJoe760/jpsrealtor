@@ -69,6 +69,23 @@ When a logged-in user on `jpsrealtor.com` clicks a link to `chatrealty.io`:
 
 `isAllowedTarget()` only permits chatrealty.io / jpsrealtor.com / josephsardella.com / localhost (and their subdomains). Other targets get rejected.
 
+**Host-bound hand-offs (2026-10-17, review M1).** The transfer token carries
+`handoffHost` — the bare host it was minted for — and receive refuses it on any
+other host (a token without one is refused too; they live 30 s). Impersonation
+hand-offs were already bound to the agent's subdomain. Transfer also refuses to
+carry an **impersonation** session: it would arrive as a real agent session with
+no `impersonatedBy` marker; the browser goes to the target unsigned instead.
+
+**Hand-off routes are platform-pinned.** `/api/auth/transfer`, `receive`,
+`impersonate` and `signout-chain` always run on the platform, even on a
+subdomain whose `/api` is otherwise proxied to the agent's external site
+(`isPlatformPinnedApi`, `src/lib/agent-host.ts`). Before, a crafted
+`transfer?target=https://<agent>.chatrealty.io/x` link sent a signed-in
+visitor's token to the agent's own deployment, which could redeem it on www.
+On a host whose external site is serving that browser, the proxy also refuses
+`receive` and `impersonate` outright (403): the agent's JavaScript runs on that
+origin, so the platform must not create a session there.
+
 ## Signout chain
 
 A user signed in on multiple platform apexes has cookies on each one (independent jars). NextAuth's default signout only clears the apex you're currently on. So we chain through all of them.
@@ -169,7 +186,9 @@ is shown when an admin visits an agent's subdomain and offers **View as Agent**
   overwrites the session cookie with it.
   **Started from www** it no longer sets anything on www: it mints a 30-second
   hand-off token (`impersonation: true`, `targetUserId`, `impersonatedBy`) and
-  returns `redirect` → `/api/auth/receive` on the agent's subdomain. Receive
+  returns `redirect` → `/api/auth/receive` on the agent's subdomain (409
+  `external_site` instead when that subdomain serves the agent's own site —
+  impersonating those agents needs a www-hosted mode that doesn't exist yet). Receive
   re-checks that the impersonator is **still an admin**, that the token is being
   redeemed **on that agent's own subdomain** (no replay elsewhere), then sets a
   host-only session carrying `impersonatedBy`. **Started on the agent's

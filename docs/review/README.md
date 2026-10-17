@@ -136,27 +136,19 @@ worth keeping is saved elsewhere.
 
 ### Multi-tenant (doc audit 2026-10-17)
 
-- **M1 · HIGH ✔ · Session theft through an agent's external site.**
-  `/api/auth/transfer` accepts any `*.chatrealty.io` target
-  (`src/app/api/auth/transfer/route.ts:23-41`) and sends the 30-second hand-off
-  token to `{target}/api/auth/receive?token=…`. On a subdomain whose external
-  site is live, `src/proxy.ts:276-294` rewrites **every** `/api/*` request —
-  query string included — to the agent's own deployment, which can then redeem
-  the token on www: receive binds only impersonation hand-offs to a host, not
-  normal ones (`src/app/api/auth/receive/route.ts`, "A normal session moving
-  hosts"). A crafted `transfer?target=https://<agent>.chatrealty.io/x` link
-  clicked by anyone signed in on www (Joseph included) hands that agent a
-  30-day session. **Exposure today: none** — the only live external site is
-  `josephsardella1` (read-only count, 2026-10-17). It becomes exploitable when
-  any other agent goes live. *Fix:* never rewrite `/api/auth/*` to an external
-  deployment; bind every hand-off token to its target host (as impersonation
-  already is).
-- **M2 · HIGH ✔ · Agents with a live external site can't use their portal.**
-  Since 2026-10-16 agents are sent to their own subdomain
-  (`src/lib/agent-host.ts`), where the same rewrite sends `/api/*` — NextAuth
-  included — to their deployment. Same exposure (none today). *Fix:* keep
-  platform API paths (`/api/auth`, `/api/agent`, `/api/integrations`, …) on the
-  platform, or don't send external-site agents home.
+- **M1 · HIGH · Session theft through an agent's external site — FIXED
+  2026-10-17** (see the Fixed log). Was: the external-site `/api` rewrite
+  forwarded `/api/auth/receive?token=…` to the agent's deployment, and normal
+  hand-off tokens weren't host-bound.
+- **M2 · HIGH · Agents with a live external site couldn't use their portal —
+  FIXED 2026-10-17** (see the Fixed log). They now work on www.
+- **M1a · low · "Log in as" isn't available for an agent whose subdomain serves
+  their own site.** Since the M1 fix the platform won't create a session on a
+  host where the agent's code runs, and impersonation sessions live on the
+  agent's subdomain, so `/api/auth/impersonate` answers 409 `external_site` for
+  those agents (only `josephsardella1` today). *Fix when needed:* a www-hosted
+  impersonation mode (impersonation session on a separate platform host, e.g.
+  `admin.chatrealty.io`, so it doesn't overwrite the admin's www session).
 - **M3 · HIGH · Domain purchases are paid for in the browser.**
   `/api/domains/purchase` buys on ChatRealty's Vercel account with no server
   debit or price cap (`src/app/api/domains/purchase/route.ts:43-92`); the
@@ -289,4 +281,6 @@ auditing agent's evidence and were not independently re-run.
 | 2026-10-17 | `get_site_claim_code` gated on a scope no Claude preset has | `2ccb7839` |
 | 2026-10-17 | `whoami` tool dropped the `database` block the build guide reads | `c8ee639b` |
 | 2026-10-17 | A client `research:read` key could mint a website key that outlives it | `c8ee639b` |
-| 2026-10-17 | Stale `Domain=.chatrealty.io` cookie claims in docs/auth, index drift in ARCHITECTURE/README | this commit |
+| 2026-10-17 | Stale `Domain=.chatrealty.io` cookie claims in docs/auth, index drift in ARCHITECTURE/README | `8692d02e` |
+| 2026-10-17 | **M1** hand-off token leak via an external site's `/api` rewrite: hand-off tokens host-bound (`handoffHost`); `transfer`/`receive`/`impersonate`/`signout-chain` platform-pinned on every host; on a serving external-site host `receive`/`impersonate` → 403; transfer won't launder an impersonation session | this commit |
+| 2026-10-17 | **M2** external-site agents' portal: www sends an agent home only if their subdomain serves no external site (fail-closed); platform pages on a serving subdomain go to www via the host's transfer | this commit |
