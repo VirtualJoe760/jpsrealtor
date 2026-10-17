@@ -339,6 +339,29 @@ export interface IUser extends Document {
     totalListings?: number;          // everything the key reaches
     networksCheckedAt?: Date;
     networks?: string[];             // the agent's pick; empty = all (RESO_NETWORKS semantics)
+    propertyTypes?: string[];        // RESO PropertyType values the site carries
+    closedLookback?: 'none' | '1y' | '2y' | '5y' | 'all';
+    estimate?: any;                  // cached counts for the size meter
+    sync?: {
+      status?: 'idle' | 'queued' | 'running' | 'done' | 'error';
+      mode?: 'seed' | 'update';
+      scope?: any;
+      watermark?: string;
+      completedWatermark?: string;
+      cursor?: string;
+      cursorAt?: Date;
+      rowsUpserted?: number;
+      rowsRemoved?: number;
+      expectedRows?: number;
+      dbRows?: number;
+      requestedAt?: Date;
+      startedAt?: Date;
+      finishedAt?: Date;
+      lastRunAt?: Date;
+      lastError?: string;
+      leaseUntil?: Date;
+      lastNightlyFor?: string;
+    };
   };
 
   // Per-agent Twilio SMS identity (multi-tenant). See the schema for details.
@@ -1104,6 +1127,35 @@ const UserSchema = new Schema<IUser>(
       totalListings: Number,
       networksCheckedAt: Date,
       networks: [String],
+      // WHAT the agent's database holds beyond associations (src/lib/mls-scope.ts).
+      propertyTypes: [String],       // RESO PropertyType values; default ["Residential"]
+      closedLookback: { type: String, enum: ['none', '1y', '2y', '5y', 'all'] },
+      // Last size estimate (counts per type / lookback) so the card loads instantly.
+      estimate: { type: Schema.Types.Mixed },
+      // Seed + nightly update progress (src/lib/mls-seed.ts). Serverless and
+      // chunked: each run pulls until its time budget, saves its place here,
+      // and the next cron tick resumes. `leaseUntil` stops two runs (cron and
+      // the Start button's first chunk) writing the same tenant at once.
+      sync: {
+        status: { type: String, enum: ['idle', 'queued', 'running', 'done', 'error'] },
+        mode: { type: String, enum: ['seed', 'update'] },
+        scope: { type: Schema.Types.Mixed },   // the scope this run was started with
+        watermark: String,                     // highest ModificationTimestamp written this run
+        completedWatermark: String,            // watermark of the last FINISHED run
+        cursor: String,                        // feed nextLink, to resume mid-run
+        cursorAt: Date,
+        rowsUpserted: Number,
+        rowsRemoved: Number,
+        expectedRows: Number,
+        dbRows: Number,                        // listings actually in the DB after the last finished run
+        requestedAt: Date,
+        startedAt: Date,
+        finishedAt: Date,
+        lastRunAt: Date,
+        lastError: String,
+        leaseUntil: Date,
+        lastNightlyFor: String,                // YYYY-MM-DD (Pacific) of the last nightly enqueue
+      },
     },
 
     // Per-agent Twilio SMS identity (multi-tenant). The platform account

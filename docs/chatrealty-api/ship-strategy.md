@@ -355,8 +355,9 @@ product surface, so the CLI must support it first-class:
    from the agent's MLS credentials (RESO Web API or Spark), env-var only.
    *(2026-10-16: agents can now also store the key on the platform — Settings →
    Integrations → MLS Data Feed, live-tested then AES-256-GCM encrypted on
-   `User.mlsFeed`; see `../integrations/README.md`. The sync CLI does not read
-   the stored key yet — it is still env-var only.)*
+   `User.mlsFeed`; see `../integrations/README.md`. The same card now seeds the
+   agent's tenant DB from the platform — serverless, chunked, nightly updates;
+   see `./data-tiers.md` → Hosted seeding. The CLI path still works, env-var only.)*
 2. **Small local test fetch** — a low-commitment mode that validates the
    credentials and previews a sample of the agent's feed on their own machine
    before any DB or server exists (maps to `doctor` + a bounded sample pull).

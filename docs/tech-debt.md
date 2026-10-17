@@ -1,10 +1,18 @@
 ---
 title: Tech Debt / Known Issues
 status: current
-last_verified: 2026-10-10
+last_verified: 2026-10-16
 ---
 
 # Tech Debt / Known Issues
+
+## @chatrealty/sync: listings that leave the for-sale set stay "Active" (found 2026-10-16)
+
+The CLI applies `RESO_STATUSES` (default for-sale only) to incremental pulls too, and never deletes. A listing that
+expires, is withdrawn or closes stops matching the filter, so it never arrives again and sits in the tenant DB with its
+last for-sale status — a site keeps showing it. The platform's hosted runner (`src/lib/mls-seed.ts`) avoids this by
+pulling every status on updates and deleting by key what left scope; the CLI should do the same (or drop the status
+filter on incrementals and let reads filter). Ship as a minor version — bump `packages/chatrealty-sync` first.
 
 Live list of known platform tech debt. Sorted by severity, then chronological.
 This is the canonical place to look before assuming something is "broken vs. by design."

@@ -144,6 +144,10 @@
     {
       "path": "/api/cron/publish-pending",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/mls-sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
