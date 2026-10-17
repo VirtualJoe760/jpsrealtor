@@ -22,6 +22,15 @@ export async function POST(req: NextRequest) {
   // nothing new.
   const scopeError = requireScope(auth, "listings:read");
   if (scopeError) return scopeError;
+  // A research:read key is the CLIENT tier (packages/mcp-server/src/tiers.ts) —
+  // a key an agent hands to a buyer or seller. It must not be able to mint a
+  // website key: that key would outlive the client key's revocation.
+  if ((auth.scopes as string[]).includes("research:read")) {
+    return NextResponse.json(
+      { ok: false, reason: "client_key", message: "Client research keys can't create website keys. Use your own Claude key from Settings → Integrations." },
+      { status: 403, headers: NO_STORE }
+    );
+  }
   const rateLimited = skillRateLimit(auth, "write");
   if (rateLimited) return rateLimited;
 
