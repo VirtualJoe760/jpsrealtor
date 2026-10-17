@@ -1,10 +1,11 @@
 ---
 title: Agent Onboarding (product signup → manual approval)
 status: current
-last_verified: 2026-07-23
+last_verified: 2026-10-17
 related:
   - ../integrations/email.md
   - ../commerce/README.md
+  - ../admin/README.md
 ---
 
 # Agent onboarding
@@ -16,10 +17,13 @@ joining a team (pivoted 2026-07-23 away from the old "Join Our Team"
 resume/references flow). A signed-in user fills a one-minute license form
 (license number + state, MLS association, optional MLS agent ID, brokerage
 name), which sets `User.agentApplication.phase = "inquiry_pending"`. An admin
-**manually** approves or rejects at `/admin/applications/agents`. Approval
-grants the `realEstateAgent` role, reserves a subdomain, and emails the agent
-a setup CTA. The silent JWT permission refresh in `src/lib/auth.ts` (60s
-throttle) picks up the new role — **no re-login needed** after approval.
+**manually** approves or rejects at `/admin/applications/agents` (see
+[../admin/README.md](../admin/README.md)). Approval grants the
+`realEstateAgent` role, mints a subdomain and registers it on Vercel
+(`generateSubdomain` → `ensureSubdomainRegistered`), and emails the agent a
+setup CTA. The silent JWT permission refresh in `src/lib/auth.ts` (60s
+throttle) picks up the new role — **no re-login needed** after approval. Once
+signed in, an agent's portal runs on their own subdomain (`../auth/README.md`).
 
 ## Phase machine (as used)
 
@@ -59,6 +63,19 @@ and are never set by live code.
 - **Admin recipient** comes from `ADMIN_EMAIL` env (fallback
   `josephsardella@gmail.com`). Applicant emails set `replyTo` to that inbox
   so "just reply to this email" actually reaches a human.
+- **Approve recomputes the subdomain.** The admin route calls
+  `generateSubdomain()` unconditionally, which derives the slug from the
+  user's *current* name. A user who already had a subdomain keeps it only if
+  it matches; if their name changed, or the subdomain was set another way, it
+  is replaced (and the old URL stops resolving to them). Its success message
+  still says the site is "active after subscription";
+  in fact it goes live when the go-live checklist is done
+  (`../commerce/free-tier-gating.md`).
+- **The admin Overview's "Pending Applications" card never counts these** —
+  it queries phase `"pending"` instead of `inquiry_pending`.
+- **Promoting from Admin → Users skips this flow.** Adding the
+  `realEstateAgent` role there mints a subdomain (User pre-save hook) but sets
+  no `agentApplication` phase and sends no email.
 
 ## Files
 
@@ -73,7 +90,7 @@ and are never set by live code.
 | Approval email (`sendAgentApprovalEmail`) | `src/lib/email-resend.ts` |
 | Branded email wrapper | `src/lib/email-brand.ts` |
 | Schema (`agentApplication` subdoc) | `src/models/User.ts` |
-| Subdomain generation | `src/lib/generate-subdomain.ts` |
+| Subdomain generation + Vercel registration | `src/lib/generate-subdomain.ts` |
 | Silent role refresh (no re-login) | `src/lib/auth.ts` (jwt callback) |
 | PARKED identity verification | `src/app/api/agent/verify-identity/route.ts`, `src/app/api/webhooks/stripe-identity/route.ts`, `src/lib/stripe-identity.ts` |
 

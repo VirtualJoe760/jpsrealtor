@@ -1,3 +1,5 @@
+> Archived: propertySubType filtering is still in code; no current deep dive — restore candidate for docs/listings/; content unchecked, verified 2026-10-17
+
 # Property SubType Filtering Implementation
 
 **Date**: December 9, 2025

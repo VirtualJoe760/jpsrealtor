@@ -1,3 +1,5 @@
+> Archived: historical to-do list for the chat tutorial, verified 2026-10-17
+
 # Toasty Tutorial - Implementation TODO List
 
 **Last Updated:** December 27, 2025

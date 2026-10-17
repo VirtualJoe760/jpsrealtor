@@ -1,3 +1,5 @@
+> Archived: planning doc; voicemail drops live under docs/campaigns/, verified 2026-10-17
+
 # Voicemail Drop Campaign - Enhancement Action Plan
 
 **Last Updated:** January 3, 2026

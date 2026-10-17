@@ -1,3 +1,5 @@
+> Archived: CHAP is documented in docs/chat/README.md; this design doc is unchecked, verified 2026-10-17
+
 # Chap - Unified Chat + Map Experience
 
 **Date**: December 11, 2025

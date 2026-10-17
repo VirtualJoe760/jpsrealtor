@@ -1,9 +1,9 @@
 ---
 title: Auth
 status: current
-last_verified: 2026-10-16
-related: [../routing/README.md, ../multi-tenant/README.md]
-supersedes: docs/features/AUTHENTICATION.md
+last_verified: 2026-10-17
+related: [../routing/README.md, ../multi-tenant/README.md, ../admin/README.md]
+supersedes: docs/archive/features/AUTHENTICATION.md
 ---
 
 # Auth
@@ -149,7 +149,9 @@ An admin can sign in **as** an agent to see and change exactly what that agent
 sees — settings, integrations, CMS, CRM — then return to their own account.
 
 **Where:** Admin → Users (`/admin/users`) → select the user → **User Details**
-panel → orange **"Log in as {name}"** button. Since 2026-10-16 this opens the
+panel → amber **"Log in as {name}"** button (shown only for users with the
+`realEstateAgent` role and a subdomain; the rest of the dashboard is in
+[../admin/README.md](../admin/README.md)). Since 2026-10-16 this opens the
 agent's portal **on their own subdomain** (`{slug}.chatrealty.io/agent/dashboard`)
 — the whole impersonation stays on the agent's site, and your own www session is
 never touched. A second entry point, `/auth/admin-access?subdomain=…`,
@@ -202,7 +204,7 @@ Gotchas:
 
 ## Anti-abuse
 
-- **CAPTCHA (Cloudflare Turnstile)** on `/api/auth/register`, `/api/auth/forgot-password`, `/api/contact`, `/api/leads/buy-intake`, `/api/leads/sell-intake`. Added May 2026 after a bot-signup spam wave.
+- **CAPTCHA (Cloudflare Turnstile)** on credentials sign-in (`turnstileToken` in `src/lib/auth.ts`), `/api/auth/register`, `/api/auth/forgot-password`, `/api/contact`, `/api/leads/buy-intake`, `/api/leads/sell-intake`, `/api/newsletter/subscribe`. Added May 2026 after a bot-signup spam wave.
 - **Per-IP and per-email rate limits** (in-memory sliding window) on register / signin / forgot-password.
 - **Gibberish-name detection** (e.g. `huUnwmncpxBqZSyvDlKjcs`) blocks bot-generated display names.
 - **Honeypot field** on lead forms.
@@ -219,5 +221,9 @@ Gotchas:
 
 See [tech-debt.md](../tech-debt.md). Auth-relevant items:
 
-- vercel.json catch-all forces `no-store` override on auth API responses
-- Some legacy auth docs (`docs/features/AUTHENTICATION.md`) predate the cross-domain flow
+- Admin is decided two ways — JWT/`User.isAdmin` vs. `verifyAdmin()`'s
+  email-or-`"admin"`-role rule. See [../admin/README.md](../admin/README.md#gotchas).
+- The legacy `docs/archive/features/AUTHENTICATION.md` (Jan 2025) predates the
+  cross-domain flow; don't trust it.
+- (Resolved 2026-07-25) the `vercel.json` catch-all no longer overrides the
+  `no-store` rules on `/api/auth/*` and `/auth/*`.

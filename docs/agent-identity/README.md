@@ -1,9 +1,9 @@
 ---
 title: Agent identity — affiliation, brokerage, team
 status: current
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 owner: platform
-related: [../multi-tenant/README.md, ../agent-onboarding/README.md, ../ARCHITECTURE.md]
+related: [./agent-profile.md, ../multi-tenant/README.md, ../agent-onboarding/README.md, ../ARCHITECTURE.md]
 ---
 
 # Agent identity: affiliation, brokerage, team
@@ -44,14 +44,14 @@ workarounds grew in its place:
    projected but which was never declared in the schema**. Under Mongoose
    strict mode an undeclared path is silently dropped on write, so that field
    could only be set by a raw-driver write that bypassed the schema — a
-   "successful" save that persisted nothing. (See AGENTS.md rule 7; this is the
+   "successful" save that persisted nothing. (See AGENTS.md rule 5; this is the
    third instance of that failure in this codebase.)
 
 Both are now declared, and both are **migration fallbacks only**.
 
 ## Resolution order
 
-`/api/agent-branding` is the single public resolver. Order, newest first:
+`/api/agent-branding` is the branding resolver. Order, newest first:
 
 ```
 brokerageName = agentProfile.brokerage.name
@@ -117,7 +117,9 @@ phone as literals.
 **Through the product, not a script.** `/agent/settings` → **Identity** has the
 affiliation toggle and the brokerage fields. It saves via `PUT /api/user/profile`,
 which deep-merges into `agentProfile` — no allowlist, so new fields persist as
-long as they are declared in the schema (see rule 6 in AGENTS.md).
+long as they are declared in the schema (see rule 5 in AGENTS.md). The lack of
+an allowlist is also a hole: the same request can write protected paths — see
+[agent-profile.md](./agent-profile.md#gotchas).
 
 Switching to solo clears `teamName` in the same save. `/api/agent-branding`
 additionally suppresses every team field when `affiliation !== "team"`, so a
@@ -129,6 +131,11 @@ one agent, the form is the tool.
 
 ## Gotchas
 
+- **`/api/agent/public` resolves brokerage differently.** It returns
+  `agentProfile.brokerageName || User.brokerageName` and never reads
+  `agentProfile.brokerage.name`, so `useAgentProfile()` consumers (the buy/sell
+  pages) miss a brokerage entered only in the Identity fields. Details:
+  [agent-profile.md](./agent-profile.md).
 - **`agentApplication.brokerageName`** is captured on the signup form and
   **never synced forward** to `agentProfile.brokerage`. An approved agent's
   brokerage is whatever they later type into Brand settings, not what they

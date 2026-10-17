@@ -1,3 +1,5 @@
+> Archived: community facts are still in code (src/models/community-facts.ts, /api/chat/community-facts); only briefly covered in docs/listings/README.md — restore candidate; content unchecked, verified 2026-10-17
+
 # Community Facts System - Complete Guide
 
 ## Overview

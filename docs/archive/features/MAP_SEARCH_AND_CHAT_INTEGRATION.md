@@ -1,3 +1,5 @@
+> Archived: map/chat integration is covered by docs/chat/README.md; this doc is unchecked, verified 2026-10-17
+
 # Map Search + ChatWidget Integration
 
 **Date**: December 11, 2025

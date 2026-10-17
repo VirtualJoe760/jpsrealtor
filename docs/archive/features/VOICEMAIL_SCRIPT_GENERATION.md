@@ -1,3 +1,5 @@
+> Archived: voicemail scripts are still in code (src/models/VoicemailScript.ts) with no current doc — restore candidate for docs/campaigns/; content unchecked, verified 2026-10-17
+
 # Voicemail Script Generation System
 
 **Last Updated:** January 2, 2026

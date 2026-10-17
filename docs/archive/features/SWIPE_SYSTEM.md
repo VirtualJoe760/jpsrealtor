@@ -1,3 +1,5 @@
+> Archived: swipes are still in code (/api/swipes, swipeAnalytics) with no current doc — restore candidate for docs/chat/ or docs/listings/; content unchecked, verified 2026-10-17
+
 # Swipe System
 **Tinder-Style Property Discovery**
 **Last Updated:** January 29, 2025

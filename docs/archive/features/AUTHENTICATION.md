@@ -1,3 +1,5 @@
+> Archived: superseded by docs/auth/README.md (predates cross-domain transfer, subdomain sessions and impersonation), verified 2026-10-17
+
 # Authentication (NextAuth.js)
 **OAuth & Session Management**
 **Last Updated:** January 29, 2025
