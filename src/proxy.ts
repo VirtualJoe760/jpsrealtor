@@ -14,6 +14,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import {
+  agentHomeSubdomain,
+  agentOrigin,
+  isAgentWorkspacePath,
+  isPlatformHubHost,
+  isPlatformSessionCookie,
+} from "@/lib/agent-host";
 
 // ---------------------------------------------------------------------------
 // Domain Registry
@@ -229,6 +236,38 @@ async function resolveExternalSite(
   }
 }
 
+/**
+ * Send a signed-in agent to their own subdomain (src/lib/agent-host.ts), through
+ * the session hand-off so they arrive signed in there. Their portal links are
+ * relative, so everything after this stays on their site.
+ */
+function sendAgentHome(request: NextRequest, sub: string): NextResponse {
+  const host = request.headers.get("host") || "localhost";
+  const target = `${agentOrigin(request.nextUrl.protocol, host, sub)}${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const url = new URL("/api/auth/transfer", request.url);
+  url.searchParams.set("target", target);
+  return NextResponse.redirect(url);
+}
+
+/**
+ * Reverse-proxy to an agent's OWN deployment, minus the platform session.
+ * The browser sends every cookie for the host, and since agents now keep their
+ * session on their subdomain (host-only), forwarding it would hand a working
+ * ChatRealty session token — possibly an admin's, mid-impersonation — to code
+ * the agent controls. Everything else (cr_site_preview, the site's own cookies)
+ * still flows.
+ */
+function rewriteToExternal(request: NextRequest, target: URL): NextResponse {
+  const headers = new Headers(request.headers);
+  const kept = (request.headers.get("cookie") || "")
+    .split(";")
+    .map((c) => c.trim())
+    .filter((c) => c && !isPlatformSessionCookie(c.split("=")[0]));
+  if (kept.length) headers.set("cookie", kept.join("; "));
+  else headers.delete("cookie");
+  return NextResponse.rewrite(target, { request: { headers } });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -250,7 +289,7 @@ export async function proxy(request: NextRequest) {
         null;
       const cfg = await resolveExternalSite(request, apiSub, pv);
       if (cfg?.url && (cfg.status === "live" || (cfg.status === "preview" && cfg.previewOk))) {
-        return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, cfg.url));
+        return rewriteToExternal(request, new URL(pathname + request.nextUrl.search, cfg.url));
       }
     }
     return handleApiGate(request, pathname);
@@ -359,6 +398,13 @@ export async function proxy(request: NextRequest) {
             new URL(`/auth/admin-access?subdomain=${subdomain}&callbackUrl=${callbackUrl}`, request.url)
           );
         }
+
+        // The same portal gates www applies (onboarding wizard, retired pages,
+        // free-tier page blocks). This branch used to skip them, which was
+        // harmless while agents worked on www — now that their portal lives
+        // here, skipping them would quietly bypass all three.
+        const gate = portalGates(request, pathname, token);
+        if (gate) return gate;
       }
 
       const response = NextResponse.next();
@@ -391,7 +437,7 @@ export async function proxy(request: NextRequest) {
       // Reverse-proxy this request to the agent's deployment. The built site
       // serves its own static assets via assetPrefix (its origin), so only
       // pages + API calls flow through here.
-      return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, cfg.url));
+      return rewriteToExternal(request, new URL(pathname + request.nextUrl.search, cfg.url));
     }
 
     // Agent exists but hasn't finished the go-live checklist: show a real
@@ -428,6 +474,8 @@ export async function proxy(request: NextRequest) {
   const isPlatform = bareHost.includes("chatrealty") && !detectedSubdomain;
 
   if (isPlatform && pathname === "/") {
+    const homeSub = agentHomeSubdomain(await getToken({ req: request }), bareHost, pathname);
+    if (homeSub) return sendAgentHome(request, homeSub);
     const url = request.nextUrl.clone();
     url.pathname = "/chat-landing";
     return NextResponse.rewrite(url);
@@ -456,6 +504,13 @@ export async function proxy(request: NextRequest) {
 // Shared auth protection logic
 // -----------------------------------------------------------------------
 async function handleAuthProtection(request: NextRequest, pathname: string) {
+  // A signed-in agent on the platform host works on their own subdomain.
+  const bareHost = (request.headers.get("host") || "").split(":")[0];
+  if (isPlatformHubHost(bareHost) && isAgentWorkspacePath(pathname)) {
+    const homeSub = agentHomeSubdomain(await getToken({ req: request }), bareHost, pathname);
+    if (homeSub) return sendAgentHome(request, homeSub);
+  }
+
   const isAuthPage = pathname.startsWith("/auth");
   const isDashboard = pathname.startsWith("/dashboard");
   const isAdmin = pathname.startsWith("/admin");
@@ -485,65 +540,82 @@ async function handleAuthProtection(request: NextRequest, pathname: string) {
       );
     }
 
-    // Subscription + billing moved into Settings → Billing.
-    if (
-      isAuth &&
-      (pathname === "/agent/subscription" ||
-        pathname.startsWith("/agent/subscription/"))
-    ) {
-      const billingUrl = new URL("/agent/settings", request.url);
-      billingUrl.searchParams.set("section", "billing");
-      return NextResponse.redirect(billingUrl);
-    }
-
-    // Non-admin trying to access admin routes → redirect to dashboard
-    if (isAdmin && !token?.isAdmin) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-
-    // Force newly-approved agents through the first-run setup wizard before
-    // they can use the rest of the /agent portal. Admins are exempt (they see
-    // everything). The wizard lives at /agent/settings, so exclude that path to
-    // avoid a redirect loop. Existing agents get backfilled to
-    // onboardingComplete=true (see docs/commerce/README.md).
-    if (
-      isAgent &&
-      isAuth &&
-      !(token as any)?.isAdmin &&
-      Array.isArray((token as any)?.roles) &&
-      (token as any).roles.includes("realEstateAgent") &&
-      (token as any)?.onboardingComplete === false &&
-      !pathname.startsWith("/agent/settings")
-    ) {
-      const onboardingUrl = new URL("/agent/settings", request.url);
-      onboardingUrl.searchParams.set("onboarding", "true");
-      return NextResponse.redirect(onboardingUrl);
-    }
-
-    // Free-tier agents can't reach the paid feature PAGES (defense-in-depth on
-    // top of the per-route API 403 guards). Admins + paid-tier agents pass
-    // through. Tier comes from the JWT (agentTier); a stale/undefined tier is
-    // NOT treated as free, so existing agents aren't wrongly bounced.
-    const PAID_AGENT_PATHS = [
-      "/agent/campaigns",
-      "/agent/messages",
-      "/agent/email",
-      "/agent/dashboard/domains",
-    ];
-    if (
-      isAgent &&
-      isAuth &&
-      !(token as any)?.isAdmin &&
-      (token as any)?.agentTier === "free" &&
-      PAID_AGENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
-    ) {
-      const billingUrl = new URL("/agent/settings", request.url);
-      billingUrl.searchParams.set("section", "billing");
-      return NextResponse.redirect(billingUrl);
+    if (isAuth) {
+      const gate = portalGates(request, pathname, token);
+      if (gate) return gate;
     }
   }
 
   return NextResponse.next();
+}
+
+/**
+ * Post-sign-in gates for portal pages — shared by the platform host
+ * (handleAuthProtection) and agent subdomains, so moving an agent's portal to
+ * their own subdomain can't move them out from under these rules.
+ */
+function portalGates(request: NextRequest, pathname: string, token: any): NextResponse | null {
+  const isAuth = !!token;
+  const isAdmin = pathname.startsWith("/admin");
+  const isAgent = pathname.startsWith("/agent");
+
+  // Subscription + billing moved into Settings → Billing.
+  if (
+    isAuth &&
+    (pathname === "/agent/subscription" ||
+      pathname.startsWith("/agent/subscription/"))
+  ) {
+    const billingUrl = new URL("/agent/settings", request.url);
+    billingUrl.searchParams.set("section", "billing");
+    return NextResponse.redirect(billingUrl);
+  }
+
+  // Non-admin trying to access admin routes → redirect to dashboard
+  if (isAdmin && !token?.isAdmin) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Force newly-approved agents through the first-run setup wizard before
+  // they can use the rest of the /agent portal. Admins are exempt (they see
+  // everything). The wizard lives at /agent/settings, so exclude that path to
+  // avoid a redirect loop. Existing agents get backfilled to
+  // onboardingComplete=true (see docs/commerce/README.md).
+  if (
+    isAgent &&
+    isAuth &&
+    !(token as any)?.isAdmin &&
+    Array.isArray((token as any)?.roles) &&
+    (token as any).roles.includes("realEstateAgent") &&
+    (token as any)?.onboardingComplete === false &&
+    !pathname.startsWith("/agent/settings")
+  ) {
+    const onboardingUrl = new URL("/agent/settings", request.url);
+    onboardingUrl.searchParams.set("onboarding", "true");
+    return NextResponse.redirect(onboardingUrl);
+  }
+
+  // Free-tier agents can't reach the paid feature PAGES (defense-in-depth on
+  // top of the per-route API 403 guards). Admins + paid-tier agents pass
+  // through. Tier comes from the JWT (agentTier); a stale/undefined tier is
+  // NOT treated as free, so existing agents aren't wrongly bounced.
+  const PAID_AGENT_PATHS = [
+    "/agent/campaigns",
+    "/agent/messages",
+    "/agent/email",
+    "/agent/dashboard/domains",
+  ];
+  if (
+    isAgent &&
+    isAuth &&
+    !(token as any)?.isAdmin &&
+    (token as any)?.agentTier === "free" &&
+    PAID_AGENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
+  ) {
+    const billingUrl = new URL("/agent/settings", request.url);
+    billingUrl.searchParams.set("section", "billing");
+    return NextResponse.redirect(billingUrl);
+  }
+  return null;
 }
 
 export const config = {

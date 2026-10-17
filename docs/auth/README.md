@@ -101,9 +101,41 @@ The `signout-chain` endpoint must clear cookies whose attributes match what was 
 | How signed in | Cookie attributes | Cleared by |
 |---|---|---|
 | Default credentials/OAuth on `chatrealty.io` | Host-only (no `Domain`), `Path=/`, `Secure`, `HttpOnly`, `SameSite=Lax` | Set-Cookie with NO `Domain` attribute |
-| Came via `/api/auth/receive` on chatrealty subdomain | `Domain=.chatrealty.io`, otherwise same | Set-Cookie with `Domain=.chatrealty.io` |
+| Came via `/api/auth/receive` on a chatrealty host (since 2026-10-16) | **Host-only** — scoped to that one host (e.g. `genecrucean.chatrealty.io`) | Set-Cookie with NO `Domain`, issued on that host |
+| Came via `/api/auth/receive` before 2026-10-16 (legacy, until expiry) | `Domain=.chatrealty.io`, otherwise same | Set-Cookie with `Domain=.chatrealty.io` |
 
 If only one clear is issued, the other variant survives and the user appears still signed in on refresh.
+
+**Why receive went host-only:** a `.chatrealty.io` cookie is sent to EVERY agent
+subdomain, including ones reverse-proxied to the agent's own deployment, and it
+made two sessions on sibling hosts (an admin on www, the agent they impersonate
+on the agent's subdomain) collide under one cookie name. `jpsrealtor.com` /
+`josephsardella.com` keep their apex cookie (www + bare of one site). As a
+second line, `src/proxy.ts` `rewriteToExternal()` strips every `next-auth.*`
+cookie from requests it forwards to an agent's external deployment.
+
+## Agents work on their own subdomain (2026-10-16)
+
+A signed-in **agent** (role `realEstateAgent`, not an admin, not an
+impersonation) who requests a workspace page on a platform host — `/`,
+`/dashboard*`, `/agent*` on `chatrealty.io` / `www` / `localhost` /
+`chatrealty.localhost` — is redirected through `/api/auth/transfer` to the same
+path on `{slug}.chatrealty.io` (dev: `{slug}.localhost:3000`), arriving with a
+host-only session there. Portal links are relative, so every click after that
+stays on the agent's site. Rule + hosts: `src/lib/agent-host.ts`
+(`agentHomeSubdomain`, unit-tested); the JWT carries `agentSubdomain` (stamped at
+sign-in and on the 60s permission refresh). Admins keep www.
+
+On agent subdomains the proxy now runs the **same portal gates** as www
+(`portalGates()`: onboarding wizard, retired subscription page, free-tier page
+blocks). That branch used to skip them — harmless while agents worked on www,
+a silent bypass once their portal moved.
+
+**Subdomains must be registered on Vercel** (the `*.chatrealty.io` wildcard is DNS
+only — `../chatrealty-api/external-site.md`). An agent whose subdomain 404s is
+redirected into the 404. Checked 2026-10-16: every real agent's subdomain loads;
+two test accounts' don't (`dianamarsh` — DNS points off-Vercel with an expired
+certificate; `josephsardella1` — Vercel `DNS_HOSTNAME_RESOLVED_PRIVATE`).
 
 ## 2FA
 
@@ -117,8 +149,10 @@ An admin can sign in **as** an agent to see and change exactly what that agent
 sees — settings, integrations, CMS, CRM — then return to their own account.
 
 **Where:** Admin → Users (`/admin/users`) → select the user → **User Details**
-panel → orange **"Log in as {name}"** button. On success the browser goes to
-`/agent/dashboard` as that agent. A second entry point, `/auth/admin-access?subdomain=…`,
+panel → orange **"Log in as {name}"** button. Since 2026-10-16 this opens the
+agent's portal **on their own subdomain** (`{slug}.chatrealty.io/agent/dashboard`)
+— the whole impersonation stays on the agent's site, and your own www session is
+never touched. A second entry point, `/auth/admin-access?subdomain=…`,
 is shown when an admin visits an agent's subdomain and offers **View as Agent**
 (impersonate) or **View as Administrator** (own account).
 
@@ -131,9 +165,17 @@ is shown when an admin visits an agent's subdomain and offers **View as Agent**
   NextAuth JWT *as the target* (`id`, `email`, `name`, `roles` of the agent;
   `isAdmin: false`) carrying `impersonatedBy` / `impersonatedByName`, and
   overwrites the session cookie with it.
-- `{ action: "stop" }` — re-mints the admin's own JWT from `impersonatedBy`
-  and sends the browser to `/admin`. This is what **Exit to Admin** in the
-  banner calls.
+  **Started from www** it no longer sets anything on www: it mints a 30-second
+  hand-off token (`impersonation: true`, `targetUserId`, `impersonatedBy`) and
+  returns `redirect` → `/api/auth/receive` on the agent's subdomain. Receive
+  re-checks that the impersonator is **still an admin**, that the token is being
+  redeemed **on that agent's own subdomain** (no replay elsewhere), then sets a
+  host-only session carrying `impersonatedBy`. **Started on the agent's
+  subdomain** (the `/auth/admin-access` chooser) it sets the cookie right there.
+- `{ action: "stop" }` — **on an agent subdomain**: clears that host's session and
+  returns `redirect` → `www/admin/users`, where the admin is still signed in.
+  Elsewhere (a legacy impersonation on www): re-mints the admin's own JWT from
+  `impersonatedBy`. This is what **Exit to Admin** in the banner calls.
 - No nesting: starting while already impersonating returns 400.
 
 **While impersonating, `session.user.id` IS the agent.** Every session-scoped
@@ -146,7 +188,8 @@ Gotchas:
 
 - **Exit when done.** The impersonated cookie has the normal 30-day lifetime.
   Close the tab without clicking Exit to Admin and that browser stays signed in
-  as the agent — and JWTs can't be revoked (see Gotchas below).
+  as the agent **on the agent's subdomain** — and JWTs can't be revoked (see
+  Gotchas below). Your www session is unaffected either way.
 - **2FA is skipped both ways by design:** the agent's token is minted with
   `twoFactorEnabled: false`, and "stop" restores the admin with
   `requiresTwoFactor: false`.
