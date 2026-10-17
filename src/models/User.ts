@@ -320,6 +320,22 @@ export interface IUser extends Document {
     };
   };
 
+  // MLS data feed (BYOD) — the agent's own replication credentials. See the
+  // schema for why this is top-level and why the ciphertext is select:false.
+  mlsFeed?: {
+    authMode?: 'bearer' | 'oauth';   // bearer = static token (Spark); oauth = client-credentials
+    baseUrl?: string;                // RESO OData root, e.g. https://replication.sparkapi.com/Reso/OData
+    tokenUrl?: string;               // oauth only
+    scope?: string;                  // oauth only, optional (Trestle wants "api")
+    // AES-256-GCM (src/lib/secrets.ts) of JSON {bearerToken} | {clientId, clientSecret}
+    credentialsEncrypted?: string;
+    last4?: string;
+    status?: 'connected' | 'disconnected' | 'invalid';
+    lastError?: string;              // reason code from the last failed verify
+    addedAt?: Date;
+    lastVerifiedAt?: Date;
+  };
+
   // Per-agent Twilio SMS identity (multi-tenant). See the schema for details.
   messaging?: {
     twilioNumber?: string;
@@ -1052,6 +1068,29 @@ const UserSchema = new Schema<IUser>(
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
       },
+    },
+
+    // MLS data feed (BYOD) — the agent's own RESO / Spark replication
+    // credentials. Top-level, NOT under agentProfile: /api/user/profile returns
+    // and logs the whole agentProfile and deep-merges client writes into it, so
+    // a secret stored there would reach the browser and the logs, and could be
+    // overwritten without going through validation.
+    //
+    // credentialsEncrypted is select:false — a plain User.find() never loads
+    // it; only src/lib/mls-feed.ts opts in with +mlsFeed.credentialsEncrypted.
+    // CAUTION: .select("mlsFeed") (the parent path) DOES return it — verified
+    // 2026-10-16. Select the subpaths you need, as getMlsFeedStatus() does.
+    mlsFeed: {
+      authMode: { type: String, enum: ['bearer', 'oauth'] },
+      baseUrl: String,
+      tokenUrl: String,
+      scope: String,
+      credentialsEncrypted: { type: String, select: false },
+      last4: String,
+      status: { type: String, enum: ['connected', 'disconnected', 'invalid'], default: 'disconnected' },
+      lastError: String,
+      addedAt: Date,
+      lastVerifiedAt: Date,
     },
 
     // Per-agent Twilio SMS identity (multi-tenant). The platform account

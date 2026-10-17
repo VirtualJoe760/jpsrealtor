@@ -2,13 +2,16 @@
 
 // src/app/agent/settings/components/steps/IntegrationsStep.tsx
 //
-// Two cards:
-//   1. Anthropic API key — bring-your-own-key for the in-CMS Claude chat builder
+// Three cards:
+//   1. MLS Data Feed — the agent's own MLS replication key, tested then stored
+//      encrypted (MlsFeedCard → POST /api/integrations/mls-feed).
+//   2. Anthropic API key — bring-your-own-key for the in-CMS Claude chat builder
 //      (POST /api/integrations/anthropic).
-//   2. ChatRealty Desktop Skill — mint API tokens for the Claude Code / Claude
+//   3. ChatRealty Desktop Skill — mint API tokens for the Claude Code / Claude
 //      Desktop skill (POST /api/integrations/api-tokens). Token is shown ONCE.
 
 import { useEffect, useState } from "react";
+import MlsFeedCard from "./MlsFeedCard";
 import {
   Loader2,
   Key,
@@ -300,6 +303,8 @@ export default function IntegrationsStep({ isLight }: StepProps) {
 
   return (
     <div className="space-y-6">
+      <MlsFeedCard isLight={isLight} />
+
       {/* ============================================================ */}
       {/* Anthropic API Key */}
       {/* ============================================================ */}
