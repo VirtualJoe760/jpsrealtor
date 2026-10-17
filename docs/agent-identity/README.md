@@ -1,7 +1,7 @@
 ---
 title: Agent identity — affiliation, brokerage, team
 status: current
-last_verified: 2026-10-10
+last_verified: 2026-10-16
 owner: platform
 related: [../multi-tenant/README.md, ../agent-onboarding/README.md, ../ARCHITECTURE.md]
 ---
@@ -64,9 +64,36 @@ brokerLogo    = agentProfile.brokerage.logo     // .logoDark on dark themes
 
 **Team fields are suppressed when `affiliation !== "team"`.** `teamName`,
 `teamLogo` and `teamLogoDark` return `null` for a solo agent regardless of what
-is stored. This is deliberate: `NavBrandMark` renders `teamLogo` whenever it is
-truthy, so a leftover logo from a team the agent has left would otherwise keep
-appearing in the nav indefinitely.
+is stored. This is deliberate: the API falls `navLogo` back to the team logo for
+agents who set one before `navLogo` existed, so a leftover logo from a team the
+agent has left would otherwise keep appearing in the nav indefinitely.
+
+## What an agent's site calls itself
+
+The platform brand (CHATREALTY) belongs on **platform hosts only**
+(`chatrealty.io`, `www`, `chatrealty.localhost` in dev — `isPlatformDomain()`).
+On an agent's site, every brand slot defaults to **the agent's own name**, set
+in the two-weight wordmark style (`GENE CRUCEAN`: thin first names, bold
+surname — `nameWordmark()` in `src/lib/agent-wordmark.ts`). Settings override
+the default; nothing falls back to ChatRealty while the agent has a name.
+
+| Slot | Component | Order on an agent site |
+|---|---|---|
+| Nav brand | `NavBrandMark` | Brand → **Nav Wordmark** text → **Navigation Bar Logo** → agent's name |
+| Chat hero title | `ChatWidget` | Identity → **Site Name** → agent's name. Typing `chatRealty` there opts back into CHATREALTY |
+| Corner badge (hero / chat) | `BrandCornerMark` | Brand → **Brand Mark** text → brokerage logo → nothing. **Never on a platform host** |
+
+Why the corner badge is hidden on platform hosts: `/api/agent-branding` falls
+back to the PRIMARY agent when a host maps to no one, so `chatrealty.io`'s chat
+page used to wear Joseph's "JPS" badge — for every visitor, including an admin
+impersonating another agent. When the badge renders nothing, the chat hero also
+drops its frame and divider (`useHasCornerMark`), which used to leave a stray
+rule before the title.
+
+Until 2026-10-16 the nav and the chat hero fell back to CHATREALTY instead of
+the name (`getDefaultSiteName()` returned `"chatRealty"` for every host), so an
+agent who hadn't configured branding got the platform's brand across their own
+site. Share cards (`/api/og`) have their own resolution and were not changed.
 
 ## The rule for components
 

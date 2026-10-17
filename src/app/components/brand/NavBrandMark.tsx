@@ -3,7 +3,11 @@
 // The nav's brand slot. Resolution order, once branding is known:
 //   1. the agent's text wordmark  (agentProfile.navWordmark)
 //   2. the agent's uploaded logo  (agentProfile.navLogo / navLogoDark)
-//   3. the ChatRealty wordmark
+//   3. the agent's NAME as a wordmark (GENE CRUCEAN) — src/lib/agent-wordmark.ts
+//   4. the ChatRealty wordmark, only when there is no name either
+//
+// Step 3 is new (2026-10-16). Before it, an agent with nothing configured got
+// step 4, so the platform's brand sat in the nav of the agent's own site.
 //
 // Order matters at the top: a text mark is the more specific choice, stays
 // crisp at any size and inherits the theme colour, so it wins over an image.
@@ -24,6 +28,7 @@
 
 import Wordmark from "@/app/components/brand/Wordmark";
 import { BrandSlotPlaceholder, useBranding } from "@/app/contexts/BrandingContext";
+import { nameWordmark } from "@/lib/agent-wordmark";
 
 export default function NavBrandMark({
   isLight,
@@ -74,6 +79,13 @@ export default function NavBrandMark({
     );
   }
 
-  // Resolved, and this agent genuinely has no mark of their own.
+  // Resolved, and the agent set no mark of their own: their site still says
+  // who they are, not ChatRealty.
+  const named = nameWordmark(branding?.agentName);
+  if (named) {
+    return (
+      <Wordmark className={wordmarkClassName} compact={compact} thin={named.thin} bold={named.bold} spaced />
+    );
+  }
   return <Wordmark className={wordmarkClassName} compact={compact} />;
 }

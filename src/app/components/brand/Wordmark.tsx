@@ -23,6 +23,7 @@ export default function Wordmark({
   compact = false,
   thin = "Chat",
   bold = "Realty",
+  spaced = false,
 }: {
   className?: string;
   compact?: boolean;
@@ -30,8 +31,13 @@ export default function Wordmark({
   thin?: string;
   /** Second half, set medium (Jost 500). */
   bold?: string;
+  /**
+   * Put a word space between the halves. Brand pairs are set solid
+   * (CHATREALTY, JPSREALTOR); a person's name is two words (GENE CRUCEAN).
+   */
+  spaced?: boolean;
 }) {
-  const label = `${thin}${bold}`;
+  const label = spaced && thin && bold ? `${thin} ${bold}` : `${thin}${bold}`;
   return (
     <span
       className={`inline-block select-none whitespace-nowrap uppercase leading-none ${className}`}
@@ -49,6 +55,7 @@ export default function Wordmark({
       ) : (
         <>
           <span style={{ fontWeight: 200 }}>{thin}</span>
+          {spaced && thin && bold ? " " : null}
           <span style={{ fontWeight: 500 }}>{bold}</span>
         </>
       )}

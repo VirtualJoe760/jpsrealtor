@@ -28,11 +28,7 @@ export function isAgentDomain(hostname: string): boolean {
   return !PLATFORM_DOMAINS.has(h) && h !== "localhost";
 }
 
-/**
- * Get the default site name for display on the chat page based on hostname.
- * All domains use "chatRealty" as the default site name now.
- * Agent-specific branding is loaded from the DB via getDomainConfigFromHeaders().
- */
-export function getDefaultSiteName(_hostname: string): string {
-  return "chatRealty";
-}
+// getDefaultSiteName() lived here and returned "chatRealty" for every host,
+// which put the platform brand on every agent's chat page. Removed 2026-10-16:
+// an agent site defaults to the agent's name (src/lib/agent-wordmark.ts) — see
+// docs/agent-identity/README.md "What an agent's site calls itself".

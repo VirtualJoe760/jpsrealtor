@@ -22,7 +22,44 @@
 // in the dark slot vanished in light mode.
 
 import Wordmark from "@/app/components/brand/Wordmark";
-import { useBranding } from "@/app/contexts/BrandingContext";
+import { useBranding, type Branding } from "@/app/contexts/BrandingContext";
+
+type CornerMark =
+  | { kind: "text"; thin: string; bold: string }
+  | { kind: "logo"; src: string; alt: string };
+
+function resolveCornerMark(
+  branding: Branding | null,
+  isPlatform: boolean,
+  resolved: boolean,
+  isLight: boolean
+): CornerMark | null {
+  // Platform hosts have no corner mark. chatrealty.io resolves branding to the
+  // PRIMARY agent (agent-branding's last fallback), so without this the
+  // platform's own chat page wore Joseph's "JPS" badge — for every visitor,
+  // including an admin impersonating someone else.
+  if (isPlatform) return null;
+
+  // Nothing is rendered until branding is known: an empty corner for a moment
+  // is correct, while another tenant's artwork would not be. See
+  // BrandingContext for why "unknown" and "none" are kept distinct.
+  if (!resolved || !branding) return null;
+
+  const mark = branding.brandMark;
+  if (mark?.thin || mark?.bold) return { kind: "text", thin: mark.thin || "", bold: mark.bold || "" };
+
+  const logo = isLight
+    ? branding.brokerLogo || branding.brokerLogoDark
+    : branding.brokerLogoDark || branding.brokerLogo;
+  if (!logo) return null;
+  return { kind: "logo", src: logo, alt: branding.brokerageName || "Brokerage" };
+}
+
+/** Whether a corner mark will render — lets a caller drop the frame around it. */
+export function useHasCornerMark(isLight: boolean): boolean {
+  const { branding, isPlatform, resolved } = useBranding();
+  return resolveCornerMark(branding, isPlatform, resolved, isLight) !== null;
+}
 
 export default function BrandCornerMark({
   isLight,
@@ -36,39 +73,22 @@ export default function BrandCornerMark({
   wordmarkClassName?: string;
   logoClassName?: string;
 }) {
-  const { branding, resolved } = useBranding();
+  const { branding, isPlatform, resolved } = useBranding();
+  const mark = resolveCornerMark(branding, isPlatform, resolved, isLight);
+  if (!mark) return null;
 
-  // Nothing is rendered until branding is known: an empty corner for a moment
-  // is correct, while another tenant's artwork would not be. See
-  // BrandingContext for why "unknown" and "none" are kept distinct.
-  if (!resolved || !branding) return null;
-
-  const mark = branding.brandMark;
-  if (mark?.thin || mark?.bold) {
+  if (mark.kind === "text") {
     return (
       <div className={className}>
-        <Wordmark
-          className={wordmarkClassName}
-          thin={mark.thin || ""}
-          bold={mark.bold || ""}
-        />
+        <Wordmark className={wordmarkClassName} thin={mark.thin} bold={mark.bold} />
       </div>
     );
   }
 
-  const logo = isLight
-    ? branding.brokerLogo || branding.brokerLogoDark
-    : branding.brokerLogoDark || branding.brokerLogo;
-  if (!logo) return null;
-
   return (
     <div className={className}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={logo}
-        alt={branding.brokerageName || "Brokerage"}
-        className={logoClassName}
-      />
+      <img src={mark.src} alt={mark.alt} className={logoClassName} />
     </div>
   );
 }

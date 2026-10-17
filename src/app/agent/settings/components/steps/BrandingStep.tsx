@@ -341,7 +341,7 @@ export default function BrandingStep({
       <div className="mb-6">
         <LogoUploadField
           label="Navigation Bar Logo"
-          hint="Shown top-left on your site and on your share cards. Leave both empty to fall back to the ChatRealty wordmark. A PNG with a transparent background works best."
+          hint="Shown top-left on your site and on your share cards. Leave both empty and your site's nav shows your name as text. A PNG with a transparent background works best."
           lightValue={navLogo}
           darkValue={navLogoDark}
           isLight={isLight}
