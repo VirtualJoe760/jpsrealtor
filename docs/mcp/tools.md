@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-10-15
+last_verified: 2026-10-17
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -34,7 +34,7 @@ Smallest possible surface to confirm auth works and orient Claude.
 
 | Tool | Scope | Route | Description |
 |---|---|---|---|
-| `whoami` | (any token) | `GET /api/skill/me` | Returns agent name, email, site URL, token name + last4. Claude calls this once at the start of a session to know who it's helping. Already shipped. |
+| `whoami` | (any token) | `GET /api/skill/me` | Returns agent name, email, site URL, token name + last4, `dataSource` (tenant / dogfood / none) and — when the agent seeded listings in Settings — a `database` summary (listings, associations, property types, closed history, last sync). Claude calls this once at the start of a session to know who it's helping and whether the data step is already done. |
 | `my_agent_profile` | (any token) | `GET /api/skill/me/profile` | Bio, service areas, specializations, headshot URL. Used to tailor LP / article content. |
 | `my_stats` | (any token) | `GET /api/skill/me/stats` | Counts: published articles, draft landing pages, active campaigns, contacts. Helps Claude answer "what should I work on?". |
 | `report_bug` | (any token) | `POST /api/skill/bugs` | File a defect with the ChatRealty team: title, severity, area, repro, exact errors verbatim (never tokens). Testing-phase reports drive same-day fixes. |
@@ -42,6 +42,7 @@ Smallest possible surface to confirm auth works and orient Claude.
 | `report_data_issue` | (any token) | `POST /api/skill/tickets` | File a **structured data-pipeline failure** at the moment it's hit: association, failing step, verbatim error, how far the pipeline got, payload SHAPE. Clusters by fingerprint server-side — duplicates from many machines become one work item with a population count, triaged by the judge loop ahead of scheduled test work. Redaction is structural: names and shapes only, never values; the route rejects `envVarNames` containing `=`. Full pipeline: `docs/testing/tickets.md`. |
 | `site_status` | `site:manage` | `GET /api/skill/site/status` | External-site lifecycle state: `status` (none/preview/live), deployment URL, subdomain URL, `licenseOnFile`. |
 | `connect_site` | `site:manage` | `POST /api/skill/site/connect` | Point `{subdomain}.chatrealty.io` at the agent's own deployment ("Option A: point, don't host"). Sets status `preview` (agent + admins only, signed link) and **registers the subdomain on the Vercel edge** — response carries `subdomainRegistered`. See `docs/chatrealty-api/external-site.md`. |
+| `get_site_claim_code` | `site:manage` | `POST /api/skill/site/claim-code` | One-time code (15 min, one use) + `claimScript`. Claude runs the script in the site folder; it trades the code at `POST /api/skill/site/claim` for a website key already bound to the agent's seeded database and writes it into `.env.local`. The key never enters the conversation. 409 `no_database` without a seeded tenant. See `docs/chatrealty-api/external-site.md` → claim codes. |
 | `set_site_live` | `site:manage` | `POST /api/skill/site/go-live` | Flip preview → live (public). **License-gated server-side** — 409 `license_required` without a license number on file. |
 | `get_tracking` | `site:manage` | `GET /api/skill/site/tracking` | The tenant's visitor-tracking tag IDs (Meta Pixel, GA4, Google Ads) plus a `capabilities` block. Read it before advising on ads: **GA4 alone cannot build Google Ads audiences**, so `capabilities.youtubeRetargeting` stays false until an `AW-` tag is set. |
 | `set_tracking` | `site:manage` | `PATCH /api/skill/site/tracking` | Set those IDs. They are **public** measurement IDs (they ship in the page HTML), not secrets. Partial update; empty string clears a field back to the platform default; malformed IDs are rejected rather than silently installed; `enabled: false` renders no tags at all. |

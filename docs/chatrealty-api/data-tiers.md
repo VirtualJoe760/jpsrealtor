@@ -1,7 +1,7 @@
 ---
 title: Data tiers — storage allowances and the seed preflight
 status: current
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 related: [./external-site.md, ./neon-setup.md, ../testing/coverage.md]
 ---
 
@@ -177,6 +177,12 @@ upsert) into a **72 MB** database in ~110 s — one chunk.
   `packages/chatrealty-sync/dist/` — **not** `src/`: Turbopack can't resolve the
   source's `./map.js`-style ESM imports to `.ts`. Rebuild `dist` when `src`
   changes.
+
+**What the website builder does with it (2026-10-17):** `whoami` reports the
+seeded database (`dataSource: "tenant"` + `database`), and the MCP build guide
+claims a key for the new site with `get_site_claim_code` instead of using sample
+data or asking the agent for a token — [external-site.md](./external-site.md) →
+claim codes.
 
 Still open: **provisioning from the UI** — an agent with no tenant DB gets
 "Your ChatRealty database isn't set up yet" (provisioning is still the token

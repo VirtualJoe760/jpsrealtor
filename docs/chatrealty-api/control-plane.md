@@ -1,7 +1,7 @@
 ---
 title: ChatRealty API — Control Plane (Tenant registry + token resolver)
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-10-17
 related:
   - ./build_plan.md
   - ./architecture.md
@@ -58,6 +58,19 @@ sync:
 
 During cutover, the legacy `User.agentProfile.aiIntegrations.apiTokens` path must
 also be kept in sync on every mint/revoke (build_plan §6.1).
+
+**Two more ways a hash enters the mirror (2026-10-17).** Keys minted in
+Settings → Integrations land only on the User, so they never matched
+`tokenHashes` and a seeded agent's own MCP key read `dataSource: "none"`.
+Now `authenticateSkillRequest` binds a non-admin's key to the tenant they own
+on first use (`bindTokenToOwnerTenant`, `src/lib/skill-auth.ts`), and
+`redeemSiteClaim` (`src/lib/site-claim.ts`) mints a website key onto the User
+and the Tenant together. Both are `attachToken`'s write (`$push` record +
+`$addToSet` hash) guarded by `tokenHashes: { $ne: hash }` so two racing first
+requests bind once. The Settings revoke route
+(`api/integrations/api-tokens/[id]`) now also calls
+`TenantTokenRepo.revokeToken` for whichever tenant holds the hash. See
+[external-site.md](./external-site.md) → claim codes.
 
 ## The approval gate (`provisioning-gate.ts`)
 

@@ -49,7 +49,7 @@ const give_feedback_js_1 = require("./give_feedback.js");
 const report_data_issue_js_1 = require("./report_data_issue.js");
 // Agent meta. `get_build_guide` is documentation (no PII, no network) and is
 // exposed in BOTH tiers — see tiers.ts RESEARCH_TOOL_NAMES.
-const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide, report_bug_js_1.report_bug, report_data_issue_js_1.report_data_issue, give_feedback_js_1.give_feedback, site_tools_js_1.site_status, site_tools_js_1.connect_site, site_tools_js_1.set_site_live];
+const META = [whoami_js_1.whoami, my_agent_profile_js_1.my_agent_profile, my_stats_js_1.my_stats, get_build_guide_js_1.get_build_guide, report_bug_js_1.report_bug, report_data_issue_js_1.report_data_issue, give_feedback_js_1.give_feedback, site_tools_js_1.site_status, site_tools_js_1.connect_site, site_tools_js_1.set_site_live, site_tools_js_1.get_tracking, site_tools_js_1.set_tracking, site_tools_js_1.get_site_claim_code];
 // MLS / Listings
 const MLS = [
     search_listings_js_1.search_listings,

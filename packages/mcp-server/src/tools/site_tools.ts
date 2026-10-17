@@ -100,3 +100,64 @@ export const set_tracking: ToolDef = {
     });
   },
 };
+
+// The script the site runs to trade a claim code for its key. Kept as a string
+// the tool hands back, so it works on ANY scaffold version and any shell:
+// Claude writes it to the site's root, runs it once, deletes it. It prints no
+// secret — the key goes from ChatRealty straight into .env.local.
+//
+// String.raw, NOT a plain template: in a plain one `\/` collapses to `/` and
+// `\r` / `\n` become real line breaks, so the regexes below came out as a
+// comment (`//+$/`) and an unterminated literal — the first e2e run handed
+// Claude a script that died with "Unexpected token 'const'". Keep this free of
+// backticks and `${`, which String.raw still interprets.
+const CLAIM_SCRIPT = String.raw`// chatrealty-claim.mjs — trades a one-time ChatRealty claim code for this
+// site's key and writes it into .env.local. Prints no secret. Delete after use.
+import fs from "node:fs";
+const code = process.argv[2];
+if (!code) { console.error("Usage: node chatrealty-claim.mjs <CLAIM-CODE>"); process.exit(1); }
+const base = (process.env.CHATREALTY_API_BASE || "https://www.chatrealty.io").replace(/\/+$/, "");
+const res = await fetch(base + "/api/skill/site/claim", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ code }),
+});
+const j = await res.json().catch(() => ({}));
+if (!res.ok || !j.token) { console.error("Claim failed: " + (j.message || ("HTTP " + res.status))); process.exit(1); }
+const path = ".env.local";
+const lines = (fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "")
+  .split(/\r?\n/)
+  .filter((l) => l && !/^(CHATREALTY_API_TOKEN|CHATREALTY_TEST_DATA)\s*=/.test(l));
+lines.push("CHATREALTY_API_TOKEN=" + j.token);
+fs.writeFileSync(path, lines.join("\n") + "\n");
+console.log("Connected this site to your ChatRealty listings database" +
+  (j.listings ? " (" + Number(j.listings).toLocaleString() + " listings)" : "") +
+  ". Key saved to .env.local, sample data turned off — restart the dev server.");
+`;
+
+export const get_site_claim_code: ToolDef = {
+  name: "get_site_claim_code",
+  description:
+    "Connect the website you are building to the agent's OWN seeded listings database — no token for the agent to copy, no sample data. Use whenever whoami shows dataSource 'tenant' (the agent seeded their listings in ChatRealty Settings → Integrations; whoami.database says what's in it). Returns a ONE-TIME CODE (valid 15 minutes) — not a key — plus `claimScript`. Do exactly this in the site's root folder: write `claimScript` to `chatrealty-claim.mjs`, run `node chatrealty-claim.mjs <code>`, then delete the file and restart the dev server. The script trades the code for the site's key and writes CHATREALTY_API_TOKEN into .env.local (and removes CHATREALTY_TEST_DATA). NEVER print, cat or echo .env.local or the key; NEVER ask the agent to paste a token; never fall back to sample/test data once this succeeds. A used or expired code just means: call this tool again.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  },
+  async handler(_input, config) {
+    const res: any = await request(config, "/api/skill/site/claim-code", { method: "POST" });
+    if (!res?.ok || !res.code) return res;
+    return {
+      code: res.code,
+      expiresAt: res.expiresAt,
+      database: res.database,
+      claimScript: CLAIM_SCRIPT,
+      steps: [
+        "Write claimScript to chatrealty-claim.mjs in the site's root folder.",
+        `Run: node chatrealty-claim.mjs ${res.code}`,
+        "Delete chatrealty-claim.mjs, then restart the dev server so Next reads the new .env.local.",
+        "Confirm by NAME, not value: `grep -c CHATREALTY_API_TOKEN .env.local` → 1.",
+      ],
+    };
+  },
+};

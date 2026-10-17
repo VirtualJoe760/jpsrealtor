@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -97,7 +97,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 
 | Name | File | Purpose | Credential | Notes |
 |---|---|---|---|---|
-| **ChatRealty API tokens (skill + MCP)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-auth.ts`, `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\skill\*` | Bearer-token auth for the Claude Code / Claude Desktop skill (`@chatrealty/install-skill`) AND the planned MCP server (`@chatrealty/mcp-server`) so agents can read MLS data, draft landing pages / articles, review leads, and build campaigns from any Claude window using their own Claude subscription | `User.agentProfile.aiIntegrations.apiTokens[]` — stored as sha256 hash, plaintext shown to the agent ONCE on creation. Tokens look like `crt_live_<32 bytes base64url>`. Per-token scopes planned (`landing_pages:write`, `contacts:read`, `campaigns:send`, etc.) — see [../mcp/scopes-and-safety.md](../mcp/scopes-and-safety.md). | Agent mints up to 10 tokens per account in Settings → Integrations. Each token has a name (e.g. "MacBook"), createdAt, lastUsedAt. Revoke sets `revokedAt` (we keep the row for audit). Skill API endpoints are `/api/skill/me`, `/api/skill/landing-pages` (POST/GET), all token-auth, no session. Draft-only — no publish endpoint v1. Installer package lives at `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\`. Full MCP design at [../mcp/README.md](../mcp/README.md). |
+| **ChatRealty API tokens (skill + MCP)** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-auth.ts`, `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\skill\*` | Bearer-token auth for the Claude Code / Claude Desktop skill (`@chatrealty/install-skill`) AND the planned MCP server (`@chatrealty/mcp-server`) so agents can read MLS data, draft landing pages / articles, review leads, and build campaigns from any Claude window using their own Claude subscription | `User.agentProfile.aiIntegrations.apiTokens[]` — stored as sha256 hash, plaintext shown to the agent ONCE on creation. Tokens look like `crt_live_<32 bytes base64url>`. Per-token scopes planned (`landing_pages:write`, `contacts:read`, `campaigns:send`, etc.) — see [../mcp/scopes-and-safety.md](../mcp/scopes-and-safety.md). | Agent mints up to 10 tokens per account in Settings → Integrations. Each token has a name (e.g. "MacBook"), createdAt, lastUsedAt. Revoke sets `revokedAt` (we keep the row for audit) and, since 2026-10-17, also pulls the hash from the owner's tenant: a non-admin key is bound to the tenant the agent owns on first use, so it reads their seeded listings. **Website keys are claimed, not pasted**: the MCP build guide's `get_site_claim_code` gives Claude a one-time code, a script in the site folder trades it for a website-preset key and writes it into `.env.local` — those rows show up as "Website (claimed YYYY-MM-DD)" (`src/lib/site-claim.ts`, `../chatrealty-api/external-site.md` → claim codes). Skill API endpoints are `/api/skill/me`, `/api/skill/landing-pages` (POST/GET), all token-auth, no session. Draft-only — no publish endpoint v1. Installer package lives at `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\`. Full MCP design at [../mcp/README.md](../mcp/README.md). |
 
 ### MCP servers (Claude Code)
 
