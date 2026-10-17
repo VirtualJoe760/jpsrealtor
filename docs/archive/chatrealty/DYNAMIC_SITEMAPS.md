@@ -1,3 +1,5 @@
+> Archived: superseded by docs/seo/README.md (src/app/sitemap.ts is gone; src/lib/sitemap-generator.ts), verified 2026-10-17
+
 # Dynamic Per-Domain Sitemap Generation
 
 ## Overview

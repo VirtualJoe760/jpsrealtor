@@ -1,3 +1,5 @@
+> Archived: superseded by docs/integrations/README.md (GBP per-user OAuth), verified 2026-10-17
+
 # GBP Per-User Architecture
 
 ## Overview

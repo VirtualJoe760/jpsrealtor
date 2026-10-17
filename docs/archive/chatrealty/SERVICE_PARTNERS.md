@@ -1,3 +1,5 @@
+> Archived: system is live (User.servicePartnerProfile, /api/service-partner/*) but outside multi-tenant; partly covered by docs/commerce/README.md and docs/campaigns/co-marketing-adspend.md — not restored here, verified 2026-10-17
+
 # Service Partners System
 
 ## Overview

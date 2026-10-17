@@ -1,3 +1,5 @@
+> Archived: superseded by docs/routing/README.md — src/middleware.ts is now src/proxy.ts, verified 2026-10-17
+
 # Multi-Domain Middleware Routing
 
 ## Overview
