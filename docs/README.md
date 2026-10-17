@@ -1,7 +1,7 @@
 ---
 title: jpsrealtor / ChatRealty Documentation
 status: current
-last_verified: 2026-07-23
+last_verified: 2026-10-17
 ---
 
 # Documentation
@@ -18,19 +18,24 @@ then drill into the relevant area folder.
 | Anything scoping content by hostname (the cardinal rule) | [`multi-tenant/README.md`](./multi-tenant/README.md) |
 | CRM, contact import, FUB, anti-spam | [`crm/README.md`](./crm/README.md) |
 | Agent signup, application review, approval/rejection emails | [`agent-onboarding/README.md`](./agent-onboarding/README.md) |
+| Admin dashboard, user management, "Log in as", moderation | [`admin/README.md`](./admin/README.md) |
+| Agent profile data flow (`/api/agent/public`, `useAgentProfile`) | [`agent-identity/agent-profile.md`](./agent-identity/agent-profile.md) |
+| Custom domains, domain registry, agent directory | [`multi-tenant/custom-domains.md`](./multi-tenant/custom-domains.md), [`domain-owner-scoping.md`](./multi-tenant/domain-owner-scoping.md), [`agent-directory.md`](./multi-tenant/agent-directory.md) |
 | Articles, blog, insights, publishing pipeline | [`cms/README.md`](./cms/README.md) |
 | MLS listings, photos, VPS cron, subdivisions | [`listings/README.md`](./listings/README.md) |
 | Chat (CHAP), map, intent parsing, Groq narrate | [`chat/README.md`](./chat/README.md) |
 | Stripe, subscriptions, credits, commissions | [`commerce/README.md`](./commerce/README.md) |
 | External APIs (Cloudinary, Twilio, Resend, Meta, Google, etc.) | [`integrations/README.md`](./integrations/README.md) |
 | API productization, `/api/skill/*`, npm packages, ship strategy | [`chatrealty-api/README.md`](./chatrealty-api/README.md) |
+| MCP server: Claude tools, hosted connector, the website-build flow | [`mcp/README.md`](./mcp/README.md), [`mcp/site-building.md`](./mcp/site-building.md) |
+| Bugs and inconsistencies awaiting a decision | [`review/README.md`](./review/README.md) |
 | Known issues, resolved issues, aspirational features | [`tech-debt.md`](./tech-debt.md) |
 
 ## Conventions
 
 Every doc has frontmatter (`title`, `status`, `last_verified`). The
 documentation policy and refactor checklist live in
-[`CLAUDE.md`](./CLAUDE.md) — read it before adding or modifying docs.
+[`AGENTS.md`](./AGENTS.md) — read it before adding or modifying docs.
 
 The root `CLAUDE.md` (project root, not this file) contains the operating
 rules every Claude Code session loads: read docs before non-trivial tasks,

@@ -47,7 +47,7 @@ because each apex has its own cookie that needs to be cleared independently.
   60s per session and updates the token **in place** — no logout, bounded ≤60s
   staleness. Explicit `session.update()` still forces an immediate refresh.
 - **Default cookie scope:** *host-only* — `getCookieDomain()` returns `undefined`. So `jpsrealtor.com` and `chatrealty.io` are entirely separate cookie jars.
-- **Domain-scoped variant:** When a user arrives via `/api/auth/receive`, the cookie is set with `Domain=.chatrealty.io` (or `.jpsrealtor.com`, etc.) so all subdomains of that apex share the session.
+- **Receive variant:** When a user arrives via `/api/auth/receive`, the cookie is **host-only** on `chatrealty.io` and agent subdomains (2026-10-16 — each host holds its own session); only `jpsrealtor.com` / `josephsardella.com` get `Domain=.jpsrealtor.com` / `.josephsardella.com`.
 - **Why two variants?** A user can have BOTH at once (signed in directly on chatrealty.io AND came in via transfer from jpsrealtor.com). The signout chain has to clear both, or one survives.
 
 ## Providers
@@ -64,7 +64,7 @@ When a logged-in user on `jpsrealtor.com` clicks a link to `chatrealty.io`:
 
 1. Link points at `/api/auth/transfer?target=https://chatrealty.io/some/path`
 2. Transfer endpoint reads the session, mints a 30-second signed JWT, redirects to `chatrealty.io/api/auth/receive?token=...&redirect=/some/path`
-3. Receive endpoint decodes the token, looks up the user in MongoDB by email, builds a NextAuth-shaped session JWT, sets it as a cookie with `Domain=.chatrealty.io` (subdomain-shared)
+3. Receive endpoint decodes the token, looks up the user in MongoDB by email, builds a NextAuth-shaped session JWT, sets it as a host-only cookie on the receiving host (apex-wide only on jpsrealtor.com / josephsardella.com)
 4. Browser follows the final redirect to `/some/path` — user is signed in on chatrealty.io
 
 `isAllowedTarget()` only permits chatrealty.io / jpsrealtor.com / josephsardella.com / localhost (and their subdomains). Other targets get rejected.

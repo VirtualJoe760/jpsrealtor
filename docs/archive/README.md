@@ -1,7 +1,7 @@
 ---
 title: Legacy Docs Archive
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-10-17
 ---
 
 # Archive — Legacy `/docs/` content
@@ -32,7 +32,7 @@ The refactor moved the canonical documentation into the new structure
 
 Top-level legacy directories (each a self-contained pile from the prior era):
 
-- `ad-campaign-setup/`, `agent-profile/`, `architecture/`, `bugs/`, `buy-page/`,
+- `ad-campaign-setup/`, `architecture/`, `bugs/`, `buy-page/`,
   `calendar/`, `campaigns/`, `chat/` (chat-v1 era), `chat-production/` (mixed,
   includes the canonical `CHAT_V3.md`), `chat-v2/`, `chatrealty/`, `cma/`,
   `cms/` (largely superseded by `docs/cms/`), `contact-cleaning/`, `contacts/`,
@@ -42,15 +42,34 @@ Top-level legacy directories (each a self-contained pile from the prior era):
   `pwa/`, `refactoring/`, `search/`, `security/`, `seo/`, `tenant/`,
   `theme-context/`, `thanks/`, `trello/`, `venus/`.
 
-Plus loose root-level files (`ADMIN_DASHBOARD.md`, `STRIPE_BILLING_SYSTEM.md`,
-`MONGOOSE_SCHEMA_GUIDE.md`, etc.) — see the directory listing.
+Plus loose root-level files (`STRIPE_BILLING_SYSTEM.md`, `MONGOOSE_SCHEMA_GUIDE.md`,
+etc.) — see the directory listing.
 
-Some of these files are still **CURRENT** (mainly `MONGOOSE_SCHEMA_GUIDE.md`,
-`STRIPE_BILLING_SYSTEM.md`, `chatrealty/BUSINESS_ARCHITECTURE.md`,
-`chat-production/CHAT_V3.md`, `chat-production/TOOLS_INDEX.md`,
-`agent-profile/*`). If you reference them, prefer them over outdated peers
-in the same folder. The migration logs in each `/docs/{area}/README.md`
-classify what's still accurate.
+Some of these files were still accurate when archived (`MONGOOSE_SCHEMA_GUIDE.md`,
+`chat-production/CHAT_V3.md`, `chat-production/TOOLS_INDEX.md`). The
+2026-10-17 verification (below) restored or superseded the rest; archived
+files it checked carry a one-line `> Archived: <reason>, verified 2026-10-17`
+note at the top. The migration logs in each `/docs/{area}/README.md` classify
+what's still accurate.
+
+## 2026-10-17 verification — restored out of the archive
+
+The 2026-05-21 refactor moved the whole old tree here, current material
+included. The 2026-10-17 doc-vs-code pass rewrote live-system docs against
+today's code and deleted the archived originals (git history keeps them):
+
+| Restored as | From (deleted here) |
+|---|---|
+| `docs/admin/README.md` | `ADMIN_DASHBOARD.md` |
+| `docs/agent-identity/agent-profile.md` | `agent-profile/` (README, SCHEMA, DATA_FLOW, USING_THE_HOOK, UPDATING_PROFILE_FIELDS, TROUBLESHOOTING) |
+| `docs/multi-tenant/custom-domains.md` | `DOMAIN_REGISTRY.md`, `DOMAIN_STRATEGY.md`, `SUBDOMAIN_PROVISIONING.md`, `chatrealty/DOMAIN_PROVISIONING.md`, `chatrealty/DOMAIN_ONBOARDING.md`, `chatrealty/DOMAIN_MANAGEMENT_UI.md`, `multi-tenant/domain-mapping.md` |
+| `docs/multi-tenant/agent-directory.md` | `chatrealty/AGENT_DIRECTORY.md` |
+
+Verified in that pass: admin/auth/billing, multi-tenant, MCP/site-building.
+NOT yet verified: CRM/campaigns/integrations, chat/AI, map/listings/mobile/PWA,
+and platform/CMS/SEO/theming/testing — their archive folders still need the
+same restore-or-retire pass. `features/` has 10 files flagged as restore
+candidates (chat, campaigns, listings).
 
 ## Original `/docs/README.md`
 
@@ -69,6 +88,11 @@ Each new area doc declares its `supersedes:` frontmatter:
 | `docs/cms/README.md` | `cms/CMS_AND_INSIGHTS_COMPLETE.md` |
 | `docs/chat/README.md` | `chat-production/CHAT_V3.md` |
 | `docs/commerce/README.md` | `STRIPE_BILLING_SYSTEM.md` |
+| `docs/commerce/stripe-billing.md` | `STRIPE_BILLING_SYSTEM.md` |
+| `docs/admin/README.md` | `ADMIN_DASHBOARD.md` (deleted) |
+| `docs/agent-identity/agent-profile.md` | `agent-profile/*` (deleted) |
+| `docs/multi-tenant/custom-domains.md` | 7 domain docs (deleted — table above) |
+| `docs/multi-tenant/agent-directory.md` | `chatrealty/AGENT_DIRECTORY.md` (deleted) |
 
 Other new docs (`routing/`, `listings/`, `integrations/`, `tech-debt.md`) are new
 syntheses without a single direct predecessor.
