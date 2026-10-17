@@ -36,6 +36,7 @@ import { useMapControl } from "../hooks/useMapControl";
 import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { trackEvent } from "@/lib/meta-pixel";
 import { trackClickToCall } from "@/lib/google-ads";
+import LegalLinks from "./LegalLinks";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -490,6 +491,12 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
               {branding.teamName || <Wordmark className="text-[10px]" />}
             </p>
           </div>
+        )}
+
+        {/* Legal links — moved here from the page footer, which is hidden
+            (2026-10-17). Sits just above the quick-action icons. */}
+        {!effectivelyCollapsed && (
+          <LegalLinks variant="sidebar" isLight={isLight} className="px-4 pt-1 pb-3 mx-3" />
         )}
 
         {/* Quick Action Icons */}

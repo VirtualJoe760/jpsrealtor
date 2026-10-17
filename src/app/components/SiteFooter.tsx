@@ -1,3 +1,10 @@
+// NOT RENDERED since 2026-10-17 — Joseph asked for the footer to be hidden on
+// every page; layout.tsx no longer mounts it and Privacy / Terms moved to the
+// sidebar (components/LegalLinks). Kept because the identity resolution below
+// is the server-rendered source of the agent's DRE# and broker; on agent sites
+// the sidebar's agency line shows them, but client-rendered. Restore by
+// mounting <SiteFooter /> after {children} in app/layout.tsx.
+//
 // The global footer: brokerage identity, licence numbers and legal links, on
 // EVERY page.
 //

@@ -19,6 +19,7 @@ import { ThemeProvider, type ThemeName, type ThemePreference, useTheme } from ".
 import { MapStateProvider, useMapState } from "../contexts/MapStateContext";
 import { PWAProvider } from "../contexts/PWAContext";
 import { useFavoritesSync } from "../hooks/useFavoritesSync";
+import LegalLinks from "./LegalLinks";
 
 function LayoutContent({ children, navLayout = "sidebar", metaPixelId }: { children: React.ReactNode; navLayout?: "sidebar" | "navbar"; metaPixelId?: string }) {
   // Sync favorites status on login (once per session)
@@ -118,6 +119,16 @@ function LayoutContent({ children, navLayout = "sidebar", metaPixelId }: { child
         <div style={{ pointerEvents: 'auto' }}>
           {children}
         </div>
+        {/* The page footer is hidden (2026-10-17); Privacy / Terms live in the
+            sidebar. Where there is no sidebar — phones, the navbar layout,
+            /lp/ landing pages — this one line keeps them reachable. Bottom
+            padding clears the fixed mobile bottom nav (~85px + safe area). */}
+        <LegalLinks
+          variant="page"
+          className={`px-6 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 ${
+            isNavbar || isLandingPage ? "" : "md:hidden"
+          }`}
+        />
       </div>
 
       {/* Mobile Bottom Nav (hidden on listing detail and landing pages) */}

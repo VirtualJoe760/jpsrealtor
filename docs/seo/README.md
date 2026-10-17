@@ -1,7 +1,7 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-10-14
+last_verified: 2026-10-17
 related: [../multi-tenant/README.md, ../routing/README.md]
 ---
 
@@ -273,10 +273,24 @@ they do not chain.
 - **`ServiceAreaNote`** renders on pages outside the declared service areas and
   states how those markets are actually served, instead of claiming local
   expertise in ~224 cities.
-- **Global footer** (`components/SiteFooter`). The old one began
-  `if (pathname !== '/') return null`, so ~100,000 pages had no footer and the
-  site never named the responsible broker anywhere. Resolved from the domain
-  owner — nothing is hardcoded, because one deployment serves many agents.
+- **Global footer** (`components/SiteFooter`) — **HIDDEN since 2026-10-17**
+  (Joseph: hide it on every page). `app/layout.tsx` no longer mounts it.
+  Privacy Policy · Terms of Service moved to the bottom of the sidebar, above
+  the newsletter/appointment/phone/email icons (`components/LegalLinks`);
+  where there is no sidebar — phones, the navbar layout, `/lp/` landing pages
+  — the same two links render as one line at the page bottom
+  (`ClientLayoutWrapper`), so ad landing pages keep a reachable privacy policy.
+  What went with it: the server-rendered agent DRE# + broker line, the IDX /
+  Equal Housing sentence, and the Data Deletion / Neighborhoods / Buying /
+  Selling links on every page. Agent sites still show name · DRE# · brokerage
+  in the sidebar's agency line, but that is client-rendered, so crawlers no
+  longer see a broker on every page. The component is kept for its identity
+  resolution; restoring the footer is one line in `layout.tsx`.
+
+  History: the original footer began `if (pathname !== '/') return null`, so
+  ~100,000 pages had no footer and the site never named the responsible broker
+  anywhere. SiteFooter resolved it from the domain owner — nothing hardcoded,
+  because one deployment serves many agents.
 
 ### robots.txt
 

@@ -20,7 +20,6 @@ import "@fontsource/jost/400.css";
 import "@fontsource/jost/500.css";
 import "@fontsource/jost/600.css";
 import "@fontsource/jost/700.css";
-import SiteFooter from "./components/SiteFooter";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
@@ -287,8 +286,11 @@ export default async function RootLayout({
           forcedTheme={themeLocked ? serverTheme : undefined}
           metaPixelId={tenant.tracking.metaPixelId}
         >
+          {/* No page footer (2026-10-17, Joseph: hide it on every page). Privacy
+              and Terms moved into the sidebar — see components/LegalLinks.
+              components/SiteFooter is kept, unrendered, for its DRE/broker
+              resolution; restoring it is one line here. */}
           {children}
-          <SiteFooter />
         </ClientLayoutWrapper>
       </body>
     </html>
