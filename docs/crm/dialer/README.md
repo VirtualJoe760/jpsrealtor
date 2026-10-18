@@ -34,7 +34,7 @@ Build a Twilio-first calling workspace launched from selected Contacts or a tag/
 
 - Select individual contacts or a tag/status/search/filter set, then Open in dialer. Snapshot the queue; do not silently launch the entire database or change membership when filters change.
 - Open or restore a workspace without placing calls. Start dialer immediately starts the first eligible contact; multi-line mode starts an eligible batch up to the configured capacity. Resume dialer explicitly restarts eligible work after reconciliation.
-- Mobile: swipe between Dialer, Contact and Queue. Desktop: queue left, dialer center, existing full contact page on the right. Keep call controls reachable and contact edits intact.
+- Mobile: swipe between Dialer, Contact and Queue. Desktop: dialer and compact contact summary, with an expandable paginated queue above. Full contact editing is opened explicitly. Keep call controls reachable and contact edits intact.
 - Reuse ContactViewPanel, property images, MLS enrichment and closed-sale comps; preserve existing contact notes/status/phone editing. External property research opens new tabs.
 - Display the agent's own verified callback number. Initially keep the current carrier and callback destination; outbound verification does not capture inbound calls or enable SMS from that number.
 - Target one-, two- and three-line modes with exactly one human-agent conversation. Extra human answers follow a configured eligible overflow recording or optional Retell AI route.

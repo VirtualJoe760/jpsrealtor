@@ -74,3 +74,5 @@ See [tech-debt.md](./tech-debt.md) for the live list. Most recent entries from t
 Dialer provider work now has an unscheduled lease/fencing foundation; see [provider jobs](./crm/dialer/provider-jobs.md). A separate gated Twilio adapter and signed status inbox are implemented; no live dispatch is connected.
 
 Dialer agent audio preferences/tests are local browser controls; persistent phone-agent audio is planned in [agent audio](./crm/dialer/agent-audio.md).
+
+The Contacts dialer now defaults to a compact contact summary and two-pane desktop view, with a collapsible 10-row paginated queue; mobile swipe navigation remains.
