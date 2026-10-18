@@ -1,7 +1,8 @@
 ---
 title: Copy and voice — writing the text slides and captions
 status: current
-last_verified: 2026-09-07
+last_verified: 2026-10-17
+last_verified_note: §§1–7 are writing rules, not code. §§8–9 were checked against code on 2026-10-17; the cover width caps in §8 are only on feat/mls-feed-key (commit 9288a302) so far.
 owner: content
 related: [./README.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -238,7 +239,8 @@ template and a string that outgrew it.
 Unlike a hook, **the city is not yours to shorten** — it comes off the listing.
 So the fix is in `simple-luxury.ts`, not in the config: the subtitle now carries
 the hook's own 390px cap and wraps to a second line at y:274, which still clears
-the price at y:360. A cover queued before that fix keeps the old URL until it is
+the price at y:360. (That change, and the address-line caps below, are commit
+`9288a302` on `feat/mls-feed-key`; `main` does not have them yet.) A cover queued before that fix keeps the old URL until it is
 re-rendered — `scripts/recover-pending-post.ts <slug> <postId>` rebuilds slide 1
 alone, no staging and no Gemini, the same way `reband-pending-post.ts` rebuilds
 the room bands.
