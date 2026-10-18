@@ -169,7 +169,8 @@ also half-overwrote `.next/dev/types/routes.d.ts`, breaking `npx tsc --noEmit`).
 Fixed upstream in Next 16.4.0; the repo is on 16.0.7.
 
 Until the upgrade, `server.js` guards against it in dev only
-(`guardDevRouteTable()`; a checkout older than 2026-10-16 won't have it): once
+(`guardDevRouteTable()`; as of 2026-10-17 this is an **uncommitted** change to
+`server.js` in the main checkout, so no branch has it yet): once
 listening it probes `/api/skill/listings/__route-table-probe__/photos` (answers
 401 JSON when healthy) and checks every `page`/`route` file appears in
 `routes.d.ts`. If either fails it bumps one route file's mtime to force a
