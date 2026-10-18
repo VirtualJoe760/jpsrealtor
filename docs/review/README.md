@@ -27,14 +27,14 @@ file:line evidence and were not independently re-run.
 | Admin dashboard, auth, agent identity/onboarding, billing | ✅ verified; `docs/admin/` created, agent-profile restored | `86804d47` |
 | MCP / site building (23 docs + 3 package READMEs) | ✅ verified; `docs/mcp/site-building.md` created | `38f87288` |
 | Index files (ARCHITECTURE, README, archive/README) | ✅ updated for the above | this commit |
-| CRM, campaigns, integrations, SMS (+ their archive) | ⏳ **not verified** | — |
-| Chat / CHAP / AI (+ archive chat, chat-v2, chat-production) | ⏳ **not verified** | — |
-| Map, listings, photos, CMA, mobile, PWA (+ archive) | ⏳ **not verified** | — |
-| Platform root, CMS, SEO, theming, routing, testing, deployment (+ archive) | ⏳ **not verified** | — |
+| CRM, campaigns, integrations, SMS | ✅ verified (current docs) | `e90c4d9c` |
+| Chat / CHAP / AI | ✅ verified (`chat/README.md`, `TOOLS_INDEX.md`) | `54844d72` |
+| Map, listings, photos, CMA, mobile, PWA | ✅ verified in `listings/README.md` (no separate docs exist for these) | `54844d72` |
+| Platform root, CMS, SEO, theming, routing, testing | ✅ verified: root indexes + testing `54844d72`; routing, CMS, SEO, theming `13b9615b` + `be02ee51`. No deployment doc exists. `testing/agents/tom/*` skipped (large uncommitted edits in the main checkout) | `54844d72`, `13b9615b` |
+| Content templates | ✅ verified (`auto-posting.md`'s dated log kept as history) | `653d8d21` |
+| `docs/archive/` for the areas above | ⏳ not re-read (optional) | — |
 
-The four unverified areas were briefed and paused: the account's usage limit
-stopped all seven auditing agents ~01:30–04:00, and the 04:10 checkpoint said
-not to start new areas. Their briefs are ready to resume.
+Findings from these areas are under "Doc audit, remaining areas" below.
 
 ## Open
 
@@ -271,6 +271,96 @@ auditing agent's evidence and were not independently re-run.
 - **A13 · low · Top-ups read the tier from the credit ledger's `tier`**, not
   `AgentSubscription.tier`; a gifted-credit ledger defaults to "beginner",
   changing the top-up markup.
+
+### Doc audit, remaining areas (2026-10-17)
+CRM, campaigns, integrations, SMS, chat, listings, platform root, CMS, SEO,
+theming, routing, testing, content templates. ✔ = re-checked in code (or on
+prod) in the session that wrote this section.
+
+- **D1 · HIGH ✔ · Cloudinary API secret hard-coded in a public repo.**
+  `src/lib/cloudinary.ts:10` falls back to a literal secret when
+  `CLOUDINARY_API_SECRET` is unset. It has been on `origin/main` since
+  `36d5e626` (2025-11-29). *Fix:* rotate the key in Cloudinary **first** (the old
+  value is public whatever happens to the code), then delete the fallback so a
+  missing env var fails loudly.
+- **D2 · HIGH ✔ · The lead forms reject logged-out visitors.**
+  `/api/leads/buy-intake`, `/api/leads/sell-intake` and `/api/contact` are in no
+  public list in `src/proxy.ts` (`PUBLIC_API_PREFIXES` / `PUBLIC_API_EXACT`,
+  lines 74–120), so the `/api` gate answers 401 before Turnstile or the route
+  runs. Confirmed on production 2026-10-17: an empty cookie-less POST to each
+  returns `401 {"error":"unauthorized"}`. `BuyIntakeCTA`, `SellIntakeCTA` and
+  `Contact` post without a session. Probably broken since the 2026-07-02 gate,
+  the same way the OG cards and sidebar compliance block were. *Fix:* add the
+  three to `PUBLIC_API_EXACT` (they already carry Turnstile and rate limits) and
+  re-test cookie-less.
+- **D3 · med ✔ · OAuth `state` signing fails open.** `src/lib/oauth-state.ts:16`
+  uses `'fallback-secret'` when `NEXTAUTH_SECRET` is unset. *Fix:* throw.
+- **D4 · med ✔ · Two contact creators violate the Contact enums, so the contacts
+  are lost.** The Google import writes `source: 'google_import'`, `status: 'new'`
+  (`crm/contacts/import/google/route.ts:147-148`); the inbound-SMS webhook writes
+  `'inbound_sms'` / `'lead'` (`crm/sms/webhook/route.ts:156-157`). None is in
+  `src/models/Contact.ts:320,325`, so every Google contact errors (and the user
+  is redirected to `/admin/crm`, which does not exist), and a text from an
+  unknown number is answered 200 and not stored. *Fix:* use valid values
+  (`google_contacts`, `uncontacted`, …) or extend the enums.
+- **D5 · med ✔ · Voicemail and direct mail ignore opt-outs.**
+  `campaigns/[id]/send`, `send-simple`, `send-mail` and `api/dropcowboy/campaign`
+  never check `doNotContact`; `voicemailOptOut` and `Contact.unsubscribedAt` are
+  never read. Only the pickers filter. TCPA exposure on a paid channel. *Fix:*
+  filter at send time.
+- **D6 · med ✔ · "Sold" chat queries read Active listings.** The parser sets
+  dataset `closed` and `closedSinceDays`, but `src/lib/chat-search/preview.ts:470,474`
+  call `computeAreaStats` / `buildListingQuery(scope, filters)` with no options,
+  so `src/lib/chat-v2/listing-query.ts:83-87` defaults to `active`. *Fix:* pass
+  the dataset through.
+- **D7 · med ✔ · Unescaped user input in `new RegExp`:**
+  `src/app/api/mls-listings/route.ts:49,145,150`,
+  `src/lib/chat-search/nearby-pois.ts:71,82,211`,
+  `src/app/api/chat/community-facts/route.ts:26-34`. *Fix:* `escapeRegex` from
+  `@/lib/security`.
+- **D8 · med · `searchHomes` likely returns zero rows for house/condo/townhouse**
+  (moderate confidence): it copies the word into `propertySubType`, which the
+  query matches exactly (`src/lib/chat-v2/tool-executors.ts:187-191`,
+  `listing-query.ts:458-460`).
+- **D9 · med ✔ · The Google Ads Standard Access application describes more than
+  is built:** account creation (`CreateCustomerClient`), campaign management
+  (pause/enable/budget), a credit cap on spend, and encrypted tokens
+  (`adAccounts.google.refreshToken` is plaintext). Table in
+  `campaigns/google-ads-standard-access-design.md`. *Fix:* amend the text or
+  build the pieces before submitting or demoing.
+- **D10 · med ✔ · Email activation can bill twice.** `POST /api/agent/email` only
+  refuses `verified` (`route.ts:65`); a repeat while `provisioning` debits
+  `EMAIL_SETUP_CREDITS` again and creates a second Resend domain. No disconnect
+  route exists.
+- **D11 · med ✔ · Co-marketing approval is unreachable.** The approval email links
+  to `/agent/campaigns?funding=<id>` (`src/lib/co-marketing/notify.ts:35`), which
+  never reads the param; the respond route needs a session; no UI calls `fund`
+  or `respond`.
+- **D12 · med · Where the test repairer runs (Mac or Windows) is unreconciled**
+  between `testing/README.md` and `testing/repairer.md`. Needs Joseph's answer.
+- **D13 · low-med · `chat-v3` takes `body.userId` from anonymous callers**, but
+  user-analytics looks users up by email and the widget sends the literal
+  `"demo-user"` (`src/app/api/chat-v3/route.ts:47-53`).
+- **D14 · low-med · "Ask chat" on insights pushes `/chap?chat=…`**, which nothing
+  reads (`HomeClient.tsx:232`).
+- **D15 · low ✔ · Post alerts are never sent.** `notifyPostsReady`,
+  `notifyPostSlotDue` and `notifyPostPublished`
+  (`src/lib/messaging/notify-agent-posts.ts`) have no caller.
+- **D16 · low · Subdivision hierarchy fields** (`parentSubdivision`,
+  `hierarchyLevel`, …) are read in 3 routes but missing from
+  `src/models/subdivisions.ts`, so strict mode drops any write. (The main checkout
+  has uncommitted edits to that model; check them first.)
+- **D17 · low · Drift and dead code:** `crontab.vps` references 4 scripts not in
+  the repo; `chatv3:toast` has no listener; chat mode `contact_import` posts to a
+  missing route; stray `.backup` files in `src/`; `mapbox-gl` and `react-map-gl`
+  are unused dependencies.
+- **D18 · low · Hard-coded `F:/` env path** in `scripts/agent-feedback.mjs:22` and
+  `scripts/test-accounts.ts:54`.
+- **D19 · low ✔ · The daily-carousel skill depends on untracked scripts:**
+  `reband-pending-post.ts`, `recover-pending-post.ts`, `tmp-cover-preview.ts`,
+  `tmp-watermark-strip.py`, `tmp-corner-strip.py` (and the superseded
+  `tmp-pool-check.js`) exist only in the main checkout. *Fix:* commit them, or
+  record that a fresh clone cannot run the skill.
 
 ## Fixed (log)
 
