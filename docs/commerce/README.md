@@ -1,7 +1,7 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-10-18
 related: [./free-tier-gating.md, ../auth/README.md, ../multi-tenant/README.md]
 supersedes: docs/STRIPE_BILLING_SYSTEM.md
 ---
@@ -23,6 +23,12 @@ top-ups. `PointsLedger` is a deprecated re-export shim over `CreditLedger` —
 new code MUST import from `@/models/CreditLedger` and `@/config/credits`.
 
 ## Files
+
+### Planned dialer billing and verification gap
+
+The [dialer credits plan](../crm/dialer/credits-and-billing.md) adds purchased credit packs, voice/AI metering, shared-wallet reservations and optional automatic top-ups. The user reports that current credits are inactive or broken; existing ledger, checkout and webhook code does not establish production readiness. Audit and reconcile the full payment-to-grant-to-spend path before enabling paid voice. The ledger/helpers now include reserved funds and voice usage types, with server-only transactional reservation/settlement primitives. Manual top-up quotes use unified pricing and paid-only, PaymentIntent-keyed fulfillment for completed/delayed-success events. Auto-top-up orchestration and live voice usage collection remain planned. Legacy save writers now use optimistic concurrency; conflicts require reconciliation, not blind provider retries. The new top-up route preserves purchase-time markup through one validated quote function; old unversioned Checkout grants remain honored. New packs use whole-cent pricing, accept optional request idempotency keys and do not accept promotion codes. Customer Stripe payments and platform Twilio funding remain separate operational flows. New test-mode packs now use a separate sandbox_credit_ledgers collection and CreditBillingCustomer mappings keyed by owner/mode. Checkout fails readiness without matching keys and a webhook signing secret; signed top-up event modes are checked. GET /api/points follows the configured wallet mode and labels test balances; the legacy real-spend command is blocked in test mode. See [Stripe sandbox setup](../crm/dialer/stripe-test-setup.md). Historical balances, subscription grants and admin bonuses still require a mode audit before live activation.
+
+This update verifies only the dialer integration findings above against the reviewed code; older subscription pricing and availability descriptions below were not revalidated as part of this planning change.
 
 | File | Purpose |
 |---|---|

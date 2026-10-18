@@ -180,7 +180,7 @@ function BuyCreditsSection({ isLight }: { isLight: boolean }) {
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
-            {opt.credits.toLocaleString()} credits
+            ${opt.dollars} pack
           </button>
         ))}
       </div>

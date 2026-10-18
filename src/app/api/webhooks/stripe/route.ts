@@ -15,6 +15,9 @@ import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
 import type { PointsTier } from "@/models/PointsLedger";
 import ProcessedStripeEvent from "@/models/ProcessedStripeEvent";
 import { CREDIT_SPEND_VALUE } from "@/config/credits";
+import { fulfillCreditTopup } from "@/lib/credit-topup-fulfillment";
+import { requireStripeMode } from '@/lib/stripe-mode';
+import { creditWalletForMode } from '@/lib/credit-wallet-mode';
 import { sendSubscriptionEmail } from "@/lib/email-resend";
 
 // ---------------------------------------------------------------------------
@@ -84,6 +87,23 @@ export async function POST(request: NextRequest) {
 
   await dbConnect();
 
+  // Credit grants are keyed by payment, not event: completed and delayed-success
+  // deliveries can describe the same purchase. Do not use the pre-work claim below
+  // for this path; a process crash after claiming would otherwise strand the grant.
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const checkout = event.data.object as Stripe.Checkout.Session;
+    if (checkout.mode === 'payment' && checkout.metadata?.type === 'points_topup') {
+      try {
+        if (event.livemode !== (requireStripeMode() === 'live') || checkout.livemode !== event.livemode) {
+          return NextResponse.json({ error: 'Stripe payment mode mismatch' }, { status: 400 });
+        }
+        await fulfillCreditTopup(checkout);
+      }
+      catch { return NextResponse.json({ error: 'Credit fulfillment failed; retry required' }, { status: 500 }); }
+      return NextResponse.json({ received: true });
+    }
+  }
+
   // Idempotency: claim this event so retries/duplicates don't double-process
   // (Stripe retries deliveries). Insert-first; a duplicate key means it's
   // already been handled. On a processing failure below we release the claim.
@@ -105,47 +125,6 @@ export async function POST(request: NextRequest) {
       // -----------------------------------------------------------------
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-
-        // Handle points top-up (one-time payment)
-        if (session.mode === "payment" && session.metadata?.type === "points_topup") {
-          const topupUserId = session.metadata.userId;
-          const topupPoints = parseInt(session.metadata.points || "0", 10);
-          const topupTier = (session.metadata.tier || "beginner") as PointsTier;
-          const topupAmount = parseFloat(session.metadata.amount || "0");
-
-          if (topupUserId && topupPoints > 0) {
-            const topupTierConfig = POINTS_TIERS[topupTier];
-            let ledger = await PointsLedger.findOne({ userId: topupUserId });
-            if (!ledger) {
-              ledger = new PointsLedger({
-                userId: topupUserId,
-                balance: 0,
-                totalEarned: 0,
-                totalSpent: 0,
-                tier: topupTier,
-                transactions: [],
-              });
-            }
-
-            ledger.creditPoints(
-              topupPoints,
-              "topup_purchase",
-              `Credits top-up — ${topupPoints.toLocaleString()} credits ($${topupAmount})`,
-              {
-                adSpendValue: topupPoints * (topupTierConfig?.adValuePerPoint ?? CREDIT_SPEND_VALUE),
-                stripePaymentIntentId: typeof session.payment_intent === "string"
-                  ? session.payment_intent
-                  : (session.payment_intent as any)?.id,
-              }
-            );
-            await ledger.save();
-
-            console.log(
-              `[stripe-webhook] Top-up: ${topupPoints} points credited to user=${topupUserId} ($${topupAmount})`
-            );
-          }
-          break;
-        }
 
         if (session.mode !== "subscription") break;
 
@@ -537,7 +516,8 @@ export async function POST(request: NextRequest) {
           : (charge.payment_intent as any)?.id;
         if (!pi) break;
 
-        const ledger = await PointsLedger.findOne({
+        const RefundLedger = creditWalletForMode(event.livemode ? 'live' : 'test');
+        const ledger = await RefundLedger.findOne({
           "transactions.stripePaymentIntentId": pi,
           "transactions.type": "topup_purchase",
         });

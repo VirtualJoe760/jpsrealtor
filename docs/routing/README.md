@@ -1,7 +1,7 @@
 ---
 title: Routing (src/proxy.ts)
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-18
 related: [../auth/README.md, ../multi-tenant/README.md]
 ---
 
@@ -70,3 +70,5 @@ The "platform" branch (rewrite to `/chat-landing`) fires when host includes "cha
 
 - [auth/README.md](../auth/README.md) — the auth-protection branches inside `handleAuthProtection`
 - [multi-tenant/README.md](../multi-tenant/README.md) — what happens after the proxy stamps `x-agent-subdomain`
+
+The exact /api/crm/dialer/webhooks/twilio/status endpoint self-authenticates with the configured canonical HTTPS URL and Twilio account signature before database access. No other dialer path is exempted from session authentication. See [voice ingress](../crm/dialer/twilio-voice-adapter.md).

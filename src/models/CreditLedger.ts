@@ -22,9 +22,10 @@ export type CreditTransactionType =
   | "email_setup"           // Flat fee to activate per-agent email (verified domain)
   | "sms_send"              // Metered outbound SMS
   | "email_send"            // Metered outbound email
+  | "voice_usage"
   | "adjustment";           // Manual admin adjustment
 
-export type CampaignChannel = "google_ads" | "meta_ads" | "youtube_ads" | "direct_mail" | "voicemail_drop" | "sms" | "email";
+export type CampaignChannel = "google_ads" | "meta_ads" | "youtube_ads" | "direct_mail" | "voicemail_drop" | "sms" | "email" | "voice";
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -50,6 +51,7 @@ export interface ICreditLedger extends Document {
   userId: mongoose.Types.ObjectId;
 
   balance: number;
+  reservedCredits: number;
   totalEarned: number;
   totalSpent: number;
   tier: CreditTier;
@@ -111,7 +113,7 @@ const CreditTransactionSchema = new Schema<ICreditTransaction>(
       enum: [
         "subscription_credit", "topup_purchase", "campaign_spend",
         "refund", "bonus", "partner_split_credit", "partner_split_debit",
-        "messaging_setup", "email_setup", "sms_send", "email_send",
+        "messaging_setup", "email_setup", "sms_send", "email_send", "voice_usage",
         "adjustment",
       ],
       required: true,
@@ -121,7 +123,7 @@ const CreditTransactionSchema = new Schema<ICreditTransaction>(
     description: { type: String, required: true },
     channel: {
       type: String,
-      enum: ["google_ads", "meta_ads", "youtube_ads", "direct_mail", "voicemail_drop", "sms", "email"],
+      enum: ["google_ads", "meta_ads", "youtube_ads", "direct_mail", "voicemail_drop", "sms", "email", "voice"],
     },
     campaignId: { type: Schema.Types.ObjectId, ref: "Campaign" },
     partnershipId: { type: Schema.Types.ObjectId, ref: "Partnership" },
@@ -138,6 +140,7 @@ const CreditLedgerSchema = new Schema<ICreditLedger>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     balance: { type: Number, default: 0, required: true },
+    reservedCredits: { type: Number, default: 0, min: 0 },
     totalEarned: { type: Number, default: 0 },
     totalSpent: { type: Number, default: 0 },
     tier: { type: String, enum: ["beginner", "experienced", "topagent"], default: "beginner", required: true },
@@ -147,6 +150,9 @@ const CreditLedgerSchema = new Schema<ICreditLedger>(
   },
   {
     timestamps: true,
+    // Old campaign/subscription writers use read-modify-save. Version checks keep
+    // a stale save from overwriting funds reserved by the atomic calling path.
+    optimisticConcurrency: true,
     // Collection name kept as "pointsledgers" to avoid a data migration —
     // the model is the canonical name, the collection is just storage.
     collection: "pointsledgers",
@@ -167,18 +173,14 @@ CreditLedgerSchema.methods.creditPoints = function (
   description: string,
   extra: Partial<ICreditTransaction> = {}
 ) {
-  if (amount <= 0) throw new Error("Credit amount must be positive");
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 1000 - Math.round(amount * 1000)) > 0.000001) throw new Error("Credit amount must be positive");
 
   this.balance += amount;
   this.totalEarned += amount;
 
   this.transactions.push({
-    type,
-    amount,
-    balanceAfter: this.balance,
-    description,
-    createdAt: new Date(),
     ...extra,
+    type, amount, balanceAfter: this.balance, description, createdAt: new Date(),
   });
   return this;
 };
@@ -189,19 +191,15 @@ CreditLedgerSchema.methods.debitPoints = function (
   description: string,
   extra: Partial<ICreditTransaction> = {}
 ) {
-  if (amount <= 0) throw new Error("Debit amount must be positive");
-  if (this.balance < amount) throw new Error("Insufficient credit balance");
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 1000 - Math.round(amount * 1000)) > 0.000001) throw new Error("Debit amount must be positive");
+  if (this.balance - (this.reservedCredits || 0) < amount) throw new Error("Insufficient credit balance");
 
   this.balance -= amount;
   this.totalSpent += amount;
 
   this.transactions.push({
-    type,
-    amount: -amount,
-    balanceAfter: this.balance,
-    description,
-    createdAt: new Date(),
     ...extra,
+    type, amount: -amount, balanceAfter: this.balance, description, createdAt: new Date(),
   });
   return this;
 };
@@ -214,7 +212,7 @@ CreditLedgerSchema.statics.debitAtomic = async function (
   input: AtomicDebitInput
 ): Promise<AtomicDebitResult> {
   const { userId, amount, type, description, extra = {} } = input;
-  if (amount <= 0) throw new Error("Debit amount must be positive");
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 1000 - Math.round(amount * 1000)) > 0.000001) throw new Error("Debit amount must be positive");
 
   // Drop undefined keys so the raw pipeline update (no schema casting, unlike
   // .save()) doesn't persist spurious null-ish fields like `channel: undefined`.
@@ -228,24 +226,24 @@ CreditLedgerSchema.statics.debitAtomic = async function (
   // pipeline from the post-decrement balance.
   const txn: Record<string, any> = {
     _id: new mongoose.Types.ObjectId(),
-    type,
-    amount: -amount,
-    description,
-    createdAt: new Date(),
     ...cleanExtra,
+    type, amount: -amount, description, createdAt: new Date(),
   };
 
-  // Conditional filter { balance: { $gte: amount } } guarantees the decrement
+  // The conditional available-balance filter guarantees the decrement
   // only applies when funds are sufficient. Under concurrency, whichever debit
   // commits first lowers the balance; a racing debit that would overspend no
   // longer matches the filter and returns null — so the balance can never go
   // negative.
   const ledger = await this.findOneAndUpdate(
-    { userId, balance: { $gte: amount } },
+    { userId, $expr: { $gte: [
+      { $round: [{ $subtract: ["$balance", { $ifNull: ["$reservedCredits", 0] }] }, 3] }, amount,
+    ] } },
     [
       {
         $set: {
-          balance: { $subtract: ["$balance", amount] },
+          balance: { $round: [{ $subtract: ["$balance", amount] }, 3] },
+          __v: { $add: [{ $ifNull: ["$__v", 0] }, 1] },
           totalSpent: { $add: [{ $ifNull: ["$totalSpent", 0] }, amount] },
         },
       },
@@ -254,7 +252,7 @@ CreditLedgerSchema.statics.debitAtomic = async function (
           transactions: {
             $concatArrays: [
               { $ifNull: ["$transactions", []] },
-              [{ $mergeObjects: [txn, { balanceAfter: "$balance" }] }],
+              [{ $mergeObjects: [{ $literal: txn }, { balanceAfter: "$balance" }] }],
             ],
           },
         },
@@ -266,9 +264,9 @@ CreditLedgerSchema.statics.debitAtomic = async function (
   if (ledger) return { ok: true, ledger };
 
   // No match: distinguish "no ledger" from "insufficient balance" for callers.
-  const existing = await this.findOne({ userId }).select("balance").lean();
+  const existing = await this.findOne({ userId }).select("balance reservedCredits").lean();
   if (!existing) return { ok: false, reason: "no_ledger", balance: 0 };
-  return { ok: false, reason: "insufficient", balance: existing.balance };
+  return { ok: false, reason: "insufficient", balance: Math.max(0, existing.balance - (existing.reservedCredits || 0)) };
 };
 
 // ---------------------------------------------------------------------------

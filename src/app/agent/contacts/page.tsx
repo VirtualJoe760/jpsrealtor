@@ -4,15 +4,40 @@
 // Agent Contacts Page - standalone page for managing contacts
 // All contact data automatically filtered by userId
 
-import { useState } from 'react';
-import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext';
+import { useEffect, useState } from 'react';
+import { useTheme } from '@/app/contexts/ThemeContext';
 import ContactsTab from '@/app/components/crm/ContactsTab';
 import AgentNav from '@/app/components/AgentNav';
+import SavedDialerWorkspace from '@/app/components/crm/dialer/SavedDialerWorkspace';
+import type { SavedDialerSession } from '@/lib/dialer/session-contract';
+import type { Contact } from '@/app/components/crm/contacts/types';
 
 export default function AgentContactsPage() {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === 'lightgradient';
   const [showToolbar, setShowToolbar] = useState(true);
+  const [activeView, setActiveView] = useState<'contacts' | 'dialer'>('contacts');
+  const [dialerContacts, setDialerContacts] = useState<Contact[]>([]);
+  const [dialerLabel, setDialerLabel] = useState('Selected contacts');
+  const [dialerDirty, setDialerDirty] = useState(false);
+  const [savedId, setSavedId] = useState<string>();
+  const [launch, setLaunch] = useState(0);
+  const [recent, setRecent] = useState<SavedDialerSession[]>([]);
+  useEffect(() => {
+    if (activeView !== 'contacts') return;
+    let cancelled = false;
+    fetch('/api/crm/dialer/sessions', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
+      .then(data => { if (!cancelled && data) setRecent(data.sessions); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeView]);
+  function openDialer(group: Contact[], label: string) {
+    if (!group.length) return;
+    setSavedId(undefined); setLaunch(value => value + 1); setDialerContacts([...group]); setDialerLabel(label); setActiveView('dialer');
+  }
+  function resumeDialer(id: string) {
+    setSavedId(id); setDialerLabel(recent.find(item => item._id === id)?.name || 'Saved calling session');
+    setDialerContacts([]); setDialerDirty(false); setLaunch(value => value + 1); setActiveView('dialer');
+  }
 
   return (
     <div className="fixed inset-0 md:relative md:inset-auto md:min-h-screen flex flex-col md:p-4 md:p-8" data-page="contacts">
@@ -29,15 +54,16 @@ export default function AgentContactsPage() {
               <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${
                 isLight ? 'text-slate-900' : 'text-white'
               }`}>
-                Contacts
+                {activeView === 'dialer' ? 'Dialer' : 'Contacts'}
               </h1>
               <p className={`text-sm sm:text-base ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                Manage your contact database
+                {activeView === 'dialer' ? 'Your selected calling queue' : 'Manage your contact database'}
               </p>
             </div>
 
             {/* Toolbar Toggle Button */}
             <button
+              hidden={activeView === 'dialer'}
               onClick={() => setShowToolbar(!showToolbar)}
               className={`p-2 transition-all ${
                 isLight ? 'text-gray-700 hover:text-gray-900' : 'text-gray-300 hover:text-white'
@@ -83,10 +109,14 @@ export default function AgentContactsPage() {
           </div>
         </div>
 
-        {/* Contacts Component - Takes remaining height, handles scrolling internally */}
-        <div className="flex-1 overflow-hidden">
-          <ContactsTab isLight={isLight} showToolbar={showToolbar} />
+        {activeView === 'dialer' && <div className="mb-4 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"><button disabled={dialerDirty} title={dialerDirty ? 'Save call notes before returning to contacts' : undefined} onClick={() => setActiveView('contacts')} className="min-h-11 rounded-xl border border-emerald-500/30 px-4 text-sm font-semibold text-emerald-600">← Back to contacts</button><p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{dialerLabel} · {savedId && !recent.some(item => item._id === savedId) ? 'Saved progress' : `${savedId ? recent.find(item => item._id === savedId)?.items.length : dialerContacts.length} contacts`}</p></div>}
+
+        {activeView === 'contacts' && recent.length > 0 && <div className="mb-4 px-4 sm:px-6 lg:px-8"><p className="mb-2 text-sm font-semibold">Saved dialing queues · simulation</p><div className="flex gap-2 overflow-x-auto">{recent.map(item => <button key={item._id} onClick={() => resumeDialer(item._id)} className="min-w-48 rounded-xl border border-emerald-500/30 px-4 py-3 text-left text-sm"><span className="block font-semibold">{item.name}</span><span>{item.items.filter(row => row.outcome).length}/{item.items.length} reviewed · {item.status === 'completed' ? 'View' : 'Resume'}</span></button>)}</div></div>}
+        {/* Keep the contact list mounted so switching views preserves filters and selection. */}
+        <div className={`flex-1 overflow-hidden ${activeView === 'contacts' ? '' : 'hidden'}`}>
+          <ContactsTab isLight={isLight} showToolbar={showToolbar} onOpenDialerGroup={openDialer} onOpenDialer={contact => openDialer([contact], 'Single contact')} />
         </div>
+        {activeView === 'dialer' && <div className="min-h-0 flex-1 overflow-y-auto"><SavedDialerWorkspace key={launch} isLight={isLight} contacts={dialerContacts} label={dialerLabel} sessionId={savedId} onDirtyChange={setDialerDirty} onResumeSession={resumeDialer} /></div>}
       </div>
     </div>
   );

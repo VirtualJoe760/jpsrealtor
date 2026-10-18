@@ -78,6 +78,8 @@ interface ContactViewPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onDialer?: () => void;
+  embedded?: boolean;
   onDelete: () => void;
   onMessage: () => void;
   isLight: boolean;
@@ -88,6 +90,8 @@ export default function ContactViewPanel({
   isOpen,
   onClose,
   onEdit,
+  onDialer,
+  embedded = false,
   onDelete,
   onMessage,
   isLight
@@ -151,17 +155,18 @@ export default function ContactViewPanel({
   // Close panel on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && !embedded) {
         onClose();
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, embedded]);
 
   // Drag to close functionality
   useEffect(() => {
+    if (embedded) return;
     const handle = dragHandleRef.current;
     const panel = panelRef.current;
     if (!handle || !panel) return;
@@ -218,7 +223,7 @@ export default function ContactViewPanel({
       document.removeEventListener('mouseup', onDragEnd);
       document.removeEventListener('touchend', onDragEnd);
     };
-  }, [onClose]);
+  }, [onClose, embedded]);
 
   const displayName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unknown Contact';
 
@@ -565,18 +570,18 @@ export default function ContactViewPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
+      {!embedded && <div
         className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
         onClick={onClose}
-      />
+      />}
 
       {/* Panel */}
       <div
         ref={panelRef}
-        className={`fixed inset-0 md:bottom-0 md:inset-auto z-50 md:rounded-t-2xl shadow-2xl transform transition-transform duration-300 ease-out ${
+        className={`${embedded ? 'relative flex h-full min-h-0 w-full flex-col' : 'fixed inset-0 md:bottom-0 md:inset-auto z-50 md:rounded-t-2xl shadow-2xl transform transition-transform duration-300 ease-out'} ${
           isLight ? 'bg-white' : 'bg-gray-900'
         }`}
-        style={{
+        style={embedded ? undefined : {
           width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : layout.width,
           left: typeof window !== 'undefined' && window.innerWidth < 768 ? '0' : layout.left,
           maxHeight: typeof window !== 'undefined' && window.innerWidth < 768 ? '100vh' : '85vh',
@@ -584,19 +589,19 @@ export default function ContactViewPanel({
         }}
       >
         {/* Drag Handle */}
-        <div
+        {!embedded && <div
           ref={dragHandleRef}
           className={`flex justify-center items-center py-3 cursor-grab active:cursor-grabbing ${
             isLight ? 'bg-gray-50 border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'
           }`}
         >
           <div className={`w-12 h-1 rounded-full ${isLight ? 'bg-gray-300' : 'bg-gray-600'}`} />
-        </div>
+        </div>}
 
         {/* Scrollable Content */}
         <div
-          className="overflow-y-auto"
-          style={{
+          className={embedded ? "min-h-0 flex-1 overflow-y-auto overscroll-y-contain" : "overflow-y-auto"}
+          style={embedded ? undefined : {
             maxHeight: typeof window !== 'undefined' && window.innerWidth < 768
               ? 'calc(100vh - 140px)'
               : 'calc(85vh - 140px)'
@@ -1748,13 +1753,14 @@ export default function ContactViewPanel({
           </div>
         </div>
 
-        {/* ACTION BAR (Fixed at bottom) */}
-        <div
+        {/* Embedded workspace retains in-section editing without modal navigation actions. */}
+        {!embedded && <div
           className={`p-4 border-t ${
             isLight ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'
           }`}
         >
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            {onDialer && <button onClick={onDialer} className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-700"><Phone size={18} />Open dialer</button>}
             <button
               onClick={onMessage}
               className="flex-1 px-4 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
@@ -1780,7 +1786,7 @@ export default function ContactViewPanel({
               <Trash2 className="w-5 h-5" />
             </button>
           </div>
-        </div>
+        </div>}
       </div>
     </>
   );

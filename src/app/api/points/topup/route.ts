@@ -1,16 +1,17 @@
 // src/app/api/points/topup/route.ts
 // POST: Create a Stripe checkout session to purchase additional points
 // Top-up rate is based on the user's current subscription tier.
-// Above $999, always uses top agent rate (0.85).
+// Pricing uses the canonical purchase-time markup policy.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import PointsLedger, { POINTS_TIERS, dollarsToPoints } from "@/models/PointsLedger";
-import type { PointsTier } from "@/models/PointsLedger";
-import { CREDIT_SPEND_VALUE } from "@/config/credits";
+import CreditBillingCustomer from '@/models/CreditBillingCustomer';
+import { creditWalletForMode } from '@/lib/credit-wallet-mode';
+import { stripeConfiguration, requireStripeMode } from '@/lib/stripe-mode';
+import { quoteCreditTopup } from "@/lib/credit-topup-quote";
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -27,84 +28,47 @@ function getStripe() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const config = stripeConfiguration();
+    if (!config.checkoutConfigured) return NextResponse.json({ error: 'Stripe checkout needs matching keys and a webhook signing secret', configuration: config }, { status: 503 });
+    const mode = requireStripeMode();
+    const CreditLedger = creditWalletForMode(mode);
+
     await dbConnect();
 
-    const user = await User.findOne({ email: session.user.email })
-      .select("_id name email stripeCustomerId roles")
+    const user = await User.findById(session.user.id)
+      .select("_id name email roles")
       .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { amount } = body as { amount: number };
-
-    if (!amount || amount < 10) {
-      return NextResponse.json(
-        { error: "Minimum top-up amount is $10" },
-        { status: 400 }
-      );
-    }
-
-    // Determine rate based on subscriber tier + purchase amount
-    const ledger = await PointsLedger.findOne({ userId: user._id }).lean();
-    const subscriberTier: PointsTier | null = ledger?.tier || null;
-    const isAdmin = (user as any).roles?.includes("admin");
-
-    let effectiveTier: PointsTier;
-    let adSpendRate: number;
-
-    // Admin/direct partners: $1 = $1 ad spend (0% markup)
-    if (isAdmin) {
-      effectiveTier = "topagent";
-      adSpendRate = 1.0;
-    } else if (amount >= 1000) {
-      effectiveTier = "topagent";
-      adSpendRate = 0.85;
-    } else if (amount >= 500) {
-      effectiveTier = subscriberTier === "topagent" ? "topagent" : "experienced";
-      adSpendRate = POINTS_TIERS[effectiveTier].adSpendRate;
-    } else if (amount >= 125) {
-      effectiveTier = subscriberTier === "topagent" ? "topagent"
-        : subscriberTier === "experienced" ? "experienced"
-        : "beginner";
-      adSpendRate = POINTS_TIERS[effectiveTier].adSpendRate;
-    } else {
-      if (subscriberTier) {
-        effectiveTier = subscriberTier;
-        adSpendRate = POINTS_TIERS[effectiveTier].adSpendRate;
-      } else {
-        effectiveTier = "beginner";
-        adSpendRate = 0.65;
-      }
-    }
-
-    // Credits granted = ad value the buyer unlocks, divided by the universal
-    // spend value per credit. CREDIT_SPEND_VALUE ($0.10) is the single source of
-    // truth (config/credits.ts) — matches subscriptions + co-marketing funding.
-    // (Previously hard-coded $0.125, which under-granted ~20% and desynced from
-    // the canonical creditsForPurchase()/co-marketing math.)
-    const adValue = amount * adSpendRate;
-    const points = Math.floor(adValue / CREDIT_SPEND_VALUE);
-    const tierConfig = POINTS_TIERS[effectiveTier];
+    const body = await request.json().catch(() => null);
+    const ledger = await CreditLedger.findOne({ userId: user._id }).lean();
+    let quote: ReturnType<typeof quoteCreditTopup>;
+    try { quote = quoteCreditTopup(body?.amount, ledger?.tier || null, user.roles?.includes('admin')); }
+    catch { return NextResponse.json({ error: 'Top-up must be $10–$10,000 in whole cents' }, { status: 400 }); }
+    const { points, tier: effectiveTier, amount, amountCents, adSpendValue: adValue } = quote;
+    const requestKey = request.headers.get('Idempotency-Key');
+    if (requestKey && !/^[\w-]{16,80}$/.test(requestKey)) return NextResponse.json({ error: 'Invalid request key' }, { status: 400 });
 
     const stripe = getStripe();
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://chatrealty.io";
 
     // Create or get Stripe customer
-    let customerId = user.stripeCustomerId as string | undefined;
+    let customerId = (await CreditBillingCustomer.findOne({ userId: user._id, mode }).lean())?.customerId;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         name: user.name || undefined,
-        metadata: { userId: user._id.toString() },
-      });
+        metadata: { userId: user._id.toString(), purpose: 'credit_wallet', mode },
+      }, { idempotencyKey: `credit-customer:${mode}:${user._id}` });
       customerId = customer.id;
-      await User.findByIdAndUpdate(user._id, { stripeCustomerId: customerId });
+      // Do not overwrite a legacy subscription customer with a test-mode ID.
+      await CreditBillingCustomer.findOneAndUpdate({ userId: user._id, mode }, { $setOnInsert: { userId: user._id, mode, customerId } }, { upsert: true });
     }
 
     // Create checkout session for one-time payment
@@ -115,10 +79,10 @@ export async function POST(request: NextRequest) {
         {
           price_data: {
             currency: "usd",
-            unit_amount: Math.round(amount * 100), // cents
+            unit_amount: amountCents,
             product_data: {
-              name: `${points.toLocaleString()} Marketing Credits`,
-              description: `${points.toLocaleString()} credits — $${adValue.toFixed(2)} in ad buying power`,
+              name: `${points.toLocaleString()} Platform Credits`,
+              description: `${points.toLocaleString()} credits — $${adValue.toFixed(2)} in platform spend value`,
             },
           },
           quantity: 1,
@@ -130,11 +94,14 @@ export async function POST(request: NextRequest) {
         points: points.toString(),
         tier: effectiveTier,
         amount: amount.toString(),
+        pricingVersion: quote.pricingVersion,
+        markupPercent: String(Math.round(quote.markup * 100)),
+        billingMode: mode,
       },
-      allow_promotion_codes: true,
+      // Fixed server-priced packs: do not silently discount the funded value.
       success_url: `${baseUrl}/agent/dashboard?topup=success&points=${points}`,
       cancel_url: `${baseUrl}/agent/dashboard?topup=cancelled`,
-    });
+    }, requestKey ? { idempotencyKey: `credit-checkout:${mode}:${user._id}:${requestKey}` } : undefined);
 
     return NextResponse.json({
       sessionId: checkoutSession.id,
@@ -142,11 +109,13 @@ export async function POST(request: NextRequest) {
       points,
       tier: effectiveTier,
       adSpendValue: Math.round(adValue * 100) / 100,
+      pricingVersion: quote.pricingVersion,
+      mode,
     });
   } catch (error: any) {
     console.error("Error creating points top-up:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Unable to create credit checkout" },
       { status: 500 }
     );
   }
