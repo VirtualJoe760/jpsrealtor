@@ -100,6 +100,8 @@ export function quote(req: CreditQuoteRequest): CreditQuoteResult {
 export interface CreditBalance {
   userId: string;
   balance: number;
+  reservedCredits: number;
+  availableCredits: number;
   tier: CreditTier;
   totalEarned: number;
   totalSpent: number;
@@ -117,6 +119,8 @@ export async function getBalance(userId: string | mongoose.Types.ObjectId): Prom
   return {
     userId: uid.toString(),
     balance: ledger.balance,
+    reservedCredits: ledger.reservedCredits || 0,
+    availableCredits: Math.max(0, Math.round((ledger.balance - (ledger.reservedCredits || 0)) * 1000) / 1000),
     tier: ledger.tier,
     totalEarned: ledger.totalEarned,
     totalSpent: ledger.totalSpent,
@@ -174,6 +178,8 @@ export async function debit(input: DebitInput): Promise<CreditBalance> {
   return {
     userId: uid.toString(),
     balance: ledger.balance,
+    reservedCredits: ledger.reservedCredits || 0,
+    availableCredits: Math.max(0, Math.round((ledger.balance - (ledger.reservedCredits || 0)) * 1000) / 1000),
     tier: ledger.tier,
     totalEarned: ledger.totalEarned,
     totalSpent: ledger.totalSpent,
@@ -209,6 +215,8 @@ export async function credit(input: CreditInput): Promise<CreditBalance> {
   return {
     userId: uid.toString(),
     balance: ledger.balance,
+    reservedCredits: ledger.reservedCredits || 0,
+    availableCredits: Math.max(0, Math.round((ledger.balance - (ledger.reservedCredits || 0)) * 1000) / 1000),
     tier: ledger.tier,
     totalEarned: ledger.totalEarned,
     totalSpent: ledger.totalSpent,
@@ -222,8 +230,8 @@ export async function ensureBalance(
   requiredCredits: number
 ): Promise<void> {
   const b = await getBalance(userId);
-  if (b.balance < requiredCredits) {
-    throw new Error(`Insufficient credits: needs ${requiredCredits}, has ${b.balance}`);
+  if (b.availableCredits < requiredCredits) {
+    throw new Error(`Insufficient credits: needs ${requiredCredits}, has ${b.availableCredits}`);
   }
 }
 

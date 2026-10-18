@@ -9,10 +9,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
 import UnifiedClosedListing from '@/models/unified-closed-listing';
+import Contact from '@/models/Contact';
+import mongoose from 'mongoose';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,13 +25,22 @@ export async function GET(
       );
     }
 
+    const { id } = await params;
+    if (!mongoose.isValidObjectId(id)) return NextResponse.json({ success: false, error: 'Invalid contact ID' }, { status: 400 });
     await dbConnect();
+    // The route is contact-scoped: sign-in alone must not authorize another agent's ID.
+    const contact = await Contact.findOne({ _id: id, userId: session.user.id }).select('latitude longitude lat lng long').lean();
+    if (!contact) return NextResponse.json({ success: false, error: 'Contact not found' }, { status: 404 });
 
     const { searchParams } = new URL(request.url);
-    const latitude = parseFloat(searchParams.get('latitude') || '0');
-    const longitude = parseFloat(searchParams.get('longitude') || '0');
+    const latitude = Number(searchParams.get('latitude') ?? contact.latitude ?? contact.lat ?? NaN);
+    const longitude = Number(searchParams.get('longitude') ?? contact.longitude ?? contact.lng ?? contact.long ?? NaN);
     const radius = parseFloat(searchParams.get('radius') || '0.5'); // Default 0.5 miles
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Number(searchParams.get('limit') || '10');
+    const days = searchParams.has('days') ? Number(searchParams.get('days')) : null;
+    if (!Number.isFinite(radius) || radius <= 0 || radius > 5 || !Number.isInteger(limit) || limit < 1 || limit > 25 || (days !== null && (!Number.isInteger(days) || days < 1 || days > 1825))) {
+      return NextResponse.json({ success: false, error: 'Invalid radius, limit, or date window' }, { status: 400 });
+    }
 
     // Subject property characteristics for "like kind" filtering
     const subjectBedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : null;
@@ -39,7 +50,7 @@ export async function GET(
     const subjectHasPool = searchParams.get('hasPool') === 'true';
 
     // Validate coordinates
-    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) >= 90 || Math.abs(longitude) > 180) {
       return NextResponse.json(
         { success: false, error: 'Invalid coordinates' },
         { status: 400 }
@@ -61,7 +72,7 @@ export async function GET(
     const query: any = {
       latitude: { $gte: bounds.south, $lte: bounds.north },
       longitude: { $gte: bounds.west, $lte: bounds.east },
-      closeDate: { $exists: true },
+      closeDate: days === null ? { $exists: true } : { $gte: new Date(Date.now() - days * 86400000), $lte: new Date() },
       // Exclude leases/rentals - only show actual sales
       // Using string pattern instead of regex object for MongoDB compatibility
       $and: [
@@ -87,6 +98,10 @@ export async function GET(
       // Additional filter: exclude suspiciously low prices (likely monthly lease amounts)
       closePrice: { $gte: 50000 } // Minimum $50k to exclude lease amounts
     };
+
+    if ([subjectBedrooms, subjectBathrooms, subjectSqft].some(value => value !== null && (!Number.isFinite(value) || value < 0))) {
+      return NextResponse.json({ success: false, error: 'Invalid property characteristics' }, { status: 400 });
+    }
 
     // Filter by bedrooms (exact match)
     if (subjectBedrooms !== null) {
@@ -118,18 +133,6 @@ export async function GET(
     if (subjectHasPool) {
       query.poolYN = true;
     }
-
-    console.log('[Comparables API] ========================================');
-    console.log('[Comparables API] Executing query with filters:', {
-      bedrooms: subjectBedrooms,
-      bathrooms: subjectBathrooms,
-      sqft: subjectSqft,
-      propertyType: subjectPropertyType,
-      hasPool: subjectHasPool,
-      excludingLeases: true,
-      bounds
-    });
-    console.log('[Comparables API] Full MongoDB query:', JSON.stringify(query, null, 2));
 
     // Query closed listings within bounds, sorted by close date (most recent first)
     const comparables = await UnifiedClosedListing.find(query)
@@ -163,22 +166,6 @@ export async function GET(
       })
       .lean();
 
-    console.log('[Comparables API] Found', comparables.length, 'listings');
-
-    // Log each comparable with its status and price
-    comparables.forEach((comp: any, idx: number) => {
-      const address = comp.unparsedAddress || `${comp.streetNumber} ${comp.streetName}`;
-      const isLease = (comp.standardStatus || comp.status || comp.propertySubType || '').toLowerCase().match(/lease|rent/);
-      console.log(`[Comparables API] [${idx + 1}] ${address}`);
-      console.log(`  - Close Price: $${comp.closePrice?.toLocaleString() || 'N/A'}`);
-      console.log(`  - Close Date: ${comp.closeDate}`);
-      console.log(`  - Status: "${comp.status || 'N/A'}"`);
-      console.log(`  - Standard Status: "${comp.standardStatus || 'N/A'}"`);
-      console.log(`  - Property Sub Type: "${comp.propertySubType || 'N/A'}"`);
-      console.log(`  - Is Lease?: ${isLease ? 'YES ⚠️' : 'NO ✓'}`);
-    });
-    console.log('[Comparables API] ========================================');
-
     // Calculate distance for each comparable
     const comparablesWithDistance = comparables.map((comp: any) => {
       const distance = calculateDistance(
@@ -198,7 +185,7 @@ export async function GET(
 
     // Sort by distance and limit to requested count
     comparablesWithDistance.sort((a, b) => a.distance - b.distance);
-    const finalComparables = comparablesWithDistance.slice(0, limit);
+    const finalComparables = comparablesWithDistance.filter(comp => calculateDistance(latitude, longitude, comp.latitude, comp.longitude) <= radius).slice(0, limit);
 
     return NextResponse.json({
       success: true,
@@ -207,6 +194,7 @@ export async function GET(
       totalFound: comparablesWithDistance.length,
       radius,
       center: { latitude, longitude },
+      days,
       filters: {
         bedrooms: subjectBedrooms,
         bathrooms: subjectBathrooms,
@@ -214,7 +202,7 @@ export async function GET(
         propertyType: subjectPropertyType,
         hasPool: subjectHasPool,
       },
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error: any) {
     console.error('[Comparables API] Error:', error);
     return NextResponse.json(

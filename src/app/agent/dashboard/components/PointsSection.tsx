@@ -38,6 +38,8 @@ interface TierConfig {
 }
 
 interface PointsData {
+  sandbox?: boolean;
+  availableCredits?: number;
   balance: number;
   totalEarned: number;
   totalSpent: number;
@@ -195,6 +197,7 @@ export default function PointsSection() {
         )}
       </div>
 
+      {data.sandbox && <p className="mb-3 text-sm font-semibold text-amber-500">Stripe test mode · Test credits cannot pay for real calls or campaigns.</p>}
       {/* Balance Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         {/* Points Balance */}
@@ -349,7 +352,7 @@ export default function PointsSection() {
             </div>
             {topUpAmount && parseFloat(topUpAmount) >= 10 && tier && (
               <p className={`text-xs mt-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-                ${topUpAmount} = ~{Math.floor(parseFloat(topUpAmount) / (tier.monthlyPrice / tier.monthlyPoints)).toLocaleString()} credits
+                Final credit amount and price are shown in checkout.
               </p>
             )}
           </div>

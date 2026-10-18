@@ -112,6 +112,7 @@ const SELF_AUTH_API_PREFIXES = [
   "/api/mcp",
 ];
 const SELF_AUTH_API_EXACT = new Set([
+  "/api/crm/dialer/webhooks/twilio/status", // Exact voice ingress; signature/account verified before DB access.
   "/api/crm/sms/webhook",        // Twilio inbound (signature verified in-route)
   "/api/crm/sms/status-webhook", // Twilio status (signature verified in-route)
 ]);

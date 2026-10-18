@@ -1,7 +1,7 @@
 ---
 title: CRM
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-10-18
 related: [../auth/README.md, ../multi-tenant/README.md]
 supersedes: docs/CRM_DOCUMENTATION.md
 ---
@@ -19,6 +19,10 @@ via Vercel `after()` so the HTTP response returns immediately and the frontend
 polls a status endpoint while bulk `insertMany` flushes to Mongo in chunks.
 Anti-spam is layered: Turnstile + per-IP/per-email sliding-window limits +
 honeypot + gibberish-name heuristic on the public lead-capture surface.
+
+## Planned dialer
+
+[Full dialer build plan](./dialer/build-plan.md): browser calling with a verified callback number, durable call history, and a single-line queue, with a later Telnyx adapter. Select contacts or a tag/filter set in /agent/contacts, then choose Open in dialer to freeze that queue. Mobile swipes between Dialer and the full Contact page (plus Queue); desktop places the existing contact page beside the dialer. ContactViewPanel supports embedded rendering and retains normal inline editing and saved notes. Property research and MLS comps are sections of Contact. Calls remain simulated; attempt state, notes and outcomes now persist through a transactional controller with one active attempt per agent across sessions. Server-persisted calling sessions with pause/resume across devices are a required next milestone; triple-line dialing, prerecorded voicemail drops, separate simultaneous-answer overflow audio, and optional existing Retell AI handling are in the full target scope; the workspace now saves bounded simulation queues, explicit note checkpoints and outcomes through owner-scoped APIs, with recent-session resume and recovered ringing/connected/wrap-up state; live-provider recovery and automatic draft saving remain pending. Quick email follow-ups and newsletter invitations are planned in [email follow-ups](./dialer/email-follow-ups.md), reusing the CRM composer and verified sender. The [call wrap-up plan](./dialer/call-wrap-up.md) adds connected-call notes, tag moves and appointment booking. The [credit billing foundation](./dialer/credits-and-billing.md) now includes unified purchase quotes, paid-only grants and transactional hold/settlement primitives, with available/reserved credit display and isolated, labeled Stripe test wallets; live metering and auto-top-up remain disabled. See the build plan for source-matching caveats and validation.
 
 ## Files
 
@@ -232,3 +236,7 @@ Legacy `/docs/` files related to CRM, classified per `docs-v2/CLAUDE.md`:
 | Property Data Population Plan | `F:\web-clients\joseph-sardella\jpsrealtor\docs\contacts\PROPERTY_DATA_POPULATION_PLAN.md` | PARTIAL | Verify shipped state |
 | Twilio Webhook Setup | `F:\web-clients\joseph-sardella\jpsrealtor\docs\TWILIO_WEBHOOK_SETUP.md` | PARTIAL | Verify against current `/api/crm/sms/webhook`; keep separate or merge |
 | SMS Action Items / Improvement / Phase2 Testing | `F:\web-clients\joseph-sardella\jpsrealtor\docs\SMS_*.md` (3 files) | OUTDATED | Transient planning/testing docs; SMS shipped → `archive/` |
+
+The [provider job foundation](./dialer/provider-jobs.md) adds bounded dispatch and uncertain-request recovery primitives. A separate [Twilio adapter and signed status inbox](./dialer/twilio-voice-adapter.md) are implemented, with live dispatch hard-disabled. The simulation controller is not connected to them.
+
+The dialer now includes [local audio device controls](./dialer/agent-audio.md); phone agent audio and mobile dial-in are accepted scope and remain pending server bridge implementation.

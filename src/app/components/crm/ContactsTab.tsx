@@ -26,9 +26,11 @@ import AddContactModal from './AddContactModal';
 interface ContactsTabProps {
   isLight: boolean;
   showToolbar?: boolean;
+  onOpenDialerGroup?: (contacts: Contact[], label: string) => void;
+  onOpenDialer?: (contact: Contact) => void;
 }
 
-export default function ContactsTab({ isLight, showToolbar = true }: ContactsTabProps) {
+export default function ContactsTab({ isLight, showToolbar = true, onOpenDialerGroup, onOpenDialer }: ContactsTabProps) {
   // Modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showAddContactModal, setShowAddContactModal] = useState(false);
@@ -108,6 +110,11 @@ export default function ContactsTab({ isLight, showToolbar = true }: ContactsTab
     hasSelection,
     areAllSelected: checkAreAllSelected,
   } = useContactSelection();
+
+  // Freeze this explicit selection at launch; later filter edits must not change a calling session.
+  const dialerQueue = selectedContactIds.size ? contacts.filter(contact => selectedContactIds.has(contact._id)) : sortedContacts;
+  const hasDialerScope = selectedContactIds.size > 0 || !!selectedTag || !!selectedStatus || !!searchQuery || filterBy !== FilterBy.ALL || contactAgeFilter !== 'all';
+  const dialerLabel = selectedContactIds.size ? 'Selected contacts' : selectedTag ? 'Tag: ' + selectedTag : selectedStatus ? 'Status: ' + selectedStatus : 'Filtered contacts';
 
   // Check if all sorted contacts are selected
   const areAllSelected = React.useMemo(() =>
@@ -270,6 +277,8 @@ export default function ContactsTab({ isLight, showToolbar = true }: ContactsTab
         </div>
       )}
 
+      {onOpenDialerGroup && <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 sm:px-6 lg:px-8"><p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{hasDialerScope ? dialerLabel + ' · ' + dialerQueue.length + ' contacts' : 'Select contacts or choose a tag set to build a calling queue.'}</p><button disabled={loading || !hasDialerScope || !dialerQueue.length} onClick={() => onOpenDialerGroup([...dialerQueue], dialerLabel)} className="min-h-11 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Open in dialer{hasDialerScope ? ' · ' + dialerQueue.length : ''}</button></div>}
+
       {/* Scrollable content area - Stats or List */}
       <div className="flex-1 overflow-hidden">
         {/* Stats Cards Section - ONLY show in CARD view */}
@@ -334,6 +343,7 @@ export default function ContactsTab({ isLight, showToolbar = true }: ContactsTab
           contact={panelContact}
           isOpen={isPanelOpen}
           onClose={handlePanelClose}
+          onDialer={onOpenDialer ? () => { onOpenDialer(panelContact); handlePanelClose(); } : undefined}
           onEdit={() => {/* TODO: Implement edit */}}
           onDelete={async () => {
             await deleteContact(panelContact._id);

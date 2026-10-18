@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-10-16
+last_verified: 2026-10-18
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -9,7 +9,7 @@ related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms
 
 ## TL;DR
 
-Every external API the platform talks to is wrapped in a single file under `src/lib/`. The pattern is consistent: a **lazy singleton client** (constructed on first use) that reads its config from `process.env`, with all keys stored in `.env.local` (gitignored). Per-user OAuth integrations (GBP, GSC, Google Calendar) layer a refresh-token cache on top — the access token is refreshed on demand with a 60s expiry buffer. Client-side trackers (Meta Pixel, Google Ads `gtag`) ship as `"use client"` modules that read `NEXT_PUBLIC_*` env vars.
+Every external API the platform talks to is wrapped in a single file under `src/lib/`. The preferred pattern is a **lazy singleton client** (constructed on first use) that reads its config from `process.env`, with all keys stored in `.env.local` (gitignored). Per-user OAuth integrations (GBP, GSC, Google Calendar) layer a refresh-token cache on top — the access token is refreshed on demand with a 60s expiry buffer. Client-side trackers (Meta Pixel, Google Ads `gtag`) ship as `"use client"` modules that read `NEXT_PUBLIC_*` env vars.
 
 ## Integration matrix
 
@@ -105,7 +105,13 @@ Every external API the platform talks to is wrapped in a single file under `src/
 |---|---|---|---|---|
 | **mcp-gsc** | `F:\web-clients\joseph-sardella\jpsrealtor\.mcp.json` → `gsc` | Google Search Console queries from Claude Code (performance, indexing, sitemaps, quick wins) | `F:\web-clients\joseph-sardella\jpsrealtor\src\.credentials\gsc-credentials.json` (gitignored) | Runs as `npx -y mcp-gsc@latest`. Credentials path moved through several locations: was in `.claude/`, then project root, now under `src/.credentials/` to keep all secrets in one place. |
 
+## Planned CRM voice integration
+
+The [full CRM dialer build plan](../crm/dialer/build-plan.md) adds a separate Twilio browser-voice adapter while preserving SMS. It proposes server-side caller-ID authorization, signed voice webhooks, durable attempts, and a future Telnyx adapter. Voice-provider capabilities remain planned. [In-call appointment booking](../crm/dialer/call-wrap-up.md) will reuse per-agent Google Calendar/Appointment services through private contact-owned commands, rather than trusting the public visitor booking route. Optional [Retell overflow](../crm/dialer/retell-overflow.md) requires a SIP/handoff spike, capacity and AI-eligibility controls; no existing agent configuration has been changed. The dialer UI now reuses CRM property photos, read-only MLS enrichment, and closed-sale comparables; property research links open external tabs without scraping or importing their values.
+
 ## Patterns
+
+**Twilio exception.** `src/lib/twilio.ts` currently constructs its client at module load; the proposed voice adapter should initialize lazily and validate configuration at first use.
 
 **Lazy singleton client.** Most wrappers construct the SDK client (or set up auth headers) on first invocation, not at module load. Resend, Stripe, and Cloudinary all use this pattern so that `.env.local` only needs to be loaded when the feature is actually exercised — important for builds and unit tests that don't have all keys set.
 
@@ -165,3 +171,5 @@ Audit of `/docs/` integration material — outcomes for the v2 migration:
 | Google Ads API design | `F:\web-clients\joseph-sardella\jpsrealtor\docs\google-ads\GOOGLE_ADS_API_DESIGN_DOC.md` (Apr 21 2026) | CURRENT — design doc, still authoritative for campaign internals | Keep; linked from this README and `../campaigns/` |
 | GBP auto-posting | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chatrealty\GBP_AUTO_POSTING.md` | PARTIAL | High-level summary lives here; cron / scheduling detail belongs in `docs-v2/cron/` |
 | GBP per-user | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chatrealty\GBP_PER_USER.md` | CURRENT | OAuth pattern captured here; archive after `docs-v2/multi-tenant/` cross-links it |
+
+Dialer voice dispatch has an internal, unscheduled [provider job foundation](../crm/dialer/provider-jobs.md). Its separate lazy [Twilio voice adapter and signed status inbox](../crm/dialer/twilio-voice-adapter.md) are implemented; call creation remains hard-disabled and simulation is not connected to the provider.

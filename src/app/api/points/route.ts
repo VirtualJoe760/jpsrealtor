@@ -11,6 +11,9 @@ import User from "@/models/User";
 import PointsLedger, { pointsToAdSpend, POINTS_TIERS } from "@/models/PointsLedger";
 import type { CampaignChannel, TransactionType } from "@/models/PointsLedger";
 
+import { stripeConfiguration } from '@/lib/stripe-mode';
+import { creditWalletForMode } from '@/lib/credit-wallet-mode';
+
 export const dynamic = "force-dynamic";
 
 // GET: Fetch points balance + recent transactions
@@ -28,12 +31,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    let ledger = await PointsLedger.findOne({ userId: user._id }).lean();
+    const stripe = stripeConfiguration();
+    if (stripe.mode !== 'test' && stripe.mode !== 'live') return NextResponse.json({ error: 'Stripe mode needs configuration' }, { status: 503 });
+    const ViewLedger = creditWalletForMode(stripe.mode);
+    const ledger = await ViewLedger.findOne({ userId: user._id }).lean();
 
     // If no ledger exists yet, return defaults
     if (!ledger) {
       return NextResponse.json({
-        balance: 0,
+        mode: stripe.mode, sandbox: stripe.mode === 'test',
+        balance: 0, availableCredits: 0, reservedCredits: 0,
         totalEarned: 0,
         totalSpent: 0,
         tier: "beginner",
@@ -54,6 +61,8 @@ export async function GET(request: NextRequest) {
     const tierConfig = POINTS_TIERS[ledger.tier] || POINTS_TIERS.beginner;
 
     return NextResponse.json({
+      mode: stripe.mode, sandbox: stripe.mode === 'test',
+      availableCredits: Math.max(0, ledger.balance - (ledger.reservedCredits || 0)), reservedCredits: ledger.reservedCredits || 0,
       balance: ledger.balance,
       totalEarned: ledger.totalEarned,
       totalSpent: ledger.totalSpent,
@@ -80,6 +89,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (stripeConfiguration().mode !== 'live') return NextResponse.json({ error: 'Test credits cannot pay for real campaign usage' }, { status: 409 });
     await dbConnect();
 
     const user = await User.findOne({ email: session.user.email }).select("_id").lean();
@@ -95,7 +105,7 @@ export async function POST(request: NextRequest) {
       description?: string;
     };
 
-    if (!points || points <= 0) {
+    if (typeof points !== 'number' || !Number.isFinite(points) || points <= 0) {
       return NextResponse.json({ error: "points must be a positive number" }, { status: 400 });
     }
 
@@ -112,10 +122,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No points account found. Subscribe to a plan first." }, { status: 404 });
     }
 
-    if (ledger.balance < points) {
+    if (ledger.balance - (ledger.reservedCredits || 0) < points) {
       return NextResponse.json(
         {
           error: "Insufficient points",
+          availableCredits: Math.max(0, ledger.balance - (ledger.reservedCredits || 0)),
+          reservedCredits: ledger.reservedCredits || 0,
           balance: ledger.balance,
           requested: points,
         },

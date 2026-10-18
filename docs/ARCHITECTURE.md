@@ -1,7 +1,7 @@
 ---
 title: Architecture Index
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-18
 ---
 
 # Architecture Index
@@ -28,7 +28,7 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
 | Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |
 | CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
-| CRM | `src/models/Contact.ts` | [crm/](./crm/) — *not yet written* |
+| CRM | `src/models/Contact.ts` | [crm/](./crm/) — [full dialer build plan](./crm/dialer/build-plan.md) (saved simulation queues/attempts + agent lock + embedded contact page; credit reservations and isolated Stripe test wallets added; live voice and billing activation pending) |
 | Listings / MLS | `src/models/UnifiedListing.ts` | [listings/](./listings/) — *not yet written* |
 | Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — *not yet written* |
 | Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) |
@@ -70,3 +70,7 @@ See [tech-debt.md](./tech-debt.md) for the live list. Most recent entries from t
 - Several public-facing API routes still scope by `session.user.id`
 - `AGENT_DOMAIN_MAP` in `proxy.ts` is hardcoded empty
 - `Campaign` model has a duplicate `campaignId` index warning
+
+Dialer provider work now has an unscheduled lease/fencing foundation; see [provider jobs](./crm/dialer/provider-jobs.md). A separate gated Twilio adapter and signed status inbox are implemented; no live dispatch is connected.
+
+Dialer agent audio preferences/tests are local browser controls; persistent phone-agent audio is planned in [agent audio](./crm/dialer/agent-audio.md).
