@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: planned
-last_verified: 2026-09-19
+last_verified: 2026-10-17
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
 ---
@@ -1548,6 +1548,152 @@ or PRICE line, every conclusion from 2026-09-18 carries forward unchanged and
 nothing needed re-checking by hand. **No build, no Gemini spent.** Queue: **28
 `awaiting_review` / 28 distinct**, **19 publishable**, **0 approved**; the only
 `posted` records are the two for 53806 Ridge Road (Y5 and the MCP post).
+
+### Built 2026-10-17 — 80519 Avenida Santa Isadora, and the dump does not predict the build
+
+**First build since 2026-09-07, and the first run in four weeks.** The last
+entry here is 2026-09-19; nothing ran between then and today. The gap is the
+single most useful fact in this entry, because it is what refilled the pool:
+`tmp-pool4.js` returns **40 broad actives against 33 key-matched** (was 34/27)
+and **twelve** FRESH stageable rows (was five).
+
+**The snapshot diff paid for itself across a month-long gap.** It named every
+change without a single hand check:
+
+```
+LEFT    Vista Chino $999,500 · Warren Vista $399,000 · 1950 Palm Canyon $299,999
+        0 Alder Creek $30,000 · 77110 Indiana $2,650
+ARRIVED Gods Way Love $895,000 · Avenida Rubio $560,000 · Willow $529,900
+        17 Lugo $529,000 · Santa Isadora $468,900 · Latham $452,000
+        Calle Bosque $419,900 · Los Santos $399,000 · Acoma $294,000
+        La Brisa $175,000 · 03 Foothill $96,500
+PRICE   Azzura $625,000 -> $575,000 · Sierra · 16 Woodward · 17 Woodward
+```
+
+Note **Warren Vista LEFT the feed** — the mixed-virtual-staging strike from
+2026-09-04 is now moot, and the standing-strike list drops from five to three
+(Mountain View 44 ph, Barron 29 ph, Harbor 17 ph, all byte-identical).
+
+**Nine of the twelve FRESH rows are disqualified before any spend, and three of
+those nine by the repo check rather than the database.** Chuperosa, Acoma and
+Los Santos are all relists of houses already queued, caught by
+`scripts/data/pending/{chuperosa-road,acoma-trail,los-santos}.ts`. That is the
+third, fourth and fifth time the repo check has stopped a duplicate build that
+every key-based test called FRESH.
+
+**That leaves six genuinely never-built rows** — Avenida Rubio 40 ph, Willow 27,
+Lugo 35, **Santa Isadora 52**, Latham 34, Calle Bosque 41 — the first real
+choice this skill has had since August. Santa Isadora wins on photo depth,
+which is the thing the stager spends.
+
+#### The stale stack is eleven, and a second post is now a price correction
+
+| Code | Listing | Built | Status today |
+|---|---|---|---|
+| **R4** | **2800 E Vista Chino, Palm Springs** | 08-03 | **new** — gone, nothing in closed |
+| C4 | 46109 Roadrunner Lane, La Quinta | 08-06 | gone |
+| **K6** | **3010 N Chuperosa Road, Palm Springs** | 08-08 | **$699,000; slides print $749,000** |
+| L6 | 48423 Hepburn Drive, Indio | 08-09 | gone |
+| Y7 | 83633 Lapis Drive, Coachella | 08-10 | gone |
+| **E4** | **7798 Acoma Trail, Yucca Valley** | 08-11 | **relisted 09-24 at $294,000; slides print $299,000** |
+| V9 | 9223 N Star Trail, Morongo Valley | 08-13 | gone — live row is 765sf, non-roster agent |
+| U5 | 255 S Avenida Caballeros #313 | 08-14 | gone — four live rows, all other doors |
+| V2 | 1522 Sutherland Street, Lancaster | 08-22 | gone |
+| **L7** | **1950 S Palm Canyon Drive #128** | 08-23 | **new** — #134 and #151 are other doors, #151 is a rental |
+| A7 | 27305 Hombria Drive, Cathedral City | 08-29 | gone |
+
+**E4 is the K6 shape, and now there are two of them.** `tmp-relist-check.js`
+returns `20260924025028354964000000 Active $294000 ... Peyson Robertson / The
+Obsidian Group`, sqft MATCH, $5,000 under what the cover and caption print. Same
+agent, same team, same house. Neither K6 nor E4 is a decline and neither is
+publishable as built; repointing a queued record at a new key is the agent's
+call, not a scheduled run's.
+
+#### The build: code G6, 8 slides
+
+Exclusions `7,21,25,27,39,40,42,43,44`, aimed at `tmp-selector-dump.ts`:
+pool-water frames (§9's absolute "any water in the lower half" test), the
+across-the-island kitchen, the doorway bedroom, the front driveway, and an
+empty tile passage. Reasoning per frame is in
+`scripts/data/pending/avenida-santa-isadora.ts`.
+
+**THE DUMP AND THE BUILD RAN DIFFERENT SELECTIONS, AND THAT IS NEW.** The skill
+reads as though `tmp-selector-dump.ts` tells you what the build will be handed,
+so exclusions can be aimed at it. It does not. The dump's fourteen were #15,
+#22, #39, #41, #27, #18, #32, #7, #14, #16, #24, #25, #20, #21. The build's own
+nine were **#17, #18, #37, #14, #15, #16, #24, #20, #22** — #17 and #37 are in
+the build's list and were never in the dump's, while #41 and #32 are in the
+dump's and never reached the build despite not being excluded.
+
+The selector re-reads and re-ranks every photo on every run, the same way
+`stage_geometric.py` re-keys a frame between builds (copy-voice.md §8, Acoma's
+#15 coming back `kitchen` then `great_room`). So:
+
+> **A dump-derived exclusion list is a filter, not a plan.** It is still worth
+> paying for — it is how the *categories* get named, and three of the frames
+> excluded here did appear in the build's own list — but do not count on a
+> specific frame surviving to fill a specific slot, and do not count on an
+> unexcluded frame being offered at all.
+
+That cuts both ways and it cut favourably today: **#41, the covered patio with a
+sliver of pool water just below the midline, was the one frame this run was
+unsure about, and it was never offered.** The §9 bet was never placed. It also
+means the post has no outdoor room slide; the pool is carried by the cover.
+
+Staging returned **3/4 slots**: #17 `great_room`, #18 `dining`, #20 `kitchen`.
+#15 and #22 lost every take — #22 in the instructive way, three action takes
+rejected on scale (0.32x, then face 0.316, then 1.86x) and then all three
+reaction takes rejected on identity at cos 0.018 / 0.039 / 0.054. That last
+number is the §8 "statistically a different man" figure, caught by the gate and
+never composited.
+
+**Then one of the three was dropped, and the reason was duplication rather than
+a bad render.** #17 and #18 are *the same glass dining table*, and the stager
+gave both the same action — "pulling out a chair at the dining table". Two
+consecutive slides, one table, one posture: `actor-generation.md` §6 forbids two
+slides sharing a body posture and a camera relationship, and at Instagram speed
+it reads as the same photograph twice.
+
+Both renders are good, so the choice was about coverage, not quality: **#18 was
+dropped and #17 kept**, because #17 is the only frame in the post containing the
+great room — the sectional, the fireplace and the teal wall sit behind the table
+in it, and #18 shows nothing #17 does not except the patio slider. `THE GREAT
+ROOM` over a frame whose foreground is a dining table is a compromise, and the
+`living` caption ("Tile underfoot, vaulted ceilings, and one open room from end
+to end") is true of it in a way the label alone is not.
+
+> **The duplication is not visible from the build log.** `#17 PASS (great_room)`
+> and `#18 PASS (dining)` are two different room keys and the de-duplication
+> correctly let both through. Only looking at the images shows they are one
+> room. This is the §4 "actually look at what you made" rule firing on
+> something none of the gates is designed to catch.
+
+`tmp-drop-slide.js 6ad40e450b45e02118b579e5 3` — slide destroyed, remaining
+renumbered, `photoIndexes` trimmed to `[17,20]`.
+
+#### The cover: a template bug, fixed rather than worked around
+
+`80519 AVENIDA SANTA ISADORA` is 27 characters against the ~25 the 390px panel
+holds at 28pt, so address line 1 wrapped and printed `ISADORA` straight through
+`INDIO, CA` at y:510. copy-voice.md §8 had already named line 1 a coin flip;
+this is the run that lost it. The fix is in `simple-luxury.ts` — the line is now
+sized to one line through `fitHeadline` (22pt here, unchanged at 28pt for
+everything that fitted before) — and is written up in copy-voice.md §8. Verified
+on the real build, not only on a preview.
+
+Cover frame is **#43**, chosen over the twilight hero #0 after rendering both:
+#0 is beautiful in landscape and loses everything to the 4:5 `g_auto` crop
+except two power poles and cracked asphalt. Accent `8C3A1F`, rust off the tile
+roof and the waterfall stone in that same frame; the drafted teal — the house's
+own accent-wall colour — rendered as the same family as the pool water beside
+it, which is the Ridge Road failure.
+
+#### Where the queue stands
+
+**29 `awaiting_review` against 29 distinct listings** — no duplicates, eighth
+consecutive clean run — of which **18 are publishable**, still **0 approved**,
+and still one listing ever posted (53806 Ridge Road, two `posted` records).
+Code **G6**, id `6ad40e450b45e02118b579e5`, 8 slides.
 
 ## Pipeline
 

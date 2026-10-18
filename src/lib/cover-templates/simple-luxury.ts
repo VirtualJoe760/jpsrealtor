@@ -72,6 +72,18 @@ export function buildSimpleLuxuryTransformations(
   const COLOR = d.accentColor || "1C4A5A";
   const hook = fitHeadline(d.hook);
 
+  // Address line 1 is sized to fit on ONE line, never wrapped. See §7 below for
+  // why wrapping it is the worse failure, and copy-voice.md §8 for the family.
+  // maxHeight is one 28pt line (28 × 1.25 = 35), so fitHeadline's height test
+  // rejects every two-line candidate and keeps stepping the size down.
+  // 80519 AVENIDA SANTA ISADORA needed 22pt; most addresses stay at 28.
+  const addr1 = fitHeadline(d.addressLine1, {
+    maxSize: 28,
+    minSize: 14,
+    maxHeight: 36,
+    blockBottom: 0, // y is hardcoded at 470 below; only fontSize is used here
+  });
+
   return [
     // 1. Base 4:5 portrait crop, 1080w
     { width: 1080, aspect_ratio: "4:5", crop: "fill", gravity: "auto", quality: "auto:best" },
@@ -100,6 +112,17 @@ export function buildSimpleLuxuryTransformations(
     },
 
     // 4. City subtitle (letter-spaced for editorial feel)
+    //
+    // `width` + `crop: "fit"` for the SAME reason the hook carries them
+    // (invariant 3 above): a bare overlay has no idea the panel ends at 480 and
+    // simply runs onto the photo. The city is not authored copy — it comes
+    // straight off the listing — so it cannot be shortened at the config layer
+    // the way a hook can. At 28pt with 8px letter-spacing "DESERT HOT SPRINGS"
+    // measures ~420px and 16430 Evans Lane shipped its cover with the final S
+    // cut in half by the panel edge, one stroke on the accent colour and one on
+    // open sky. 390 is the hook's own cap (x:70 + 390 = 460, 20px of margin
+    // inside the panel); anything longer wraps to a second line at y:274, which
+    // still clears the price at y:360.
     {
       overlay: {
         font_family: FONT,
@@ -108,6 +131,8 @@ export function buildSimpleLuxuryTransformations(
         text: d.city,
         letter_spacing: 8,
       },
+      width: 390,
+      crop: "fit",
       color: "white", gravity: "north_west", x: 70, y: 240,
     },
 
@@ -128,14 +153,40 @@ export function buildSimpleLuxuryTransformations(
     },
 
     // 7. Address line 1
+    //
+    // Same 390px cap and crop:fit as the hook and the city, and for the same
+    // reason (invariant 3): a bare 28pt overlay does not know the panel ends at
+    // 480. This one had simply never been long enough to catch it.
+    //
+    // NOTE THE ASYMMETRY WITH THE CITY ABOVE. The city is free to wrap, because
+    // the next element below it is the price 86px down. This line is NOT — line
+    // 2 sits at y:510, 40px below, which is barely one 28pt line. So the cap
+    // here converts "runs onto the photo" into "overprints the city", and the
+    // caller's job is to keep this line short enough that neither happens. That
+    // is why a unit number goes on line 2 (see build-pending-post.ts) rather
+    // than being appended here, where "5803 LOS SANTOS DRIVE #19" measures ~388
+    // of the 390 available.
+    //
+    // AND THE CALLER CANNOT DO THAT JOB, because the address is not authored
+    // copy — it comes off the feed, the same argument fit-headline.js makes
+    // about the hook. 80519 AVENIDA SANTA ISADORA is 27 characters, wrapped to
+    // "80519 AVENIDA SANTA" / "ISADORA", and the second line landed straight
+    // through the city at y:510. So the size is fitted to one line (see addr1
+    // above) rather than fixed at 28. crop:fit stays as the hard guarantee.
     {
-      overlay: { font_family: FONT, font_size: 28, font_weight: "light", text: d.addressLine1 },
+      overlay: { font_family: FONT, font_size: addr1.fontSize, font_weight: "light", text: d.addressLine1 },
+      width: 390,
+      crop: "fit",
       color: "white", gravity: "north_west", x: 70, y: 470,
     },
 
-    // 8. Address line 2
+    // 8. Address line 2 — city, state, and the unit number when there is one.
+    // At 20pt this line has real headroom: "#19  ·  PALM SPRINGS, CA" measures
+    // ~265 of 390.
     {
       overlay: { font_family: FONT, font_size: 20, font_weight: "light", text: d.addressLine2 },
+      width: 390,
+      crop: "fit",
       color: "white", gravity: "north_west", x: 70, y: 510,
     },
 
