@@ -1,7 +1,8 @@
 ---
 title: Google Ads — Go-Live Runbook (developer token + MCC + production)
 status: current
-last_verified: 2026-06-20
+last_verified: 2026-10-17
+last_verified_note: Code claims re-checked 2026-10-17. The API Center status (token at Basic Access) is external and was last seen 2026-06-20.
 related:
   - README.md
   - go-live-checklist.md
@@ -120,4 +121,9 @@ daily-debit cron (not a launch-time debit) is the correct billing mechanism.
   don't need their own token, just to link their account to the MCC.
 - **`login-customer-id` must be the MCC** when managing a sub-account, or calls 403.
 - **Daily debit is missing** — don't enable real campaigns at scale until it's built.
-- **API version drift** — v18 will sunset; pin to a supported version.
+- **API version drift** — pinned to `v24` (`GOOGLE_ADS_API_VERSION`). Google
+  sunsets majors roughly yearly; check the sunset-dates page before each launch
+  season.
+- **Co-marketing launches don't debit either.** `src/lib/co-marketing/ad-launch.ts`
+  collects each party's share up front but has no spend reconciliation, so the
+  same daily-debit gap applies.
