@@ -1,7 +1,8 @@
 ---
 title: Theming
 status: current
-last_verified: 2026-07-24
+last_verified: 2026-10-17
+related: [../routing/README.md, ../multi-tenant/README.md]
 ---
 
 # Theming
@@ -41,12 +42,14 @@ lived on /test until 2026-07-24).
 
 - `src/app/contexts/ThemeContext.tsx` — provider. `useTheme()` returns
   `{ currentTheme, preference, setPreference, setTheme, toggleTheme,
-  applyEphemeralTheme, themeLocked }`. `useThemeClasses()` wraps
-  `getThemeClasses` (the class-string vocabulary ~132 files use).
+  applyEphemeralTheme, clearEphemeralTheme, themeLocked }`.
+  `useThemeClasses()` wraps `getThemeClasses` (the class-string vocabulary
+  ~130 files use). The provider is mounted once, in
+  `src/app/components/ClientLayoutWrapper.tsx`.
 - `src/app/layout.tsx` — server resolution (`getServerThemeState`), SSR theme
   classes + chrome metas, and the tiny pre-paint script (legacy migration +
   echo-cookie write — it deliberately does NOT flip classes).
-- `src/app/themes/themes.ts` — `ThemeName` + `getThemeClasses` only.
+- `src/app/themes/themes.ts` — `ThemeName`, `isThemeName`, `getThemeClasses` only.
 - `src/app/globals.css` — the real styling: `html.theme-*` background blocks,
   `color-scheme`, the `.dark, .theme-blackspace` shadcn HSL variables.
 
@@ -95,16 +98,19 @@ cookie writes, no preference change, no-ops when tenant-locked. The old
 
 - `TopToggles` (mobile, /chap), `EnhancedSidebar` footer, `EnhancedNavbar`
   icon — two-way toggles that set an explicit override. Hidden when locked.
-- Dashboard `ProfileCard` — tri-state segmented control (Auto / Light / Dark),
-  hidden when locked. "Auto" is how a user returns to device-following.
+- Dashboard `ProfileCard` — tri-state segmented control ("Match device" /
+  Light / Dark), hidden when locked. "Match device" (`system`) is how a user
+  returns to device-following.
 
 ## Consumer patterns (status quo, not gospel)
 
-~255 files branch on `currentTheme === "lightgradient"`; ~132 use
-`useThemeClasses()`; chat-v3 has `chatThemeClasses(isLight)`; CRM prop-drills
-`isLight`. **Known debt:** `tailwind.config.ts` has `darkMode: ["class",
-"class"]`, which compiles every `dark:` variant to a dead selector — all ~332
-`dark:` usages (mostly CRM) are inert CSS. Fixing it to `"class"` activates
+~240 files branch on `currentTheme === "lightgradient"`; ~130 use
+`useThemeClasses()`; chat-v3 has `chatThemeClasses(isLight)`
+(`src/app/components/chat-v3/themeClasses.ts`); CRM prop-drills `isLight`.
+**Known debt:** `tailwind.config.ts` has `darkMode: ["class", "class"]`, which
+compiles every `dark:` variant to a dead selector — the ~340 lines using
+`dark:` (in ~50 files, mostly CRM) are inert CSS. (Counts are approximate;
+re-grep before relying on them.) Fixing it to `"class"` activates
 them sight-unseen, so that's a deliberate, separate visual-review pass
 ("Phase 3"). The `dark` class IS already applied (SSR + client) in
 anticipation.

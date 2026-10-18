@@ -2,7 +2,7 @@
 title: SEO — canonicals, sitemaps, structured data
 status: current
 last_verified: 2026-10-17
-related: [../multi-tenant/README.md, ../routing/README.md]
+related: [../multi-tenant/README.md, ../routing/README.md, ../cms/README.md]
 ---
 
 # SEO
@@ -229,7 +229,11 @@ applies to concurrent cursors on ONE collection contending for I/O. The gate's
 two aggregations hit different collections: cities 33s → 22s, subdivisions
 49s → 22s. Each child route gets its own 60s budget.
 
-`generatePlatformSitemap()` still serves chatrealty.io's ~6 pages.
+Children (`getChildSitemaps()`): `static`, `cities`, `subdivisions`,
+`articles`, then one `listings-{county}` per SoCal county (8: Los Angeles,
+Orange, Riverside, San Bernardino, San Diego, Ventura, Imperial, Santa
+Barbara). `generatePlatformSitemap()` still serves chatrealty.io's ~6 pages as a
+flat urlset (no index).
 
 ### ~460 per-place buy/sell pages removed
 
@@ -297,8 +301,10 @@ they do not chain.
 **A crawler obeys exactly one group.** Once `User-agent: Googlebot` exists,
 Googlebot stops reading `*` entirely — so `/private/`, `/test/`,
 `/*/property-stats`, `/404`, `/500` and the Spark `/v1/` paths, which lived only
-under `*`, were invisible to the one crawler that matters. Every group now
-repeats the full list; the duplication is the protocol working. `Host:` is gone
+under `*`, were invisible to the one crawler that matters. Every group on agent
+domains (`src/app/robots.ts`, `DISALLOW_ALL_CRAWLERS`) now repeats the full
+list; the duplication is the protocol working. chatrealty.io has a single `*`
+group with a short list. `Host:` is gone
 (Yandex-only, deprecated 2018). `/_next/` stays allowed for everyone.
 
 ### Monitoring
@@ -316,19 +322,21 @@ repeats the full list; the duplication is the protocol working. `Host:` is gone
   another agent's content. The ping is wrapped so it can never fail a publish.
 
   **Listing changes are not wired yet** and are the remaining integration. Do
-  NOT bolt it into the MLS sync scripts casually — see AGENTS.md rule 2 on what
-  happened last time a sync script was edited in passing. The low-risk path is
+  NOT bolt it into the MLS sync scripts casually — see root `AGENTS.md` rule 6
+  on silently no-op'd and encoding-corrupting edits. The low-risk path is
   a daily cron that POSTs the most recently modified `slugAddress` values to
   `/api/seo/indexnow`; the route already accepts a batch and authenticates with
   `CRON_SECRET`.
-- `.github/workflows/lighthouse-seo.yml` + `lighthouserc.json`: SEO ≥ 0.95,
-  with `canonical`, `meta-description` and `crawlable-anchors` as hard
-  assertions — the three that were genuinely broken. It audits PRODUCTION, not
-  a CI build, because every page here is rendered from MongoDB and building in
-  CI would mean putting live credentials in GitHub secrets (AGENTS.md rule 9).
-  So it is a regression alarm, not a gate; the gate stays `tsc` + `next build`.
-  The workflow also validates the sitemap index and greps Riverside's meta tags
-  for "coachella".
+- `lighthouserc.json` + `npm run lh:seo`: Lighthouse CI against PRODUCTION
+  (`jpsrealtor.com/neighborhoods/indio` and `/riverside`), SEO ≥ 0.95, with
+  `canonical`, `meta-description`, `crawlable-anchors` (and `is-crawlable`,
+  `http-status-code`, `document-title`, `robots-txt`) as hard assertions. It
+  audits production rather than a CI build because every page here is rendered
+  from MongoDB and building in CI would mean putting live credentials in GitHub
+  (root `AGENTS.md` rule 7). A regression alarm, not a gate; the gate stays
+  `tsc` + `next build`. **There is no GitHub Actions workflow in the repo** — no
+  `.github/` directory exists, so nothing runs this on a schedule or validates
+  the sitemap index automatically; run it by hand.
 
 ### Staged rollout (`SEO_ROLLOUT_REGIONS`)
 
@@ -378,8 +386,8 @@ publishing a community page whose parent city says noindex would orphan it.
 
 Per-tenant measurement IDs live at `agentProfile.tracking` (User model), are
 resolved server-side by `getServerTenantConfig()` in `lib/nav-layout.ts`, and
-render via `components/seo/GoogleTags.tsx` (GA4 + Google Ads on one gtag.js
-load) and the `pixelId` prop on `components/MetaPixel.tsx`. Env vars
+render via `src/app/components/seo/GoogleTags.tsx` (GA4 + Google Ads on one
+gtag.js load) and the `pixelId` prop on `src/components/MetaPixel.tsx`. Env vars
 (`NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`,
 `NEXT_PUBLIC_GOOGLE_ADS_ID`) remain the platform fallback, so an agent who sets
 nothing keeps the previous behaviour.
@@ -410,7 +418,7 @@ intent need a per-page `ViewContent`, so these are wired explicitly:
 | City | `trackViewCity` | `destination` |
 | Insights article | `trackViewArticle` | `article` |
 | Landing page | `trackViewContent` + `trackLead` | `property` |
-| Favourites | `trackViewTopListings` | `product_group` |
+| Favourites | `trackViewTopListings` — **defined in `src/lib/meta-pixel.ts` but called nowhere** | `product_group` |
 
 City and article pages fired **nothing** until 2026-10-12 — the base pixel was
 loading, so the tags looked healthy, but the two page types with the clearest
@@ -426,6 +434,9 @@ match a catalog feed. Left as-is deliberately — changing the event shape would
 break any audience already built on it. Revisit when a catalog is connected.
 
 ## Pending (dashboard/user actions, not code)
+
+External state — not checkable against the repo; dates are when each was last
+confirmed.
 
 - Vercel: chatrealty.io→www and www.josephsardella.com→apex are 307; switch to
   permanent (jpsrealtor's www→apex 308 is the model).
