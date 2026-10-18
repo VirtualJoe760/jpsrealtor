@@ -1,190 +1,198 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-09-15
-related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md]
-supersedes: docs/chat-production/CHAT_V3.md
+last_verified: 2026-10-17
+related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md, ../routing/README.md, ../chatrealty-api/chap-search-pg.md]
+supersedes: docs/archive/chat-production/CHAT_V3.md
 ---
 
 # Chat / CHAP
 
 ## TL;DR
 
-**CHAP = Chat + Map**, the unified conversational real-estate experience and the platform's core differentiator. A user types ("homes in PGA West under $1.2M with a pool", "cma for 77638 via venito", "what's the appreciation in La Quinta"), CHAP parses the intent, runs a deterministic Mongo lookup, narrates the result in 1–4 sentences with a fast LLM, and mounts a production component (listing card, stats, CMA report, appreciation chart, article picker) right below the response. The map view is part of the same surface — geolocation-aware, POI-aware, and tied to the chat session. The chat-v3 architecture (May 2026) replaced the agent-loop-first chat-v2; legacy intent-classifier docs are stale.
+**CHAP = Chat + Map**, the conversational real-estate surface at `/chap` and the
+platform's core differentiator. A user types ("homes in PGA West under $1.2M
+with a pool", "cma for 77638 via venito", "what's the appreciation in La
+Quinta"); `POST /api/chat-v3` parses the intent, runs a deterministic Mongo
+lookup, streams a 1–4 sentence Groq narration over an `AUTHORITATIVE` stats
+block, and the client mounts a real component (listing card, stats, CMA report,
+appreciation chart, article list) under the text. Anything the parser can't pin
+down falls back to a Groq tool-calling agent loop. The map lives on the same
+page and is tied to the chat session. The chat-v3 pipeline (May 2026) replaced
+the agent-loop-first chat-v2; the agent loop survives only as the fallback.
 
 ## Files
 
 | Path | Purpose |
 |---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\parse.ts` | Layer 0 — message → ParsedQuery (thin wrapper over chat-v2 query-parser) |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\preview.ts` | Layer 1 — intent dispatcher → PreviewResult |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\narrate.ts` | Layer 2 — Groq narrator (one-shot + streaming) |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\nearby-pois.ts` | POI bundle + hero photo + area stats + page URL resolver for `locationSnapshot` map-bar overviews |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat\SnapshotCard.tsx` | Card rendered above the snapshot text (hero photo, stat tiles, CTA button) |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\types.ts` | `ParsedQuery`, `PreviewResult`, `NarrationInput` shapes |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\chat-v3\route.ts` | Production SSE endpoint |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\chap\page.tsx` | CHAP page — ChatWidget + MapLayer co-located |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat\ChatWidget.tsx` | The widget that calls `/api/chat-v3` and renders the message stream |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat\ChatProvider.tsx` | Conversation state, persistence (5 convos), preview field on messages |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat-v3\PreviewRenderer.tsx` | Maps `PreviewResult.component` → production component |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\map\resolve-spawn-point.ts` | Geolocation → Palm Desert fallback for map spawn |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` | **Tools registry — source of truth** |
+| `src/app/api/chat-v3/route.ts` | Production SSE endpoint (`POST`; `GET` health check) |
+| `src/lib/chat-v2/query-parser.ts` | The parser itself (`parseQuery`, `Intent`, `ParsedQuery`) |
+| `src/lib/chat-search/parse.ts` | Layer 0 — thin wrapper over the chat-v2 parser |
+| `src/lib/chat-search/preview.ts` | Layer 1 — intent dispatcher → `PreviewResult` |
+| `src/lib/chat-search/narrate.ts` | Layer 2 — Groq narrator (one-shot + streaming) and `describeContext()` |
+| `src/lib/chat-search/nearby-pois.ts` | POI bundle + `resolveSnapshotMeta()` for map-bar overviews |
+| `src/lib/chat-search/types.ts` | `PreviewResult`, `NarrationInput`, `SnapshotMeta` shapes |
+| `src/lib/chat-v2/{tools,tool-executors,streaming,reasoning-routing,commands,system-prompt}.ts` | Layer 3 agent loop (kept as fallback) |
+| `src/lib/chat-v2/listing-query.ts` | `buildListingQuery` / `computeAreaStats`, shared by Layers 1 and 3 |
+| `src/app/chap/page.tsx` | CHAP page — `ChatWidget` + `MapLayer` co-located |
+| `src/app/chat-v3/page.tsx` | Sandbox page on the same endpoint, no map or persistence |
+| `src/app/components/chat/ChatWidget.tsx` | Calls `/api/chat-v3`, parses SSE, renders the message stream |
+| `src/app/components/chat/ChatProvider.tsx` | Message state + `sessionStorage` persistence |
+| `src/app/components/chat-v3/PreviewRenderer.tsx` | `PreviewResult.component` → production component |
+| `src/app/components/chat/SnapshotCard.tsx` | Card above the snapshot text (hero photo, stat tiles, CTA) |
+| `src/lib/map/resolve-spawn-point.ts` | Geolocation → Palm Desert fallback for map spawn |
+| `docs/chat/TOOLS_INDEX.md` | **Tools registry — source of truth** |
 
-## The 4-layer architecture (chat-v3, May 2026)
+## The pipeline
 
-The old `/api/chat-v2` was agent-loop-first: it handed Groq every tool and let the model orchestrate. That produced non-deterministic latency (1–60s), hallucinated counts (model said "8 listings" when Mongo had 28), and tool/prose drift the client had to reconcile with regex. chat-v3 inverts the flow — Mongo runs first, the LLM speaks over an `AUTHORITATIVE` block of stats it cannot fabricate around. Production endpoint is `/api/chat-v3` for `/chap`.
+Route order in `chat-v3/route.ts`: slash command (`help` / `tutorial`) →
+`locationSnapshot` body → parse → (`conversational` or confidence < 0.5 → agent
+loop) → search-first. The client sends the whole message history every turn
+(and a placeholder `userId: "demo-user"`); only the last user message is parsed.
 
 ### Layer 0 — Parse
 
-`F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\parse.ts`
-
-User message → `ParsedQuery` with `{ intent, entities, filters, confidence, raw }`. Currently a thin re-export of `chat-v2/query-parser.ts` — kept as its own module so the future LLM intent classifier only touches one import surface.
-
-Intents: `listing-detail`, `listing-search`, `street-listings`, `aggregate`, `compare`, `trend`, `cma`, `insights`, `conversational`.
+`parseQuery(message)` → `{ raw, entities, filters, intent, dataset, metric?, confidence }`.
+Pure function (entity lookup aside). Precedence: "I'm thinking about…" →
+conversational; CMA keywords → `cma`; insights keywords → `insights`; two entities
++ compare words → `compare`; trend words → `trend`; aggregate words →
+`aggregate`; address (or house # + street name) → `listing-detail`; "homes on X
+Street" or a bare street name → `street-listings`; ZIP or a resolved
+city / subdivision / county → `listing-search`; else `conversational`. Filters (`price`, `beds`, `pool`, `sort`,
+`maxDaysOnMarket` for "new this week", `closedSinceDays`, …) come from
+`extractFilters`. The intents: `listing-detail`, `listing-search`,
+`street-listings`, `aggregate`, `compare`, `trend`, `cma`, `insights`,
+`conversational` (the `Intent` type also lists `unknown`, which the parser never
+returns). Street suffixes are a closed list on purpose — new street styles resolve
+through the "describe X" search-index path in Layer 1, not by extending it.
 
 ### Layer 1 — Preview
 
-`F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\preview.ts`
-
-`runPreview(parsed)` dispatches the intent to a Mongo primitive and returns a `PreviewResult` whose `component` field tells the UI what to mount. See the TOOLS_INDEX table (below) for the full intent → primitive → component mapping. The dispatcher also runs a **"Describe X"** pre-check (`tell me about X / what about X / details for X / describe X / info on X`) that strips the preamble and routes by the top hit's type — this is the scalable, suffix-agnostic address-resolution path. There's also a `cma` search-index fallback that auto-promotes full-address queries (house # + ZIP) directly into a listing CMA instead of showing a disambiguation picker.
+`runPreview(parsed, { origin })` runs a "describe X" pre-check
+(`tell me about / details for / describe …` → `multiSourceSearch` → route by the
+top hit's type), then one `if (parsed.intent === …)` branch per intent, and
+returns a `PreviewResult` whose `component` tells the UI what to mount. The full
+intent → primitive → component table, including the four `cma` sub-paths and the
+full-address auto-promote, is in [TOOLS_INDEX.md](./TOOLS_INDEX.md#layer-1--search-first-preview-primitives).
+Listings come from `unifiedlistings` (Active only); see
+[../listings/README.md](../listings/README.md). The route emits `{preview}` as
+soon as this resolves, before any token.
 
 ### Layer 2 — Narrate
 
-`F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\narrate.ts`
+`streamNarration(input)` (async generator, used by the route) and `narrate(input)`
+(JSON) call Groq with `NARRATOR_PROMPT`: bans meta-narration and robot openings
+("I pulled…"), forbids fabrication, enforces per-intent rules (answer-first for
+insights, one sentence for CMA, 2–4 for stats), and mandates quoting
+`totalListings` from the Layer 1 stats verbatim even when autocomplete returned
+fewer rows. Model `openai/gpt-oss-20b`, `reasoning_effort: "low"`, `temperature
+0.55`, `max_tokens 400`, ~0.2 s. The narrator sees `describeContext()` output —
+a labelled `AUTHORITATIVE` block — never raw documents.
 
-Two entry points: `narrate(input)` returns the full JSON; `streamNarration(input)` is an async generator yielding tokens for SSE. Both call Groq with a system prompt that bans meta-narration ("the search router found..."), bans robot openings ("I pulled..."), forbids fabrication, and enforces per-intent rules (lead with the headline for aggregate, lead with the answer for insights, single sentence for CMA, etc.). The narrator quotes `totalListings` from the Layer 1 stats block verbatim — if Layer 1 says 28, the LLM must say 28, even if autocomplete only returned 6 disambiguation rows.
+### UI — render
 
-Default model: `openai/gpt-oss-20b` on Groq with `reasoning_effort: "low"`, ~0.2s for a 1–4 sentence response. (Was `llama-3.1-8b-instant` until Groq decommissioned every Llama chat model in Sept 2026 — see Gotchas.) The narrator never sees raw documents — it sees `describeContext()` output, a labeled `AUTHORITATIVE` block of numbers.
+`PreviewRenderer` maps `component` → `ListingDetailCard`, a local `StatsCard`
+plus `ListingOptionsViewer` (Panel / List / Map toggle over
+`ListingOptionsCarousel` + `ListingOptionsList`), `AppreciationContainer`,
+`CMAReport`, `SubdivisionCmaSection`, or `ArticleResults`. In-message buttons talk
+back to `ChatWidget` through `chatv3:*` window events (see TOOLS_INDEX).
 
-### Layer 3 — UI / Agent loop fallback
+### Layer 3 — Agent-loop fallback
 
-`PreviewRenderer.tsx` mounts the right production component (`ListingDetailCard`, `AreaStatsCard`, `CMADisplay`, `AppreciationContainer`, `ListingOptionsCard`, `ArticleCard`, etc.) below the streaming narration. When the parser yields `conversational` or `confidence < 0.5`, the route hands off to `streamWithToolSupport` from `src/lib/chat-v2/streaming.ts` — the agent loop survives as fallback only, not the primary path. Multi-turn follow-ups ("show me the 4-bed ones") land here because they're context-dependent.
+For `conversational` / low-confidence turns (multi-turn follow-ups like "show me
+the 4-bed ones" land here) the route calls `streamWithToolSupport`: up to 6
+Groq rounds over the 8 tools in `tools.ts`, model `openai/gpt-oss-120b`, tool
+results projected into `{components}` events that `ChatResultsContainer`
+renders. Most production traffic never reaches it. Details and limits are in
+TOOLS_INDEX.
+
+### `locationSnapshot` (map-bar overview)
+
+When the user picks a place in the map search bar, `MapSearchBar` dispatches
+`requestLocationInsights`; `ChatWidget` posts `locationSnapshot {name, type}`.
+The route skips Layers 0–2: `fetchNearbyPOIs` (cached `points_of_interest` within
+~3 miles, top 5 per category) and `resolveSnapshotMeta` run in parallel, the
+snapshot system prompt quotes 2–3 real POIs by name, and the agent-loop engine
+streams `token` events after a leading `{snapshotMeta}` event that mounts
+`SnapshotCard`. Payload tables are in TOOLS_INDEX.
 
 ## Map integration
 
-CHAP's map is **MapLibre-based**, co-located with the chat widget on the same page (`/chap`). The chat doesn't fork to a separate map view — it transitions in-place via a clip-path wipe. When the chat surfaces a result with coordinates (a listing, a neighborhood), the map can be pre-positioned via `viewState`; when the user manually toggles the map without a pre-positioned target, `resolveSpawnPoint()` runs:
+The map is **MapLibre** (`@vis.gl/react-maplibre`, `src/app/components/mls/map/MapView.tsx`,
+loaded through `MapLayer`), co-located with the chat on `/chap` and revealed by a
+clip-path wipe. State lives in `MapStateContext` (`mapVisible` and `mapViewState`
+in `sessionStorage`). When a search-first result carries coordinates, `ChatWidget`
+calls `prePositionMap` with the listings' bounds so the map opens on them. A
+manual toggle with no target runs `resolveSpawnPoint()`: browser geolocation if
+inside California, else Palm Desert (zoom 10).
 
-1. Browser geolocation prompt → use those coords if California
-2. Outside CA / denied / timed out → Palm Desert default
+URL contract on `/chap` (the URL always wins over saved state):
 
-Map view is **session-scoped, tied to the chat session, and resets on New Chat**. Deep links (`?view=map&lat=…&lng=…&zoom=…`) skip the spawn resolver and honor the URL coords directly. URL is treated as the user's most recent intent — sidebar "Chat" button navigation (`router.push("/chap")`) closes the map even if session state had it open, because the URL says no map.
+| Param | Effect |
+|---|---|
+| `view=map` or `map=open` | Show the map; with `lat`/`lng`/`zoom` skip the spawn resolver |
+| `listing=<slug>` | Restore the selected listing panel |
+| `aiQuery=<text>` | Hide the map, auto-send the text to `ChatWidget`, then strip the param. Used by the AI button in `ListingBottomPanel` |
+| no `view` | Chat view; the sidebar "Chat" link closes the map even if state had it open |
+
+The map toggle sync never re-adds `?view=map` from state. **New Chat** clears
+messages, hides the map and calls `resetMapState()`, so the spawn re-resolves.
+`/` has no chat view: it is the insights homepage (`HomeClient`), and on
+chatrealty.io the `chat-landing` page, which only links to `/chap`. The insights
+"Ask chat" button pushes `/chap?chat=…`, a param nothing currently reads.
 
 ## POI display
 
-POIs come from the `points_of_interest` collection (Google Places sync). Two-tier display rule:
+POIs come from the `points_of_interest` collection (Google Places sync),
+fetched through `GET /api/pois` for the viewport. The hook `usePOIs` only asks at
+zoom ≥ 12, but the API returns nothing below zoom 14, only `golf` / `park` /
+`attraction` at 14–15, and every category from 16 (max 500 rows). `MapView`
+draws markers at zoom ≥ 14, grouping nearby ones with `clusterPOIs`; clicking a
+marker opens an info card. The snapshot narrator uses the same collection via
+`fetchNearbyPOIs`.
 
-| Tier | Zoom | Rendering |
-|---|---|---|
-| Communities (large landmarks) | 13+ | Individual labeled markers |
-| Everything else (restaurants, parks, golf, shopping, etc.) | 15+ | Clustered, expand on zoom-in |
+## Persistence
 
-Clicking any POI opens an **info panel**. The map-search-bar overview mode (`locationSnapshot`) also pulls a categorized POI bundle via `fetchNearbyPOIs(name, type, radiusMiles)` and `describePOIBundle()` injects it into the system prompt — the snapshot narrator quotes 2–3 POIs by name from that authoritative list, never inventing businesses. Alongside POIs, `resolveSnapshotMeta(name, type)` (in the same module) returns a `{ heroPhoto, stats, pageLink }` bundle that the route emits as a single `snapshotMeta` SSE event before narration starts. The client mounts a `SnapshotCard` above the streaming text — hero image, active-listings / median / $/sqft / DOM tiles, and a CTA button to the area page. See [TOOLS_INDEX.md](./TOOLS_INDEX.md#locationsnapshot-card-payload) for the full schema and resolver tables.
-
-## Tools registry — the sync rule
-
-**`F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` is the source of truth.** It enumerates everything the chat can call, dispatch, or emit across all three layers — Layer 1 preview primitives, Layer 3 agent-loop tools, and `chatv3:*` window events. Any new tool, any new preview intent, any new `chatv3:*` event MUST land in TOOLS_INDEX in the same commit it's introduced. Forget this and the tool will silently break (autocomplete won't know about it, the docs will be wrong, future Claude won't be able to find it).
-
-The corresponding source files to update in sync:
-
-| Layer | File |
-|---|---|
-| Layer 1 preview primitives | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\preview.ts` |
-| Layer 3 agent-loop tools | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-v2\tools.ts` |
-| Layer 3 executors | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-v2\tool-executors.ts` |
-| UI renderer | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\chat-v3\PreviewRenderer.tsx` |
-| Window events | wherever they're dispatched / listened |
-| **Registry** | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS_INDEX.md` |
-
-## Chat history / persistence
-
-The root home (`/`) uses `?view=` params (`chat`, `map`) — insights is the default view. CHAP at `/chap` does the same with `?view=map`. ChatProvider persists conversations to localStorage with a **5-conversation cap** (FIFO eviction). Each `ChatMessage` carries an optional `preview` field (Layer 1 result) alongside the legacy `components` field (Layer 3 result), so message replay can re-mount whichever was originally emitted. New Chat resets the map's `viewState`, so the spawn point re-resolves on next map toggle.
+Chat is **not** multi-conversation. `ChatProvider` keeps one flat `messages`
+array in `sessionStorage` (`jps-chat-messages`) with a sliding 5-minute expiry
+(`jps-chat-expiration`, refreshed on every change); closing the tab or idling
+past five minutes drops it. Each `ChatMessage` carries optional `preview`
+(Layer 1), `components` (Layer 3) and `snapshotMeta`, so replay re-mounts
+whatever was emitted. Nothing is stored server-side.
 
 ## Gotchas
 
-- **TOOLS_INDEX sync.** New `tools.ts` entries, new `preview.ts` intents, new `chatv3:*` events MUST update `docs/chat/TOOLS_INDEX.md` in the same commit. This is the most common drift in this subsystem.
-- **Map view is session-scoped.** New Chat resets `viewState`; the spawn point re-resolves on next toggle. Don't try to persist map state across chats — it's intentional.
-- **URL wins over saved state for `?view=map`.** Clicking the sidebar "Chat" link closes the map even if session state had it open. Don't add code that re-adds `?view=map` from state.
-- **Narrator uses Groq (`openai/gpt-oss-20b`, `reasoning_effort: "low"`).** ~0.2s response. Confirm current model against `DEFAULT_MODEL` in narrate.ts before quoting cost.
-- **Groq removes models without warning.** In Sept 2026 `llama-3.1-8b-instant` and `llama-3.3-70b-versatile` both vanished (404 `model_not_found`) and every chat reply on live rendered as a component with no text — the route sends `preview` first, then the narrator call fails and emits `{error, done}` in one event. If chat goes text-less again, `curl -X POST https://www.chatrealty.io/api/chat-v3` and look for an `error` event before blaming the widget. `GET https://api.groq.com/openai/v1/models` lists what the key can still use. Don't pick `qwen/*` for the narrator: it streams a `<think>` block into `delta.content`. The narrator can ONLY use data in the context block — it's prompted hard against fabrication, but cheap models still sometimes break the rule on edge cases. The `AUTHORITATIVE` label is doing real work.
-- **Layer 1 stats vs. autocomplete count.** When Layer 1 returns 28 listings and autocomplete only returned 6 rows, the narrator MUST quote 28. The narrator prompt forbids counting the autocomplete candidates, but if you tweak `describeContext()` you can accidentally break this guarantee — review tests after any context-block change.
-- **chat-v3 SUPERSEDED chat-v2 entirely** (intent-classifier era). The legacy `/docs/chat/` and `/docs/chat-v2/` directories are all stale — the parser primitive in `chat-v2/query-parser.ts` is still used (re-exported by Layer 0), but everything else in those docs (tool conflicts, intent classification troubleshooting, chat-v2 rewrite plans) is history.
-- **The "agent loop" still exists** as the Layer 3 fallback, but most production traffic never hits it. If you're debugging "why is the chat slow / why is it inventing stuff", first confirm whether the request went through Layer 1 (deterministic, fast, AUTHORITATIVE) or fell through to Layer 3 (agent loop, slower, freer-form).
-- **`locationSnapshot` mode** (map-bar search) bypasses Layer 1 entirely. It runs `fetchNearbyPOIs` + a snapshot system prompt against Layer 3 directly. Different SSE event (`content` not `token`).
-
-## Reference implementation
-
-The preview dispatcher in `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\chat-search\preview.ts` is the canonical reference for how an intent is resolved. It shows: how entities translate to a `ListingScope`, how `LISTING_PROJECTION` is the canonical Mongo projection for chat surfaces, how photos are batch-fetched from Spark as a fallback (`fetchPrimaryPhotos`), how the sale-first preference works (`propertyType='A'` before falling through to ANY), and how the search-index fallback re-ranks hits when `$text` scoring returns false positives. Read it before adding a new intent.
+- **TOOLS_INDEX sync.** New `tools.ts` entries, `preview.ts` intents and
+  `chatv3:*` events MUST update `docs/chat/TOOLS_INDEX.md` in the same commit.
+- **Narrator model.** Confirm the model against `DEFAULT_MODEL` in `narrate.ts`.
+  Groq removes models without warning: on 2026-09-15 `llama-3.1-8b-instant` and
+  `llama-3.3-70b-versatile` returned 404 `model_not_found`, the route sent
+  `{preview}` then `{error, done}`, and every reply rendered as a component with
+  no text. If chat goes text-less, `curl -X POST https://www.chatrealty.io/api/chat-v3`
+  and look for an `error` event before blaming the widget; `GET
+  https://api.groq.com/openai/v1/models` lists what the key can use. Don't pick
+  `qwen/*` — it streams `<think>` into `delta.content`.
+- **Layer 1 count beats autocomplete count.** The narrator must quote Layer 1's
+  `totalListings`; re-check that after any `describeContext()` change.
+- **Closed-sales phrasing isn't honored yet.** The parser sets `dataset:
+  "closed"`, but Layer 1 always queries Active listings (TOOLS_INDEX, Known gap).
+- **Layer 3 text is `token`, not `content`.** `content` is only the slash-command
+  one-shot, so snapshot mode streams `token` events.
+- **Map state is session-scoped on purpose.** Don't persist it across chats.
+- **Debugging "slow / inventing stuff":** first check whether the turn went through
+  Layer 1 (fast, AUTHORITATIVE) or fell to Layer 3 (slower, freer-form) — the
+  route logs `parsed: intent=… confidence=…` and `Low-confidence or conversational → Layer 3`.
+- **`/api/chat*` is public** (`src/proxy.ts` public prefixes). The route trusts
+  `body.userId` for anonymous callers; interest tracking in `user-analytics.ts`
+  looks users up by `email`, so it only matches when the id is an email.
+- **Postgres twin is not wired.** `src/lib/chap/` ports area stats / preview / POIs to
+  tenant Neon DBs but nothing imports it; scaffolded agent sites run their own
+  `/api/chat` tool loop over `/api/skill/*`. See
+  [../chatrealty-api/chap-search-pg.md](../chatrealty-api/chap-search-pg.md).
 
 ## Related
 
-- [routing/README.md](../routing/README.md) — how the host/subdomain proxy lands traffic on `/chap`
-- [multi-tenant/README.md](../multi-tenant/README.md) — agent scoping (the chat itself is not currently agent-scoped, but downstream lead capture is)
-- [./TOOLS_INDEX.md](./TOOLS_INDEX.md) — full tool/intent/component table (source of truth for chat tools)
-- `F:\web-clients\joseph-sardella\jpsrealtor\docs\archive\chat-production\CHAT_V3.md` — previous canonical architecture doc (superseded by this README, retained for history)
-- `F:\web-clients\joseph-sardella\jpsrealtor\docs\archive\chat-production\MIGRATION_ROADMAP.md` — phase plan for the chat-v3 cutover (archived)
-
----
-
-## Migration log (legacy doc audit)
-
-Audit performed 2026-05-21. **Nothing was moved or deleted** — actions are documented for a future archive sweep.
-
-### `docs/chat/` — ENTIRE DIRECTORY → ARCHIVE
-
-Intent-classifier era (pre-v3). All references to the intent classifier, system-prompt tool conflicts, and Dec-19 troubleshooting are stale. The parser primitive in `chat-v2/query-parser.ts` is still in use (Layer 0 re-exports it), but no doc in this folder reflects the chat-v3 dispatch flow.
-
-| File | Classification | Action |
-|---|---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\ARCHITECTURE.md` | OUTDATED | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\CHAT_V2_REWRITE_PLAN.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\GRACEFUL_ERROR_RECOVERY_DEC19.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\INTENT_CLASSIFICATION.md` | OUTDATED | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\INTENT_CLASSIFICATION_IMPROVEMENTS_DEC19.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\README.md` | OUTDATED | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\SYSTEM_PROMPT_TOOL_CONFLICT_FIX_DEC19.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TESTING.md` | OUTDATED (pre-v3 test plan) | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TOOLS.md` | OUTDATED — superseded by `docs/chat-production/TOOLS_INDEX.md` | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat\TROUBLESHOOTING.md` | OUTDATED | Archive |
-
-### `docs/chat-v2/` — ENTIRE DIRECTORY → ARCHIVE
-
-chat-v2 (agent-loop-first) era. The tool definitions in `tools.ts` it documents are still partially live as the Layer 3 fallback, but the architecture, filtering deep-dives, and city/sort implementation notes are all pre-v3 and have been superseded by the chat-v3 dispatch.
-
-| File | Classification | Action |
-|---|---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\ADDING_TOOLS.md` | OUTDATED — supplanted by TOOLS_INDEX sync rule | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\CHAT_SWIPE_QUEUE.md` | PARTIAL — swipe queue still exists in `/chap` map, but doc predates current flow | Archive (re-derive if needed) |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\CITIES_IMPLEMENTATION_ACTION_PLAN.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\CITIES_IMPLEMENTATION_CHECKLIST.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\CITY_LISTINGS_FILTERING_DEEP_DIVE.md` | OUTDATED — filtering now in `chat-v2/listing-query.ts`, reused by Layer 1 | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\COMPREHENSIVE_FILTERING_SYSTEM.md` | OUTDATED | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\ENTITY_RECOGNITION_OPTIMIZATION_PLAN.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\SESSION_SUMMARY_DEC_19_CONTINUATION.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\SORTING_OPTIONS_IMPLEMENTATION.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-v2\README.md` | OUTDATED | Archive |
-
-### `docs/chat-production/` — MIXED
-
-The three roadmap/architecture/registry docs are the **current canonical reference**. The phase summaries, chat-analysis, latency-deep-dive, and the pre-v3 architecture.md document the journey to chat-v3 and are HISTORICAL.
-
-| File | Classification | Action |
-|---|---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\CHAT_V3.md` | CURRENT — superseded by this docs-v2/chat/README.md | Archived 2026-05-21 |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\TOOLS_INDEX.md` | **CURRENT** | **Restored 2026-05-23** to `docs/chat/TOOLS_INDEX.md` — the archive sweep moved it by accident; this is still the source of truth for tools |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\MIGRATION_ROADMAP.md` | CURRENT (phase plan, historical-leaning) | Archived 2026-05-21; consult only for chat-v3 cutover history |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\architecture.md` | HISTORICAL — pre-v3 architecture | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\chat-analysis.md` | HISTORICAL — analysis driving the chat-v3 design | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\latency-deep-dive.md` | HISTORICAL — root-cause analysis for v2 latency | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\phase-1-summary.md` | HISTORICAL — phase log | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\phase-2-summary.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\phase-3-summary.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\phase-4-summary.md` | HISTORICAL | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\chat-production\phase-4-addendum.md` | HISTORICAL | Archive |
-
-### Other chat-adjacent docs
-
-| File | Classification | Action |
-|---|---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\architecture\CHAT_ARCHITECTURE.md` | OUTDATED (Dec 2025, pre-v3) | Archive |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\GROQ_CONTEXT_GUIDE.md` | PARTIAL (Dec 2025) — model table OUTDATED (chat-v3 uses `openai/gpt-oss-20b`, not the listed models), context-building principles may still apply | Re-derive the model table from `narrate.ts` then archive the rest |
-| `F:\web-clients\joseph-sardella\jpsrealtor\docs\AI_ARCHITECTURE_CONTEXT_AWARE.md` | OUTDATED (Dec 2025, pre-v3) | Archive |
+- [TOOLS_INDEX.md](./TOOLS_INDEX.md) — every tool, intent, SSE event and window event
+- [../routing/README.md](../routing/README.md) — how host/subdomain proxying lands traffic on `/chap`
+- [../multi-tenant/README.md](../multi-tenant/README.md) — agent scoping (the chat itself isn't agent-scoped; downstream lead capture is)
+- `docs/archive/chat-production/CHAT_V3.md` and `MIGRATION_ROADMAP.md` — superseded architecture and cutover history; the rest of the old `docs/chat/`, `docs/chat-v2/` and `docs/chat-production/` material is archived under `docs/archive/`

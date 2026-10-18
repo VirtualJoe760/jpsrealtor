@@ -1,8 +1,9 @@
 ---
 title: Documentation Policy
 status: current
-last_verified: 2026-05-21
+last_verified: 2026-10-17
 audience: Claude Code sessions + contributors
+related: [../AGENTS.md, README.md, ARCHITECTURE.md]
 ---
 
 # Documentation policy for jpsrealtor / ChatRealty
@@ -10,7 +11,7 @@ audience: Claude Code sessions + contributors
 > Scoped to `docs/`. The repo-wide rules and the project map live in the root
 > `AGENTS.md`. Renamed from `CLAUDE.md` so every instruction file in this repo
 > uses one convention — see the note in the root `CLAUDE.md` for why the root
-> keeps a two-line Claude Code shim.
+> keeps a thin Claude Code shim (just an `@AGENTS.md` import).
 
 When you work in `/docs/` — or update any architecture-affecting code — follow these rules.
 
@@ -38,10 +39,11 @@ supersedes: path/to/older-doc.md      # only when replacing another doc
 
 ```
 docs/
+├── AGENTS.md                  ← this file (the docs policy; renamed from CLAUDE.md)
 ├── ARCHITECTURE.md            ← thin index, points to area docs
-├── README.md                  ← regenerated index
-├── CLAUDE.md                  ← this file (the docs policy)
+├── README.md                  ← hand-maintained index of the area folders
 ├── tech-debt.md               ← live list of known issues
+├── merge-to-main-test-plan.md ← a finished 2026-07 one-time plan (status: outdated)
 ├── {area}/                    ← one folder per feature area
 │   ├── README.md              ← area overview (the entry point)
 │   └── {topic}.md             ← deep dives for specific topics
@@ -49,8 +51,41 @@ docs/
     └── README.md              ← lists what's here and why
 ```
 
+The area folders that exist today (new areas get a folder + `README.md` and a
+row in **both** `docs/README.md` and `docs/ARCHITECTURE.md`):
+
+| Folder | Covers |
+|---|---|
+| `admin/` | Admin dashboard, "Log in as", moderation, the Loop Console entry |
+| `agent-identity/` | Agent profile data flow, brokerage / affiliation / team model |
+| `agent-onboarding/` | Agent signup, application review, approval emails |
+| `auth/` | NextAuth, sessions, cross-domain transfer/receive, 2FA |
+| `campaigns/` | Ads, co-marketing, Google Ads go-live |
+| `chat/` | CHAP chat, map intents; tool index in `TOOLS_INDEX.md` |
+| `chatrealty-api/` | API productization — `/api/skill/*`, BYOD tenant DBs, packages, ship strategy |
+| `cms/` | Articles, publishing pipeline, newsletter |
+| `commerce/` | Stripe, subscriptions, credits, free-tier gating |
+| `content-templates/` | Instagram carousels, cover slides, staging/reels (also holds the example images) |
+| `crm/` | Contacts, import, FUB |
+| `integrations/` | External APIs (Cloudinary, Twilio, Resend, Meta, Google …) |
+| `listings/` | MLS data, photos, VPS cron, subdivisions |
+| `mcp/` | The MCP server — tools, hosting, scopes, the site-building flow |
+| `multi-tenant/` | Host-based scoping, custom domains, agent directory |
+| `review/` | **The bug queue** — inconsistencies awaiting Joseph's decision, not yet tech debt |
+| `routing/` | `src/proxy.ts`, host rewrites |
+| `seo/` | Canonicals, sitemaps, structured data |
+| `testing/` | The judge loop (Tom, repairer, tickets, Loop Console); `testing/mcp/web-design/` is the operational reference |
+| `theming/` | Theme system, system-preference default |
+
+`testing/agents/tom/` is the exception to the frontmatter rule below: those are
+the judge agent's own instruction files (his `AGENTS.md`, `SOUL.md`, `MEMORY.md`
+…), copied into his runtime by `git pull`, so they carry none.
+
 **Naming rules:**
-- kebab-case filenames
+- kebab-case filenames (existing exceptions — `chat/TOOLS_INDEX.md`,
+  `chatrealty-api/build_plan.md`, the convention-named `AGENTS.md` /
+  `README.md` / `ARCHITECTURE.md`, and Tom's persona files — stay as they are
+  because other files link to them)
 - No dates in filenames (frontmatter `last_verified` carries the date)
 - No `PHASE_1/2/3` style — use descriptive names
 

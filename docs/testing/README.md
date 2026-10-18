@@ -1,7 +1,7 @@
 ---
 title: Judge Loop — automated test-site feedback
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-17
 related: [agents/tom/README.md, tom.md, evidence.md, coverage.md, tickets.md, repairer.md, loop-console.md, mcp/web-design/README.md, ../AGENTS.md, ../content-templates/copy-voice.md]
 ---
 
@@ -16,6 +16,12 @@ what it names, and re-arms the loop.
 > machines and the docs still carry that framing in places. The handshake below
 > survives the collapse intact because the API enforces it server-side, not
 > because the machines were separate.
+>
+> **Verified 2026-10-17 against code, not against the running machines:** the
+> endpoints, models, CLI and console below match the repo. Whether the
+> `judge-loop-check` task and Tom's OpenClaw cron are *currently firing* is
+> runtime state this doc cannot establish — check `/admin/loop` (the presence
+> chips) before assuming the loop is alive.
 
 - **`agents/tom/`** — the judge as built: his files, tools, cron, dispatch
   mechanism, and the environment facts that cost a night to learn. Start here.
@@ -71,6 +77,13 @@ Two rules follow from that, and they're the ones most easily lost:
 - The routine's schedule runs **only while the Claude Code app is open**.
   Nothing is lost when it's closed — reports queue in Mongo — but fixes wait.
 - **A marker file proves dispatch, never liveness.** See `agents/tom/`.
+- **Tom has an operator switch, separate from the toggle.** `tomMode` is
+  `"working"` (the full loop) or `"idle"` (each cron firing pulls his docs and
+  answers console messages, then stops — no dispatch, no judging, no report).
+  It is set only from `/admin/loop` (`PATCH /api/admin/loop { mode }`), never by
+  Tom, and it outranks `testingOn` in the console's derived stage. His Mac cron
+  stays enabled permanently; "turn Tom off" means set Idle. Added 2026-08-06
+  (`src/models/AgentTesting.ts`).
 
 ## The state machine
 
@@ -91,8 +104,9 @@ Two rules follow from that, and they're the ones most easily lost:
         (same command sets testingOn = true)
 ```
 
-Tom's dispatch condition: `testingOn === true && (latestReport is null ||
-latestReport.status === "complete")`.
+Tom's dispatch condition: `mode === "working" && testingOn === true &&
+(latestReport is null || latestReport.status === "complete")`. (`mode` is the
+operator switch — see Gotchas; the other two terms are the handshake.)
 
 **The design's blind spot:** that condition stays true for a build's entire
 duration, because it only clears when the report is POSTed at the end. It
@@ -109,7 +123,7 @@ extra scope). Base: `https://jpsrealtor.com`.
 
 | Call | Body | Purpose |
 |---|---|---|
-| `GET /api/skill/testing` | — | Poll. Returns `{ testingOn, latestReport: { id, title, status, resolutionNotes }, openTickets: { count, fingerprints[≤5] }, unreadMessages }`. `resolutionNotes` (present once complete) is our fix summary — Tom relays it verbatim into the next brief. `openTickets` and `unreadMessages` are the reactive queue and console mail, riding the same poll. |
+| `GET /api/skill/testing` | — | Poll. Returns `{ testingOn, mode, latestReport: { id, title, status, submittedAt, completedAt, resolutionNotes }, openTickets: { count, fingerprints[≤5] }, unreadMessages }`. `mode` is `"idle"` \| `"working"` (the operator switch). `resolutionNotes` (non-null only once complete) is our fix summary — Tom relays it verbatim into the next brief. `openTickets.count` covers open + triaged + in_progress fingerprints; the listed `fingerprints` are the ≤5 heaviest open/triaged ones. `openTickets` and `unreadMessages` are the reactive queue and console mail, riding the same poll. |
 | `POST /api/skill/testing` | `{ title, markdown, testingOff: true }` | Submit the report and turn testing off in one call. `markdown` ≤ 200k chars. |
 | `PATCH /api/skill/testing` | `{ testingOn: false }` | Turn testing off separately. `true` is rejected with 403. |
 | `GET/PATCH /api/skill/tickets` | see `tickets.md` | Triage: fingerprints by population; write goals. Owner-account tokens only. `POST` (filing) is open to any token. |
@@ -142,22 +156,31 @@ real-data hookup attempt, which LEADS the report when it fails
 
 - **Loop Console:** `/admin/loop` — THE admin surface, consolidated 2026-08-05
   (`/admin/agent-feedback` now redirects here): derived stage, the toggle
-  (flippable, with who last flipped it), every report with full markdown on
-  expand + manual status controls, ticket fingerprints, bug reports, feedback
-  submissions, activity feed, and an async chat channel to each agent (a
-  mailbox — Tom reads on his 15-min cron, the repairer on its 5-min poll).
+  (flippable, with who last flipped it), Tom's Idle/Working switch, every report
+  with full markdown on expand + manual status controls, ticket fingerprints,
+  bug reports, feedback submissions, activity feed, and an async chat channel to
+  each agent (a mailbox — Tom reads on his 15-min cron, the repairer on its
+  5-min poll). Live over SSE; see `loop-console.md`.
 - **CLI (`scripts/agent-feedback.mjs`):** `check` (exit 3 = nothing
-  actionable) · `show <id>` · `claim <id>` · `complete <id> "notes"` (also
-  sets `testingOn=true` — one command, both halves of the handshake) ·
+  actionable; exit 0 on a `new` report **or** an unread repairer message) ·
+  `show <id>` · `claim <id>` · `complete <id> "notes"` (also sets
+  `testingOn=true` — one command, both halves of the handshake) ·
   `toggle on|off` · `messages` / `reply "text"` (the console chat) ·
-  `tickets` / `ticket-resolve <fp> "notes"`. Needs `npm install` in the repo
-  root to run.
+  `tickets` (open/triaged/in_progress fingerprints) / `ticket-resolve <fp>
+  "notes"`. Needs `npm install` in the repo root to run. It talks to Mongo
+  directly, so it bypasses the API invariants — the repairer's side of the
+  handshake is held by convention, not by a 403. **It loads `MONGODB_URI` from a
+  hard-coded `F:/web-clients/.../jpsrealtor/.env.local`** (`scripts/agent-feedback.mjs:22`,
+  same in `scripts/test-accounts.ts:54`): on any machine without that path
+  `MONGODB_URI` must already be in the environment or the script cannot connect.
 - **Routine:** scheduled task `judge-loop-check`, every 5 minutes. Claims a new
   report, **verifies each claim against the code before fixing** (reports can be
   wrong about root cause), fixes, updates docs in the same commit, then
   completes — which re-arms Tom.
-- **Storage:** `agenttestreports` + `testingstates` (singleton), models in
-  `src/models/AgentTesting.ts`.
+- **Storage:** `agenttestreports` + `testingstates` (singleton; carries
+  `testingOn` and `tomMode`), models in `src/models/AgentTesting.ts`;
+  `ticketfingerprints` + `looptickets` + `loopmessages`, models in
+  `src/models/LoopTicket.ts`.
 
 ## Test accounts (`scripts/test-accounts.ts`)
 
@@ -175,8 +198,8 @@ npx tsx scripts/test-accounts.ts reset   <email>
 ```
 
 `personas` lists the four GPS-market personas; `inspect` and `list` are
-read-only. Provenance for every mutation lands in the `testaccounts`
-collection.
+read-only, and `--dry-run` on any command resolves and reports without writing.
+Provenance for every mutation lands in the `testaccounts` collection.
 
 Four things about it that are load-bearing:
 
