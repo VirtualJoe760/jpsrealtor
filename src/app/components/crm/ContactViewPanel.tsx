@@ -80,6 +80,7 @@ interface ContactViewPanelProps {
   onEdit: () => void;
   onDialer?: () => void;
   embedded?: boolean;
+  onContactChange?: (patch: Partial<Contact>) => void;
   onDelete: () => void;
   onMessage: () => void;
   isLight: boolean;
@@ -92,6 +93,7 @@ export default function ContactViewPanel({
   onEdit,
   onDialer,
   embedded = false,
+  onContactChange,
   onDelete,
   onMessage,
   isLight
@@ -330,6 +332,7 @@ export default function ContactViewPanel({
 
       if (data.success) {
         setCurrentStatus(newStatus);
+        onContactChange?.({ status: newStatus });
         setIsEditingStatus(false);
         console.log(`[ContactViewPanel] Updated contact status to: ${newStatus}`);
       } else {
@@ -359,6 +362,7 @@ export default function ContactViewPanel({
       const data = await response.json();
       if (data.success) {
         setNotes(data.noteHistory || []);
+        onContactChange?.({ noteHistory: data.noteHistory || [] });
         setNewNoteContent('');
         setShowNewNoteForm(false);
       }
@@ -384,6 +388,7 @@ export default function ContactViewPanel({
       if (data.success) {
         setNotes(data.noteHistory || []);
         setEditingNoteId(null);
+        onContactChange?.({ noteHistory: data.noteHistory || [] });
         setEditNoteContent('');
       }
     } catch (error) {

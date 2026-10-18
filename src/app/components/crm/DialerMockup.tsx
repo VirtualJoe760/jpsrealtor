@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronRight, ListOrdered, Mic, MicOff, Phone, PhoneOff, RotateCcw, ShieldCheck, SkipForward, StickyNote } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, ListOrdered, Mic, MicOff, Phone, PhoneOff, RotateCcw, SkipForward, StickyNote } from 'lucide-react';
 
 import DialerContactPane from './dialer/DialerContactPane';
 import DialerAudioSettings from './dialer/DialerAudioSettings';
+import { paginateQueue } from '@/lib/dialer/queue-pagination';
 import { DIALER_OUTCOMES, attemptElapsedSeconds, type DialerOutcome, type SavedDialerSession } from '@/lib/dialer/session-contract';
 import type { DialerContact } from './dialer/property-context';
 
@@ -30,6 +31,8 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   const swipeRef = useRef<HTMLDivElement>(null);
   const [mobilePanel, setMobilePanel] = useState(0);
   const [queueSearch, setQueueSearch] = useState('');
+  const [queuePage, setQueuePage] = useState(() => Math.floor(Math.max(0, savedSession?.activeAttempt ? savedSession.items.findIndex(item => item.contactId === savedSession.activeAttempt.contactId) : savedSession?.items.findIndex(item => !item.outcome) ?? 0) / 10));
+  const [queueOpen, setQueueOpen] = useState(false);
   const mobilePanels = ['Dialer', 'Contact', 'Queue'];
   const [sessionStarted, setSessionStarted] = useState(!!savedSession?.activeAttempt);
   const autoAnswer = useRef(false);
@@ -72,7 +75,12 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   const [finished, setFinished] = useState(() => !!savedSession && savedSession.items.every(item => !!item.outcome));
   const [notice, setNotice] = useState(savedSession?.activeAttempt ? 'Recovered simulated attempt. End it or finish wrap-up before starting another.' : '');
   const contact = sampleContacts[Math.min(index, sampleContacts.length - 1)];
-  const visibleQueue = useMemo(() => sampleContacts.map((item, position) => ({ item, position })).filter(({ item }) => (item.name + ' ' + item.city + ' ' + item.phone).toLowerCase().includes(queueSearch.toLowerCase())).slice(queueSearch ? 0 : Math.max(0, index - 10), queueSearch ? 50 : Math.max(0, index - 10) + 50), [sampleContacts, queueSearch, index]);
+  const filteredQueue = useMemo(() => sampleContacts.map((item, position) => ({ item, position })).filter(({ item }) => (item.name + ' ' + item.city + ' ' + item.phone).toLowerCase().includes(queueSearch.toLowerCase())), [sampleContacts, queueSearch]);
+  const queue = paginateQueue(filteredQueue, queuePage);
+  useEffect(() => {
+    const current = filteredQueue.findIndex(item => item.position === index);
+    if (current >= 0) setQueuePage(Math.floor(current / 10));
+  }, [index]);
   const active = state === 'ringing' || state === 'connected';
   const recoveredDrafts = Object.entries(draftCache.current).filter(([id, draft]) => id !== contact.record?._id && draft !== savedSession?.items.find(item => item.contactId === id)?.notes);
   const dirty = !!onCheckpoint && ((!results[index] && notes !== (savedSession?.items[index]?.notes || '')) || recoveredDrafts.length > 0);
@@ -149,19 +157,20 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   function reset() { setSessionStarted(false); setResults({}); setFinished(false); selectContact(0); }
 
   return (
-    <section aria-label="Dialer preview" className={`px-3 pb-3 sm:px-6 lg:px-8 ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
+    <section aria-label="Dialer preview" className={`px-3 pb-24 md:pb-3 sm:px-6 lg:px-8 ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
       <div className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isLight ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-amber-400/20 bg-amber-400/10 text-amber-200'}`}>
-        <p className="text-sm"><span className="font-semibold">Interactive preview</span><span className="mx-2 opacity-40">/</span>{contacts?.length ? (savedSession ? 'Saved queue · Calls simulated · Use Save notes or Save outcome to keep progress.' : 'CRM contacts · Calls simulated · Call notes stay local.') : 'Sample contacts · Calls simulated · Nothing saved to CRM.'}</p>
+        <p className="text-xs"><span className="sm:hidden">Calls simulated · {savedSession ? 'Saved queue' : contacts?.length ? 'CRM contacts' : 'Sample contacts'}</span><span className="hidden sm:inline"><span className="font-semibold">Interactive preview</span><span className="mx-2 opacity-40">/</span>{contacts?.length ? (savedSession ? 'Saved queue · Calls simulated · Save notes to keep them.' : 'CRM contacts · Calls simulated · Notes stay local.') : 'Sample contacts · Calls simulated · Nothing saved to CRM.'}</span></p>
         {!savedSession && <button onClick={reset} className="inline-flex items-center gap-2 text-xs font-semibold"><RotateCcw size={13} /> Reset preview</button>}
       </div>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-4">
-        <div><p className={`mb-1 hidden text-xs font-semibold uppercase tracking-[0.18em] xl:block ${subtle}`}>Your calling workspace</p><h2 className="text-lg xl:text-2xl font-semibold tracking-tight">{contact.name}</h2><p className={`mt-2 hidden text-sm xl:block ${subtle}`}>{queueLabel} · {sampleContacts.length} contacts · {sessionStarted ? 'Session started' : 'Ready to start'}</p></div>
+      <div className="mb-3 hidden flex-wrap items-end justify-between gap-4 xl:flex">
+        <div><h2 className="text-lg xl:text-xl font-semibold tracking-tight">{queueLabel}</h2><p className={`mt-1 text-xs ${subtle}`}>{Object.keys(results).length} of {sampleContacts.length} reviewed · {sessionStarted ? 'Session started' : 'Ready to start'}</p></div>
         <div className={`hidden items-center gap-2 rounded-full border px-3 py-2 text-xs xl:flex ${panel}`}><span className="h-2 w-2 rounded-full bg-emerald-500" /> Single-line dialer <span className={subtle}>· Preview</span></div>
       </div>
       <div aria-label="Dialer panels" className={`mb-3 grid grid-cols-3 gap-1 rounded-2xl border p-1 xl:hidden ${soft}`}>
         {mobilePanels.map((label, position) => <button key={label} aria-pressed={mobilePanel === position} aria-controls={'dialer-panel-' + position} onClick={() => showPanel(position)} className={`min-h-11 rounded-xl text-sm font-semibold transition ${mobilePanel === position ? 'bg-emerald-600 text-white shadow-sm' : subtle}`}>{label}</button>)}
       </div>
       <DialerAudioSettings isLight={isLight} locked={active || saving} />
+      <button type="button" aria-expanded={queueOpen} aria-controls="dialer-panel-2" onClick={() => setQueueOpen(!queueOpen)} className={`${button} mb-3 hidden border ${soft} xl:inline-flex`}>{queueOpen ? 'Hide queue' : 'Show queue'} · {sampleContacts.length} contacts</button>
       <p className={`mb-2 text-center text-[11px] xl:hidden ${subtle}`}>Swipe between the dialer and the full contact page <span aria-hidden="true">↔</span></p>
       <div ref={swipeRef} onScroll={event => {
         const container = event.currentTarget;
@@ -171,26 +180,25 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault(); showPanel(Math.max(0, Math.min(2, mobilePanel + (event.key === 'ArrowRight' ? 1 : -1))));
         }
-      }} tabIndex={0} aria-label="Swipeable contact information" className="relative flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-[220px_minmax(0,1fr)_minmax(360px,1.1fr)] xl:gap-5 xl:overflow-visible">
-        <aside id="dialer-panel-2" data-panel="2" aria-label="Dialer queue" className={`order-3 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border xl:order-1 xl:h-auto xl:w-auto ${panel}`}>
-          <div className="p-5"><div className="flex items-center gap-2 font-semibold"><ListOrdered size={17} /> Calling queue</div><p className={`mt-1 text-xs ${subtle}`}>{contacts?.length ? 'Your contact list' : 'Sample follow-up list'} · {sampleContacts.length} contacts</p><div className={`mt-4 h-1.5 overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Object.keys(results).length / sampleContacts.length * 100}%` }} /></div><p className={`mt-2 text-xs ${subtle}`}>{Object.keys(results).length} of {sampleContacts.length} reviewed</p></div>
-          <label className="mx-4 mb-3 block text-xs font-medium">Find in queue<input value={queueSearch} onChange={event=>setQueueSearch(event.target.value)} placeholder="Name, city, or phone" className={`mt-2 min-h-11 w-full rounded-xl border px-3 text-base outline-none focus:border-emerald-500 ${soft}`} /></label>
-          <p className={`px-4 pb-2 text-[11px] ${subtle}`}>Showing up to 50 contacts. Search to find someone quickly.</p>
-          <div className="space-y-1 px-2 pb-3">{visibleQueue.map(({item, position}) => (
-            <button key={item.record?._id || item.name} disabled={saving || active || !!savedSession?.activeAttemptId || finished || !!results[position]} onClick={() => selectContact(position)} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left disabled:cursor-not-allowed ${position === index && !finished ? (isLight ? 'bg-emerald-50' : 'bg-emerald-500/10') : ''}`}>
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${results[position] ? 'bg-emerald-500/15 text-emerald-600' : isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-300'}`}>{results[position] ? <Check size={16} /> : item.initials}</span>
-              <span className="min-w-0 flex-1"><span className="block text-sm font-medium">{item.name}</span><span className={`block text-xs ${subtle}`}>{results[position] || item.label}</span></span>{position === index && !finished && <ChevronRight size={15} className="text-emerald-500" />}
+      }} tabIndex={0} aria-label="Swipeable contact information" className="relative flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)] xl:gap-4 xl:overflow-visible">
+        <aside id="dialer-panel-2" data-panel="2" aria-label="Dialer queue" className={`order-3 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border pb-28 xl:pb-0 xl:col-span-2 xl:order-1 xl:h-auto xl:w-auto ${queueOpen ? 'xl:block' : 'xl:hidden'} ${panel}`}>
+          <div className="flex items-center justify-between gap-3 px-4 pt-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><ListOrdered size={16} /> Calling queue</h3><p className={`text-xs ${subtle}`}>{queue.start}–{queue.end} of {queue.total}</p></div>
+          <label className="mx-4 my-3 block text-xs font-medium">Find in queue<input value={queueSearch} onChange={event => { setQueueSearch(event.target.value); setQueuePage(0); }} placeholder="Name, city, or phone" className={`mt-1 min-h-11 w-full rounded-lg border px-3 text-base outline-none focus:border-emerald-500 ${soft}`} /></label>
+          <div className="px-2 xl:grid xl:grid-cols-2">{queue.items.map(({item, position}) => (
+            <button key={item.record?._id || item.name} aria-current={position === index ? 'true' : undefined} disabled={saving || active || !!savedSession?.activeAttemptId || finished || !!results[position]} onClick={() => selectContact(position)} className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2 text-left disabled:cursor-not-allowed ${position === index && !finished ? (isLight ? 'bg-emerald-50' : 'bg-emerald-500/10') : ''}`}>
+              <span className={`w-5 shrink-0 text-xs tabular-nums ${subtle}`}>{results[position] ? <Check size={14} /> : position + 1}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{item.name}</span><span className={`block text-xs ${subtle}`}>{results[position] || item.phone}</span></span>{position === index && !finished && <ChevronRight size={15} className="text-emerald-500" />}
             </button>
-          ))}</div>
-          <div className={`mx-4 mb-4 rounded-xl border p-3 text-xs leading-relaxed ${soft} ${subtle}`}><ShieldCheck size={15} className="mb-2 text-emerald-500" />Future live queues will check calling eligibility before each attempt.</div>
+          ))}{!queue.total && <p className={`p-4 text-sm ${subtle}`}>No contacts match your search.</p>}</div>
+          <nav aria-label="Queue pagination" className="flex items-center justify-between gap-2 px-4 py-3"><button disabled={queue.page === 0} onClick={() => setQueuePage(queue.page - 1)} className={`${button} border ${soft}`}>Previous</button><span aria-live="polite" className={`text-xs ${subtle}`}>Page {queue.page + 1} of {queue.pages}</span><button disabled={queue.page + 1 === queue.pages} onClick={() => setQueuePage(queue.page + 1)} className={`${button} border ${soft}`}>Next</button></nav>
         </aside>
-        <div id="dialer-panel-0" data-panel="0" aria-label="Dialer and call notes" className={`order-1 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border xl:order-2 xl:h-auto xl:w-auto ${panel}`}>
+        <div id="dialer-panel-0" data-panel="0" aria-label="Dialer and call notes" className={`order-1 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border pb-28 xl:pb-0 xl:order-2 xl:h-auto xl:w-auto ${panel}`}>
           {finished ? <div className="flex min-h-[470px] flex-col items-center justify-center p-8 text-center"><span className="mb-5 rounded-full bg-emerald-500/10 p-5 text-emerald-500"><Check size={30} /></span><h3 className="text-2xl font-semibold">List complete.</h3><p className={`mb-6 mt-2 text-sm ${subtle}`}>You reviewed every contact in this queue.</p><button hidden={!!savedSession} onClick={reset} className={`${button} bg-emerald-600 text-white`}>Start a new preview</button></div> : <>
             <div className={`flex items-center justify-between border-b px-6 py-4 ${isLight ? 'border-slate-100' : 'border-white/10'}`}><span className={`text-xs font-medium ${subtle}`}>CONTACT {index + 1} OF {sampleContacts.length}</span><span role="status" className={`text-xs font-semibold ${state === 'connected' ? 'text-emerald-500' : subtle}`}>{state === 'ready' ? 'Ready to call' : state === 'ringing' ? 'Simulating ringing…' : state === 'connected' ? 'Simulated call connected' : 'Call ended · Add an outcome'}</span></div>
             <div className="px-5 pb-5 pt-5 xl:px-6 xl:pb-6 xl:pt-8"><div className="flex items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-xl font-medium text-emerald-600">{contact.initials}</div><div><h3 className="text-2xl font-semibold tracking-tight">{contact.name}</h3><p className={`mt-1 text-sm ${subtle}`}>{contact.city}</p></div></div>
               <div className="mb-6 mt-5 flex flex-wrap items-center gap-3"><span className={`rounded-full border px-3 py-1 text-xs ${soft}`}>{contact.label}</span><span className={`text-sm tabular-nums ${subtle}`}>{contact.phone}</span></div>
-              {contact.record && <div className={`mb-4 rounded-xl border p-3 text-sm ${soft}`}><p className="font-semibold">Contact details</p><p className={subtle}>{contact.record.emails?.find(email=>email.isPrimary)?.address || contact.record.email || 'No email saved'}</p>{contact.record.organization && <p className={subtle}>{contact.record.organization}</p>}{contact.record.doNotContact && <p className="mt-2 font-semibold text-rose-500">Do not contact · Live dialing must be suppressed</p>}<p className={`mt-1 text-xs ${subtle}`}>Last contact: {contact.record.lastContactDate ? new Date(contact.record.lastContactDate).toLocaleDateString() : 'Not recorded'}</p></div>}
-              <div className={`rounded-xl border p-4 ${soft}`}><p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${subtle}`}>{contact.record?.notes ? 'Saved contact notes' : 'Conversation starter'}</p><p className="text-sm leading-relaxed">{contact.context}</p></div>
+              {contact.record?.doNotContact && <p className="mb-4 text-sm font-semibold text-rose-500">Do not contact · Live dialing must be suppressed</p>}
+              <details className={`border-y py-3 text-sm ${isLight ? "border-slate-100" : "border-white/10"}`}><summary className={`cursor-pointer ${subtle}`}>Conversation notes</summary><p className="mt-2 whitespace-pre-wrap leading-relaxed">{contact.context}</p></details>
               <div className="hidden py-7 text-center xl:block"><p className={`font-mono text-4xl font-light tabular-nums ${active ? 'text-emerald-500' : subtle}`}>{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</p><p className={`mt-2 text-xs ${subtle}`}>Calls simulated · Choose audio above</p></div>
               <div className="hidden justify-center gap-3 xl:flex"><button disabled={state !== 'connected'} aria-pressed={muted} onClick={() => setMuted(!muted)} className={`${button} border ${soft} inline-flex items-center gap-2`}>{muted ? <MicOff size={17} /> : <Mic size={17} />}{muted ? 'Unmute' : 'Mute'}</button>{active ? <button disabled={saving} onClick={endCall} className={`${button} inline-flex items-center gap-2 bg-rose-600 text-white`}><PhoneOff size={17} /> End call</button> : <button disabled={saving || state === 'wrap-up'} onClick={beginCall} className={`${button} inline-flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700`}><Phone size={17} /> {sessionStarted ? 'Simulate call' : 'Start dialer'}</button>}<button disabled={saving || active} onClick={() => advance('Skipped')} className={`${button} border ${soft} inline-flex items-center gap-2`}><SkipForward size={16} /> Skip</button></div>
             </div>
@@ -199,7 +207,7 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
         </div>
         <aside id="dialer-panel-1" data-panel="1" aria-label="Full contact page" className={`order-2 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-hidden rounded-2xl border xl:order-3 xl:h-[min(76vh,900px)] xl:w-auto ${panel}`}><DialerContactPane key={contact.record?._id || contact.name} contact={contact.record} isLight={isLight} visible={mobilePanel === 1} preview={contact} /></aside>
       </div>
-      <div className={`sticky bottom-0 z-10 mt-3 rounded-2xl border p-3 shadow-lg xl:hidden ${panel}`}>
+      <div className={`sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] md:bottom-0 z-10 mt-3 rounded-2xl border p-3 shadow-lg xl:hidden ${panel}`}>
         <div className="mb-3 flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{finished ? 'List complete' : contact.name}</p><p role="status" className={`text-xs ${subtle}`}>{state === 'ringing' ? 'Simulating ringing…' : state === 'connected' ? 'Simulated call connected' : state === 'wrap-up' ? 'Call ended · Choose an outcome' : 'Simulation only · No live call'}</p></div><span className="font-mono text-lg tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</span></div>
         <div className="flex gap-2"><button aria-label={muted ? 'Unmute call' : 'Mute call'} disabled={state !== 'connected'} aria-pressed={muted} onClick={() => setMuted(!muted)} className={`${button} min-h-12 border ${soft}`}>{muted ? <MicOff size={19} /> : <Mic size={19} />}</button>{active ? <button disabled={saving} onClick={endCall} className={`${button} flex min-h-12 flex-1 items-center justify-center gap-2 bg-rose-600 text-white`}><PhoneOff size={18} />End call</button> : <button disabled={saving || finished} onClick={() => { if(state === 'wrap-up') { showPanel(0); } else {beginCall();} }} className={`${button} flex min-h-12 flex-1 items-center justify-center gap-2 bg-emerald-600 text-white`}><Phone size={18} />{state === 'wrap-up' ? 'Add outcome' : sessionStarted ? 'Simulate call' : 'Start dialer'}</button>}<button disabled={saving || active || finished} aria-label="Skip contact" onClick={() => advance('Skipped')} className={`${button} min-h-12 border ${soft}`}><SkipForward size={19} /></button></div>
       </div>

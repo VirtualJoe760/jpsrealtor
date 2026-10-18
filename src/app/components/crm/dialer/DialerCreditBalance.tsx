@@ -15,8 +15,8 @@ export default function DialerCreditBalance({ isLight }: { isLight: boolean }) {
       .then(setData).catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, [retry]);
-  return <div className={`mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm sm:mx-6 lg:mx-8 ${isLight ? 'border-slate-200 bg-white text-slate-700' : 'border-white/10 bg-slate-900 text-slate-200'}`}>
-    <div aria-live="polite">{failed ? <button onClick={() => setRetry(value => value + 1)}>Credits unavailable · Retry</button> : data ? <><strong>{data.availableCredits.toLocaleString(undefined, { maximumFractionDigits: 3 })} {data.sandbox ? 'test ' : ''}credits available</strong><span className="ml-2">· {data.reservedCredits.toLocaleString()} reserved</span><p className="mt-1 text-xs">Stripe: {data.stripe.mode}{!data.stripe.webhookConfigured && ' · Webhook setup required'}{data.sandbox && ' · Test credits cannot fund real calls'}</p></> : 'Loading credits…'}<p className="mt-1 text-xs opacity-70">Calls remain simulated. Live usage billing and auto top-up await pilot verification.</p></div>
-    <Link href="/agent/subscription" target="_blank" rel="noopener noreferrer" className="rounded-lg border px-3 py-2 font-semibold">Manage credits ↗</Link>
-  </div>;
+  return <details className={`mx-3 mb-3 border-b py-2 text-sm sm:mx-6 lg:mx-8 ${isLight ? 'border-slate-200 text-slate-700' : 'border-white/10 text-slate-200'}`}>
+    <summary className="min-h-11 cursor-pointer py-3">{failed ? 'Credits unavailable' : data ? <><strong>{data.availableCredits.toLocaleString(undefined, { maximumFractionDigits: 3 })} {data.sandbox ? 'test ' : ''}credits available</strong><span className="ml-2 text-xs opacity-70">· {data.reservedCredits.toLocaleString()} reserved</span></> : 'Loading credits…'}</summary>
+    <div className="pb-3">{failed && <button onClick={() => setRetry(value => value + 1)} className="min-h-11 underline">Retry credits</button>}{data && <p className="text-xs">Stripe: {data.stripe.mode}{!data.stripe.webhookConfigured && ' · Webhook setup required'}{data.sandbox && ' · Test credits cannot fund real calls'}</p>}<p className="my-2 text-xs opacity-70">Calls remain simulated. Live usage billing and auto top-up await pilot verification.</p><Link href="/agent/subscription" target="_blank" rel="noopener noreferrer" className="inline-block min-h-11 py-3 font-semibold underline">Manage credits ↗</Link></div>
+  </details>;
 }

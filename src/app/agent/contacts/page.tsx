@@ -48,7 +48,7 @@ export default function AgentContactsPage() {
         </div>
 
         {/* Header - Fixed with gear icon - Wrapped with padding */}
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className={`px-4 sm:px-6 lg:px-8 ${activeView === 'dialer' ? 'hidden md:block' : ''}`}>
           <div className="mb-4 sm:mb-6 flex-shrink-0 flex items-start justify-between">
             <div>
               <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${
