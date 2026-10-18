@@ -1,7 +1,7 @@
 ---
 title: Copy and voice — writing the text slides and captions
 status: current
-last_verified: 2026-09-07
+last_verified: 2026-10-17
 owner: content
 related: [./README.md, ./actor-generation.md, ./auto-posting.md]
 ---
@@ -259,6 +259,27 @@ cannot afford to wrap: a cap there converts "runs onto the photo" into
 available, which is a coin flip. Line 2 is 20pt and has the room:
 `"#19  ·  PALM SPRINGS, CA"` measures ~265. Both lines now carry the cap anyway,
 as a floor rather than a licence to fill it.
+
+**And the coin flip was lost on 2026-10-17, so line 1 no longer wraps at all.**
+`"80519 AVENIDA SANTA ISADORA"` is 27 characters against the ~25 the panel
+holds at 28pt. The cap did exactly what the paragraph above predicted: it
+wrapped to `"80519 AVENIDA SANTA"` / `"ISADORA"`, and the second line printed
+straight through `INDIO, CA` at y:510.
+
+The reason the caller could not prevent it is the one `fit-headline.js` already
+makes about the hook: **the address is not authored copy.** It comes off the
+feed, nobody chose its length, and "keep this line short" is not an instruction
+a config can follow. So `simple-luxury.ts` now runs `addressLine1` through
+`fitHeadline` with `maxSize: 28, minSize: 14, maxHeight: 36` — one 28pt line is
+35px, so every two-line candidate fails the height test and the size steps down
+until the string fits on one. Santa Isadora lands at 22pt; anything that fitted
+before still renders at 28, unchanged. `crop: "fit"` stays as the hard
+guarantee underneath it.
+
+That closes the family: the hook, the city and both address lines are now all
+sized or wrapped to the panel rather than trusted to be short. **The CTA
+paragraphs and the room caption are not** — those are authored copy, so the
+character budgets above are still yours to respect.
 
 **Never put a bed or bath count in the cover body.** The spec strip sits three
 lines above it and is built from the feed — `bedroomsTotal` and

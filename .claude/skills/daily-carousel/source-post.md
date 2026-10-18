@@ -152,6 +152,20 @@ whose earlier frames were used or rejected.
 npx ts-node -O '{"module":"commonjs"}' scripts/tmp-selector-dump.ts <listingKey>
 ```
 
+**But the dump is a filter, not a plan — the build re-runs the selector.**
+`tmp-selector-dump.ts` and `build-pending-post.ts` each call
+`selectStagingPhotos` fresh, and it re-reads and re-ranks every photo, so the
+two do not agree. 80519 Avenida Santa Isadora dumped #15, #22, #39, #41, #27,
+#18, #32, #7, #14, #16, #24, #25, #20, #21 and the build staged #17, #18, #37,
+#14, #15, #16, #24, #20, #22 — two frames the dump never showed, and two the
+dump showed that were never offered despite not being excluded.
+
+So the dump is still worth its fraction of a cent: it is how you learn which
+*categories* this listing has (water frames, across-the-counter kitchens,
+doorway bedrooms) and those categories are stable. What is not stable is which
+frame fills which slot. Do not plan a slide around a specific index, and expect
+to look at a frame in the finished post that you never saw in the dump.
+
 `--exclude` filters the selector's own top 14 *after* it has chosen; it can
 remove, never promote. So an exclusion list written off the contact sheet can
 delete almost the whole shortlist without you knowing — 84146 Azzura Way's first
@@ -213,7 +227,17 @@ node scripts/tmp-drop-slide.js <postId> <n>
 ```
 
 It renumbers the remaining slides, trims `generation.photoIndexes` and destroys
-the orphaned Cloudinary asset. 84146 Azzura Way returned kitchen, dining and a
+the orphaned Cloudinary asset.
+
+**And two good renders can still be one bad pair.** 80519 Avenida Santa Isadora
+returned `#17 PASS (great_room)` and `#18 PASS (dining)` — two different room
+keys, so the de-duplication correctly let both through, and both renders are
+clean. They are the same glass dining table, and the stager gave both the same
+action: pulling out a chair. Consecutive slides, one table, one posture, which
+`actor-generation.md` §6 forbids and which reads at Instagram speed as the same
+photograph twice. Nothing in the log says so — only the images do. When you
+drop one of a pair like this, keep the frame that shows a room the post does
+not otherwise have, not the better-composed one. 84146 Azzura Way returned kitchen, dining and a
 great room where the agent is sitting on nothing — hips in mid-air beside the
 sectional, contact support 100%, every gate passed. Dropping it left an 8-slide
 post; re-rolling would have re-gambled two good renders to fix one.
