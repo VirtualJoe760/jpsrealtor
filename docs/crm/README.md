@@ -171,9 +171,11 @@ into campaign types.
 | `/api/leads/buy-intake`, `sell-intake` | yes | IP 10/h | no |
 | `/api/contact` | yes (skipped for trusted internal calls) | IP 10/h | no |
 
-**None of the three lead routes is in the proxy's public list**, so a logged-out
-visitor's submission gets `401` from the `/api` gate before Turnstile or the route
-runs (confirmed on production 2026-10-17; see `../routing/README.md`).
+All three lead routes are in the proxy's `PUBLIC_API_EXACT`, so they reach their
+own Turnstile and rate-limit checks without a session. Until 2026-10-17 they were
+missing from it and the `/api` gate answered every logged-out submission with
+`401` before the route ran — probably since the gate landed 2026-07-02 (see
+`../routing/README.md`). Re-test any new public form with a cookie-less request.
 
 `/api/contact` only emails (Gmail via nodemailer); it does **not** create a
 Contact. Buy/sell intake create or update a Contact (`source: 'website'`) under

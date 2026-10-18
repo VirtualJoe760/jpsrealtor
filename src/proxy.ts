@@ -115,6 +115,15 @@ const PUBLIC_API_EXACT = new Set([
   "/api/newsletter/subscribe",
   "/api/newsletter/unsubscribe",
   "/api/ai/console",
+  // The buy, sell and contact lead forms. Their whole audience is logged-out
+  // visitors, and omitting them here 401'd every submission before the route
+  // ran — confirmed on production 2026-10-17, probably broken since the gate
+  // landed 2026-07-02, the same way /api/agent-branding and /api/og were.
+  // Each route guards itself: Turnstile + a 10/h per-IP rate limit
+  // (/api/contact skips both only for x-internal-secret server calls).
+  "/api/leads/buy-intake",
+  "/api/leads/sell-intake",
+  "/api/contact",
 ]);
 
 // Routes that authenticate themselves (bearer token / webhook signature / cron

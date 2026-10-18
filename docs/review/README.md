@@ -283,16 +283,10 @@ prod) in the session that wrote this section.
   `36d5e626` (2025-11-29). *Fix:* rotate the key in Cloudinary **first** (the old
   value is public whatever happens to the code), then delete the fallback so a
   missing env var fails loudly.
-- **D2 · HIGH ✔ · The lead forms reject logged-out visitors.**
-  `/api/leads/buy-intake`, `/api/leads/sell-intake` and `/api/contact` are in no
-  public list in `src/proxy.ts` (`PUBLIC_API_PREFIXES` / `PUBLIC_API_EXACT`,
-  lines 74–120), so the `/api` gate answers 401 before Turnstile or the route
-  runs. Confirmed on production 2026-10-17: an empty cookie-less POST to each
-  returns `401 {"error":"unauthorized"}`. `BuyIntakeCTA`, `SellIntakeCTA` and
-  `Contact` post without a session. Probably broken since the 2026-07-02 gate,
-  the same way the OG cards and sidebar compliance block were. *Fix:* add the
-  three to `PUBLIC_API_EXACT` (they already carry Turnstile and rate limits) and
-  re-test cookie-less.
+- **D2 · HIGH · The lead forms rejected logged-out visitors — FIXED
+  2026-10-17** (see the Fixed log). Was: the buy, sell and contact routes were in
+  no public list in `src/proxy.ts`, so the `/api` gate answered 401 before
+  Turnstile or the route ran.
 - **D3 · med ✔ · OAuth `state` signing fails open.** `src/lib/oauth-state.ts:16`
   uses `'fallback-secret'` when `NEXTAUTH_SECRET` is unset. *Fix:* throw.
 - **D4 · med ✔ · Two contact creators violate the Contact enums, so the contacts
@@ -374,3 +368,4 @@ prod) in the session that wrote this section.
 | 2026-10-17 | Stale `Domain=.chatrealty.io` cookie claims in docs/auth, index drift in ARCHITECTURE/README | `8692d02e` |
 | 2026-10-17 | **M1** hand-off token leak via an external site's `/api` rewrite: hand-off tokens host-bound (`handoffHost`); `transfer`/`receive`/`impersonate`/`signout-chain` platform-pinned on every host; on a serving external-site host `receive`/`impersonate` → 403; transfer won't launder an impersonation session | this commit |
 | 2026-10-17 | **M2** external-site agents' portal: www sends an agent home only if their subdomain serves no external site (fail-closed); platform pages on a serving subdomain go to www via the host's transfer | this commit |
+| 2026-10-17 | **D2** buy, sell and contact lead forms 401'd logged-out visitors at the `/api` gate: `/api/leads/buy-intake`, `/api/leads/sell-intake`, `/api/contact` added to `PUBLIC_API_EXACT`. Re-tested cookie-less on local dev: empty POSTs now get the routes' own `400` (validation / "Missing CAPTCHA token"); a gated route still gets `401`. Not yet deployed — re-test on production after the push | this commit |
