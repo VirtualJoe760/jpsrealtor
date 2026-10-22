@@ -103,12 +103,17 @@ const STATIC_PAGES_LAST_MODIFIED = '2026-10-14T00:00:00.000Z'
  * County is the right partition because `idx_county_status` already covers
  * {countyOrParish, standardStatus}, the split is deterministic and stable
  * (a URL never migrates between children as inventory changes, which a
- * page-number split does on every crawl), and the largest county is 15,728
+ * page-number split does on every crawl), and the largest county is 28,264
  * URLs — comfortably under the spec's 50,000.
  *
- * Counts on 2026-10-14: LA 15,728 · Riverside 7,883 · San Bernardino 6,353 ·
- * Orange 4,890 · San Diego 2,761 · Ventura 1,545 · Santa Barbara 281 ·
- * Imperial 63. Total 39,504.
+ * Counts on 2026-10-14, resale (A) only: LA 15,728 · Riverside 7,883 ·
+ * San Bernardino 6,353 · Orange 4,890 · San Diego 2,761 · Ventura 1,545 ·
+ * Santa Barbara 281 · Imperial 63. Total 39,504.
+ *
+ * Counts on 2026-10-22, after rentals (B) and multifamily (C) joined the
+ * filter in getListingEntries: A 39,880 · B 15,765 · C 4,372 = 60,017.
+ * Los Angeles is the partition to watch at 28,264; if it reaches 50,000,
+ * split LA by postal code rather than raising the ceiling.
  */
 export const LISTING_COUNTY_PARTITIONS = SOCAL_COUNTIES
 
@@ -508,12 +513,26 @@ export async function getListingEntries(
             // obvious choice.
             countyOrParish: county,
             standardStatus: 'Active',
-            propertyType: 'A',
+            // A=resale, B=rental, C=multifamily. Land (D) stays OUT: a raw
+            // parcel page has no beds/baths/sqft/photos to render, so it is
+            // the one property type here that really would be thin.
+            //
+            // Rentals and multifamily were excluded for no recorded reason
+            // while every A listing shipped. They render the same detail
+            // template, return 200 and already carry `index, follow` —
+            // verified 2026-10-22 on four live URLs across both types — so
+            // they were crawlable but undeclared, which is the combination
+            // that lands a URL in "Discovered – currently not indexed".
+            //
+            // Counts on 2026-10-22: A 39,880 · B 15,765 · C 4,372 = 60,017.
+            // Largest county becomes Los Angeles at 28,264 (15,816 A +
+            // 9,048 B + 3,400 C), still inside the 50,000 ceiling below.
+            propertyType: { $in: ['A', 'B', 'C'] },
             slugAddress: { $exists: true, $ne: null },
           },
           {
             projection: { slugAddress: 1, modificationTimestamp: 1 },
-            // A ceiling, not a page size: the largest county is 15,728 and the
+            // A ceiling, not a page size: the largest county is 28,264 and the
             // sitemap spec allows 50,000. If a county ever crosses this, split
             // THAT county (by postal code, say) rather than raising the number.
             limit: 50_000,
