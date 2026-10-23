@@ -29,6 +29,7 @@ import { useEffect, useMemo } from 'react'
 import {
   MapContainer,
   TileLayer,
+  Pane,
   Rectangle,
   Circle,
   CircleMarker,
@@ -53,6 +54,51 @@ import {
 export type { GridCell, Hotspot, Viewport }
 
 const MILES_TO_M = 1609.34
+
+/**
+ * How many zones get an always-on name.
+ *
+ * Labelling all 50 overlaps into an unreadable mat at valley zoom — the ranked
+ * side list names every one of them, so this only has to cover the ones you
+ * would point at.
+ */
+const ZONE_LABEL_COUNT = 10
+
+/**
+ * Styling for the permanent zone labels.
+ *
+ * Leaflet renders tooltips into its own tooltipPane, outside this component's
+ * DOM subtree, so these rules have to be global — a CSS module or a scoped
+ * style would never match them. A plain <style> element emits global CSS and
+ * keeps the rules next to the markup they belong to.
+ *
+ * Default permanent tooltips are an opaque white box with a border and an
+ * arrow. Fifty of those over a heat map is a mat of chrome, so they are
+ * stripped back to text with a contrasting halo, which stays readable over any
+ * colour the ramp puts underneath.
+ */
+const ZONE_LABEL_CSS = `
+.leaflet-tooltip.cr-zone-label {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #0b0b0b;
+  text-shadow:
+    -1px -1px 0 rgba(255,255,255,0.9), 1px -1px 0 rgba(255,255,255,0.9),
+    -1px  1px 0 rgba(255,255,255,0.9), 1px  1px 0 rgba(255,255,255,0.9);
+}
+.leaflet-tooltip.cr-zone-label--dark {
+  color: #ffffff;
+  text-shadow:
+    -1px -1px 0 rgba(0,0,0,0.85), 1px -1px 0 rgba(0,0,0,0.85),
+    -1px  1px 0 rgba(0,0,0,0.85), 1px  1px 0 rgba(0,0,0,0.85);
+}
+.leaflet-tooltip.cr-zone-label::before { display: none; }
+`
 
 function usd(n: number | null): string {
   return n == null ? '—' : `$${n.toLocaleString()}`
@@ -176,13 +222,27 @@ export default function SalesHeatMap({
     ? 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
     : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
 
+  // Esri splits its canvas basemaps in two: `_Base` is geometry with NO place
+  // names, and `_Reference` is the labels alone, published specifically to be
+  // drawn ON TOP of a data overlay. The first version used only `_Base`, which
+  // is why the map had no city names at all — they were never in that layer.
+  //
+  // The labels go in their own pane above overlayPane (400) so they sit over
+  // the heat blur and the cells instead of under them, and the pane is
+  // pointer-events:none so it cannot swallow clicks meant for a cell or zone.
+  const labelTiles = dark
+    ? 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+    : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+
   return (
-    <MapContainer
-      center={center}
-      zoom={zoom}
-      style={{ height: '100%', width: '100%' }}
-      scrollWheelZoom
-    >
+    <>
+      <style>{ZONE_LABEL_CSS}</style>
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        style={{ height: '100%', width: '100%' }}
+        scrollWheelZoom
+      >
       <TileLayer
         url={tiles}
         maxZoom={16}
@@ -278,6 +338,55 @@ export default function SalesHeatMap({
             </Tooltip>
           </CircleMarker>
         ))}
-    </MapContainer>
+
+      {/*
+        Always-on names for the busiest COMMUNITY zones only.
+
+        The division of labour matters: the Esri reference layer already draws
+        every city name, so labelling a `city_multiple` zone reprints a name
+        the map is showing anyway — at valley zoom that stacked four identical
+        "Palm Springs — multiple communities" strings on top of Esri's own
+        "Palm Springs". Subdivision zones are the ones carrying a name no
+        basemap has (Sun City, Indian Palms, Palm Valley Country Club), so
+        those are the ones worth drawing.
+
+        Still capped at ZONE_LABEL_COUNT, and the ranked side list names all of
+        them regardless. `interactive={false}` keeps a label from eating the
+        click meant for the pin underneath it.
+      */}
+      {showPins &&
+        zones
+          .filter((z) => z.labelKind === 'subdivision')
+          .slice(0, ZONE_LABEL_COUNT)
+          .map((z) => (
+          <CircleMarker
+            key={`l${z.zoneId}`}
+            center={[z.lat, z.lng]}
+            radius={0.1}
+            pathOptions={{ opacity: 0, fillOpacity: 0 }}
+            interactive={false}
+          >
+            <Tooltip
+              permanent
+              direction="top"
+              offset={[0, -8]}
+              opacity={1}
+              interactive={false}
+              className={dark ? 'cr-zone-label cr-zone-label--dark' : 'cr-zone-label'}
+            >
+              {z.label}
+            </Tooltip>
+          </CircleMarker>
+        ))}
+
+      {/*
+        Place names LAST and in their own pane, above the data rather than
+        beneath it. See the labelTiles comment.
+      */}
+      <Pane name="cr-basemap-labels" style={{ zIndex: 450, pointerEvents: 'none' }}>
+        <TileLayer url={labelTiles} maxZoom={16} />
+      </Pane>
+      </MapContainer>
+    </>
   )
 }
