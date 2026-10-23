@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/mongodb';
 import Contact from '@/models/Contact';
+import { contactDetailUpdates } from '@/lib/contact-edit';
 
 export async function PATCH(
   request: NextRequest,
@@ -26,11 +27,15 @@ export async function PATCH(
     await dbConnect();
 
     const { id } = await params;
-    const body = await request.json();
+    if (!/^[a-f\d]{24}$/i.test(id)) return NextResponse.json({ success: false, error: 'Invalid contact' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ success: false, error: 'Invalid contact update' }, { status: 400 });
 
     // Validate allowed fields to update
     const allowedFields = ['status', 'notes', 'tags'];
-    const updates: any = {};
+    let updates: Record<string, unknown>;
+    try { updates = contactDetailUpdates(body); }
+    catch (error) { return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Invalid details' }, { status: 400 }); }
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
@@ -45,14 +50,22 @@ export async function PATCH(
       );
     }
 
+    const unset: Record<string, 1> = {};
+    // Empty legacy phone values would collide with the sparse unique index.
+    if (updates.phone === '') { delete updates.phone; unset.phone = 1; }
+    // An edited address must never retain the previous home's map coordinates.
+    if (updates.address) for (const field of ['latitude', 'longitude', 'lat', 'lng', 'long', 'externalPhotos']) unset[field] = 1;
+
     // Update contact
     const contact = await Contact.findOneAndUpdate(
       {
         _id: id,
         userId: session.user.id,
       },
-      { $set: updates },
-      { new: true, runValidators: true }
+      { $set: updates, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+      // Legacy coordinate aliases are absent from the schema but must be unset too.
+      // All update paths above are explicitly allowlisted before disabling strict mode.
+      { new: true, runValidators: true, strict: false }
     );
 
     if (!contact) {
@@ -62,14 +75,16 @@ export async function PATCH(
       );
     }
 
-    console.log(`[Contact API] Updated contact ${id}:`, updates);
+
 
     return NextResponse.json({
       success: true,
       contact,
     });
   } catch (error: any) {
-    console.error('[Contact API] Error updating contact:', error);
+    if (error?.name === 'ValidationError') return NextResponse.json({ success: false, error: 'Check the contact details and try again' }, { status: 400 });
+    if (error?.code === 11000) return NextResponse.json({ success: false, error: 'That primary phone already belongs to another contact' }, { status: 409 });
+    console.error('[Contact API] Update failed:', error?.name);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

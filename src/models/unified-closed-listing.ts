@@ -1,3 +1,4 @@
+import { ExternalPropertyPhotoSchema } from './PropertyPhotoCache';
 // src/models/unified-closed-listing.ts
 //
 // Unified Closed Listings Collection
@@ -158,6 +159,7 @@ const MediaSchema = new Schema<IMedia>({
 // -----------------------------
 
 export interface IUnifiedClosedListing extends Document {
+  externalPhotos?: { url: string; source?: string; sourcePage?: string; caption?: string; order?: number; discoveredAt?: Date }[];
   // Enhanced MLS Tracking Fields
   mlsSource: string; // Human-readable name (GPS, CRMLS, etc.)
   mlsId: string; // 26-digit MLS association ID
@@ -412,6 +414,7 @@ const UnifiedClosedListingSchema = new Schema<IUnifiedClosedListing>(
     onMarketDate: Date,
     originalOnMarketTimestamp: Date,
 
+    externalPhotos: { type: [ExternalPropertyPhotoSchema], default: undefined },
     // Media & Remarks
     publicRemarks: String,
     supplement: String,
@@ -565,4 +568,6 @@ const UnifiedClosedListing: Model<IUnifiedClosedListing> =
   mongoose.models.UnifiedClosedListing ||
   mongoose.model<IUnifiedClosedListing>("UnifiedClosedListing", UnifiedClosedListingSchema);
 
+// Hot reload must not silently drop newly discovered photo provenance.
+if (!UnifiedClosedListing.schema.path('externalPhotos')) UnifiedClosedListing.schema.add({ externalPhotos: { type: [ExternalPropertyPhotoSchema], default: undefined } });
 export default UnifiedClosedListing;

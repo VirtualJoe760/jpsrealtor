@@ -1,11 +1,42 @@
 ---
 title: Prompt — finish Instagram publish setup
-status: current
-last_verified: 2026-06-04
+status: partial
+last_verified: 2026-07-26
+last_verified_note: Steps 1-6 verified DONE against live Meta state 2026-07-26. The App ID in the original fact table was wrong (see below) and step 4's deploy has landed. Steps 7-8 still outstanding.
 related: [./instagram-posting.md, ./README.md]
 ---
 
 # Prompt — finish Instagram publish setup
+
+## ⚠️ Verified state as of 2026-07-26 — read this before the steps below
+
+Live checks against Meta (read-only) show most of this doc is already done,
+and that its **Meta App ID was wrong**.
+
+| Check | Result |
+|---|---|
+| `instagram_basic` | ✅ granted |
+| `instagram_content_publish` | ✅ granted |
+| IG Business Account resolves from the Page | ✅ `17841400926130218` via Page `109387773924627` |
+| OAuth scope list deployed (step 4) | ✅ on `main` — `src/app/api/auth/meta-ads/connect/route.ts` requests both IG scopes |
+| Stored token type | ⚠️ **USER token, not a Page token** |
+| `GET /me/accounts` | ⚠️ **returns empty** — no Page token obtainable, `business_management` was never granted |
+| Token expiry | ⚠️ **2026-08-04** — this is the "temporary key" |
+| `social:post` on the `crt_live_*` token | ❌ not granted — `post_instagram_carousel` is filtered out of the MCP tool list |
+
+**App ID correction.** The fact table below originally listed
+`3698458803622960` as "app name: chatRealty". That is wrong — queried by name:
+
+| App ID | Actual name | Role |
+|---|---|---|
+| `1706325400803513` | **chatRealty** (link: chatrealty.io) | `META_APP_ID` — **the app production actually uses** |
+| `3698458803622960` | **JPSREALTOR** (link: jpsrealtor.com) | `FACEBOOK_CLIENT_ID` — legacy fallback, only used if `META_APP_ID` is unset |
+
+`src/app/api/auth/meta-ads/connect/route.ts` prefers `META_APP_ID`, so every
+live connection is made against **chatRealty / 1706325400803513**. Any App
+Review, Business Verification, or permission request must be filed on **that**
+app. Filing against 3698458803622960 does nothing for production. Replace the
+dashboard URLs in the steps below accordingly.
 
 Hand this entire document to whoever is finishing the Instagram setup
 (a browser-controlling Claude, another Claude instance, or a human).
@@ -36,7 +67,8 @@ production at https://chatrealty.io.
 
 | Item | Value |
 |---|---|
-| Meta App ID | `3698458803622960` (app name: chatRealty) |
+| Meta App ID (**production — use this one**) | `1706325400803513` (app name: **chatRealty**) — set as `META_APP_ID` |
+| Meta App ID (legacy fallback, NOT in use) | `3698458803622960` (app name: **JPSREALTOR**) — set as `FACEBOOK_CLIENT_ID` |
 | Meta App business id (URL param) | `1260738784844861` |
 | Joseph's FB Page ID | `109387773924627` (Joseph Sardella) |
 | Instagram Business Account ID | `17841400926130218` (handle: instadella) |

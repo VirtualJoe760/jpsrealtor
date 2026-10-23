@@ -1,11 +1,19 @@
 # MEMORY — Tom, Judge
 
-**This file is working state, not an archive.** I re-read it before every
-session, so it stays short enough to read carefully. When a finding is fixed and
-a later session confirms it, I **delete it** — if it taught something general,
-that lesson becomes a rule in `AGENTS.md` or `SOUL.md`, and the bullet still
-goes. Regression checking does not depend on this file: `resolutionNotes`
-arrive fresh from the API on every poll, and that is what I re-verify against.
+**This file is mine, and it is working state — not an archive.** I re-read it
+before every session, so it stays short enough to read carefully. When a finding
+is fixed and a later session confirms it, I **delete it**; if it taught
+something general, that lesson becomes a rule in `AGENTS.md` or `SOUL.md` and
+the bullet still goes. Regression checking does not depend on this file:
+`resolutionNotes` arrive fresh from the API on every poll, and that is what I
+re-verify against.
+
+> **Not synced.** `MEMORY.md` is deliberately absent from step -1's copy list.
+> It used to be in it, which meant every firing overwrote what I had written
+> with the repo's copy — my memory never survived a single cron tick, and the
+> Current site block below was wiped before it could ever be read. The repo
+> copy is a starting point and a backup, nothing more. Dev Claude does not
+> write here; durable instructions come via `AGENTS.md` or `resolutionNotes`.
 
 Sessions are named by **date + the coverage cell targeted**, not by a running
 number — `2026-08-05 seed-gps` says what a session was for; `session 11` does
@@ -24,11 +32,23 @@ not. `docs/testing/coverage.md` is the progress record.
   Finished-Site Checklist passes (all template features working · data seeded
   + responding everywhere, watermark committed, photos + location stack
   populated · subdomain serving the deployment via connect_site). New
-  personas are earned, not rotated. Request `+crtest` accounts only;
-  finished/abandoned accounts get retired by Dev Claude.
-- **Tickets before coverage.** My poll now carries `openTickets` and
-  `unreadMessages`. Open fingerprints get triaged into goals first (AGENTS.md
-  step 1a); console messages get answered on the firing I read them.
+  personas are earned, not rotated.
+- **A brief on an existing site is a PUNCH LIST** (AGENTS.md step 2, PUNCH
+  LIST branch). The unchecked boxes and nothing else. No new persona, no new
+  market, no design direction — those belong to the NEW SITE branch, which
+  only runs when there is no current site. The Current site block above is
+  what decides which branch I'm on.
+- **Accounts are mine now.** I sign up with a `+crtest` address and run
+  `scripts/test-accounts.ts` myself (promote · enrich --partial · token
+  --out=<path>). No throwaway inboxes — the tooling refuses them. Dev Claude's
+  only account job is RETIRING one when its site is finished or abandoned.
+- **Mode before everything.** The poll is step 0 and carries
+  `mode: idle | working`. Idle = pull docs, answer chat, STOP — no in-flight
+  check, no triage, no dispatch, even if a build is running. I never set it.
+- **Tickets before coverage.** My poll also carries `openTickets` and
+  `unreadMessages`. In working mode, open fingerprints get triaged into goals
+  first (AGENTS.md step 1); console messages get answered on the firing I read
+  them, in either mode.
 
 - **Greater Palm Springs only**, for as long as GPS is the only association we
   hold credentials for. This is a constraint, not the goal — see
@@ -45,7 +65,8 @@ not. `docs/testing/coverage.md` is the progress record.
   token, never in a brief. Using it as the build token blocks tenant DB
   provisioning with a 403.
 - **Brief must include:** the database connector from the setup wizard, the
-  site token from Integrations, and the Spark keys path for the seed step.
+  **path** to the token file written by `test-accounts.ts token --out`, and
+  the Spark keys path for the seed step. Paths, never values — all three.
 - Credentials path: `/Users/macdaddyjoe/Downloads/spark-rep (1).txt` — quote the
   spaces and parentheses. Path only, never values.
 - Brief goes in `BRIEF.md`; completion requirements go in the spawn `task`
@@ -56,49 +77,29 @@ not. `docs/testing/coverage.md` is the progress record.
 
 ## Open — not yet fixed
 
-- **The backend chain has never run.** No session has provisioned a tenant
-  database, seeded it, served from it, or configured the nightly refresh. Every
-  cell in `coverage.md` matrix 1 is empty. This is phase 1 and nothing else
-  matters until it passes once.
-- **A fresh account cannot self-serve.** No Integrations tab, so no site token,
-  so no tenant database. This is the wall every session has routed around. Dev
-  Claude promotes the account; I do not work around it.
-- **"Back to listings" loses the search filters.** Marked fixed after one
-  session, broken again the next. The `href` is correct in the DOM; navigation
-  strips the query params. Fragile — re-check every session.
-- **"View all N photos" missing from the swipe deck.** Resolution notes said it
-  was rerouted on-site; it is not present at all. Removed rather than rerouted,
-  or the fix never shipped.
-- **The child exits without reporting.** Two sessions running: builds and
-  starts the dev server, then exits without `SESSION-NOTES.md`, without
-  `COMPLETE`, without a message. The completion requirements now live in the
-  spawn `task` string as well as the brief — unverified whether that fixes it.
+- (none — cleared 2026-08-10)
 
 ## Recent combos — rolling, don't repeat too soon
 
-- Cathedral City / Desert Hot Springs / Thousand Palms — family relocation,
-  mid-market, bright and optimistic
-- Palm Springs — luxury mid-century modern, Movie Colony / Deepwell
-- Rancho Mirage / Indian Wells / Palm Desert — luxury golf and country club
+- (none — cleared 2026-08-10)
 
 ## What I've learned about how I work
 
-Kept because it changes what I do, not because it happened.
+Kept because it changes what I do, not because it happened. Empty right now on
+purpose: every lesson the first twenty sessions produced has been promoted into
+`AGENTS.md` or `SOUL.md` as a rule that fires on its own, which is where a
+lesson belongs once it has stopped being news.
 
-- **A high score can mean I tested nothing.** Two sessions rendered real GPS
-  listings by pointing the site straight at the feed and I scored them 82 and
-  71 — no database, no seed, no cron. I filed one as a milestone. Now I ask
-  *"is this what Joe would want"* before scoring anything, and gate 8 makes the
-  bypass a failure.
-- **The rubric can be the thing that's wrong.** When a build passes my checks
-  and still tested nothing Joe cares about, the finding is the rubric. I say so
-  rather than scoring what I can measure and staying quiet about what I can't.
-- **A comfortable score is the failure mode.** The two sessions with the fewest
-  findings were the two least worth running.
-- **Silence is never information.** A missing completion message means neither
-  alive nor dead. I check the directory, not my inbox.
-- **If an instruction names a tool I don't have, I stop and tell Joe.** Six
-  dispatch attempts died from improvising substitutes.
-- **Stop early.** Finding is cheap for me, fixing is expensive for everyone
-  else. Structural failure → report immediately; otherwise the top few by
-  severity, and say plainly that more exist.
+- (none yet)
+
+---
+
+**Reset 2026-08-10.** Everything above the standing rules was cleared and the
+loop restarted from a known-good process. The previous run accumulated its
+findings against a broken one — my memory was being overwritten on every cron
+firing, so no Current site block ever survived to be read, and each session
+started over without knowing what the last one was finishing. That is fixed
+(see the Not-synced note at the top). Nothing was lost that mattered: the
+lessons are rules now, product defects live in the bug tracker, and coverage
+progress lives in `coverage.md`. This file starts empty because the process it
+was recording is not the process I run any more.

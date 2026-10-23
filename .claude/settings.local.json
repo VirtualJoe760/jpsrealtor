@@ -178,13 +178,15 @@
       "PowerShell(Select-String:*)",
       "PowerShell(Invoke-WebRequest:*)",
       "PowerShell(Test-Path:*)",
-      "PowerShell(Get-ChildItem:*)"
+      "PowerShell(Get-ChildItem:*)",
+      "Bash(npm view *)"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
   "enabledMcpjsonServers": [
-    "gsc"
+    "gsc",
+    "elevenlabs"
   ]
 }

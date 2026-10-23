@@ -51,9 +51,11 @@ curl -s https://jpsrealtor.com/api/skill/testing \
 `resolutionNotes` is non-null **only** once status is `complete`. It's the fix
 summary from the routine — relay it verbatim in the next brief.
 
-`mode` is the operator's switch (AGENTS.md step 1): `idle` = pull docs +
-answer chat, then stop; `working` = the full loop. It outranks the dispatch
-condition and I never set it myself.
+`mode` is the operator's switch (AGENTS.md **step 0**): `idle` = pull docs +
+answer chat, then stop — no in-flight check, no triage, nothing else;
+`working` = the full loop. It outranks the dispatch condition and every step
+below it, which is why the poll runs before anything that could spawn. I never
+set it myself.
 
 ### Submit the report (and disarm, in one call)
 
@@ -136,13 +138,31 @@ Before writing the brief, I need a real tenant account — not the dogfood judge
 
 **The judge token is for the testing API only. It never goes in a brief.**
 
-### Create the throwaway account
+### Create the account — `+crtest` addressing, never a throwaway
 
-1. Open a 10-minute mail inbox in the browser (e.g. https://10minutemail.com)
-2. Copy the address — work fast, the inbox disappears in 10 minutes
-3. Navigate to https://chatrealty.io/signup, sign up with that address
-4. Check the inbox immediately, click the magic link before it expires
-5. Complete the setup wizard using the session persona's details (sketch the persona before creating the account so the wizard fields are consistent)
+**Throwaway inboxes are refused by the tooling.** `scripts/test-accounts.ts`
+gates every write on:
+
+```
+/(\+crtest[a-z0-9-]*@)|(@chatrealty-test\.com$)/i
+```
+
+Anything else exits 2, and admin accounts are refused regardless of address.
+The gate exists because the same database holds ~4,700 real MLS agent records.
+A 10-minute-mail account signs up fine and then cannot be promoted — the
+refusal lands *after* the signup is spent.
+
+1. Pick the address up front: `josephsardella+crtest<N>@gmail.com`. It reaches
+   Joe's real inbox, so the magic link is retrievable and nothing expires in
+   ten minutes.
+2. Sketch the persona **before** signing up, so the wizard fields are
+   consistent with the brief I'm about to write.
+3. Sign up at https://chatrealty.io/signup with that address, click the magic
+   link, complete the setup wizard.
+
+Signup stays in the browser deliberately. There is no `create` command in the
+account tooling and that is by design: the signup flow is under test, and a
+bypass would get used to route around a broken signup — which is the finding.
 
 ### Get the database connector
 
@@ -150,21 +170,73 @@ The setup wizard provisions a ChatRealty-hosted database and provides a **databa
 
 Do NOT enter Spark credentials into the web UI. The wizard may ask for MLS feed credentials under RESO_* field names — record the exact field names shown (they map to keys in the Spark .txt file, but that mapping is undocumented; discovering and filing it is a guide-vs-reality finding).
 
-### Token for the site
+### Bring the account to a known state — `scripts/test-accounts.ts`
 
-After the wizard, go to chatrealty.io/agent/settings and open the **Integrations section on that page** — it is a section, NOT a route; `/agent/settings/integrations` 404s (session 2026-08-04 lost time to exactly that). Mint a skill token there for the site build. This `CHATREALTY_API_TOKEN` goes in the brief. It is different from my `CHATREALTY_JUDGE_TOKEN`.
+This is mine to run. It lives in Joe's repo (which I do not *edit*), needs
+`npm install` in the repo root once, and every command prints a before/after
+diff — `--json` makes the output report-ready.
+
+```bash
+cd /Users/macdaddyjoe/code/chatrealty/jpsrealtor
+npx tsx scripts/test-accounts.ts promote <email> --tier=experienced
+npx tsx scripts/test-accounts.ts enrich  <email> --persona=<key> --partial
+npx tsx scripts/test-accounts.ts token   <email> --out="$DIR/.crt-token"
+```
+
+`personas` lists the available persona keys; `inspect` and `list` are
+read-only; `degrade` and `reset` tear down. There is **no `create` and no
+delete** — signup stays in the browser because that flow is under test, and
+teardown strips what the loop added rather than removing the row.
+
+Three things about it that are load-bearing:
+
+- **`token --out=<path>` writes the plaintext to a file and never prints it.**
+  This is the piece the browser can't give me safely: a `crt_live_` string in
+  my transcript is a gate 5 failure by my own rubric. I put the **path** in the
+  brief, never the value, and I report only the last four if I report anything.
+- **`enrich --partial` stops one step short of site readiness**, leaving the
+  "Coming Soon" gate closed. Full enrichment makes `{subdomain}.chatrealty.io`
+  publicly reachable — which is why personas carry `TEST-` licence numbers and
+  say in their own copy that they are fictitious. Use `--partial` unless the
+  session is specifically testing the readiness gate.
+- **It uses the real Mongoose models, not the raw driver**, because two
+  pre-save hooks carry behaviour a raw write skips: subdomain generation on
+  first promotion, and the `features` rewrite from the tier. A raw-driver
+  promote produces an agent with no subdomain and a paid subscription still
+  wearing free-tier limits — both of which I would then report as product bugs
+  I had caused.
+
+The resulting `CHATREALTY_API_TOKEN` is the **site** token. It is not my
+`CHATREALTY_JUDGE_TOKEN` and the two are never interchangeable.
+
+Minting one by hand instead: chatrealty.io/agent/settings → the **Integrations
+section on that page**. `/agent/settings/integrations` now 307-redirects there
+(fixed Aug 6 after four separate sessions filed it as a critical bug), but the
+section is still the real surface. Prefer `token --out` — the browser path puts
+the token on screen.
 
 ### What goes in the brief
 
 Two items from this setup step:
 - The **database connector** from the wizard — Test Claude uses this so `chatrealty-sync init` knows where to write
-- The **site token** from Integrations — for scaffolding (`npx create-chatrealty-site@latest my-site --token $TOKEN`)
+- The **path to the token file** written by `token --out` — Test Claude reads it itself for scaffolding (`npx create-chatrealty-site@latest my-site --token "$(cat "$DIR/.crt-token")"`). The path goes in the brief; the value never does.
 
 The Spark keys path (`/Users/macdaddyjoe/Downloads/spark-rep (1).txt`) stays the same — Test Claude reads the file and uses those keys to fetch, flatten, and seed data INTO the ChatRealty-hosted database via the connector.
 
-### Request promotion via the report
+Same rule for both: **I hand over paths, never values.** I don't open either
+file, don't echo them, and don't copy a value into a brief, a report, or a
+Telegram message.
 
-Every session report must include a "Next session account" block (see AGENTS.md → Report). Dev Claude promotes the account as part of the fix cycle, giving it full tenant status for GPS MLS scope. If Dev Claude has already promoted an account from the previous session's report, use that one and skip creating a new throwaway.
+### Account state in the report
+
+Every session report still carries a **Session account** block (see
+AGENTS.md → Report) — but it is now a *statement*, not a request: which account
+this site is on, and its checklist state. I promote and mint myself; what Dev
+Claude does with the block is **retirement**, when a site reaches FINISHED or
+Joe abandons it.
+
+On a punch-list session there is no new account at all — the block names the
+current site's account and says "unchanged."
 
 ## Dispatching Test Claude
 
@@ -184,6 +256,11 @@ cp /Users/macdaddyjoe/.openclaw/agents/tom/templates/session-settings.json \
 # write the full brief to "$DIR/BRIEF.md"
 ```
 
+That settings file is what makes the run **non-interactive**: no TUI, so no
+trust dialog and no permission prompts, so nothing can stall an unattended
+build. Session 1 died three times on dialogs before it existed. Copying it is
+not optional.
+
 Then call `sessions_spawn` with these arguments — this is the **verified
 schema**, confirmed against my own tool list:
 
@@ -201,6 +278,25 @@ schema**, confirmed against my own tool list:
 
 **`runTimeoutSeconds` does not exist.** It appears in some documentation; it is
 not in the actual schema. Do not pass it.
+
+### The in-flight marker — written in the same turn as the spawn
+
+```bash
+mkdir -p /Users/macdaddyjoe/.openclaw/agents/tom/state
+cat > /Users/macdaddyjoe/.openclaw/agents/tom/state/session-in-flight.json <<EOF
+{"session": $N, "persona": "...", "market": "...", "positioning": "...",
+ "dir": "$DIR", "dispatchedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+EOF
+```
+
+Cleared only on a `201` from the report POST — see AGENTS.md step 5. A `409`
+means the session is still open and the marker stays.
+
+**Why it must be the same turn:** every cron firing is a fresh session with no
+memory of the last. Without the marker on disk, the next firing sees the
+dispatch condition still holding — it only clears when the report is POSTed at
+the very end — and spawns a second build into the same directory. Nothing is
+visible while that happens.
 
 ### The `task` string
 
@@ -229,7 +325,7 @@ it costs the session its Process score and leaves me unable to tell a finished
 build from a dead one.
 ```
 
-If the child exits without `COMPLETE`, step 0 in AGENTS.md treats the build as
+If the child exits without `COMPLETE`, step 0a in AGENTS.md treats the build as
 incomplete and spawns a continuation — that is the recovery path, not a reason
 to relax this.
 
@@ -253,10 +349,10 @@ sending anything. So the rule splits in two:
 - **No longer true: that the signal can be trusted on its own.** A missing
   message means nothing either way — it does not mean the build is running and
   it does not mean it died. The compensating control is the in-flight marker
-  plus the step 0 check in AGENTS.md, which reads the session list and the
+  plus the step 0a check in AGENTS.md, which reads the session list and the
   directory on disk rather than waiting for a message that may never come.
 
-This is why step 0 exists at all, and why it inspects the filesystem instead of
+This is why step 0a exists at all, and why it inspects the filesystem instead of
 trusting a notification. **Silence requires positive proof of a live child; if
 I can't verify, I treat it as dead.**
 
@@ -364,11 +460,13 @@ above). This is `CHATREALTY_DB_URL` (or the env var name the wizard specifies)
 — it is the connection endpoint for the ChatRealty-hosted database that Test
 Claude seeds. It goes directly in the brief.
 
-### 3. Site token (from Integrations)
+### 3. Site token (from `test-accounts.ts token --out`)
 
-Also from chatrealty.io — minted at agent/settings → Integrations after wizard
-completion. This is `CHATREALTY_API_TOKEN`, used by `npx create-chatrealty-site`
-to scaffold the site. It is specific to the test account, not the judge token.
+Minted by the account tooling into a file — `npx tsx scripts/test-accounts.ts
+token <email> --out="$DIR/.crt-token"` — never displayed. This is
+`CHATREALTY_API_TOKEN`, used by `npx create-chatrealty-site` to scaffold the
+site. It is specific to the test account, not the judge token. The brief
+carries the **path**; Test Claude reads the file.
 
 **The `CHATREALTY_JUDGE_TOKEN` is for the testing API only (poll, report, disarm).
 It is never the site token and never goes in a brief.**
@@ -440,12 +538,16 @@ no-op is the correct outcome — I don't announce that I checked.
 ## Things that are not mine
 
 - **`/Users/macdaddyjoe/code/chatrealty/jpsrealtor`** — Joe's repo. Not mine to
-  edit autonomously. One exception: `docs/testing/agents/tom/` is maintained by
-  Dev Claude and is the authoritative source for my core files — I pull updates
-  from there at the start of each session (see AGENTS.md → step -1).
+  **edit** autonomously. Running a script in it is not editing it, and two
+  things there are explicitly mine: `docs/testing/agents/tom/` is the
+  authoritative source for my core files (I pull from it at step -1, and Dev
+  Claude maintains it), and `scripts/test-accounts.ts` is my account tooling.
 - **`scripts/agent-feedback.mjs`** — the routine's half of the handshake
   (`check`, `claim`, `complete`, `toggle`). If I ran `complete` or `toggle on`,
   I'd be re-arming myself, and the loop would stop being a check on anything.
+  This is the distinction that matters: `test-accounts.ts` sets up *my* side of
+  a session; `agent-feedback.mjs` writes the *other side's* half of the
+  handshake. Running the second would make the loop a check on nothing.
 - **`/admin/loop`** — Joe's window into the loop: the toggle with who
   last flipped it, every report's verbatim markdown, manual status controls.
   I point him there when things are stuck; I don't drive it.

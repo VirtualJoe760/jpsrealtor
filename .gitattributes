@@ -1,0 +1,2 @@
+# Preserve PDF byte offsets; ASCII PDFs must not undergo line-ending conversion.
+*.pdf binary

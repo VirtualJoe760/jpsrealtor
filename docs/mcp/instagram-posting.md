@@ -1,9 +1,27 @@
 ---
 title: Instagram carousel posting via MCP
-status: current
-last_verified: 2026-06-04
-related: [./README.md, ./scopes-and-safety.md, ./tools.md]
+status: partial
+last_verified: 2026-07-26
+last_verified_note: Flow and constraints verified against code 2026-07-26. Two prerequisites below are NOT met on the live account — see "Known gaps".
+related: [./README.md, ./scopes-and-safety.md, ./tools.md, ./instagram-finish-setup-prompt.md]
 ---
+
+> **Known gaps as of 2026-07-26** (verified read-only against live Meta state):
+>
+> 1. **The stored credential is a USER token, not a Page Access Token.** The
+>    route falls back to `meta.accessToken` when `meta.pageAccessToken` is
+>    absent, and today only the user token exists. Meta's Content Publishing
+>    API expects a Page token for `/{ig-user-id}/media` and `media_publish`, so
+>    publish may fail even though the IG account resolves fine.
+> 2. **`GET /me/accounts` returns empty**, so no Page token can currently be
+>    derived. `business_management` is requested by the OAuth flow but was
+>    never granted on the live connection — most likely why. A reconnect
+>    (`auth_type=rerequest` is already set) should re-prompt for it.
+> 3. **The user token expires 2026-08-04.** Long-lived Page tokens derived from
+>    a long-lived user token do not expire; that exchange is not implemented yet.
+>
+> Net: treat the "Prerequisites" table below as the target state, not the
+> current state. See [instagram-finish-setup-prompt.md](./instagram-finish-setup-prompt.md).
 
 # Instagram carousel posting via MCP
 

@@ -53,6 +53,7 @@ const TOOL_SCOPE: Record<string, string> = {
   find_comparables: "listings:read",
   search_closed_listings: "listings:read",
   analyze_listing_cashflow: "listings:read",
+  get_area_cashflow: "listings:read",
   find_cashflowing_listings: "listings:read",
   get_going_rate: "listings:read",
   // Market data

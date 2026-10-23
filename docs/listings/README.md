@@ -1,7 +1,7 @@
 ---
 title: Listings / MLS
 status: current
-last_verified: 2026-06-05
+last_verified: 2026-10-18
 related: [../multi-tenant/README.md]
 ---
 
@@ -9,14 +9,7 @@ related: [../multi-tenant/README.md]
 
 ## TL;DR
 
-ChatRealty aggregates listings from **8 MLS associations** (CRMLS, CLAW, Southland
-Regional, GPS, High Desert, Bridge, Conejo Simi Moorpark, ITECH) into a single
-MongoDB collection `unified_listings` (~76k active listings, ~2.1M photos).
-Ingestion runs on a **separate DigitalOcean VPS** via Python cron jobs — not on
-Vercel. The Next.js app is read-only against this data; the VPS pipeline is the
-write path. A separate `unified_closed_listings` collection holds 5 years of
-closed sales powering the CMA system. Subdivisions and cities are pre-aggregated
-into their own collections with pre-built `cmaStats` for sub-200ms reads.
+ChatRealty aggregates listings from **8 MLS associations** (CRMLS, CLAW, Southland Regional, GPS, High Desert, Bridge, Conejo Simi Moorpark, ITECH) into a single MongoDB collection `unified_listings` (~76k active listings, ~2.1M photos). Ingestion runs on a **separate DigitalOcean VPS** via Python cron jobs — not on Vercel. The VPS pipeline writes native MLS fields. The Next.js property-photo lookup may seed separately attributed externalPhotos on closed listings; other MLS fields remain read-only. A separate `unified_closed_listings` collection holds 5 years of closed sales powering the CMA system. Subdivisions and cities are pre-aggregated into their own collections with pre-built `cmaStats` for sub-200ms reads.
 
 ## Files
 
@@ -37,11 +30,7 @@ into their own collections with pre-built `cmaStats` for sub-200ms reads.
 
 ## UnifiedListing model
 
-The `unified_listings` collection holds Active/Pending listings from all 8 MLSs.
-Schema is **camelCase** (flattened from RESO `StandardFields`) with 100+ optional
-fields covering core details, location, timestamps, media, features, agent/office,
-schools, IDX compliance, and a Mixed-type `cmaStats` block written by the
-listing-CMA cron.
+The `unified_listings` collection holds Active/Pending listings from all 8 MLSs. Schema is **camelCase** (flattened from RESO `StandardFields`) with 100+ optional fields covering core details, location, timestamps, media, features, agent/office, schools, IDX compliance, and a Mixed-type `cmaStats` block written by the listing-CMA cron.
 
 | Property | Rule |
 |---|---|
@@ -63,8 +52,7 @@ listing-CMA cron.
 
 ## MLS sources
 
-8 associations aggregated into `unified_listings`. ~76k active listings, ~2.1M
-photos. Coverage:
+8 associations aggregated into `unified_listings`. ~76k active listings, ~2.1M photos. Coverage:
 
 | Short name | Full name | MLS ID | Coverage |
 |---|---|---|---|
@@ -77,14 +65,11 @@ photos. Coverage:
 | `CONEJO_SIMI_MOORPARK` | Conejo Simi Moorpark | `20160622112753445171000000` | Conejo Valley |
 | `ITECH` | ITECH | `20200630203206752718000000` | California |
 
-All 8 MLSs go through the Spark Replication API, which exposes RESO-compliant
-`StandardFields` — meaning we ingest with **one flattener** rather than per-MLS
-mapping.
+All 8 MLSs go through the Spark Replication API, which exposes RESO-compliant `StandardFields` — meaning we ingest with **one flattener** rather than per-MLS mapping.
 
 ## VPS cron pipeline
 
-Ingestion runs on a **DigitalOcean droplet** (`/root/jpsrealtor`), not on Vercel.
-The Next.js app on Vercel is read-only against MongoDB.
+Ingestion runs on a **DigitalOcean droplet** (`/root/jpsrealtor`), not on Vercel. Next.js reads native MLS fields; the CRM lookup may seed separately attributed externalPhotos on closed listings.
 
 Schedule from `F:\web-clients\joseph-sardella\jpsrealtor\crontab.vps`:
 
@@ -100,21 +85,15 @@ Schedule from `F:\web-clients\joseph-sardella\jpsrealtor\crontab.vps`:
 
 Pipeline order (conceptually): **fetch → status → CMA → photos**.
 
-`--purge` flag is **DISABLED** after the April 6 2026 incident that wiped active
-listings. Stale listings are not auto-removed; status transitions are the only
-way records leave Active.
+`--purge` flag is **DISABLED** after the April 6 2026 incident that wiped active listings. Stale listings are not auto-removed; status transitions are the only way records leave Active.
 
 ## Closed listings
 
-`unified_closed_listings` is a **separate collection** mirroring the
-`unified_listings` schema but for closed sales. It is the data source for the
-CMA system. Header of `unified-closed-listing.ts` lists all 8 MLS IDs explicitly.
-Retention: 5 years via TTL index. Historical backfill runs daily (10 AM cron).
+`unified_closed_listings` is a **separate collection** mirroring the `unified_listings` schema but for closed sales. It is the data source for the CMA system. Header of `unified-closed-listing.ts` lists all 8 MLS IDs explicitly. Retention: 5 years via TTL index. Historical backfill runs daily (10 AM cron).
 
 ## Subdivisions
 
-1,424 documents in the `subdivisions` collection, pre-aggregated from
-`unified_listings`. Each subdivision carries:
+1,424 documents in the `subdivisions` collection, pre-aggregated from `unified_listings`. Each subdivision carries:
 
 - Core identity (`name`, `slug`, `normalizedName`, `city`, `county`, `region`)
 - Aggregate stats (`listingCount`, `priceRange`, `avgPrice`, `medianPrice`, property-type counts)
@@ -122,12 +101,9 @@ Retention: 5 years via TTL index. Historical backfill runs daily (10 AM cron).
 - **`communityFacts`** — deep deck (HOA fees, golf/pickleball/tennis, security, demographics, market velocity, view corridors, airport noise, flood, casita prevalence — see `subdivisions.ts` for full enum list)
 - **`cmaStats`** — pre-built nightly by `build-subdivision-cma.py`: `active`, `closed`, `absorptionRate`, `quality.confidence`, `bySubType[]`, `topActiveComps`, `topClosedComps`, `trends`, `narrative`
 
-The pre-built model pattern is the performance win: subdivision pages read
-`cmaStats` directly in **~200ms**, vs ~15s for live aggregation. The PGA West
-hierarchy is live (parent subdivision → child sub-subdivisions).
+The pre-built model pattern is the performance win: subdivision pages read `cmaStats` directly in **~200ms**, vs ~15s for live aggregation. The PGA West hierarchy is live (parent subdivision → child sub-subdivisions).
 
-Cities use the same pattern (`cities.ts`) — fewer fields, no per-subType
-breakdown, but same aggregation cron.
+Cities use the same pattern (`cities.ts`) — fewer fields, no per-subType breakdown, but same aggregation cron.
 
 ## Photos
 
@@ -138,18 +114,10 @@ breakdown, but same aggregation cron.
 | Spark Replication API direct | `fetch-primary-photos.ts` batches up to 50 keys per request, grouped by `mlsId`, with 1h Next cache |
 | Cloudinary | On-demand uploads (not part of the cron path) |
 
-Photo sync is asynchronous: the photo cron (9 AM / 9:30 AM) runs hours after
-the fetch cron (6 AM), so new listings briefly show with placeholder images
-until the next sync wave.
+Photo sync is asynchronous: the photo cron (9 AM / 9:30 AM) runs hours after the fetch cron (6 AM), so new listings briefly show with placeholder images until the next sync wave.
 
 **Detail-page photos are DB-first (June 2026).** `/api/listings/[listingKey]/photos`
-now serves the synced `media[]` array first and only falls back to a live Spark
-fetch when the DB has no stored media (then `primaryPhotoUrl` as a last resort);
-the response carries a `source: "db" | "spark" | "primaryPhotoUrl" | "none"`
-field. Previously the route *always* hit Spark live and ignored `media[]` — so a
-listing that went **off-market** (and thus dropped out of the live Spark feed)
-returned zero photos and showed a "no photo" placeholder even though its photos
-were already synced. Reading `media[]` keeps photos working after off-market.
+now serves the synced `media[]` array first and only falls back to a live Spark fetch when the DB has no stored media (then `primaryPhotoUrl` as a last resort); the response carries a `source: "db" | "spark" | "primaryPhotoUrl" | "none"` field. Previously the route *always* hit Spark live and ignored `media[]` — so a listing that went **off-market** (and thus dropped out of the live Spark feed) returned zero photos and showed a "no photo" placeholder even though its photos were already synced. Reading `media[]` keeps photos working after off-market.
 
 ## Frontend routes
 
@@ -164,9 +132,7 @@ were already synced. Reading `media[]` keeps photos working after off-market.
 | `/neighborhoods/[cityId]/[slug]` | Subdivision page (reads `subdivisions` + `cmaStats` + `communityFacts`) |
 | `/neighborhoods/[cityId]/[slug]/buy` and `/sell` | Intent-targeted variants |
 
-Map architecture (clustering, polygon boundaries, SSE streaming, hierarchical
-zoom strategy) is documented separately — see
-`F:\web-clients\joseph-sardella\jpsrealtor\docs\map\MAPPING_SYSTEM_ARCHITECTURE.md`.
+Map architecture (clustering, polygon boundaries, SSE streaming, hierarchical zoom strategy) is documented separately — see `F:\web-clients\joseph-sardella\jpsrealtor\docs\map\MAPPING_SYSTEM_ARCHITECTURE.md`.
 
 ## Gotchas
 
@@ -182,8 +148,7 @@ zoom strategy) is documented separately — see
 
 ## Reference implementation
 
-`F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\mls-listings\route.ts` is
-the canonical search endpoint. It demonstrates:
+`F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\mls-listings\route.ts` is the canonical search endpoint. It demonstrates:
 
 - `listingType` → `propertyType` code mapping (sale=A, rental=B, multifamily=C, land=D)
 - Full filter surface (price, beds/baths, sqft, lot, year, pool/spa/view/garage, HOA, gated/senior, land type, city, subdivision, mlsSource, excludeKeys for swipe)
@@ -191,8 +156,7 @@ the canonical search endpoint. It demonstrates:
 - Aggregation pipeline: match → sort → page → openhouses lookup → project (including computed `pool`, `spa`, `hasHOA`, `primaryPhotoUrl` fallback chain)
 - CDN cache headers (`s-maxage=3600`, `stale-while-revalidate=604800`)
 
-For single-listing lookups or `$near` geospatial radius searches, use
-`F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\unified-listings\route.ts`.
+For single-listing lookups or `$near` geospatial radius searches, use `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\unified-listings\route.ts`.
 
 ## Related
 
@@ -222,3 +186,11 @@ Legacy `/docs/` files reviewed for this rewrite:
 | Map bug-fix docs (12 files) | `docs\map\MAPVIEW_FIXES.md`, `MAP_FIXES_COMPLETE.md`, `MAPLIBRE_RELOAD_FIX.md`, `SWIPE_QUEUE_FIX.md`, `MAP_INITIALIZATION_FIX.md`, `URL_BOUNDS_FIX_V2.md`, `INFINITE_LOOP_FIX.md`, `MAPLIBRE_FROZEN_ON_LOAD.md`, `MAPLIBRE_FROZEN_SOLUTION.md`, `MAPLIBRE_FROZEN_FOLLOWUP.md`, `MAPLIBRE_FROZEN_FINAL_SOLUTION.md`, `REFACTOR_PLAN.md`, `UNIFIED_LISTINGS_AUDIT.md` | OUTDATED | archive (all completed work / postmortems) |
 | VPS Closed Listings | `docs\deployment\VPS_CLOSED_LISTINGS.md` | PARTIAL | merged-here (TTL + cron); deployment-step prose to archive |
 | Cron Setup | `docs\deployment\CRON_SETUP.md` | OUTDATED | archive (superseded by `crontab.vps` as source of truth) |
+
+## CRM dialer property panels
+
+The [dialer preview](../crm/dialer/README.md) includes mobile Home and Comps panels. They now reuse saved contact facts, ContactPropertyCarousel, the read-only contact enrichment endpoint, and contact-owned closed-sale comparables. Property enrichment can return a neighborhood reference, so the workspace preserves match cautions and saved facts. Photo lookup independently requires address-matched metadata and never substitutes neighborhood images. Comps use unified_closed_listings, real date/radius filters, and available like-kind facts; returned-subset medians are labeled. Active asking prices are distinct from sale prices. No sample listing records or prices are fabricated.
+
+Sold-comps map interactions (verified 2026-10-18): pointer hover or keyboard focus previews the MLS photo, sold price, address and beds/baths/size without zooming. Click/tap opens a native property-details dialog with saved closed-listing media, description, sale/build/lot/pool facts, attribution and external research links. Sale-list Property details offers the same view, including sales without map coordinates. The contact-owned comparables route projects primaryPhotoUrl/media/publicRemarks/listingId from unified_closed_listings; the shared photo lookup may separately reuse exact-address active MLS photos or discover public property-page photos. Missing facts/photos remain explicitly unavailable. Mobile map gestures preserve one-finger panel scrolling.
+
+Property photo enrichment (2026-10-18): contacts and sold-property dialogs share free, best-effort address-verified photo lookup and provenance-aware caching. POST lookups can seed declared externalPhotos fields on contacts/closed listings; MLS media is preserved. Source blocks are reported; no paid search provider or bypass is used. See [property-photo-discovery](../crm/property-photo-discovery.md).

@@ -50,6 +50,9 @@ export interface ICity extends Document {
   // Coordinate validation
   isOcean?: boolean; // Flag for cities with coordinates in ocean (to filter from map)
 
+  // Area rental cash-flow rollup (build-cashflow-profile.py on the VPS)
+  cashflowProfile?: any;
+
   // Metadata
   lastUpdated: Date;
   createdAt: Date;
@@ -102,6 +105,11 @@ const CitySchema = new Schema<ICity>(
 
     // Coordinate validation
     isOcean: { type: Boolean, default: false },
+
+    // Area rental cash-flow rollup, written by the chatrealty-backend PyMongo
+    // job build-cashflow-profile.py. Mixed so strict mode doesn't drop it on
+    // .lean() reads — same block shape as subdivisions.cashflowProfile.
+    cashflowProfile: { type: Schema.Types.Mixed },
 
     // Metadata
     lastUpdated: { type: Date, default: Date.now },

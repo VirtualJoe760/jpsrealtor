@@ -1,7 +1,7 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-16
 related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
 ---
 
@@ -67,6 +67,70 @@ Read-only. Aggregated data that doesn't tie to a single listing.
 | `get_subdivision_cma` | `market:read` | `GET /api/skill/market/subdivisions/[id]` | Full CMA stats for a subdivision (the 1,424-subdivision pre-built model). Includes hierarchy parent for PGA West-style nested subdivisions. |
 | `get_neighborhood_info` | `market:read` | `GET /api/skill/market/neighborhoods/[slug]` | POIs, demographics, schools — same data backing the public neighborhood page. |
 | `get_mortgage_rates` | `market:read` | `GET /api/skill/market/mortgage-rates` | Live rates from API Ninjas + FRED. Useful for landing page CTAs. |
+
+### 3a. Investment · rental cash-flow · `shipped`
+
+Read-only, and **no analysis at request time**. Every figure is precomputed by
+the `chatrealty-backend` repo's PyMongo jobs on the VPS (Tue + Fri ~2 AM) and
+stored on the documents; the routes read it (shared read layer:
+`src/lib/listings/cashflow-query.ts`). The data contract — block shapes,
+coverage, reading rules — is `chatrealty-backend/docs/tools/`. If the AI has to
+do the math, the tool is wrong: it should be reading a block.
+
+| Tool | Scope | Route | Description |
+|---|---|---|---|
+| `get_area_cashflow` | `listings:read` | `GET /api/skill/rentals/area-cashflow` | **Whole-area answer in one `findOne`.** Returns `subdivisions`/`cities.cashflowProfile` (from `build-cashflow-profile.py`) whole: verdicts for long-term, seasonal-asking, seasonal-achieved and short-term (always `unclear`), median + best break-even down payment, per-bedroom economics, rent provenance, top cash-flowing listings, caveats in `verdict.notes`. Takes `slug`, or `name` (+ `city`), optional `scope`. Misses and empty areas are **200s** (`found:false` + `candidates`, or `available:false` + `parentCity`/`childSubdivisions`) — a 404 surfaces as an MCP error and invites a `report_bug` for a routine miss. 77 subdivision slugs equal a city slug (`chula-vista`); without a scope the city wins and the community is returned in `alsoMatches`. Coverage 2026-10-15: 746 / 1,426 subdivisions, 837 / 1,047 cities. |
+| `find_cashflowing_listings` | `listings:read` | `GET /api/skill/listings/cashflow` | Active listings that cash-flow in an area, sorted by cash flow / cap rate / cash-on-cash / price. **`strategy`** = `longTerm` (default, top-level `cashflowStats`) \| `seasonal` (asking) \| `closedSeasonal` (achieved) → `cashflowStats.strategies.<s>`. Every figure on a row (cash flow, cap rate, rent, break-even) comes from that one block: the top level is long-term only, and mixing the two shipped as a backend bug once (`6ade664`); unknown strategies are a 400, not a silent long-term answer. **Junk guards:** list price ≥ $50k, cap rate ≤ 30%, and `propertySubType` not `Co-Ownership` / `Own Your Own` / `Timeshare`. Fractional listings price a share against a whole-home rent; before the guard (2026-10-16) one was the #1 result in 4 of the 9 cities that have any (Palm Desert: 72985 Somera Road, $289k). `build-cashflow.py` doesn't exclude them yet, so the filter lives here. **Paths:** 20/25% down at the stored rate (`assumptions.mortgageRate`, the live 30-yr written by each backend run) is an indexed find+sort with no math. A custom down payment or rate re-derives from the same strategy's `fixedCosts`, which is the one sanctioned request-time calculation. Pre-narrowing on `breakEvenDownPct ≤ down` replaced `down20.cashflows`, which dropped every listing that only works above 20% down. Break-even is nulled at a custom rate. A custom rate scores **every** candidate in the area, with no cap (see the note under this table). **Indexes:** long-term sorts use `city_cashflow20` / `zip_cashflow20`. The seasonal sorts have **no index yet** and sort in memory over the whole city (0.4–0.9 s mid-size, 6–10 s Los Angeles, measured 2026-10-16). See the note under this table. |
+| `analyze_listing_cashflow` | `listings:read` | `GET /api/skill/listings/[listingKey]/cashflow` | One listing's `cashflowStats`: rent estimate + confidence, cap rate, NOI, both down-payment scenarios, `fixedCosts`. `null` means no rent signal — never `$0`. |
+| `get_going_rate` | `listings:read` | `GET /api/skill/rentals/going-rate` | Long-term rent going rate for a subdivision (`rentStats`) or ZIP (`rent_rates`). |
+
+**Custom rate: every candidate is scored, with no cap.** With a `mortgageRate`, the
+re-derive path used to read `.limit(3000)` rows, unsorted and each carrying
+every photo URL. Los Angeles has 3,977 long-term and 3,174 achieved-seasonal
+candidates, so the ranking came from an arbitrary subset, and the read alone
+took 2–4 s and ~94 MB. Now (`findCashflowingListings`):
+
+- **The stored break-even still pre-narrows at any rate.** A listing built at
+  rate r₀ cash-flows at down payment d and rate r exactly when
+  `be₀ < 1 − (1−d)·pay(r)/pay(r₀)`, where pay is P&I per dollar borrowed. The
+  bound is exact in both directions: a lower rate widens it instead of dropping
+  the filter. It is floored at 0, because the backend stores a below-zero
+  break-even as 0, and gets 1e-4 of slack for the 4-decimal rounding.
+- **r₀ is read off one row**, since each backend run writes one rate. Rows
+  built at a higher rate, or with no `breakEvenDownPct` (stale blocks), are
+  scored unfiltered. A null break-even still means never.
+- **Scoring reads a ~250-byte projection with no cap.** Full rows, with
+  `media`, are fetched for the top `limit` only. Whole-dollar ties break on
+  `listingKey`.
+- **The fast-path probe is skipped** when the rate differs from r₀, because it
+  can't succeed. With no area, that probe was a second full pass.
+
+Verified 2026-10-16 against an uncapped scan:
+
+- Los Angeles at 6.5% / 20% down returns the true top 25, under all four sorts.
+- The full winner list matched for long-term and achieved-seasonal at
+  4–10% × 10/20/30% down, plus seasonal in Palm Desert / 92211 and achieved
+  seasonal in Palm Springs.
+- Los Angeles takes 0.2–0.4 s warm. With no area it takes ~13 s: one pass over
+  ~47k documents, because `breakEvenDownPct` has no index. The capped read it
+  replaces took 3.7 s by itself, and ranked only 3,000 rows.
+
+**Seasonal sort indexes — not created yet.** The contract asks for equivalents
+of `city_cashflow20` / `zip_cashflow20` on the two seasonal paths. They are
+deliberately **not** declared in `src/models/unified-listing.ts`: Mongoose
+`autoIndex` would build them on production at the next deploy. Partial indexes
+keep them small (≈570 seasonal and ≈2,040 achieved-seasonal listings cash-flow,
+out of ~86k). They apply because the fast-path query always includes
+`…down20.cashflows: true`:
+
+```js
+for (const s of ["seasonal", "closedSeasonal"]) {
+  const sp = `cashflowStats.strategies.${s}.scenarios.down20`;
+  const opts = { partialFilterExpression: { [`${sp}.cashflows`]: true } };
+  db.unified_listings.createIndex({ city: 1, [`${sp}.monthlyCashflow`]: -1 }, { ...opts, name: `city_cashflow20_${s}` });
+  db.unified_listings.createIndex({ postalCode: 1, [`${sp}.monthlyCashflow`]: -1 }, { ...opts, name: `zip_cashflow20_${s}` });
+}
+```
 
 ### 4. CMS · Landing pages · `Phase 1` (partly shipped)
 

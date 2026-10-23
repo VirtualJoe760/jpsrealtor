@@ -1,7 +1,7 @@
 ---
 title: Theming
 status: current
-last_verified: 2026-07-24
+last_verified: 2026-10-17
 ---
 
 # Theming
@@ -108,3 +108,7 @@ cookie writes, no preference change, no-ops when tenant-locked. The old
 them sight-unseen, so that's a deliberate, separate visual-review pass
 ("Phase 3"). The `dark` class IS already applied (SSR + client) in
 anticipation.
+
+## Contacts dialer preview
+
+F:\web-clients\joseph-sardella\jpsrealtor\src\app\components\crm\DialerMockup.tsx receives isLight from the Contacts page and supports both resolved themes without adding another ThemeProvider. The preview does not override the user's theme. DialerContactPane.tsx embeds ContactViewPanel with the same isLight input; DialerPropertyPanels.tsx uses that input for saved property facts, MLS results, and research links.

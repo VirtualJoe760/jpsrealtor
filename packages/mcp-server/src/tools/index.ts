@@ -15,6 +15,7 @@ import { show_listing_board } from "./show_listing_board.js";
 import { find_cashflowing_listings } from "./find_cashflowing_listings.js";
 import { get_going_rate } from "./get_going_rate.js";
 import { analyze_listing_cashflow } from "./analyze_listing_cashflow.js";
+import { get_area_cashflow } from "./get_area_cashflow.js";
 import { get_listing } from "./get_listing.js";
 import { get_listing_photos } from "./get_listing_photos.js";
 import { find_comparables } from "./find_comparables.js";
@@ -58,8 +59,10 @@ const MLS: ToolDef[] = [
   search_closed_listings,
 ];
 
-// Rental investment / cash-flow (reads VPS-precomputed cashflowStats + rent_rates).
+// Rental investment / cash-flow (reads VPS-precomputed cashflowStats,
+// cashflowProfile + rent_rates).
 const INVESTMENT: ToolDef[] = [
+  get_area_cashflow,
   find_cashflowing_listings,
   get_going_rate,
   analyze_listing_cashflow,
@@ -181,4 +184,4 @@ export const SERVER_INSTRUCTIONS =
   "(2) a MAP that plots every listing as a marker at its latitude/longitude, where clicking a marker opens a popup with that home's `thumbUrl` photo, price, address, and View-listing link (Leaflet + OpenStreetMap tiles from a CDN is a good lightweight choice). " +
   "Reference the image/link URLs directly (thumbUrl, detailUrl) — never paste base64 image data into the artifact. " +
   "For a single listing, a clean detail card (photo + facts + a map pin + View-listing link) is enough. Prefer this visual board over a plain markdown table. " +
-  "INVESTMENT / RENTAL CASH-FLOW: when asked whether a property cash-flows as a rental, assess THREE strategies SEPARATELY and give a clear per-strategy determination — (1) SHORT-TERM nightly/weekend (Airbnb-style), (2) SEASONAL furnished (peak season ~Nov–Apr; the dominant income model in Coachella Valley resort/golf communities), (3) LONG-TERM annual lease. For EACH, state cash-flows / does not / or 'unclear' WITH the reason — never collapse the whole answer into a single 'does not cash flow.' Pull rental comps from the MLS (propertyType 'Residential Lease') and recognize the two sub-markets: annual leases (lower monthly rent) vs seasonal furnished (much higher monthly rates, longer days-on-market); for seasonal, quote IN-SEASON vs OFF-SEASON rate ranges. Lead with whichever strategies cash-flow. Target shape: 'Short-term is unclear here (likely HOA/city limits + no private pool); seasonally it cash-flows well — roughly $X/mo in season vs $Y off-season; long-term is negative at 20% down but turns positive with more down.' Then OFFER to re-run a specific scenario (e.g. long-term at a higher down payment). Treat no private pool, HOA minimum-lease terms, and local short-term-rental ordinances as reasons a strategy is 'unclear/restricted' to verify — not blanket deal-breakers.";
+  "INVESTMENT / RENTAL CASH-FLOW: when asked whether a property cash-flows as a rental, assess THREE strategies SEPARATELY and give a clear per-strategy determination — (1) SHORT-TERM nightly/weekend (Airbnb-style), (2) SEASONAL furnished (peak season ~Nov–Apr; the dominant income model in Coachella Valley resort/golf communities), (3) LONG-TERM annual lease. For EACH, state cash-flows / does not / or 'unclear' WITH the reason — never collapse the whole answer into a single 'does not cash flow.' Start from the PRECOMPUTED tools, which already carry these per-strategy verdicts, break-even down payments and caveats: get_area_cashflow for an area (subdivision or city), analyze_listing_cashflow for one listing. Quote their reasons and notes rather than recomputing. Only when they have no data for the property, pull rental comps from the MLS (propertyType 'Residential Lease') and recognize the two sub-markets: annual leases (lower monthly rent) vs seasonal furnished (much higher monthly rates, longer days-on-market); for seasonal, quote IN-SEASON vs OFF-SEASON rate ranges. Lead with whichever strategies cash-flow. Target shape: 'Short-term is unclear here (likely HOA/city limits + no private pool); seasonally it cash-flows well — roughly $X/mo in season vs $Y off-season; long-term is negative at 20% down but turns positive with more down.' Then OFFER to re-run a specific scenario (e.g. long-term at a higher down payment). Treat no private pool, HOA minimum-lease terms, and local short-term-rental ordinances as reasons a strategy is 'unclear/restricted' to verify — not blanket deal-breakers.";

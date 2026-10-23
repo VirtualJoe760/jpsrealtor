@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-10-17
 related: [../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md]
 supersedes: docs/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -271,3 +271,7 @@ classifications. **No files were moved or deleted as part of this migration**
 - The Groq AI article generation flow — kept as its own doc per "keep separate"
   guidance, since it has independent operational concerns (Groq API key,
   model selection, prompt evolution).
+
+## Dialer newsletter invitations (planned)
+
+The [dialer email follow-up plan](../crm/dialer/email-follow-ups.md) links to the agent-owned newsletter signup flow. An invitation is an email draft containing a signup link; it does not add or reactivate a subscriber. The existing public subscribe route can reactivate unsubscribed entries, so it must not be called automatically from an Invite action.

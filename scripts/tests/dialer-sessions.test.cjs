@@ -105,16 +105,20 @@ const context = { params: Promise.resolve({ id }) };
   const Dialer = require(path.join(root, 'src/app/components/crm/DialerMockup.tsx')).default;
   const html = renderToStaticMarkup(React.createElement(Dialer, {
     isLight: true,
-    contacts: [{ _id: first, firstName: 'First', phone: '+17605550101' }, { _id: second, firstName: 'Next', phone: '+17605550102' }],
+    contacts: [{ _id: first, firstName: 'First', phone: '+17605550101' }, { _id: second, firstName: 'Next', phone: '+17605550999' }],
     savedSession: { _id: id, name: 'Restored', version: 1, items: [{ contactId: first, phone: '+17605550101', notes: '', outcome: 'Connected' }, { contactId: second, phone: '+17605550102', notes: 'Recovered draft' }] },
     onCheckpoint: async () => { throw new Error('Rendering must not save or call'); },
   }));
   assert.ok(html.includes('CONTACT 2 OF 2'));
   assert.ok(html.includes('Recovered draft'));
-  assert.ok(html.includes('Saved queue'));
+  assert.ok(html.includes('Simulation'));
+  assert.ok(!html.includes('Interactive preview'));
   assert.ok(!html.includes('Reset preview'), 'Saved workspaces must not expose a local reset');
   assert.equal(contract.attemptElapsedSeconds({ answeredAt: '2026-10-18T00:00:00Z', endedAt: '2026-10-18T00:02:31Z' }), 151);
   assert.ok(html.includes('Start dialer'));
+  assert.ok(html.includes('Queue number: +17605550102'), 'Saved queue keeps its original dial target');
+  assert.ok(html.includes('value="+17605550999"'), 'Inline editor uses the current CRM number, not the frozen queue target');
+  assert.ok(!html.includes('Open full contact &amp; edit'));
   console.log('PASS: saved sessions auth, ownership filters, selection limits, suppression/dedup, idempotency, checkpoint validation/delegation and call-command auth.');
   console.log('PASS: restored workspace starts at unfinished contact with saved notes and no automatic call/save.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
