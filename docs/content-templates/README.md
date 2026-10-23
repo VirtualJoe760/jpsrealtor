@@ -156,7 +156,7 @@ forward-dolly transitions and ending on a sunset shot.
 
 1. **Narration**: ElevenLabs from a per-listing script in `scripts/data/narration/<slug>.txt`. Measure duration with ffprobe; that's the audio timeline.
 2. **Empty rooms**: Gemini 2.5 Flash Image (NanoBanana) strips furniture from the 4 timelapse source photos while preserving architecture.
-3. **Video clips**: WAN 2.2 FLF2V via ComfyUI on RunPod Serverless (target). Each timelapse = (empty, staged) keyframe pair. Each dolly = single keyframe + forward camera motion prompt. Sunset = slow drift.
+3. **Video clips**: backend TBD. ComfyUI/RunPod self-hosted (WAN 2.2), Kling pro/std, and Luma ray-2 were all prototyped and deprecated 2026-08-07 — none are in the repo anymore. Each timelapse = (empty, staged) keyframe pair. Each dolly = single keyframe + forward camera motion prompt. Sunset = slow drift.
 4. **Stitch**: ffmpeg concatenates clips to match narration timeline, overlays audio, adds fade-to-black, exports H.264 MP4.
 
 ### Inputs
@@ -185,7 +185,7 @@ module.exports = {
 ```bash
 node scripts/generate-narration.js <slug> [voice_id]   # ElevenLabs → mp3
 node scripts/reel-prep-empties.js <slug>               # NanoBanana → 4 empty pngs
-node scripts/reel-kickoff-comfyui.js <slug>            # RunPod ComfyUI → 9 mp4s   (planned)
+(video-clip generation — backend TBD; ComfyUI/Kling/Luma all deprecated 2026-08-07)
 node scripts/reel-stitch.js <slug>                     # ffmpeg → final mp4         (planned)
 ```
 

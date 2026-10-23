@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronRight, ListOrdered, Mic, MicOff, Phone, PhoneOff, RotateCcw, SkipForward, StickyNote } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, ListOrdered, Mic, MicOff, Phone, PhoneOff, SkipForward, StickyNote } from 'lucide-react';
 
 import DialerContactPane from './dialer/DialerContactPane';
-import DialerAudioSettings from './dialer/DialerAudioSettings';
+import DialerContactDetails from './dialer/DialerContactDetails';
 import { paginateQueue } from '@/lib/dialer/queue-pagination';
 import { DIALER_OUTCOMES, attemptElapsedSeconds, type DialerOutcome, type SavedDialerSession } from '@/lib/dialer/session-contract';
 import type { DialerContact } from './dialer/property-context';
@@ -19,21 +19,21 @@ const demoContacts = [
 const outcomes = DIALER_OUTCOMES;
 type CallState = 'ready' | 'ringing' | 'connected' | 'wrap-up';
 
-export default function DialerMockup({ isLight, contacts, initialContactId, queueLabel = 'Preview queue', savedSession, onCheckpoint, onDirtyChange, onCommand }: { onCommand?: (command: 'start' | 'answer' | 'end', contactId: string) => Promise<SavedDialerSession>; onDirtyChange?: (dirty: boolean) => void; savedSession?: SavedDialerSession; onCheckpoint?: (contactId: string, notes: string, outcome?: DialerOutcome) => Promise<void>; isLight: boolean; contacts?: DialerContact[]; initialContactId?: string; queueLabel?: string }) {
+export default function DialerMockup({ isLight, contacts, initialContactId, queueLabel = 'Preview queue', savedSession, onCheckpoint, onDirtyChange, onCommand, showQueue = false }: { showQueue?: boolean; onCommand?: (command: 'start' | 'answer' | 'end', contactId: string) => Promise<SavedDialerSession>; onDirtyChange?: (dirty: boolean) => void; savedSession?: SavedDialerSession; onCheckpoint?: (contactId: string, notes: string, outcome?: DialerOutcome) => Promise<void>; isLight: boolean; contacts?: DialerContact[]; initialContactId?: string; queueLabel?: string }) {
   const sampleContacts = useMemo(() => contacts?.length ? contacts.map(record => ({
     name: [record.firstName, record.lastName].filter(Boolean).join(' ') || record.organization || 'Unnamed contact',
     initials: ((record.firstName?.[0] || '') + (record.lastName?.[0] || '')).toUpperCase() || '?',
-    phone: record.phones?.find(phone => phone.isPrimary)?.number || record.phones?.[0]?.number || record.phone || 'No phone saved',
+    phone: savedSession?.items.find(item => item.contactId === record._id)?.phone || record.phones?.find(phone => phone.isPrimary)?.number || record.phones?.[0]?.number || record.phone || 'No phone saved',
     city: [record.address?.city, record.address?.state].filter(Boolean).join(', ') || 'Location not saved',
     label: record.status || 'Contact', context: record.notes || 'Review the property and recent MLS sales before your conversation.', record,
-  })) : demoContacts.map(contact => ({ ...contact, record: undefined as DialerContact | undefined })), [contacts]);
+  })) : demoContacts.map(contact => ({ ...contact, record: undefined as DialerContact | undefined })), [contacts, savedSession?.items]);
   const [index, setIndex] = useState(() => Math.max(0, savedSession ? savedSession.activeAttempt ? savedSession.items.findIndex(item => item.contactId === savedSession.activeAttempt.contactId) : savedSession.items.findIndex(item => !item.outcome) : contacts?.findIndex(contact => contact._id === initialContactId) ?? 0));
   const swipeRef = useRef<HTMLDivElement>(null);
   const [mobilePanel, setMobilePanel] = useState(0);
   const [queueSearch, setQueueSearch] = useState('');
   const [queuePage, setQueuePage] = useState(() => Math.floor(Math.max(0, savedSession?.activeAttempt ? savedSession.items.findIndex(item => item.contactId === savedSession.activeAttempt.contactId) : savedSession?.items.findIndex(item => !item.outcome) ?? 0) / 10));
-  const [queueOpen, setQueueOpen] = useState(false);
-  const mobilePanels = ['Dialer', 'Contact', 'Queue'];
+  const queueOpen = showQueue;
+  const mobilePanels = ['Dialer', 'Property tools', 'Queue'];
   const [sessionStarted, setSessionStarted] = useState(!!savedSession?.activeAttempt);
   const autoAnswer = useRef(false);
   async function beginCall() {
@@ -75,6 +75,9 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   const [finished, setFinished] = useState(() => !!savedSession && savedSession.items.every(item => !!item.outcome));
   const [notice, setNotice] = useState(savedSession?.activeAttempt ? 'Recovered simulated attempt. End it or finish wrap-up before starting another.' : '');
   const contact = sampleContacts[Math.min(index, sampleContacts.length - 1)];
+  const [contactDirty, setContactDirty] = useState(false);
+  const [contactUpdates, setContactUpdates] = useState<Record<string, Partial<DialerContact>>>({});
+  const currentRecord = useMemo(() => contact.record ? { ...contact.record, ...contactUpdates[contact.record._id] } : undefined, [contact.record, contactUpdates]);
   const filteredQueue = useMemo(() => sampleContacts.map((item, position) => ({ item, position })).filter(({ item }) => (item.name + ' ' + item.city + ' ' + item.phone).toLowerCase().includes(queueSearch.toLowerCase())), [sampleContacts, queueSearch]);
   const queue = paginateQueue(filteredQueue, queuePage);
   useEffect(() => {
@@ -84,13 +87,13 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   const active = state === 'ringing' || state === 'connected';
   const recoveredDrafts = Object.entries(draftCache.current).filter(([id, draft]) => id !== contact.record?._id && draft !== savedSession?.items.find(item => item.contactId === id)?.notes);
   const dirty = !!onCheckpoint && ((!results[index] && notes !== (savedSession?.items[index]?.notes || '')) || recoveredDrafts.length > 0);
-  useEffect(() => { onDirtyChange?.(dirty || saving); }, [dirty, saving, onDirtyChange]);
+  useEffect(() => { onDirtyChange?.(dirty || saving || contactDirty); }, [dirty, saving, contactDirty, onDirtyChange]);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !contactDirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  }, [dirty, contactDirty]);
 
   const panel = isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-[#141b29]';
   const subtle = isLight ? 'text-slate-500' : 'text-slate-400';
@@ -129,6 +132,7 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
   }, [state, savedSession?.activeAttempt?.answeredAt]);
 
   function selectContact(next: number, committed = false) {
+    if (contactDirty) { setNotice('Save or cancel contact edits before changing contacts.'); return; }
     if (savingRef.current) return;
     if (!committed && savedSession?.activeAttemptId) { setNotice('Finish the active attempt and wrap-up before changing contacts.'); return; }
     if (!committed && onCheckpoint && notes !== (savedSession?.items[index]?.notes || '') && !results[index]) {
@@ -146,6 +150,7 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
     finally { savingRef.current = false; setSaving(false); }
   }
   async function advance(result: DialerOutcome) {
+    if (contactDirty) { setNotice('Save or cancel contact edits before moving to the next contact.'); return; }
     if (!(await checkpoint(result))) return;
     const updated = { ...results, [index]: result };
     setResults(updated);
@@ -158,20 +163,10 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
 
   return (
     <section aria-label="Dialer preview" className={`px-3 pb-24 md:pb-3 sm:px-6 lg:px-8 ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-      <div className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isLight ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-amber-400/20 bg-amber-400/10 text-amber-200'}`}>
-        <p className="text-xs"><span className="sm:hidden">Calls simulated · {savedSession ? 'Saved queue' : contacts?.length ? 'CRM contacts' : 'Sample contacts'}</span><span className="hidden sm:inline"><span className="font-semibold">Interactive preview</span><span className="mx-2 opacity-40">/</span>{contacts?.length ? (savedSession ? 'Saved queue · Calls simulated · Save notes to keep them.' : 'CRM contacts · Calls simulated · Notes stay local.') : 'Sample contacts · Calls simulated · Nothing saved to CRM.'}</span></p>
-        {!savedSession && <button onClick={reset} className="inline-flex items-center gap-2 text-xs font-semibold"><RotateCcw size={13} /> Reset preview</button>}
-      </div>
-      <div className="mb-3 hidden flex-wrap items-end justify-between gap-4 xl:flex">
-        <div><h2 className="text-lg xl:text-xl font-semibold tracking-tight">{queueLabel}</h2><p className={`mt-1 text-xs ${subtle}`}>{Object.keys(results).length} of {sampleContacts.length} reviewed · {sessionStarted ? 'Session started' : 'Ready to start'}</p></div>
-        <div className={`hidden items-center gap-2 rounded-full border px-3 py-2 text-xs xl:flex ${panel}`}><span className="h-2 w-2 rounded-full bg-emerald-500" /> Single-line dialer <span className={subtle}>· Preview</span></div>
-      </div>
       <div aria-label="Dialer panels" className={`mb-3 grid grid-cols-3 gap-1 rounded-2xl border p-1 xl:hidden ${soft}`}>
         {mobilePanels.map((label, position) => <button key={label} aria-pressed={mobilePanel === position} aria-controls={'dialer-panel-' + position} onClick={() => showPanel(position)} className={`min-h-11 rounded-xl text-sm font-semibold transition ${mobilePanel === position ? 'bg-emerald-600 text-white shadow-sm' : subtle}`}>{label}</button>)}
       </div>
-      <DialerAudioSettings isLight={isLight} locked={active || saving} />
-      <button type="button" aria-expanded={queueOpen} aria-controls="dialer-panel-2" onClick={() => setQueueOpen(!queueOpen)} className={`${button} mb-3 hidden border ${soft} xl:inline-flex`}>{queueOpen ? 'Hide queue' : 'Show queue'} · {sampleContacts.length} contacts</button>
-      <p className={`mb-2 text-center text-[11px] xl:hidden ${subtle}`}>Swipe between the dialer and the full contact page <span aria-hidden="true">↔</span></p>
+      <p className={`mb-2 text-center text-[11px] xl:hidden ${subtle}`}>Swipe between calling, property tools and the queue <span aria-hidden="true">↔</span></p>
       <div ref={swipeRef} onScroll={event => {
         const container = event.currentTarget;
         setMobilePanel(Math.max(0, Math.min(2, Math.round(container.scrollLeft / container.clientWidth))));
@@ -180,8 +175,8 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault(); showPanel(Math.max(0, Math.min(2, mobilePanel + (event.key === 'ArrowRight' ? 1 : -1))));
         }
-      }} tabIndex={0} aria-label="Swipeable contact information" className="relative flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)] xl:gap-4 xl:overflow-visible">
-        <aside id="dialer-panel-2" data-panel="2" aria-label="Dialer queue" className={`order-3 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border pb-28 xl:pb-0 xl:col-span-2 xl:order-1 xl:h-auto xl:w-auto ${queueOpen ? 'xl:block' : 'xl:hidden'} ${panel}`}>
+      }} tabIndex={0} aria-label="Swipeable contact information" className="relative flex snap-x snap-mandatory items-start overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-1 xl:gap-4 xl:overflow-visible">
+        <aside id="dialer-panel-2" data-panel="2" aria-label="Dialer queue" className={`order-3 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border pb-28 xl:pb-0 xl:col-span-1 xl:order-1 xl:h-auto xl:w-auto ${queueOpen ? 'xl:block' : 'xl:hidden'} ${panel}`}>
           <div className="flex items-center justify-between gap-3 px-4 pt-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><ListOrdered size={16} /> Calling queue</h3><p className={`text-xs ${subtle}`}>{queue.start}–{queue.end} of {queue.total}</p></div>
           <label className="mx-4 my-3 block text-xs font-medium">Find in queue<input value={queueSearch} onChange={event => { setQueueSearch(event.target.value); setQueuePage(0); }} placeholder="Name, city, or phone" className={`mt-1 min-h-11 w-full rounded-lg border px-3 text-base outline-none focus:border-emerald-500 ${soft}`} /></label>
           <div className="px-2 xl:grid xl:grid-cols-2">{queue.items.map(({item, position}) => (
@@ -194,18 +189,23 @@ export default function DialerMockup({ isLight, contacts, initialContactId, queu
         </aside>
         <div id="dialer-panel-0" data-panel="0" aria-label="Dialer and call notes" className={`order-1 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-y-auto overscroll-y-contain rounded-2xl border pb-28 xl:pb-0 xl:order-2 xl:h-auto xl:w-auto ${panel}`}>
           {finished ? <div className="flex min-h-[470px] flex-col items-center justify-center p-8 text-center"><span className="mb-5 rounded-full bg-emerald-500/10 p-5 text-emerald-500"><Check size={30} /></span><h3 className="text-2xl font-semibold">List complete.</h3><p className={`mb-6 mt-2 text-sm ${subtle}`}>You reviewed every contact in this queue.</p><button hidden={!!savedSession} onClick={reset} className={`${button} bg-emerald-600 text-white`}>Start a new preview</button></div> : <>
-            <div className={`flex items-center justify-between border-b px-6 py-4 ${isLight ? 'border-slate-100' : 'border-white/10'}`}><span className={`text-xs font-medium ${subtle}`}>CONTACT {index + 1} OF {sampleContacts.length}</span><span role="status" className={`text-xs font-semibold ${state === 'connected' ? 'text-emerald-500' : subtle}`}>{state === 'ready' ? 'Ready to call' : state === 'ringing' ? 'Simulating ringing…' : state === 'connected' ? 'Simulated call connected' : 'Call ended · Add an outcome'}</span></div>
-            <div className="px-5 pb-5 pt-5 xl:px-6 xl:pb-6 xl:pt-8"><div className="flex items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-xl font-medium text-emerald-600">{contact.initials}</div><div><h3 className="text-2xl font-semibold tracking-tight">{contact.name}</h3><p className={`mt-1 text-sm ${subtle}`}>{contact.city}</p></div></div>
-              <div className="mb-6 mt-5 flex flex-wrap items-center gap-3"><span className={`rounded-full border px-3 py-1 text-xs ${soft}`}>{contact.label}</span><span className={`text-sm tabular-nums ${subtle}`}>{contact.phone}</span></div>
+            <div className={`flex items-center justify-between border-b px-6 py-4 ${isLight ? 'border-slate-100' : 'border-white/10'}`}><span className={`text-xs font-medium ${subtle}`}>CONTACT {index + 1} OF {sampleContacts.length} · Simulation</span><span role="status" className={`text-xs font-semibold ${state === 'connected' ? 'text-emerald-500' : subtle}`}>{state === 'ready' ? 'Ready to call' : state === 'ringing' ? 'Simulating ringing…' : state === 'connected' ? 'Simulated call connected' : 'Call ended · Add an outcome'}</span></div>
+            <div className="xl:grid xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="px-5 pb-5 pt-5 xl:px-6 xl:pb-6"><div className="flex items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-xl font-medium text-emerald-600">{contact.initials}</div><div><h3 className="text-2xl font-semibold tracking-tight">{currentRecord ? [currentRecord.firstName, currentRecord.lastName].filter(Boolean).join(' ') || currentRecord.organization || 'Unnamed contact' : contact.name}</h3><p className={`mt-1 text-sm ${subtle}`}>{currentRecord ? [currentRecord.address?.city, currentRecord.address?.state].filter(Boolean).join(', ') || 'Location not saved' : contact.city}</p></div></div>
+              <div className="mb-6 mt-5 flex flex-wrap items-center gap-3"><span className={`rounded-full border px-3 py-1 text-xs ${soft}`}>{contact.label}</span><span className={`text-sm tabular-nums ${subtle}`}>{savedSession ? 'Queue number: ' : ''}{contact.phone}</span></div>
+
               {contact.record?.doNotContact && <p className="mb-4 text-sm font-semibold text-rose-500">Do not contact · Live dialing must be suppressed</p>}
               <details className={`border-y py-3 text-sm ${isLight ? "border-slate-100" : "border-white/10"}`}><summary className={`cursor-pointer ${subtle}`}>Conversation notes</summary><p className="mt-2 whitespace-pre-wrap leading-relaxed">{contact.context}</p></details>
-              <div className="hidden py-7 text-center xl:block"><p className={`font-mono text-4xl font-light tabular-nums ${active ? 'text-emerald-500' : subtle}`}>{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</p><p className={`mt-2 text-xs ${subtle}`}>Calls simulated · Choose audio above</p></div>
+              <div className="hidden py-4 text-center xl:block"><p className={`font-mono text-4xl font-light tabular-nums ${active ? 'text-emerald-500' : subtle}`}>{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</p><p className={`mt-2 text-xs ${subtle}`}>Calls simulated · Audio options in settings</p></div>
               <div className="hidden justify-center gap-3 xl:flex"><button disabled={state !== 'connected'} aria-pressed={muted} onClick={() => setMuted(!muted)} className={`${button} border ${soft} inline-flex items-center gap-2`}>{muted ? <MicOff size={17} /> : <Mic size={17} />}{muted ? 'Unmute' : 'Mute'}</button>{active ? <button disabled={saving} onClick={endCall} className={`${button} inline-flex items-center gap-2 bg-rose-600 text-white`}><PhoneOff size={17} /> End call</button> : <button disabled={saving || state === 'wrap-up'} onClick={beginCall} className={`${button} inline-flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700`}><Phone size={17} /> {sessionStarted ? 'Simulate call' : 'Start dialer'}</button>}<button disabled={saving || active} onClick={() => advance('Skipped')} className={`${button} border ${soft} inline-flex items-center gap-2`}><SkipForward size={16} /> Skip</button></div>
+              {currentRecord && <DialerContactDetails key={currentRecord._id} contact={currentRecord} isLight={isLight} onDirtyChange={setContactDirty} onSaved={updated => setContactUpdates(previous => ({ ...previous, [updated._id]: updated }))} />}
             </div>
-            <div className={`border-t p-5 xl:p-6 ${isLight ? 'border-slate-100' : 'border-white/10'}`}><label htmlFor="dialer-notes" className="mb-3 flex items-center gap-2 text-sm font-semibold"><StickyNote size={16} /> Call notes</label><textarea id="dialer-notes" rows={3} value={notes} disabled={saving} maxLength={10000} onChange={event => setNotes(event.target.value)} placeholder="What did you learn? Capture details for your next conversation…" className={`w-full resize-y rounded-xl border p-3 text-sm outline-none focus:border-emerald-500 ${soft} placeholder:text-slate-400`} /><button hidden={!onCheckpoint} disabled={saving} onClick={() => checkpoint()} className={`${button} mt-2 border ${soft}`}>{saving ? 'Saving…' : 'Save notes'}</button><fieldset className="mt-4"><legend className={`mb-2 text-xs font-medium ${subtle}`}>Call outcome</legend><div className="flex flex-wrap gap-2">{outcomes.map(item => <button key={item} type="button" aria-pressed={outcome === item} onClick={() => setOutcome(item)} className={`rounded-lg border px-3 py-2 text-xs transition ${outcome === item ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : `${soft} ${subtle}`}`}>{item}</button>)}</div></fieldset><button disabled={saving || !outcome || active} onClick={() => advance(outcome as DialerOutcome)} className={`${button} mt-5 flex w-full items-center justify-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700`}>Save outcome & next <ArrowRight size={16} /></button><p className={`mt-2 text-center text-xs ${subtle}`}>The next call starts only when you choose.</p></div>
+            <div className={`border-t p-5 xl:border-t-0 xl:border-l xl:p-6 ${isLight ? 'border-slate-100' : 'border-white/10'}`}><label htmlFor="dialer-notes" className="mb-3 flex items-center gap-2 text-sm font-semibold"><StickyNote size={16} /> Call notes</label><textarea id="dialer-notes" rows={3} value={notes} disabled={saving} maxLength={10000} onChange={event => setNotes(event.target.value)} placeholder="What did you learn? Capture details for your next conversation…" className={`w-full resize-y rounded-xl border p-3 text-sm outline-none focus:border-emerald-500 ${soft} placeholder:text-slate-400`} /><button hidden={!onCheckpoint} disabled={saving} onClick={() => checkpoint()} className={`${button} mt-2 border ${soft}`}>{saving ? 'Saving…' : 'Save notes'}</button><fieldset className="mt-4"><legend className={`mb-2 text-xs font-medium ${subtle}`}>Call outcome</legend><div className="flex flex-wrap gap-2">{outcomes.map(item => <button key={item} type="button" aria-pressed={outcome === item} onClick={() => setOutcome(item)} className={`rounded-lg border px-3 py-2 text-xs transition ${outcome === item ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : `${soft} ${subtle}`}`}>{item}</button>)}</div></fieldset><button disabled={saving || !outcome || active} onClick={() => advance(outcome as DialerOutcome)} className={`${button} mt-5 flex w-full items-center justify-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700`}>Save outcome & next <ArrowRight size={16} /></button><p className={`mt-2 text-center text-xs ${subtle}`}>The next call starts only when you choose.</p></div>
+            </div>
+
           </>}
         </div>
-        <aside id="dialer-panel-1" data-panel="1" aria-label="Full contact page" className={`order-2 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-hidden rounded-2xl border xl:order-3 xl:h-[min(76vh,900px)] xl:w-auto ${panel}`}><DialerContactPane key={contact.record?._id || contact.name} contact={contact.record} isLight={isLight} visible={mobilePanel === 1} preview={contact} /></aside>
+        <aside id="dialer-panel-1" data-panel="1" aria-label="Property research and MLS tools" className={`order-2 h-[min(62dvh,620px)] w-full min-w-0 shrink-0 snap-start overflow-hidden rounded-2xl border xl:order-3 xl:h-auto xl:min-h-[680px] xl:w-auto ${panel}`}><DialerContactPane key={(currentRecord?._id || contact.name) + JSON.stringify(currentRecord?.address)} contact={currentRecord} isLight={isLight} visible={mobilePanel === 1} preview={contact} /></aside>
       </div>
       <div className={`sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] md:bottom-0 z-10 mt-3 rounded-2xl border p-3 shadow-lg xl:hidden ${panel}`}>
         <div className="mb-3 flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{finished ? 'List complete' : contact.name}</p><p role="status" className={`text-xs ${subtle}`}>{state === 'ringing' ? 'Simulating ringing…' : state === 'connected' ? 'Simulated call connected' : state === 'wrap-up' ? 'Call ended · Choose an outcome' : 'Simulation only · No live call'}</p></div><span className="font-mono text-lg tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</span></div>

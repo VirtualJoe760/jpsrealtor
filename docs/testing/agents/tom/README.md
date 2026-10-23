@@ -65,14 +65,22 @@ Tom's pull step (from `AGENTS.md → step -1`):
 
 ```bash
 cd /Users/macdaddyjoe/code/chatrealty/jpsrealtor && git pull --ff-only
-git diff HEAD@{1} HEAD --name-only -- docs/testing/agents/tom/
-# if any changed:
-for f in AGENTS.md TOOLS.md MEMORY.md SOUL.md IDENTITY.md USER.md HEARTBEAT.md; do
+# MEMORY.md is deliberately absent — it is Tom's, and syncing destroyed it
+for f in AGENTS.md TOOLS.md SOUL.md IDENTITY.md USER.md HEARTBEAT.md; do
   src="/Users/macdaddyjoe/code/chatrealty/jpsrealtor/docs/testing/agents/tom/$f"
   dst="/Users/macdaddyjoe/.openclaw/agents/tom/$f"
-  [ -f "$src" ] && cp "$src" "$dst"
+  [ -f "$src" ] || continue
+  if ! cmp -s "$src" "$dst"; then cp "$src" "$dst"; fi
 done
 ```
+
+**`cmp`, never a git range.** This block used to read
+`git diff HEAD@{1} HEAD --name-only` — which reports only what changed *in that
+pull*, so a pull that found nothing new produced an empty diff and Tom skipped
+the copy, running stale instructions forever while the pull appeared to succeed
+every time. `cmp` compares what is actually on disk and is right regardless of
+pull history. `AGENTS.md` was corrected in August; this file was not, and showed
+the superseded version until 2026-08-10.
 
 If your change must take effect before Tom's next cron firing, tell Joe —
 he can trigger Tom manually.
@@ -89,39 +97,61 @@ behavior. Before editing:
 - The gates are pass/fail with no partial credit — don't add partial scoring.
 - The report format (`## Bugs found` with one H3 per bug) is what the routine
   (judge-loop-check) parses. If you change it, update the routine's parser too.
-- Steps are numbered for a reason — step -1 (pull docs) → step 0 (mid-session
-  check) → step 1 (poll) → step 2 (brief + account setup) → dispatch. Don't
-  reorder.
+- Steps are numbered for a reason — step -1 (pull docs) → **step 0 (poll —
+  mode first)** → step 0a (mid-session check) → step 1 (triage) → step 2
+  (brief + account setup) → dispatch. Don't reorder.
+
+  The poll sits ahead of the in-flight check deliberately, and that ordering
+  is load-bearing: step 0a can spawn a continuation child, which is a
+  dispatch. When the poll ran second, an Idle firing could still launch a
+  build — the operator's switch didn't actually switch anything off. Anything
+  that could spawn must come after the step that reads `mode`.
 
 **TOOLS.md credential section:** Three distinct credential sources must stay
 clearly separated:
 1. Spark + Groq keys (`.txt` file, used by Test Claude to seed the DB)
 2. Database connector (from chatrealty.io setup wizard — goes in the brief)
-3. Site token (from chatrealty.io Integrations — goes in the brief)
+3. Site token — minted by `scripts/test-accounts.ts token --out=<path>`, which
+   writes it to a file and never prints it. The **path** goes in the brief; the
+   value never does, because a `crt_live_` string in a transcript is a gate 5
+   failure by Tom's own rubric.
 
 The judge token (`CHATREALTY_JUDGE_TOKEN`) is for the testing API only (poll,
 submit report, disarm). If you see it used for anything else in these files,
 that is a bug — it is blocked from provisioning tenant databases.
 
-**MEMORY.md: prune it.** This file is Tom's working state, not an archive.
-There will be hundreds of sessions and he re-reads this before every one, so it
-must stay short enough to be read carefully rather than skimmed.
+**MEMORY.md is Tom's, and you do not edit it.** It was removed from the sync
+list on 2026-08-10 because being in that list destroyed it: Tom writes it every
+session, so his copy always differed from the repo's, and every firing
+overwrote his memory with the repo version — then reported it as "updated,"
+which meant step -1's change signal fired every single time and stopped
+carrying information. The **Current site** block, which decides whether the
+next brief is a punch list or a new site, could not survive one firing. If you
+need to tell Tom something durable, it goes in `AGENTS.md` or in
+`resolutionNotes`.
 
-The rule is **the lesson survives, the record does not.** When a finding is
-fixed and confirmed by a later session, *delete it*. If it taught something
-general, that lesson becomes a line in `AGENTS.md` or `SOUL.md` — a rule that
-changes behaviour — and the bullet still goes. A memory file that only grows
-is one Tom stops reading.
+His own pruning rule — **the lesson survives, the record does not** — still
+applies, and it is his to apply. Regression checking doesn't depend on it:
+`resolutionNotes` arrive fresh on every poll, and that is what he re-verifies
+against.
 
-This does not lose regression checking. The `resolutionNotes` for the last
-report arrive fresh from the API on every poll, and that — not Tom's own
-archive — is what he re-verifies against. The two regressions caught between
-sessions 8 and 9 were caught that way.
+**Every file has a size budget, and `AGENTS.md` is the one that breaks it.**
+It went from 4,963 to 8,141 words in three days — twelve commits, twelve
+increases, not one removal. The cause is structural: the pruning rule above
+discharges *into* `AGENTS.md` ("that lesson becomes a line in AGENTS.md or
+SOUL.md") and `AGENTS.md` had no valve of its own. It now does — see its
+"One fact, one file" section. When you add a rule there:
 
-What stays: standing rules, findings **not yet fixed**, a rolling window of the
-last few persona/market combinations so he doesn't repeat himself, and what he
-has learned about how he works. What goes: everything resolved, and the
-session-by-session table.
+- **One sentence of provenance, not a paragraph.** "Session 5 put a Sacramento
+  persona on Coachella Valley inventory" carries the whole lesson.
+- **Check which file already owns it.** SOUL = why · AGENTS = what to do ·
+  TOOLS = how and where · MEMORY = what's true now. Point, don't copy.
+- **Collapse an old story to its rule** once the fix it describes has landed
+  and been confirmed. A rule Tom skims is a rule that doesn't fire.
+
+Not hypothetical: step 2b used to say *"this file does not repeat them, because
+a stale copy here would silently contradict it"* — and then repeated three of
+them in the next paragraph.
 
 **Language/UX findings in AGENTS.md:** The guide-vs-reality section of the
 report template has two categories: technical mismatches and language/UX issues.

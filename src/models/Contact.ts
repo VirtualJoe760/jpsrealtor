@@ -1,3 +1,4 @@
+import { ExternalPropertyPhotoSchema } from './PropertyPhotoCache';
 /**
  * Contact Model
  *
@@ -25,6 +26,7 @@ export interface IEmail {
 }
 
 export interface IContact extends Document {
+  externalPhotos?: { url: string; source?: string; sourcePage?: string; caption?: string; order?: number; discoveredAt?: Date }[];
   // Owner
   userId: mongoose.Types.ObjectId;  // Reference to User who owns this contact
   teamId?: mongoose.Types.ObjectId;  // Reference to Team (if shared)
@@ -502,6 +504,7 @@ const ContactSchema: Schema = new Schema(
       default: false,
     },
 
+    externalPhotos: { type: [ExternalPropertyPhotoSchema], default: undefined },
     // Property Information (for real estate contacts)
     // Geographic coordinates
     latitude: Number,
@@ -580,5 +583,7 @@ ContactSchema.virtual('fullName').get(function (this: IContact) {
 ContactSchema.set('toJSON', { virtuals: true });
 ContactSchema.set('toObject', { virtuals: true });
 
-export default (mongoose.models.Contact ||
-  mongoose.model<IContact>('Contact', ContactSchema)) as mongoose.Model<IContact>;
+const ContactModel = (mongoose.models.Contact || mongoose.model<IContact>('Contact', ContactSchema)) as mongoose.Model<IContact>;
+// Hot reload can reuse an older model; add this path before any enrichment write.
+if (!ContactModel.schema.path('externalPhotos')) ContactModel.schema.add({ externalPhotos: { type: [ExternalPropertyPhotoSchema], default: undefined } });
+export default ContactModel;

@@ -10,6 +10,7 @@ type PropertyImage = {
   source: string;
   caption: string;
   order: number;
+  sourcePage?: string;
 };
 
 type Props = {
@@ -22,47 +23,30 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
   const [current, setCurrent] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [source, setSource] = useState<string>('none');
+  const [message, setMessage] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    const fetchPropertyImages = async () => {
-      setIsLoading(true);
+    const controller = new AbortController();
+    setIsLoading(true); setCurrent(0); setImages([]);
+    async function load() {
       try {
-        const res = await fetch(`/api/crm/contacts/${contactId}/property-images`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          console.error(
-            `[ContactPropertyCarousel] Failed to fetch property images: ${res.status}`
-          );
-          setImages([]);
-          setIsLoading(false);
-          return;
+        const options = { signal: controller.signal, cache: 'no-store' as const };
+        let response = await fetch(`/api/crm/contacts/${contactId}/property-images`, options);
+        let data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Photo lookup failed');
+        if (!data.images?.length || retry > 0) {
+          response = await fetch(`/api/crm/contacts/${contactId}/property-images`, { ...options, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sourceUrl ? { sourceUrl } : {}) });
+          data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Photo lookup failed');
         }
-
-        const data = await res.json();
-        if (!data.success || !Array.isArray(data.images) || data.images.length === 0) {
-          console.log(`[ContactPropertyCarousel] No property images available`);
-          setImages([]);
-          setSource(data.source || 'none');
-          setIsLoading(false);
-          return;
-        }
-
-        console.log(`[ContactPropertyCarousel] Loaded ${data.images.length} images from ${data.source}`);
-        setImages(data.images);
-        setSource(data.source);
-      } catch (err) {
-        console.error("[ContactPropertyCarousel] Error fetching property images:", err);
-        setImages([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPropertyImages();
-  }, [contactId]);
+        if (!controller.signal.aborted) { setImages(data.images || []); setSource(data.source || 'none'); setMessage(data.message || ''); }
+      } catch (error) { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Photo lookup failed'); }
+      finally { if (!controller.signal.aborted) setIsLoading(false); }
+    }
+    void load(); return () => controller.abort();
+  }, [contactId, retry]);
 
   const next = () => setCurrent((prev) => (prev + 1) % images.length);
   const prev = () =>
@@ -108,8 +92,8 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
         <div className={`flex flex-col items-center justify-center h-full w-full ${
           isLight ? 'text-gray-500' : 'text-gray-400'
         }`}>
-          <Home className="w-16 h-16 opacity-30 mb-2" />
-          <p className="text-sm">No property images available</p>
+          <p className="px-3 text-center text-xs">{message || 'No property images available'}</p>
+          <form className="mt-2 flex w-full gap-2 px-3" onSubmit={event => { event.preventDefault(); setRetry(value => value + 1); }}><input type="url" required aria-label="Property photo source URL" value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="Zillow / Redfin / Realtor property URL" className="min-h-11 min-w-0 flex-1 rounded-lg border bg-transparent px-2 text-xs" /><button className="min-h-11 rounded-lg border px-2 text-xs" type="submit">Find photo</button></form>
         </div>
       ) : (
         <>
@@ -123,7 +107,8 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
             loading={current === 0 ? "eager" : "lazy"}
             quality={90}
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 90vw, 1200px"
-            unoptimized={images[current]?.url?.includes('streetview') || images[current]?.url?.startsWith('data:')}
+            unoptimized
+            onError={() => { setImages(previous => previous.filter((_, index) => index !== current)); setCurrent(0); setMessage('A photo could not load. Try another source link.'); }}
           />
 
           {/* Preload Next Photo */}
@@ -135,6 +120,7 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
               className="hidden"
               quality={85}
               loading="lazy"
+              unoptimized
             />
           )}
 
@@ -145,6 +131,7 @@ export default function ContactPropertyCarousel({ contactId, isLight }: Props) {
             </span>
           </div>
 
+          {images[current]?.sourcePage && <a href={images[current].sourcePage} target="_blank" rel="noopener noreferrer" className="absolute bottom-2 right-2 z-20 rounded bg-black/75 px-2 py-1 text-xs text-white">Photo source ↗</a>}
           {/* Navigation - Only show if more than 1 image */}
           {images.length > 1 && (
             <>

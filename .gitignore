@@ -101,3 +101,9 @@ temp-images/
 
 # Local scaffolder smoke-test site (repairer loop). Never committed.
 .scaffold-check/
+
+# Local runtime output and downloaded package inspection cache
+.local-dev-server.log
+/npmcheck/
+__pycache__/
+*.pyc

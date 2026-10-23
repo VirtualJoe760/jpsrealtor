@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "dev-wordmark",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:\\web-clients\\joseph-sardella\\jpsrealtor-wordmark", "run", "dev"],
+      "port": 3000
     }
   ]
 }

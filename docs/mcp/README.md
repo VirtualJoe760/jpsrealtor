@@ -1,15 +1,17 @@
 ---
 title: ChatRealty MCP Server
-status: current
-last_verified: 2026-06-09
-last_verified_note: v0.8.0 (26 tools) + hosted Streamable HTTP/OAuth transport built
+status: partial
+last_verified: 2026-10-23
+last_verified_note: v0.26.0 package build verified; 40 registered tools; historical sections below need a full refresh
 related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md, ./publishing.md, ./hosting.md]
 ---
 
 # ChatRealty MCP Server
 
+The package version and registry count above were checked against source. For the current tool catalog, use [tools.md](./tools.md); older phase descriptions in this overview remain historical.
+
 > **Status: Phase 1 shipped, Phase 2 partial, hosted transport built.**
-> `@chatrealty/mcp-server` v0.8.0 ships **26 tools** across agent meta / MLS /
+> `@chatrealty/mcp-server` v0.26.0 registers **40 tools** across agent meta / MLS /
 > market / CMS landing pages (Phase 1) plus CMS articles, CRM read, images, and
 > Instagram (Phase 2). Code lives in `packages/mcp-server/`. Backend routes under
 > `src/app/api/skill/*` enforce per-token scopes (12 scopes, 4 UI presets) and

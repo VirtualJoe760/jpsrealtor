@@ -1,0 +1,27 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+const moduleFixture = { exports: {} };
+const root = 'F:/web-clients/joseph-sardella/jpsrealtor';
+const source = fs.readFileSync(root + '/src/lib/dialer/comparable-query.ts', 'utf8');
+vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText,
+  { module: moduleFixture, exports: moduleFixture.exports, URLSearchParams });
+const { comparableCoordinates, comparableQuery } = moduleFixture.exports;
+const point = comparableCoordinates({ latitude: '33.67', longitude: '-116.30' });
+assert.equal(point.latitude, 33.67); assert.equal(point.longitude, -116.30);
+const legacy = comparableCoordinates({ latitude: '', longitude: null, lat: '33.68', long: '-116.31' });
+assert.equal(legacy.latitude, 33.68); assert.equal(legacy.longitude, -116.31);
+assert.equal(comparableCoordinates({ latitude: false }).latitude, undefined);
+assert.equal(comparableCoordinates({ latitude: 999, lat: 0 }).latitude, 0);
+assert.equal(comparableCoordinates({}, { lat: 33, lng: -116 }).longitude, -116);
+const input = { latitude: 33.67, longitude: -116.30, radius: '0.5', period: 'all', similar: false, bedrooms: 5, bathrooms: 5, sqft: 3615, propertyType: 'Rsfr' };
+const nearby = comparableQuery(input);
+assert.equal(nearby.toString(), new URLSearchParams({ latitude: '33.67', longitude: '-116.3', radius: '0.5', limit: '10' }).toString(), 'Defaults must match the working contact page query without hidden filters');
+const similar = comparableQuery({ ...input, period: '180', similar: true });
+assert.equal(similar.get('days'), '180'); assert.equal(similar.get('bedrooms'), '5');
+assert.equal(similar.get('bathrooms'), '5'); assert.equal(similar.get('sqft'), '3615');
+assert.equal(similar.has('propertyType'), false, 'Tax-record Rsfr must not be compared directly with MLS propertyType');
+const missing = comparableQuery({ ...input, similar: true, bedrooms: NaN, bathrooms: undefined, sqft: 0 });
+assert.equal(missing.has('bedrooms'), false); assert.equal(missing.has('bathrooms'), false); assert.equal(missing.has('sqft'), false);
+console.log('PASS: contact-page query parity, explicit similarity/date filters, legacy coordinate aliases/strings, and no imported-type mismatch.');

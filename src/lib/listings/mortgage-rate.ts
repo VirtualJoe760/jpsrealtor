@@ -1,8 +1,11 @@
 // src/lib/listings/mortgage-rate.ts
 //
-// Single source of truth for the live mortgage rate, shared by:
-//   • cashflow-query.ts        — re-derives per-listing cash flow at the live rate
-//   • /api/mortgage-rates      — the get_mortgage_rates surface (calculator, chat)
+// Single source of truth for the live mortgage rate, used by /api/mortgage-rates
+// — the get_mortgage_rates surface (calculator, chat).
+//
+// cashflow-query.ts no longer reads it: the backend stores the same live
+// frm_30 in cashflowStats.assumptions.mortgageRate on every run, and quoting
+// that keeps the cash-flow ranking consistent with per-listing detail.
 //
 // Returns DECIMALS (0.0648), matching cashflowStats.assumptions.mortgageRate.
 // Source verified 2026-06-10 (API Ninjas):
@@ -46,10 +49,4 @@ export async function getMortgageRates(): Promise<MortgageRates> {
   } catch {
     return { frm30: DEFAULT_RATE, frm15: null, source: 'fallback' };
   }
-}
-
-/** 30-yr decimal rate + provenance — the shape cashflow-query consumes. */
-export async function getCurrentMortgageRate(): Promise<{ rate: number; source: 'live' | 'fallback' }> {
-  const { frm30, source } = await getMortgageRates();
-  return { rate: frm30, source };
 }

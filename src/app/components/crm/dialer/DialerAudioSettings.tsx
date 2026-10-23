@@ -7,7 +7,7 @@ import { BrowserAudioCheck } from '@/lib/dialer/browser-audio';
 type AudioMode = 'browser' | 'phone';
 const STORAGE = 'dialer-audio-v1';
 
-export default function DialerAudioSettings({ isLight, locked }: { isLight: boolean; locked: boolean }) {
+export default function DialerAudioSettings({ isLight, locked, inline = false }: { isLight: boolean; locked: boolean; inline?: boolean }) {
   const [open, setOpen] = useState(false), [mode, setMode] = useState<AudioMode>('browser');
   const [input, setInput] = useState(''), [output, setOutput] = useState('');
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -87,11 +87,11 @@ export default function DialerAudioSettings({ isLight, locked }: { isLight: bool
   }
 
   return <div className="mb-3">
-    <button type="button" aria-expanded={open} aria-controls="dialer-audio-settings" onClick={() => { if (open) stop(); setOpen(!open); }} className={`${action} inline-flex items-center gap-2`}>
+    {!inline && <button type="button" aria-expanded={open} aria-controls="dialer-audio-settings" onClick={() => { if (open) stop(); setOpen(!open); }} className={`${action} inline-flex items-center gap-2`}>
       {mode === 'browser' ? <Headphones size={16} /> : <Smartphone size={16} />} Audio & devices <span className={`text-xs ${muted}`}>{mode === 'browser' ? 'Browser' : 'Phone · planned'}</span>
-    </button>
-    {open && <section id="dialer-audio-settings" aria-label="Audio and connection settings" className={`mt-2 rounded-2xl border p-4 sm:p-5 ${field}`}>
-      <div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-semibold">How do you want to talk?</h3><button aria-label="Close audio settings" className="min-h-11 min-w-11" onClick={() => { stop(); setOpen(false); }}><X size={18} /></button></div>
+    </button>}
+    {(inline || open) && <section id="dialer-audio-settings" aria-label="Audio and connection settings" className={`mt-2 rounded-2xl border p-4 sm:p-5 ${field}`}>
+      <div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-semibold">How do you want to talk?</h3>{!inline && <button aria-label="Close audio settings" className="min-h-11 min-w-11" onClick={() => { stop(); setOpen(false); }}><X size={18} /></button>}</div>
       <fieldset disabled={locked}><legend className="sr-only">Agent audio connection</legend><div className="grid grid-cols-2 gap-2">
         {(['browser', 'phone'] as const).map(value => <button key={value} type="button" aria-pressed={mode === value} onClick={() => remember(value)} className={`${action} text-left ${mode === value ? 'ring-2 ring-emerald-500' : ''}`}><span className="flex items-center gap-2 font-semibold">{value === 'browser' ? <Headphones size={17} /> : <Smartphone size={17} />}{value === 'browser' ? 'This device' : 'My phone'}</span><span className={`mt-1 block text-xs ${muted}`}>{value === 'browser' ? 'Microphone & speakers' : 'Call me or dial in · Planned'}</span></button>)}
       </div></fieldset>

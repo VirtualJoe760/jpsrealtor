@@ -16,7 +16,6 @@
     "lint:links:sitemap": "linkinator https://jpsrealtor.com/sitemap.xml --recurse --external --verbosity debug --format JSON > .\\local-logs\\linkinator-from-sitemap.json 2>&1",
     "generate-mdx": "npx tsx scripts/generate-mdx-from-db.ts",
     "db:optimize-indexes": "npx tsx src/scripts/optimize-indexes.ts",
-    "pwa:icons": "node scripts/generate-pwa-icons.js",
     "test:dropcowboy": "npx tsx scripts/test-dropcowboy-rvm.ts",
     "analyze:contacts": "npx tsx scripts/analyze-messy-contacts.ts"
   },

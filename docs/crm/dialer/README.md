@@ -34,7 +34,7 @@ Build a Twilio-first calling workspace launched from selected Contacts or a tag/
 
 - Select individual contacts or a tag/status/search/filter set, then Open in dialer. Snapshot the queue; do not silently launch the entire database or change membership when filters change.
 - Open or restore a workspace without placing calls. Start dialer immediately starts the first eligible contact; multi-line mode starts an eligible batch up to the configured capacity. Resume dialer explicitly restarts eligible work after reconciliation.
-- Mobile: swipe between Dialer, Contact and Queue. Desktop: dialer and compact contact summary, with an expandable paginated queue above. Full contact editing is opened explicitly. Keep call controls reachable and contact edits intact.
+- Mobile: swipe between Dialer, Property tools and Queue. Desktop: full-width calling/contact row above Property and MLS comps/map, with a paginated queue controlled from the gear. Full contact editing is opened explicitly. Keep call controls reachable and contact edits intact.
 - Reuse ContactViewPanel, property images, MLS enrichment and closed-sale comps; preserve existing contact notes/status/phone editing. External property research opens new tabs.
 - Display the agent's own verified callback number. Initially keep the current carrier and callback destination; outbound verification does not capture inbound calls or enable SMS from that number.
 - Target one-, two- and three-line modes with exactly one human-agent conversation. Extra human answers follow a configured eligible overflow recording or optional Retell AI route.
@@ -63,3 +63,7 @@ This entry point supersedes the earlier single-line-only sequencing in this fold
 See [provider jobs](./provider-jobs.md) for the implemented, unscheduled dispatch foundation and remaining live adapter/reconciliation work.
 
 [Agent audio and mobile calling](./agent-audio.md): implemented local device preferences/tests and the accepted phone bridge/dial-in implementation direction.
+
+
+<!-- Dialer layout verified 2026-10-18 -->
+Dialer layout: the full-width contact/calling row sits above Property and MLS comps tools. The duplicate Contact tab is removed. MLS comps use a subject-home marker and numbered comparable markers linked to the sale list; missing coordinates are omitted from the map. Mobile uses Dialer, Property tools and Queue panels. The gear opposite Back to contacts groups audio devices, desktop queue visibility and saved-session recovery; the previous preview/header block is removed. Calls remain simulated.

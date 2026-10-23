@@ -1,13 +1,19 @@
 // src/app/api/skill/listings/cashflow/route.ts
 //
 // GET → active for-sale listings that cash-flow as rentals in an area, using
-// the VPS-precomputed cashflowStats. Pure read via the shared cashflow-query lib
-// (also used directly by the web-chat tool executor). Scope: listings:read.
+// the VPS-precomputed cashflowStats. Pure read via the shared cashflow-query lib.
+// `strategy` = longTerm (default) | seasonal | closedSeasonal. Fractional
+// ownership is always excluded. Scope: listings:read.
 
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateSkillRequest, requireScope, skillRateLimit } from "@/lib/skill-auth";
 import { tenantNotReadyResponse } from "@/lib/skill/tenant-read";
-import { findCashflowingListings, type SortBy } from "@/lib/listings/cashflow-query";
+import {
+  findCashflowingListings,
+  CASHFLOW_STRATEGIES,
+  type CashflowStrategy,
+  type SortBy,
+} from "@/lib/listings/cashflow-query";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -30,10 +36,21 @@ export async function GET(req: NextRequest) {
     return Number.isFinite(n) ? n : undefined;
   };
 
+  // An unknown strategy must not silently fall back to long-term — the caller
+  // would present long-term numbers as the seasonal answer it asked for.
+  const strategy = sp.get("strategy") || undefined;
+  if (strategy && !CASHFLOW_STRATEGIES.includes(strategy as CashflowStrategy)) {
+    return NextResponse.json(
+      { error: `Unknown strategy "${strategy}". Use one of: ${CASHFLOW_STRATEGIES.join(", ")}.` },
+      { status: 400, headers: NO_STORE }
+    );
+  }
+
   const result = await findCashflowingListings({
     city: sp.get("city") || undefined,
     postalCode: sp.get("postalCode") || undefined,
     subdivision: sp.get("subdivision") || undefined,
+    strategy: strategy as CashflowStrategy | undefined,
     downPaymentPct: num("downPaymentPct"),
     minMonthlyCashflow: num("minMonthlyCashflow"),
     maxPrice: num("maxPrice"),

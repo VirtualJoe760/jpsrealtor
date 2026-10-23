@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, context: Context) {
     const saved = await DialerSession.findOne({ _id: id, userId }).lean();
     if (!saved) return dialerJson({ error: 'Session not found' }, 404);
     const contacts = await Contact.find({ userId, _id: { $in: saved.items.map((item: any) => item.contactId) } })
-      .select('_id firstName lastName organization photo phones phone emails email address notes noteHistory status labels tags doNotContact lastContactDate latitude longitude bedrooms bedroomsTotal bathrooms bathroomsFull bathroomsHalf bathroomsTotalDecimal bathroomsTotalInteger sqft squareFeet yearBuilt propertyType lotSize purchasePrice purchaseDate propertyValue homeValue assessedValue').lean();
+      .select('_id firstName lastName organization photo phones phone emails email address notes noteHistory status labels tags doNotContact lastContactDate latitude longitude lat lng long bedrooms bedroomsTotal bathrooms bathroomsFull bathroomsHalf bathroomsTotalDecimal bathroomsTotalInteger sqft squareFeet yearBuilt propertyType lotSize purchasePrice purchaseDate propertyValue homeValue assessedValue').lean();
     const attempt = saved.activeAttemptId ? await DialerAttempt.findOne({ _id: saved.activeAttemptId, userId, sessionId: saved._id }).lean() : null;
     if (saved.activeAttemptId && !attempt) return dialerJson({ error: 'Saved attempt needs reconciliation' }, 503);
     return dialerJson({ session: sessionDTO(saved, attempt), contacts });

@@ -27,7 +27,7 @@ This document is the implementation authority for the complete scope. [Implement
 1. Select contacts or choose a tag/filter set in Contacts. Show source, count, eligible/blocked/duplicate/missing-phone counts; choose one phone per contact and explicitly confirm the queue snapshot through Open in dialer.
 2. Create a ready saved session without calling. Choose callback number, mode, voicemail asset, overflow policy and optional Retell agent. Show provider readiness, audio readiness, cost limits and any missing eligibility requirements.
 3. Start dialer immediately calls the first eligible item or an allowed multi-line batch. The server reserves capacity before submitting provider commands. If no eligible contact exists, explain why and place zero calls.
-4. Keep line status visible. In mobile view the user swipes between Dialer and the complete Contact page; desktop keeps the dialer and compact contact summary visible, with the paginated queue collapsed until requested. Contact includes existing editable notes/phone/status, property research, photos and MLS comps. Queue selection remains stable while the session runs.
+4. Keep line status visible. In mobile view the user swipes between Dialer, Property tools and Queue; desktop keeps a full-width calling/contact row above property research and mapped MLS comps, with the paginated queue controlled from settings. Contact includes existing editable notes/phone/status, property research, photos and MLS comps. Queue selection remains stable while the session runs.
 5. The first eligible human answer claims the agent connection. Other prospect legs never hear that conversation. Machines take the eligible voicemail path; additional people take the configured eligible overflow/Retell path. Stop launching new calls while the human is occupied.
 6. During a connected conversation, write client notes, move/add tags and book an appointment in the same workspace. End the conversation and save disposition and pending actions, optionally create a callback task or email draft. Send & next requires an explicit send action and durable result. Initially start the next batch explicitly after wrap-up; automatic continuous progression is a later configurable behavior, not assumed approval.
 7. Pause, leave or lose connection: new calls stop; in-flight legs reconcile and retain their individual outcomes. Reopen a saved session, resolve uncertain calls or incomplete wrap-up, then press Resume dialer. Do not redial simply because the page was restored.
@@ -77,7 +77,7 @@ Exit: refresh, crash and a second device cannot lose completed work or create du
 
 ### C. Single-line Twilio voice foundation — L; depends on B
 
-- [x] Offline-tested credit foundation: canonical manual purchase quotes, paid-only payment-key grants, transactional credit holds/releases/settlement, shared debit guards and read-only available/reserved balance display. Actual payment-account/index/replica-set verification, call usage collection, hold extension and auto-top-up are still pending.
+- [x] Offline-tested credit foundation: canonical manual purchase quotes, paid-only payment-key grants, transactional credit holds/releases/settlement, shared debit guards and a read-only available/reserved balance endpoint; inline dialer credit display was removed in favor of existing navigation credit management. Actual payment-account/index/replica-set verification, call usage collection, hold extension and auto-top-up are still pending.
 
 - [ ] Complete the [credit billing foundation](./credits-and-billing.md): verified manual purchase/grant, shared-wallet reservations, fixed-precision metering, idempotent per-leg settlement and low-balance behavior before enabling live voice. Add optional auto-top-up only after manual funding works; enforce purchase and usage caps independently.
 
@@ -166,3 +166,7 @@ Discovery must settle the durable runner, initial provider transport, verified c
 ## Agent audio scope addition — 2026-10-18
 
 Browser input/output selection and local device checks are implemented. Add persistent phone agent audio with Call me and authenticated Dial in modes, plus native phone-app entry on mobile; keep caller ID separate from agent audio transport. See [agent audio](./agent-audio.md) for schema/security/credit and mobile lifecycle requirements. Phone bridge and live browser audio remain pending.
+
+
+<!-- Dialer layout verified 2026-10-18 -->
+Dialer layout: the full-width contact/calling row sits above Property and MLS comps tools. The duplicate Contact tab is removed. MLS comps use a subject-home marker and numbered comparable markers linked to the sale list; missing coordinates are omitted from the map. Mobile uses Dialer, Property tools and Queue panels. The gear opposite Back to contacts groups audio devices, desktop queue visibility and saved-session recovery; the previous preview/header block is removed. Calls remain simulated.

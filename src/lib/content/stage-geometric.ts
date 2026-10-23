@@ -79,10 +79,21 @@ export async function stageGeometric(
           if (line.trim()) opts.onProgress?.(line.trimEnd());
         }
       });
+      // Budget PER PHOTO, not per batch. A flat 25 minutes was set when the
+      // batch was smaller; build-pending-post.ts now sends 9 candidates and
+      // each one costs ~3 minutes — read, depth/floor fit, then up to three
+      // action takes and three reaction takes, every one of them a Gemini
+      // render plus an ArcFace pass. 1062 E Via San Michael measured 8 photos
+      // done and the 9th in flight when the flat ceiling fired.
+      //
+      // The kill is total: results come back only on a clean exit, so a
+      // timeout on the last photo threw away four frames that had already
+      // PASSED. Losing finished work to a clock is worse than waiting.
+      const perPhotoMs = 5 * 60 * 1000;
       const timer = setTimeout(() => {
         cp.kill("SIGKILL");
         reject(new Error(`stage_geometric timed out`));
-      }, opts.timeoutMs ?? 25 * 60 * 1000);
+      }, opts.timeoutMs ?? Math.max(25 * 60 * 1000, jobs.length * perPhotoMs));
       cp.on("error", (e) => { clearTimeout(timer); reject(e); });
       cp.on("close", (code) => {
         clearTimeout(timer);
