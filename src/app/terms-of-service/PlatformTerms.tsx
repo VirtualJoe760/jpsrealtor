@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
               <section>
                 <h2 className={h2}>1. Agreement to Terms</h2>
                 <p className={text}>
-                  These Terms of Service (&quot;Terms&quot;) constitute a legally binding agreement between you (&quot;you&quot; or &quot;User&quot;) and Joseph Sardella, licensed real estate agent (DRE# 02106916), operating as JPS &amp; Company LLC through eXp Realty of Southern California (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), governing your access to and use of the websites at{' '}
+                  These Terms of Service (&quot;Terms&quot;) constitute a legally binding agreement between you (&quot;you&quot; or &quot;User&quot;) and Joseph Sardella, licensed real estate agent (DRE# 02106916), operating as JPS &amp; Company LLC through Fathom Realty Group, Inc. (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), governing your access to and use of the websites at{' '}
                   <a href="https://chatrealty.io" className={link}>chatrealty.io</a> and{' '}
                   <a href="https://josephsardella.com" className={link}>josephsardella.com</a>{' '}
                   (collectively, the &quot;Platform&quot;), including all features, content, tools, progressive web application (PWA), and related services.
@@ -139,7 +139,7 @@ export default function TermsOfServicePage() {
                   <div>
                     <h3 className={h3}>5.1 Real Estate Agent Services</h3>
                     <p className={text}>
-                      The Platform serves as a technology tool to facilitate real estate services provided by licensed agents. The Platform itself does not provide real estate brokerage services. All real estate transactions are conducted through eXp Realty of Southern California or the applicable licensed brokerage. Any representation agreements, purchase contracts, or other legal documents are between you and the licensed real estate professional and/or brokerage.
+                      The Platform serves as a technology tool to facilitate real estate services provided by licensed agents. The Platform itself does not provide real estate brokerage services. All real estate transactions are conducted through Fathom Realty Group, Inc. or the applicable licensed brokerage. Any representation agreements, purchase contracts, or other legal documents are between you and the licensed real estate professional and/or brokerage.
                     </p>
                   </div>
 
@@ -300,7 +300,7 @@ export default function TermsOfServicePage() {
               <section>
                 <h2 className={h2}>11. Indemnification</h2>
                 <p className={text}>
-                  You agree to indemnify, defend, and hold harmless Joseph Sardella, JPS &amp; Company LLC, eXp Realty of Southern California, and their respective officers, directors, employees, agents, and affiliates from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys&apos; fees) arising out of or in connection with: (a) your use of the Platform; (b) your violation of these Terms; (c) your violation of any applicable law or the rights of any third party; (d) your user-generated content; or (e) your use of marketing campaign tools in a manner that violates applicable laws, including the TCPA, CAN-SPAM Act, or fair housing laws.
+                  You agree to indemnify, defend, and hold harmless Joseph Sardella, JPS &amp; Company LLC, Fathom Realty Group, Inc., and their respective officers, directors, employees, agents, and affiliates from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys&apos; fees) arising out of or in connection with: (a) your use of the Platform; (b) your violation of these Terms; (c) your violation of any applicable law or the rights of any third party; (d) your user-generated content; or (e) your use of marketing campaign tools in a manner that violates applicable laws, including the TCPA, CAN-SPAM Act, or fair housing laws.
                 </p>
               </section>
 
@@ -413,7 +413,7 @@ export default function TermsOfServicePage() {
                     <strong>Joseph Sardella</strong><br />
                     Real Estate Agent | DRE# 02106916<br />
                     JPS &amp; Company LLC<br />
-                    eXp Realty of Southern California
+                    Fathom Realty Group, Inc.
                   </p>
                   <p>
                     <strong>Email:</strong>{' '}

@@ -125,7 +125,7 @@ export default function SubdivisionPageClient({
   };
 
   return (
-    <div className={`min-h-screen pt-20 md:pt-12 px-4`} data-page="neighborhoods-subdivision">
+    <div className={`min-h-screen pt-6 px-4`} data-page="neighborhoods-subdivision">
       <div className="max-w-7xl mx-auto">
         {/* Back to City Button */}
         <Link
@@ -182,8 +182,13 @@ export default function SubdivisionPageClient({
           {/* Photo Carousel */}
           <NeighborhoodErrorBoundary sectionName="Photos">
             <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+              {/* Renamed from "Featured Listings": this is a PHOTO carousel,
+                  and the old heading made a page with an empty carousel look
+                  like a listings section with no listings — which is how the
+                  audit read it. The real listing anchors are server-rendered
+                  further down (see page.tsx). */}
               <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-                Featured Listings
+                Photos from {subdivision.name}
               </h2>
               <SubdivisionPhotoCarousel
                 subdivisionSlug={slug}
@@ -292,15 +297,20 @@ export default function SubdivisionPageClient({
             <p className={`text-lg ${textSecondary} mb-8 text-center max-w-3xl mx-auto`}>
               Whether you're looking to buy or sell in this exclusive community, Joey Sardella has the local expertise to guide you through every step of the process.
             </p>
+            {/* These pointed at /{city}/{subdivision}/buy and /sell, which
+                were the same near-empty template as the city-level pair and
+                now 301 to the city page's #buy / #sell sections. Linking
+                straight to the live target avoids spending a redirect hop on
+                every internal click. */}
             <div className="flex flex-wrap gap-4 justify-center">
               <Link
-                href={`/neighborhoods/${cityId}/${slug}/buy`}
+                href={`/neighborhoods/${cityId}#buy`}
                 className={`px-8 py-4 ${buttonPrimary} font-bold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
               >
                 Buy in {subdivision.name}
               </Link>
               <Link
-                href={`/neighborhoods/${cityId}/${slug}/sell`}
+                href={`/neighborhoods/${cityId}#sell`}
                 className={`px-8 py-4 ${buttonSecondary} font-bold rounded-xl transition-all duration-200 ${shadow} hover:shadow-2xl text-lg`}
               >
                 Sell Your Home Here

@@ -1,3 +1,5 @@
+> Archived: the two-phase "Join Our Team" + Stripe Identity flow was replaced 2026-07-23 by license-only signup — see docs/agent-onboarding/README.md, verified 2026-10-17
+
 # Agent Application System
 **Two-Phase Agent Onboarding with Identity Verification**
 **Created:** December 23, 2025

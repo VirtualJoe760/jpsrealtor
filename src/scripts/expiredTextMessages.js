@@ -78,7 +78,7 @@ fs_1.default.createReadStream(csvPath)
             case 0:
                 if (testMode) {
                     console.log("\uD83E\uDDEA TEST MODE ENABLED \u2014 Sending to test number: ".concat(testPhoneNumber));
-                    message = "Hey, my name's Joseph Sardella with eXp Realty. I wanted to know if your property at ".concat(testAddress, " was sold yet?");
+                    message = "Hey, my name's Joseph Sardella with Fathom Realty. I wanted to know if your property at ".concat(testAddress, " was sold yet?");
                     appleScript = "\n      tell application \"Messages\"\n          set targetService to 1st service whose service type = iMessage\n          set targetBuddy to \"".concat(testPhoneNumber, "\"\n          send \"").concat(message, "\" to buddy targetBuddy of targetService\n      end tell\n      ");
                     try {
                         (0, child_process_1.exec)("osascript -e '".concat(appleScript, "'"), function (err, stdout, stderr) {
@@ -103,7 +103,7 @@ fs_1.default.createReadStream(csvPath)
                                 firstName = contact.first_name;
                                 phone = contact.phone;
                                 address = contact.address;
-                                message = "Hey, my name's Joseph Sardella with eXp Realty. I wanted to know if your property at ".concat(address, " was sold yet?");
+                                message = "Hey, my name's Joseph Sardella with Fathom Realty. I wanted to know if your property at ".concat(address, " was sold yet?");
                                 appleScript = "\n      tell application \"Messages\"\n          set targetService to 1st service whose service type = iMessage\n          set targetBuddy to \"".concat(phone, "\"\n          send \"").concat(message, "\" to buddy targetBuddy of targetService\n      end tell\n      ");
                                 _b.label = 1;
                             case 1:

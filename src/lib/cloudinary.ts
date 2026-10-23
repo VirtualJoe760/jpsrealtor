@@ -67,6 +67,32 @@ export async function uploadImage(
 }
 
 /**
+ * Upload an agent's own brand logo (nav mark or brokerage mark).
+ *
+ * Deliberately NOT uploadImage(): that sets `fetch_format: "auto"`, which lets
+ * Cloudinary re-encode a PNG as JPEG when it judges that smaller — and a JPEG
+ * has no alpha channel, so a transparent logo comes back with a black or white
+ * box behind it. Logos pin `format: "png"` and keep their transparency.
+ *
+ * Scoped per agent (`agent-logos/<userId>`) so one tenant cannot overwrite
+ * another's mark by uploading a file with the same name.
+ */
+export async function uploadAgentLogo(
+  file: string,
+  userId: string,
+  variant: "light" | "dark"
+): Promise<CloudinaryUploadResult> {
+  const result = await cloudinary.uploader.upload(file, {
+    folder: `jpsrealtor/agent-logos/${userId}`,
+    public_id: `nav-${variant}-${Date.now()}`,
+    resource_type: "image",
+    format: "png",
+    transformation: [{ width: 1600, height: 1600, crop: "limit", quality: "auto:best" }],
+  });
+  return result as CloudinaryUploadResult;
+}
+
+/**
  * Delete image from Cloudinary
  */
 export async function deleteImage(publicId: string): Promise<void> {

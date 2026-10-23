@@ -1,3 +1,5 @@
+> Archived: historical to-do list, verified 2026-10-17
+
 # Agent System & User Tutorial Implementation
 **Comprehensive To-Do List with Current Status**
 **Last Updated:** December 25, 2025

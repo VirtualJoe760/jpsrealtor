@@ -1,3 +1,5 @@
+> Archived: retired — the src/scripts/mls/backend/expired/ pipeline it describes no longer exists, verified 2026-10-17
+
 # Expired/Cancelled Listings Implementation
 
 Complete implementation of expired and cancelled listings system for lead generation.

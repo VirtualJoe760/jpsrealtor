@@ -1,204 +1,194 @@
 ---
 title: MCP Tool Catalog
 status: current
-last_verified: 2026-08-05
-related: [./README.md, ./scopes-and-safety.md, ./rollout-plan.md]
+last_verified: 2026-10-17
+related: [./README.md, ./scopes-and-safety.md, ./hosting.md, ./site-building.md, ./rollout-plan.md, ../chatrealty-api/external-site.md]
 ---
 
 # MCP Tool Catalog
 
-> Phase 1 status: all 16 tools in §1 (Agent meta), §2 (MLS / Listings),
-> §3 (Market data), and §4 (CMS Landing Pages) are **shipped and callable**.
-> Routes live under `src/app/api/skill/*`. MCP wrappers in
-> `packages/mcp-server/src/tools/`. Phase 2+ (articles, CRM, campaigns,
-> analytics) is design-only.
+> **TL;DR.** `@chatrealty/mcp-server` registers **43 tools** in
+> `packages/mcp-server/src/tools/index.ts` (`ALL_TOOLS`). Every tool is a thin
+> wrapper over one `/api/skill/*` route; the route is the authoritative auth +
+> scope gate. Two transports serve the same registry but **filter it
+> differently** (see "Two surfaces" below), so the tool set a Claude session
+> sees depends on which one it is connected to. The hosted scope map is
+> `TOOL_SCOPE` in `src/lib/mcp-tool-bridge.ts`. For the website-building flow
+> that strings these tools together, see [site-building.md](./site-building.md).
 
-Every tool is a thin wrapper over a `/api/skill/*` REST endpoint. The MCP
-server's only responsibilities are: declare the JSON Schema, pass the bearer
-token, render the result for Claude. All business logic lives in the route.
+The MCP server's only responsibilities are: declare the JSON Schema, pass the
+bearer token, render the result for Claude. All business logic lives in the route.
+
+## Two surfaces — what a session actually sees
+
+| | stdio (`npx @chatrealty/mcp-server`) | Hosted (`/api/mcp/mcp`) |
+|---|---|---|
+| Entry | `packages/mcp-server/src/index.ts` | `src/app/api/mcp/[transport]/route.ts` → `src/lib/mcp-tool-bridge.ts` |
+| Filter | **Tier** (`tiers.ts`): `agent` (default) = everything except `MARKETING_TOOL_NAMES`; `CHATREALTY_TIER=research` = `RESEARCH_TOOL_NAMES` allow-list | **Token scope** (`TOOL_SCOPE`): a tool is listed and callable only if the token holds its scope; tools absent from the map need none. **No tier filter is applied.** |
+| Image/carousel + Instagram tools | **Hidden** (agent tier denies them) | Listed when the token has the scope |
+| Site tools without `site:manage` | Listed; the route answers 403 | Hidden (`site_status`, `connect_site`, `set_site_live`) |
+| Build-guide `guide://` resources | Served (`build-guide/resource.ts`) | **Not served** — only the listing-board UI resource; `get_build_guide` (tool) works on both |
+| Code freshness | Whatever version is installed from npm | Compiled from source on every Vercel build (root `prebuild` runs `build:mcp-server`) |
+
+A connected client caches `tools/list` at connect time — a new tool or
+parameter reaches it only after reconnecting. See
+[scopes-and-safety.md](./scopes-and-safety.md#gotcha-connectors-freeze-scopes-and-tool-schemas-at-connect-time).
 
 ## Tool naming convention
 
 - **Verb_noun** in snake_case. `search_listings`, `create_landing_page`.
 - Prefix with `my_` when the tool is scoped to the authenticated agent's own
-  data: `my_recent_leads`, `list_my_landing_pages`. Tools without `my_` are
-  platform-wide reads (MLS, market data).
-- No prefix for the agent's domain — Claude will pick `create_landing_page`
-  over `chatrealty_create_landing_page` more reliably from natural language.
+  data: `my_recent_leads`, `list_my_landing_pages`.
+- No product prefix — Claude picks `create_landing_page` over
+  `chatrealty_create_landing_page` more reliably from natural language.
+- Never rename a shipped tool: saved conversations break. Deprecate by adding.
 
-## Tools by domain
+## Shipped tools (43)
 
-### 1. Agent meta · `Phase 1`
+"Hosted scope" is the `TOOL_SCOPE` entry; "—" means no entry, so the hosted
+bridge lists the tool for every token. "Route scope" is what the route's
+`requireScope` enforces (the real gate).
 
-Smallest possible surface to confirm auth works and orient Claude.
+### 1. Agent meta, testing, site lifecycle (13)
 
-| Tool | Scope | Route | Description |
-|---|---|---|---|
-| `whoami` | (any token) | `GET /api/skill/me` | Returns agent name, email, site URL, token name + last4. Claude calls this once at the start of a session to know who it's helping. Already shipped. |
-| `my_agent_profile` | (any token) | `GET /api/skill/me/profile` | Bio, service areas, specializations, headshot URL. Used to tailor LP / article content. |
-| `my_stats` | (any token) | `GET /api/skill/me/stats` | Counts: published articles, draft landing pages, active campaigns, contacts. Helps Claude answer "what should I work on?". |
-| `report_bug` | (any token) | `POST /api/skill/bugs` | File a defect with the ChatRealty team: title, severity, area, repro, exact errors verbatim (never tokens). Testing-phase reports drive same-day fixes. |
-| `give_feedback` | (any token) | `POST /api/skill/feedback` | Hand a whole session's results over: returns a one-time upload URL for a source-only zip (no `.env`, no `node_modules`). |
-| `report_data_issue` | (any token) | `POST /api/skill/tickets` | File a **structured data-pipeline failure** at the moment it's hit: association, failing step, verbatim error, how far the pipeline got, payload SHAPE. Clusters by fingerprint server-side — duplicates from many machines become one work item with a population count, triaged by the judge loop ahead of scheduled test work. Redaction is structural: names and shapes only, never values; the route rejects `envVarNames` containing `=`. Full pipeline: `docs/testing/tickets.md`. |
-| `site_status` | `site:manage` | `GET /api/skill/site/status` | External-site lifecycle state: `status` (none/preview/live), deployment URL, subdomain URL, `licenseOnFile`. |
-| `connect_site` | `site:manage` | `POST /api/skill/site/connect` | Point `{subdomain}.chatrealty.io` at the agent's own deployment ("Option A: point, don't host"). Sets status `preview` (agent + admins only, signed link) and **registers the subdomain on the Vercel edge** — response carries `subdomainRegistered`. See `docs/chatrealty-api/external-site.md`. |
-| `set_site_live` | `site:manage` | `POST /api/skill/site/go-live` | Flip preview → live (public). **License-gated server-side** — 409 `license_required` without a license number on file. |
-
-### 2. MLS / Listings · `Phase 1`
-
-Read-only. Listings come from the CRMLS / GPS nightly sync; we can't write back.
-All searches scope to the agent's licensed territories where applicable.
-
-| Tool | Scope | Route | Description |
-|---|---|---|---|
-| `search_listings` | `listings:read` | `GET /api/skill/listings/search` | Filter by city, zip, subdivision, beds, baths, price range, property type, status. Returns paginated list with key fields + slug, **including `listAgentName` / `listOfficeName`** so any surface rendering results can satisfy the IDX "Listed by {office} — {agent}" rule (added 2026-08-04 — search omitted them while detail returned them, so scaffolded sites showed attribution on detail pages and nothing on cards). |
-| `get_listing` | `listings:read` | `GET /api/skill/listings/[slug]` | Full listing detail incl. description, lot/structure, days-on-market, list price history. |
-| `get_listing_photos` | `listings:read` | `GET /api/skill/listings/[slug]/photos` | Cloudinary URLs ordered by display priority. Use for hero photo selection in landing pages. |
-| `find_comparables` | `listings:read` | `GET /api/skill/listings/[slug]/comparables` | Computed comps for a listing — closed sales within radius, beds/baths range, time window. Returns the same shape as the agent CRM's "Comparables" panel. |
-| `search_closed_listings` | `listings:read` | `GET /api/skill/listings/closed/search` | Same filters as `search_listings` but against the closed/sold historical data. For CMA narratives. |
-
-### 3. Market data · `Phase 1`
-
-Read-only. Aggregated data that doesn't tie to a single listing.
-
-| Tool | Scope | Route | Description |
-|---|---|---|---|
-| `get_market_stats` | `market:read` | `GET /api/skill/market/stats` | City / zip / subdivision-level: median price, days on market, inventory, YoY change. Backed by precomputed market stats models (`CaliforniaStats`, `subdivisions.cmaStats`). |
-| `get_subdivision_cma` | `market:read` | `GET /api/skill/market/subdivisions/[id]` | Full CMA stats for a subdivision (the 1,424-subdivision pre-built model). Includes hierarchy parent for PGA West-style nested subdivisions. |
-| `get_neighborhood_info` | `market:read` | `GET /api/skill/market/neighborhoods/[slug]` | POIs, demographics, schools — same data backing the public neighborhood page. |
-| `get_mortgage_rates` | `market:read` | `GET /api/skill/market/mortgage-rates` | Live rates from API Ninjas + FRED. Useful for landing page CTAs. |
-
-### 4. CMS · Landing pages · `Phase 1` (partly shipped)
-
-Shipped today: `create_landing_page` via `POST /api/skill/landing-pages`.
-Adding read tools and an update tool here.
-
-| Tool | Scope | Route | Description |
-|---|---|---|---|
-| `create_landing_page` | `landing_pages:write` | `POST /api/skill/landing-pages` | **Shipped.** Creates a draft. Title, content (MDX), featuredImage, seo, landingPage config (hero type, theme, form). Draft-only. Returns `{ slugId, editUrl, previewUrl }`. |
-| `list_my_landing_pages` | `landing_pages:read` | `GET /api/skill/landing-pages` | List the agent's drafts + published LPs, paginated, with status filter. |
-| `get_landing_page` | `landing_pages:read` | `GET /api/skill/landing-pages/[slug]` | **Shipped (partial — auth-scoped).** Full LP body. Lets Claude review prior work before drafting variants. |
-| `update_landing_page` | `landing_pages:write` | `PATCH /api/skill/landing-pages/[slug]` | Partial update of a draft. Reject if status=published (publish goes through the CMS so the agent makes the final call). |
-
-### 5. CMS · Articles · `Phase 2`
-
-Articles (blog posts, market insights, real estate tips) — same Article model
-as landing pages but `category != "landing-page"`. Per `docs/cms/`:
-publishing-pipeline.ts handles MDX file write + git push + Vercel rebuild;
-draft-only tools skip that pipeline.
-
-| Tool | Scope | Route | Description |
-|---|---|---|---|
-| `create_article` | `articles:write` | `POST /api/skill/articles` | Draft article. Same fields as create_landing_page minus the LP-specific options. Category required (`articles` / `market-insights` / `real-estate-tips`). |
-| `list_my_articles` | `articles:read` | `GET /api/skill/articles` | Agent's articles, filterable by status + category. |
-| `get_article` | `articles:read` | `GET /api/skill/articles/[slug]` | Full article body. |
-| `update_article` | `articles:write` | `PATCH /api/skill/articles/[slug]` | Draft updates. Publish stays in CMS UI. |
-
-### 6. CRM · Contacts · `Phase 2-3`
-
-Read in Phase 2, write in Phase 3. Per memory: leads come from Follow Up Boss
-sync (Zillow + other sources) into the `Contact` model. **PII flows through
-Claude on every call** — see [scopes-and-safety.md](./scopes-and-safety.md#pii-and-crm).
-
-| Tool | Scope | Phase | Route | Description |
+| Tool | Hosted scope | Route scope | Route | Notes |
 |---|---|---|---|---|
-| `search_my_contacts` | `contacts:read` | 2 | `GET /api/skill/contacts/search` | By name, phone, email, label. Returns id + display name + primary contact + last activity date. Does NOT return full notes/history (use `get_contact` for that). |
-| `get_contact` | `contacts:read` | 2 | `GET /api/skill/contacts/[id]` | Full record: phones[], emails[], addresses, labels, notes, last activity, source. |
-| `my_recent_leads` | `contacts:read` | 2 | `GET /api/skill/contacts/recent-leads` | Last N days of newly-created leads, optionally filtered by source (zillow, manual, postcard-response, etc.). |
-| `add_contact_note` | `contacts:write` | 3 | `POST /api/skill/contacts/[id]/notes` | Append a note. Stamped with `source: "mcp:<tool_name>"` so it's distinguishable from human-authored notes in the CRM UI. |
-| `create_contact` | `contacts:write` | 3 | `POST /api/skill/contacts` | Manual contact creation. Subject to dedupe-by-phone/email rules from the CRM service layer. |
-| `add_contact_label` | `contacts:write` | 3 | `POST /api/skill/contacts/[id]/labels` | Apply labels (matching the existing `Label` model). |
+| `whoami` | — | none | `GET /api/skill/me` | Name, email, site URL, token name + last4, `dataSource` (`tenant` / `dogfood` / `none`). The route also returns a `database` summary for tenants (listings, associations, property types, closed history, last sync) — **but the MCP tool's handler whitelists fields and drops it** (`packages/mcp-server/src/tools/whoami.ts:30-40`), so Claude never sees `database` even though the build guide and `get_site_claim_code` tell it to read `whoami.database`. Known bug. |
+| `my_agent_profile` | — | none | `GET /api/skill/me/profile` | Bio, service areas, specializations, headshot, license. The build guide reads it before asking the agent anything. |
+| `my_stats` | — | none | `GET /api/skill/me/stats` | Article + landing-page counts by category × status. Contact and campaign counts are commented out in the route (they would need `contacts:read` / `campaigns:read`). |
+| `get_build_guide` | — | (no route) | local data | The build-guide prompts from `build-guide/prompts.ts`. No `id` = step list + the voice rule; `id` = one step's body. In both tiers. |
+| `report_bug` | — | none | `POST /api/skill/bugs` | File a defect: title, severity, area, repro, exact errors (never secrets). |
+| `report_data_issue` | — | none | `POST /api/skill/tickets` | Structured data-pipeline failure (association, failing step, verbatim error, payload SHAPE). Clusters by fingerprint server-side. Rejects `envVarNames` containing `=`. See `docs/testing/tickets.md`. |
+| `give_feedback` | — | none | `POST /api/skill/feedback` | Returns a one-time upload URL for a source-only session zip (no `.env`, no `node_modules`). |
+| `site_status` | `site:manage` | `site:manage` | `GET /api/skill/site/status` | `status` (none/preview/live), deployment URL, subdomain, `licenseOnFile`. |
+| `connect_site` | `site:manage` | `site:manage` | `POST /api/skill/site/connect` | Point `{subdomain}.chatrealty.io` at the agent's deployment. Sets `preview` (agent + admins only) and registers the subdomain on the Vercel edge (`subdomainRegistered`). See `docs/chatrealty-api/external-site.md`. |
+| `set_site_live` | `site:manage` | `site:manage` | `POST /api/skill/site/go-live` | Preview → public. **License-gated** — 409 `license_required` without a license number on the profile. Confirm with the agent first. |
+| `get_tracking` | — | `site:manage` | `GET /api/skill/site/tracking` | Meta Pixel / GA4 / Google Ads IDs + a `capabilities` block. GA4 alone cannot build Google Ads audiences (`youtubeRetargeting` false until an `AW-` tag is set). Missing from `TOOL_SCOPE`, so hosted lists it to tokens the route then refuses. |
+| `set_tracking` | — | `site:manage` | `PATCH /api/skill/site/tracking` | Set those public measurement IDs. Partial update; empty string clears; malformed IDs rejected; `enabled:false` renders no tags. Same `TOOL_SCOPE` gap. |
+| `get_site_claim_code` | `listings:read` | `listings:read` | `POST /api/skill/site/claim-code` | One-time code (15 min, one use) + `claimScript` + `steps`. Claude runs the script in the site folder; it trades the code at `POST /api/skill/site/claim` for a website key bound to the agent's seeded database and writes `CHATREALTY_API_TOKEN` into `.env.local` (removing `CHATREALTY_TEST_DATA`). The key = website preset **capped to the asking key's scopes** (`src/lib/site-claim.ts`) and never enters the conversation. 409 `no_database` without an active tenant. See `docs/chatrealty-api/external-site.md` → claim codes. |
 
-### 7. Campaigns · Draft / configure · `Phase 3`
+### 2. MLS / Listings (6)
 
-Per memory: Campaign covers postcards (Thanks.io), voicemails (Drop Cowboy),
-emails (Resend), and ads (Google/Meta). All Phase 3 tools create or edit
-campaigns but **never send** — send is its own scope (Phase 4).
+Read-only. A tenant token reads its own database; `dataSource: none` tokens get
+403 `no_data_source` from every data route.
 
-| Tool | Scope | Route | Description |
+| Tool | Hosted scope | Route | Notes |
 |---|---|---|---|
-| `list_my_campaigns` | `campaigns:read` | `GET /api/skill/campaigns` | Campaigns the agent owns, with status (draft / scheduled / sent / archived). |
-| `get_campaign` | `campaigns:read` | `GET /api/skill/campaigns/[id]` | Full config, scripts, audience, schedule. |
-| `create_postcard_campaign` | `campaigns:write` | `POST /api/skill/campaigns/postcard` | Draft postcard campaign — design, audience filter, schedule. Mirrors `/api/campaigns/create` for type=postcard. |
-| `create_voicemail_campaign` | `campaigns:write` | `POST /api/skill/campaigns/voicemail` | Draft voicemail campaign — script, audience, schedule. |
-| `create_email_campaign` | `campaigns:write` | `POST /api/skill/campaigns/email` | Draft email campaign — subject, body MDX, audience, schedule. |
-| `estimate_campaign_cost` | `campaigns:read` | `GET /api/skill/campaigns/estimate` | Returns predicted cost for a given audience size + medium. Wraps Thanks.io pricing table for postcard. Used pre-send by Claude to warn the agent. |
-| `update_campaign` | `campaigns:write` | `PATCH /api/skill/campaigns/[id]` | Edit a draft. Reject if status != draft. |
-| `archive_campaign` | `campaigns:write` | `POST /api/skill/campaigns/[id]/archive` | Soft-delete (existing archive route). |
+| `search_listings` | `listings:read` | `GET /api/skill/listings/search` | City, zip, subdivision, beds, baths, price, property type, status, pool, days-on-market. Rows carry `listAgentName` / `listOfficeName` for the IDX "Listed by {office} — {agent}" rule, plus `listAgentMlsId` / `listOfficeMlsId`. Route-only filters the tool does not expose: `subdivisions=A,B`; `mine=true` (422 `no_agent_id` without a license on the profile); `agentIds=GPS:d22668`; `brokerages=`; raw `listAgentMlsIds=` / `listOfficeMlsIds=` (legacy Mongo path; `src/lib/skill-api/listing-party-filter.ts`). |
+| `show_listing_board` | — | `GET /api/skill/listings/search` | Same search, rendered as the MCP-Apps listing board (`ui://chatrealty/listing-board.html`, `src/ui/listing-board.ts`). No `TOOL_SCOPE` entry; the route still requires `listings:read`. |
+| `get_listing` | `listings:read` | `GET /api/skill/listings/[listingKey]` | Full detail. |
+| `get_listing_photos` | `listings:read` | `GET /api/skill/listings/[listingKey]/photos` | Ordered photo URLs from the synced listing media. |
+| `find_comparables` | `listings:read` | `GET /api/skill/listings/[listingKey]/comparables` | Closed comps for a listing. |
+| `search_closed_listings` | `listings:read` | `GET /api/skill/listings/closed/search` | Sold history (the `unified_closed_listings` collection on the legacy path). |
 
-### 8. Campaigns · Send · `Phase 4`
+Route-only listing endpoints (no MCP tool yet), all `listings:read`:
+`GET /api/skill/agents/search`, `/api/skill/agents/profile`,
+`/api/skill/brokerages/profile`, `/api/skill/market/places`.
 
-Separate scope. Separate consent flow. Requires the token to have
-`campaigns:send` AND for the agent to have a non-zero daily spend cap set.
+### 3. Investment — rental cash-flow (4)
 
-| Tool | Scope | Route | Description |
+No analysis at request time: every figure is precomputed by the
+`chatrealty-backend` repo's VPS jobs and read through
+`src/lib/listings/cashflow-query.ts`. Data contract: `chatrealty-backend/docs/tools/`.
+
+| Tool | Hosted scope | Route | Notes |
 |---|---|---|---|
-| `send_campaign` | `campaigns:send` | `POST /api/skill/campaigns/[id]/send` | Actually launches the campaign. Server-side cap enforcement: if today's spend + estimated cost > cap, fails with `cap_exceeded` and the cap in the error so the agent can raise it intentionally from the CRM. |
-| `launch_ad_campaign` | `campaigns:send` | `POST /api/skill/campaigns/[id]/launch-ads` | Specifically for ad campaigns (Google + Meta). Different than `send_campaign` because ads have ongoing daily budgets, not one-shot send. |
+| `get_area_cashflow` | `listings:read` | `GET /api/skill/rentals/area-cashflow` | Whole-area answer (`subdivisions`/`cities.cashflowProfile`): per-strategy verdicts, break-even down payments, per-bedroom economics, caveats. Misses are 200s (`found:false` + `candidates`). |
+| `find_cashflowing_listings` | `listings:read` | `GET /api/skill/listings/cashflow` | Active listings that cash-flow in an area; re-derives from stored `fixedCosts` for a custom down payment/rate. |
+| `analyze_listing_cashflow` | `listings:read` | `GET /api/skill/listings/[listingKey]/cashflow` | One listing's `cashflowStats`. `null` = no rent signal, never `$0`. |
+| `get_going_rate` | `listings:read` | `GET /api/skill/rentals/going-rate` | Long-term rent going rate for a subdivision or ZIP. |
 
-### 9. Analytics · `Phase 2`
+### 4. Market data (4)
 
-Read-only, agent-scoped.
-
-| Tool | Scope | Route | Description |
+| Tool | Hosted scope | Route | Notes |
 |---|---|---|---|
-| `my_landing_page_traffic` | `analytics:read` | `GET /api/skill/analytics/landing-pages` | Per-LP view counts, lead form submissions, time on page. Backed by existing Article.metadata.views + form submission records. |
-| `my_campaign_performance` | `analytics:read` | `GET /api/skill/analytics/campaigns` | Sends, opens, clicks (email), responses (postcard via Thanks.io webhooks), call-backs (voicemail). |
-| `my_ad_spend_summary` | `analytics:read` | `GET /api/skill/analytics/ad-spend` | YTD ad spend by platform, mirrors `/api/campaigns/[id]/spend-summary` aggregated. |
+| `get_market_stats` | `market:read` | `GET /api/skill/market/stats` | City / zip / subdivision medians, DOM, inventory. |
+| `get_subdivision_cma` | `market:read` | `GET /api/skill/market/subdivisions/[slug]` | Prebuilt subdivision `cmaStats`. |
+| `get_neighborhood_info` | `market:read` | `GET /api/skill/market/neighborhoods/[slug]` | Neighborhood page data. |
+| `get_mortgage_rates` | `market:read` | `GET /api/skill/market/mortgage-rates` | National 30/15-yr rates via the existing `/api/mortgage-rates` route (hourly cache). |
+
+### 5. CMS — landing pages (4)
+
+| Tool | Hosted scope | Route | Notes |
+|---|---|---|---|
+| `create_landing_page` | `landing_pages:write` | `POST /api/skill/landing-pages` | Creates a draft. |
+| `list_my_landing_pages` | `landing_pages:read` | `GET /api/skill/landing-pages` | Drafts + published. |
+| `get_landing_page` | `landing_pages:read` | `GET /api/skill/landing-pages/[slugId]` | Full body. |
+| `update_landing_page` | `landing_pages:write` | `PATCH /api/skill/landing-pages/[slugId]` | Drafts only — 409 on a published page (take it back to draft in the CMS). |
+
+### 6. CMS — articles (4)
+
+| Tool | Hosted scope | Route | Notes |
+|---|---|---|---|
+| `create_article` | `articles:write` | `POST /api/skill/articles` | Draft article (`articles` / `market-insights` / `real-estate-tips`). |
+| `list_my_articles` | `articles:read` | `GET /api/skill/articles` | Filter by status + category. |
+| `get_article` | `articles:read` | `GET /api/skill/articles/[slugId]` | Full body. |
+| `update_article` | `articles:write` | `PATCH /api/skill/articles/[slugId]` | Edits drafts; **`status: "published"` publishes a draft** through `src/lib/publishing-pipeline.ts` (since 2026-07-23, the free-tier blog). Content edits to an already-published article are refused. The build guide only publishes on explicit agent approval. |
+
+### 7. CRM — contacts, read (3)
+
+`contacts:read` is opt-in (`lead_aware` / `full_workspace` presets only). **PII
+flows to Claude** — see [scopes-and-safety.md](./scopes-and-safety.md#pii-and-crm).
+
+| Tool | Hosted scope | Route | Notes |
+|---|---|---|---|
+| `search_my_contacts` | `contacts:read` | `GET /api/skill/contacts/search` | Name/phone/email/label search; summary rows. |
+| `get_contact` | `contacts:read` | `GET /api/skill/contacts/[id]` | Full record. |
+| `my_recent_leads` | `contacts:read` | `GET /api/skill/contacts/recent-leads` | Last N days of new leads. |
+
+### 8. Images — carousel production (4) · hosted only
+
+Denied on the stdio agent tier (`MARKETING_TOOL_NAMES`), so only the hosted
+connector exposes these. See `docs/content-templates/`.
+
+| Tool | Hosted scope | Route | Notes |
+|---|---|---|---|
+| `plan_listing_carousel` | `listings:read` | `POST /api/skill/content/carousel-plan` | Turn a listingKey into post material. |
+| `stage_listing_with_agent` | `landing_pages:write` | `POST /api/skill/images/agent-staged-listing` | AI composite of the agent into listing photos (`photoIndexes` picks which). |
+| `create_listing_cover` | `landing_pages:write` | `POST /api/skill/images/cover-slide` | Templated 4:5 cover slide. |
+| `create_carousel_slide` | `landing_pages:write` | `POST /api/skill/images/carousel-slide` | The other slide types. |
+
+### 9. Social — real-world publish (1) · hosted only
+
+| Tool | Hosted scope | Route | Notes |
+|---|---|---|---|
+| `post_instagram_carousel` | `social:post` | `POST /api/skill/instagram/carousel` | **Publishes immediately**, no draft. `social:post` is in no preset. See [instagram-posting.md](./instagram-posting.md). |
+
+## Designed, not built
+
+None of these exist in `ALL_TOOLS` or under `src/app/api/skill/`. Kept as the
+design target; see [rollout-plan.md](./rollout-plan.md).
+
+| Domain | Tools | Scope |
+|---|---|---|
+| CRM write | `add_contact_note`, `create_contact`, `add_contact_label` | `contacts:write` |
+| Campaign drafts | `list_my_campaigns`, `get_campaign`, `create_postcard_campaign`, `create_voicemail_campaign`, `create_email_campaign`, `estimate_campaign_cost`, `update_campaign`, `archive_campaign` | `campaigns:read` / `campaigns:write` |
+| Campaign send | `send_campaign`, `launch_ad_campaign` (daily spend cap + two-call confirmation) | `campaigns:send` |
+| Analytics | `my_landing_page_traffic`, `my_campaign_performance`, `my_ad_spend_summary` | `analytics:read` |
 
 ## Tool response shape
 
-Every tool returns:
-
-```jsonc
-{
-  // For lists, the primary array
-  "items": [...],
-  "nextCursor": "..." | null,
-
-  // OR for single-record fetches
-  "id": "...",
-  "data": { ... },
-
-  // Always
-  "_meta": {
-    "tool": "search_listings",
-    "tokenLast4": "ab12",
-    "executedAt": "2026-06-02T18:43:00Z",
-    "scope": "listings:read"
-  }
-}
-```
-
-The `_meta` block is what gets shown when Claude renders "I called
-`search_listings`" — keeps the agent informed about what the model is doing.
+There is no envelope. A tool returns the route's JSON body: the stdio server
+wraps it as one pretty-printed text block, the hosted bridge as compact JSON
+(~35% fewer tokens). Two exceptions, both handled identically by the two
+transports: a result carrying `_mcpContent` is passed through as raw MCP
+content blocks (rendered images), and one carrying `_structuredContent` returns
+`structuredContent` plus a short `_mcpText` summary (the listing board).
 
 ## Errors
 
-Tools return MCP-protocol errors (`isError: true`) with this body:
-
-```jsonc
-{
-  "error": "missing_scope" | "validation_failed" | "cap_exceeded" | "not_found"
-         | "rate_limited" | "upstream_failed" | "internal",
-  "message": "Plain-English explanation",
-  "details": { ... }  // tool-specific
-}
-```
-
-Claude is good at understanding structured errors and asking the agent for
-correction or escalation. Never return raw stack traces or include the bearer
-token in error messages.
+Errors come back as `isError: true` with a JSON text body
+`{ "error": <code>, "message": <text>, "details"?: { status, body } }`. Codes are
+whatever the route returned (`missing_scope`, `no_data_source`,
+`license_required`, `no_database`, `rate_limited`, `not_found`, …) plus
+transport-level ones: `insufficient_scope` (hosted, token lacks the
+`TOOL_SCOPE` entry), `forbidden` (stdio, tool outside the tier), `unauthorized`,
+`internal`. Never include the bearer token in an error.
 
 ## What's deliberately NOT a tool
 
-- **Delete-anything** — no `delete_listing`, `delete_contact`, `delete_campaign`
-  in v1. Archive yes, delete no. Reduces blast radius of a misunderstood prompt.
-- **Bulk export** — no `export_all_contacts` or similar. Limits PII exfil.
-- **Direct DB queries** — no `run_mongo_aggregate`. Every tool maps to a
-  vetted route, not a generic query interface.
-- **Acting as the agent in third-party UIs** — no `post_to_facebook` /
-  `send_sms` for ad-hoc messages outside the campaign system. If it's a real
-  channel, it goes through Campaign.
-- **Domain provisioning / billing** — no `add_domain`, `change_subscription`.
-  Those are admin-grade ops and shouldn't be a prompt away.
+- **Delete-anything** — archive yes, delete no.
+- **Bulk export** — no `export_all_contacts`.
+- **Direct DB queries** — every tool maps to a vetted route.
+- **Ad-hoc third-party messaging** — no `send_sms`; real channels go through campaigns.
+- **Domain provisioning / billing** — admin-grade ops, not a prompt away.

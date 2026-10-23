@@ -121,8 +121,26 @@ export async function GET(request: NextRequest) {
         // Dark-theme hero variants (used by AgentHero when the active theme is dark).
         heroImageDark: profile?.heroImageDark,
         heroPhotoDark: profile?.heroPhotoDark,
-        teamLogo: profile?.teamLogo,
+        // AFFILIATION + BROKERAGE. This whitelist previously exposed only the
+        // LEGACY teamLogo/brokerLogo pair, so once an agent migrated onto
+        // agentProfile.brokerage their hero rendered the brokerage NAME with no
+        // mark at all — the name comes from brokerageName, which was listed,
+        // and the logo came from a field that was not. Caught on jpsrealtor.com
+        // 2026-10-11 after the Fathom migration emptied the legacy pair.
+        affiliation: profile?.affiliation || "solo",
+        brokerage: profile?.brokerage,
+        // Team artwork is suppressed for a solo agent here for the same reason
+        // /api/agent-branding suppresses it: a stale ex-team logo left in the
+        // document must not keep rendering after the agent leaves the team.
+        teamLogo: profile?.affiliation === "team" ? profile?.teamLogo : undefined,
+        teamLogoDark: profile?.affiliation === "team" ? profile?.teamLogoDark : undefined,
+        // The nav mark is the agent's own and is NOT affiliation-gated.
+        navLogo: profile?.navLogo,
+        navLogoDark: profile?.navLogoDark,
+        navWordmark: profile?.navWordmark,
+        brandMark: profile?.brandMark,
         brokerLogo: profile?.brokerLogo,
+        brokerLogoDark: profile?.brokerLogoDark,
         galleryPhotos: profile?.galleryPhotos,
 
         // Social links (check both socialMedia object and top-level)

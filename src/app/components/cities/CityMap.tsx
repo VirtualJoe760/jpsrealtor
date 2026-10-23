@@ -113,6 +113,17 @@ export default function CityMap({
         ? "rentals"
         : `properties for ${propertyTypeFilter}`;
 
+  // NEVER ship a count before the fetch resolves.
+  //
+  // `listings` starts empty and the fetch is debounced 300ms behind mount, so
+  // the server-rendered HTML for /neighborhoods/indio read "Showing 0
+  // properties for sale in Indio" while the same page's stats block said 818
+  // active. That is the version Googlebot's first pass sees, and a page whose
+  // crawled HTML says zero has already contradicted itself before any JS runs.
+  // Undefined suppresses the status line in ListingsMap entirely, so the page
+  // says nothing until it can say something true.
+  const statusText = loading ? undefined : `Showing ${validCount} ${typeLabel} in ${cityName}`;
+
   return (
     <ListingsMap
       listings={listings}
@@ -167,7 +178,7 @@ export default function CityMap({
           </div>
         </div>
       }
-      statusText={`Showing ${validCount} ${typeLabel} in ${cityName}`}
+      statusText={statusText}
       actionButton={
         (() => {
           const center = getCityCenter(cityName);

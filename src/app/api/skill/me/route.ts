@@ -42,6 +42,22 @@ export async function GET(req: NextRequest) {
       // "dogfood" = platform owner's internal dataset (admin accounts only).
       // The MCP build guide keys its step 1 off this field.
       dataSource: auth.dataSource,
+      // WHAT is in the agent's own database, when they seeded it from Settings
+      // → Integrations (src/lib/mls-seed.ts). Lets a builder say "your 14,788
+      // GPS listings" instead of probing blind — and tells it the data step is
+      // DONE: build on this, get the site's key via get_site_claim_code, never
+      // fall back to sample data or ask the agent for a token.
+      database:
+        auth.dataSource === "tenant"
+          ? {
+              listings: (user as any).mlsFeed?.sync?.dbRows ?? null,
+              associations: (user as any).mlsFeed?.networks ?? [],
+              propertyTypes: (user as any).mlsFeed?.propertyTypes ?? [],
+              closedHistory: (user as any).mlsFeed?.closedLookback ?? "none",
+              lastSyncedAt: (user as any).mlsFeed?.sync?.finishedAt ?? null,
+              updates: "nightly, automatic",
+            }
+          : null,
     },
     { headers: NO_STORE }
   );

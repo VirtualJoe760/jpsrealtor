@@ -1,5 +1,8 @@
 "use client";
 
+import LogoUploadField from "../LogoUploadField";
+import Wordmark from "@/app/components/brand/Wordmark";
+
 import { Loader2, Sun, Moon, SunMoon, PanelLeft, PanelTop, Columns2, Image as ImageIcon, Film, Images, LayoutTemplate, CircleUserRound } from "lucide-react";
 
 interface StepProps {
@@ -25,30 +28,6 @@ const NAV_OPTIONS: { id: NavLayout; label: string; icon: typeof PanelLeft; desc:
   { id: "navbar", label: "Top Navbar", icon: PanelTop, desc: "Horizontal navigation bar across the top" },
 ];
 
-// Navbar logo presets bundled with the platform (public/images/brand/).
-// Each needs BOTH variants: `light` renders on light backgrounds (dark
-// artwork), `dark` renders on dark backgrounds (white artwork). "Default"
-// clears the fields → the site falls back to the ChatRealty text wordmark.
-const NAV_LOGO_PRESETS: {
-  id: string;
-  label: string;
-  light: string | null;
-  dark: string | null;
-}[] = [
-  { id: "wordmark", label: "ChatRealty wordmark (default)", light: null, dark: null },
-  {
-    id: "obsidian",
-    label: "Obsidian Group | eXp",
-    light: "/images/brand/obsidian-logo-black.png",
-    dark: "/images/brand/logo-white-obsidian.png",
-  },
-  {
-    id: "exp",
-    label: "eXp Realty",
-    light: "/images/brand/exp-Realty-Logo-black.png",
-    dark: "/images/brand/EXP-white-square.png",
-  },
-];
 
 // Share-card background presets (public/ assets + the agent's own photos).
 const OG_BG_PRESETS: { id: string; label: string; value: string | null }[] = [
@@ -79,15 +58,16 @@ export default function BrandingStep({
   const themeMode: ThemeMode = formData.agentProfile?.themeMode || "both";
   const navLayout: NavLayout = formData.agentProfile?.navLayout === "navbar" ? "navbar" : "sidebar";
   const heroStyle: HeroStyle = (HERO_OPTIONS.find((h) => h.id === formData.agentProfile?.heroStyle)?.id) || "split";
-  const teamLogo: string | null = formData.agentProfile?.teamLogo || null;
-  const teamLogoDark: string | null = formData.agentProfile?.teamLogoDark || null;
+  // The nav mark lives in navLogo, NOT teamLogo — it is the agent's own site
+  // brand and must survive leaving a team. teamLogo is read only as a fallback
+  // so an agent who set this before 2026-10-11 still sees their current choice.
+  const navLogo: string | null =
+    formData.agentProfile?.navLogo || formData.agentProfile?.teamLogo || null;
+  const navLogoDark: string | null =
+    formData.agentProfile?.navLogoDark || formData.agentProfile?.teamLogoDark || null;
 
   const ogBackgroundImage: string | null = formData.agentProfile?.ogBackgroundImage || null;
 
-  const applyLogoPreset = (preset: (typeof NAV_LOGO_PRESETS)[number]) => {
-    updateField("agentProfile.teamLogo", preset.light);
-    updateField("agentProfile.teamLogoDark", preset.dark);
-  };
 
   const inputClass = `w-full px-4 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
     isLight
@@ -105,8 +85,12 @@ export default function BrandingStep({
         themeMode,
         navLayout,
         heroStyle,
-        teamLogo,
-        teamLogoDark,
+        navLogo,
+        navLogoDark,
+        // Must be listed: this payload is a whitelist, so a field edited in the
+        // form but missing here is silently discarded on Save.
+        navWordmark: formData.agentProfile?.navWordmark,
+        brandMark: formData.agentProfile?.brandMark,
         ogBackgroundImage,
       },
     });
@@ -251,58 +235,120 @@ export default function BrandingStep({
         </p>
       </div>
 
-      {/* Navigation Bar Logo */}
+      {/* Nav Wordmark — the text alternative to an uploaded logo. */}
       <div className="mb-6">
-        <label className={labelClass}>Navigation Bar Logo</label>
+        <label className={labelClass}>Nav Wordmark</label>
         <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-          Shown top-left on your site and on your share cards. Needs a light-mode and a dark-mode version.
+          Set your name as type instead of an image — first half light, second half bold, e.g.
+          {" "}<span className="font-semibold">JPS</span> + <span className="font-semibold">REALTOR</span>.
+          Stays sharp at any size and follows the theme, so it needs no light/dark pair.
+          If set, this is used instead of the uploaded logo below.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          {NAV_LOGO_PRESETS.map((preset) => {
-            const isActive = teamLogo === preset.light && teamLogoDark === preset.dark;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyLogoPreset(preset)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all text-center ${
-                  isActive
-                    ? isLight
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-emerald-500 bg-emerald-900/20"
-                    : isLight
-                    ? "border-gray-200 bg-gray-50 hover:border-gray-300"
-                    : "border-gray-700 bg-gray-800/40 hover:border-gray-600"
-                }`}
-              >
-                {preset.light ? (
-                  <span className="flex w-full items-center justify-center rounded bg-white px-2 py-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={preset.light} alt="" className="h-7 w-auto max-w-full object-contain" />
-                  </span>
-                ) : (
-                  <span
-                    className={`flex w-full items-center justify-center rounded px-2 py-2 text-sm uppercase tracking-[0.3em] ${
-                      isLight ? "bg-white text-gray-900" : "bg-neutral-900 text-neutral-100"
-                    }`}
-                  >
-                    <span className="font-extralight">Chat</span>
-                    <span className="font-medium">Realty</span>
-                  </span>
-                )}
-                <span
-                  className={`text-xs font-semibold ${
-                    isActive
-                      ? isLight ? "text-blue-700" : "text-emerald-300"
-                      : isLight ? "text-gray-700" : "text-gray-300"
-                  }`}
-                >
-                  {preset.label}
-                </span>
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Light half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.navWordmark?.thin || ""}
+              onChange={(e) => updateField("agentProfile.navWordmark.thin", e.target.value)}
+              placeholder="JPS"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Bold half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.navWordmark?.bold || ""}
+              onChange={(e) => updateField("agentProfile.navWordmark.bold", e.target.value)}
+              placeholder="REALTOR"
+              className={inputClass}
+            />
+          </div>
         </div>
+        {(formData.agentProfile?.navWordmark?.thin || formData.agentProfile?.navWordmark?.bold) && (
+          <div className={`mt-3 rounded-lg px-4 py-3 ${isLight ? "bg-white border border-gray-200" : "bg-neutral-900 border border-gray-700"}`}>
+            <p className={`text-[10px] uppercase tracking-wider mb-1.5 ${isLight ? "text-gray-400" : "text-gray-500"}`}>Preview</p>
+            <Wordmark
+              className={`text-[21px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
+              thin={formData.agentProfile?.navWordmark?.thin || ""}
+              bold={formData.agentProfile?.navWordmark?.bold || ""}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Brand Mark — the standalone badge in hero corners and on the chat page. */}
+      <div className="mb-6">
+        <label className={labelClass}>Brand Mark</label>
+        <p className={`text-xs mb-2 ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+          The badge in your banner corner and on your chat page — e.g. a short monogram like
+          {" "}<span className="font-semibold">JPS</span>. Leave both empty to show your brokerage
+          logo there instead, or nothing if you have not set one.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Light half</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.brandMark?.thin || ""}
+              onChange={(e) => updateField("agentProfile.brandMark.thin", e.target.value)}
+              placeholder="JPS"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <p className={`text-xs mb-1.5 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Bold half (optional)</p>
+            <input
+              type="text"
+              value={formData.agentProfile?.brandMark?.bold || ""}
+              onChange={(e) => updateField("agentProfile.brandMark.bold", e.target.value)}
+              placeholder=""
+              className={inputClass}
+            />
+          </div>
+        </div>
+        {(formData.agentProfile?.brandMark?.thin || formData.agentProfile?.brandMark?.bold) && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[
+              { bg: "#111827", fg: "text-white", caption: "On a dark banner" },
+              { bg: "#ffffff", fg: "text-gray-900", caption: "On a light banner" },
+            ].map((p) => (
+              <div key={p.caption}>
+                <p className={`text-[10px] uppercase tracking-wider mb-1.5 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
+                  {p.caption}
+                </p>
+                <div
+                  className="flex h-20 items-center justify-center rounded-lg border border-gray-700/40"
+                  style={{ background: p.bg }}
+                >
+                  <Wordmark
+                    className={`text-[30px] ${p.fg}`}
+                    thin={formData.agentProfile?.brandMark?.thin || ""}
+                    bold={formData.agentProfile?.brandMark?.bold || ""}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Bar Logo — uploaded by the agent, not chosen from a list.
+          The preset grid that was here hardcoded specific agencies into shared
+          platform code, so every tenant was offered one agent's brokerages and
+          none could supply their own. See docs/ARCHITECTURE.md invariants. */}
+      <div className="mb-6">
+        <LogoUploadField
+          label="Navigation Bar Logo"
+          hint="Shown top-left on your site and on your share cards. Leave both empty and your site's nav shows your name as text. A PNG with a transparent background works best."
+          lightValue={navLogo}
+          darkValue={navLogoDark}
+          isLight={isLight}
+          onChange={(variant, url) =>
+            updateField(variant === "light" ? "agentProfile.navLogo" : "agentProfile.navLogoDark", url)
+          }
+        />
       </div>
 
       {/* Share-card background */}

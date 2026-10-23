@@ -47,9 +47,28 @@ schema is built from. The three casings (`ListingKey` / `listingKey` /
 
 ---
 
+## Before you start — do you need this at all?
+
+If the agent already seeded their listings from **ChatRealty Settings →
+Integrations**, their database exists and updates nightly on ChatRealty's side.
+Do **not** run this CLI for them: the ChatRealty MCP's `whoami` reports
+`dataSource: "tenant"`, and the site gets its key with the MCP tool
+`get_site_claim_code`. This package is for agents seeding from their own
+machine with their own RESO credentials (after their seed, `whoami` reports
+`tenant` too).
+
+The package name is scoped: always `npx @chatrealty/sync …`. The unscoped
+`chatrealty-sync` is only the installed command name, not an npm package.
+
 ## Quick start (fully self-serve)
 
 ```bash
+# 0. See what your data key can reach — associations, property types and
+#    statuses, each with an exact count and projected size — and choose BEFORE
+#    provisioning. Write the choices to RESO_NETWORKS / RESO_PROPERTY_TYPES /
+#    RESO_STATUSES in .env.local (default: for-sale only).
+npx @chatrealty/sync access
+
 # 1. Provision your ChatRealty database + write CHATREALTY_DB_URL to .env.local
 npx @chatrealty/sync init --token crt_live_…     # token: Settings → Integrations
 
@@ -66,10 +85,17 @@ npx @chatrealty/sync run
 npx @chatrealty/sync status
 ```
 
-Daily updates need no extra setup: a scaffolded ChatRealty site ships a nightly
-refresh route (`/api/sync/cron`) that runs on its own once the site is deployed,
-off the same checkpoint. Running the sync from your own server is an option, not
-a requirement — see [Running the sync yourself](#running-the-sync-yourself).
+From 0.7.0 a fresh `run` first projects the storage your scope needs against
+your ChatRealty data plan and **refuses to start when it exceeds the plan**.
+Narrow `RESO_NETWORKS` or upgrade the plan; `--force` overrides the check and
+should not be used to sneak past it.
+
+Ongoing updates need no extra setup: a scaffolded ChatRealty site ships an
+**hourly** refresh route (`/api/sync/cron`, scheduled in its `vercel.json`) that
+runs once the site is deployed with `CHATREALTY_DB_URL`, the feed credentials
+and `CRON_SECRET`, off the same checkpoint. Running the sync from your own
+server is an option, not a requirement — see
+[Running the sync yourself](#running-the-sync-yourself).
 
 ## Install & layout
 
@@ -126,6 +152,9 @@ logged. The CLI auto-loads `.env.local` then `.env`. Set:
 | `RESO_RESOURCE` | — | Resource name (default `Property`). |
 | `RESO_PAGE_SIZE` | — | OData page size (default `200`). |
 | `RESO_EXPAND_MEDIA` | — | `off` skips the photo expansion (`$expand=Media`). On by default; a feed that rejects it turns it off by itself on the first page. |
+| `RESO_NETWORKS` | — | Associations to sync (comma-separated, names as `access` prints them). Applies to the seed and every pull after it. Choosing after `init` means starting over on a fresh database. |
+| `RESO_PROPERTY_TYPES` | — | Property types to sync, as `access` prints them. |
+| `RESO_STATUSES` | — | Statuses to sync. Default is for-sale only; add closed statuses only if you need comps in your own database. |
 | `SYNC_STATE_PATH` | — | Watermark file path for **capped/dry runs only** (default `./.sync-state`). A real `run` checkpoints in your database, not here. |
 | `SYNC_OVERLAP_HOURS` | — | Incremental lookback (default `26`). |
 | `SYNC_BATCH_SIZE` | — | Upsert batch size (default `400`). |
@@ -272,15 +301,20 @@ inventory to show, as a failure when there isn't.
 
 ## How Claude scaffolds this on a customer machine
 
-1. Confirm the ChatRealty database is provisioned (the `property` table +
-   PostGIS exist). `CHATREALTY_DB_URL` is the pooled URL ChatRealty handed the
-   customer at provisioning.
+1. Check `whoami` first. `dataSource: "tenant"` means a database already exists.
+   If the agent seeded it from Settings → Integrations (ChatRealty maintains
+   it), stop here and use `get_site_claim_code` instead; only continue to
+   re-run or resume a seed this CLI started.
 2. Write `.env.local` from the customer's MLS RESO credentials (above). Secrets go
-   in env only.
+   in env only. Run `npx @chatrealty/sync access`, ask the customer which
+   associations / property types / statuses to sync, and write
+   `RESO_NETWORKS` / `RESO_PROPERTY_TYPES` / `RESO_STATUSES`.
+2b. `npx @chatrealty/sync init --token crt_live_…` provisions the database and
+   writes `CHATREALTY_DB_URL` (pooled); `npx @chatrealty/sync doctor` validates.
 3. `npx @chatrealty/sync run --once --dry-run` to verify the feed parses and maps
    (no writes). Inspect the printed counts.
 4. `npx @chatrealty/sync run` for the full seed.
-5. Deploy the site — its `/api/sync/cron` route keeps the data fresh nightly.
+5. Deploy the site — its hourly `/api/sync/cron` route keeps the data fresh.
    No crontab needed unless the customer specifically wants to run it themselves
    (see [Running the sync yourself](#running-the-sync-yourself)).
 

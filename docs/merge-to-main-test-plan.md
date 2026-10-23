@@ -1,3 +1,18 @@
+---
+title: Merge-to-main Test Plan (feat/chatrealty-api → main) — finished one-time plan
+status: outdated
+last_verified: 2026-10-17
+related: [tech-debt.md, review/README.md, chatrealty-api/README.md]
+---
+
+> **OUTDATED — historical record.** This was a one-time pre-merge checklist for
+> 2026-07-02. `feat/chatrealty-api` is now an ancestor of `main`
+> (`git merge-base --is-ancestor feat/chatrealty-api main` succeeds), and several of its
+> "top risks" have since changed (e.g. the Twilio webhook now validates
+> `X-Twilio-Signature` — `src/app/api/crm/sms/webhook/route.ts:52-66`; the cashflow
+> feature is committed). Don't use it as a current test plan; candidate for
+> `docs/archive/`.
+
 # Merge-to-main Test Plan (`feat/chatrealty-api` → `main`)
 
 _Generated 2026-07-02. Ground truth for what lands on `main` and how to hand-test it before go-live._

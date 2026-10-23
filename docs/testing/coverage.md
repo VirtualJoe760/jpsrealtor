@@ -1,8 +1,8 @@
 ---
 title: Coverage — what Tom is working toward, and when he is done
-status: current
-last_verified: 2026-08-06
-related: [README.md, evidence.md, agents/tom/AGENTS.md, agents/tom/USER.md]
+status: partial
+last_verified: 2026-10-17
+related: [README.md, evidence.md, tickets.md, agents/tom/AGENTS.md, agents/tom/USER.md]
 ---
 
 # Coverage
@@ -20,6 +20,26 @@ measure.** A session that fills a cell here advanced the product; a session that
 produced a nice site and filled no cell did not.
 
 Everything below is honest about status. Almost all of it is untested today.
+
+> **How current is this?** Cell statuses (✔ / ◐ / ✗ / untested) are Tom's, as
+> of his sessions through 2026-08-06 — they change only when a *later,
+> independent session* confirms a cell, and this repo cannot read the report
+> store, so none were refreshed on 2026-10-17. What *was* re-checked against
+> code that day are the factual claims (routes, env var, auth rule, package
+> behaviour), and the code has moved under two cells since:
+> - **Media** — `@chatrealty/sync` now pulls photos inline (`$expand=Media`,
+>   `packages/chatrealty-sync/src/map.ts`, shipped in 0.6.0, commit `a7562e34`,
+>   2026-08-05). The "sync pulls Property only" failure below is fixed in code
+>   and **awaiting an independent session to pass the cell**.
+> - **Seed scope** — since 2026-08-10 (`4e08cf3a`) `RESO_STATUSES` defaults to
+>   the for-sale set (Active, Active Under Contract, Pending) instead of the
+>   whole archive; `RESO_STATUSES=all` opts back in
+>   (`packages/chatrealty-sync/src/index.ts`). The CLI's checkpoint now lives in
+>   the tenant DB's `sync_state` table (commit `2e3fca34`,
+>   `packages/chatrealty-sync/src/cli.ts`), not a per-directory file.
+>
+> The packages quoted below by version (sync 0.6.2, scaffolder 0.16.4) are older
+> than the repo's `package.json` files: sync 0.8.0, scaffolder 0.17.1.
 
 ---
 
@@ -102,9 +122,11 @@ the agent's own tenant database (`t-dianamarsh-msgn4g0r`), seeded by
   fresh pass restarts from the oldest record in the feed. Capped runs
   (`--once` / `--max`) never checkpoint by design, so they cannot close this.
 - **Serve ✔** — browse, filters, detail pages and neighborhood counts all read
-  the tenant DB and agree with it. One gap: `primaryPhotoUrl` is null on all 39
-  (`media` has 0 rows — the sync pulls the Property resource only; open bug
-  `6a73de5f…`), so every card renders the no-photo placeholder.
+  the tenant DB and agree with it. One gap *at the time*: `primaryPhotoUrl` was
+  null on all 39 (`media` had 0 rows — the sync pulled the Property resource
+  only; bug `6a73de5f…`), so every card rendered the no-photo placeholder.
+  Fixed in code by `@chatrealty/sync` 0.6.0 (see the note at the top); not yet
+  re-confirmed by a session.
 - **Nightly refresh ✗** — the route exists and reports its state honestly, but it
   cannot be called verified until a committed watermark exists to resume from.
   **Session 17 (2026-08-06) gave the cell evidence rather than passing it:** on
@@ -144,10 +166,15 @@ worth remembering — adding the variable alone would have changed nothing.
 dataSource = tenantBinding ? "tenant" : user.isAdmin ? "dogfood" : "none"
 ```
 
-The route returns `403 owner_account` on `"dogfood"`, because an owner account
-serves the internal dataset and must not be rebound to a tenant DB. Joe's
-account is admin, so every session using his token hit this by design. A
-**non-admin** account resolves to `"none"`, which the route permits.
+The route (`src/app/api/skill/tenant/provision/route.ts`) returns
+`403 owner_account` on `"dogfood"`, because an owner account serves the internal
+dataset and must not be rebound to a tenant DB. Joe's account is admin, so every
+session using his token hit this by design. A **non-admin** account resolves to
+`"none"`, which the route permits. (Since 2026-10-16 a non-admin token that has
+no binding yet is bound to *its owner's own* tenant on first use when that
+account already seeded in Settings → Integrations —
+`src/lib/skill-auth.ts:132-147` — so `"none"` now means "no tenant yet", not
+"never bound".)
 
 **Resolved by tooling:** `scripts/test-accounts.ts promote` on a `+crtest`
 address produces a non-admin agent account, and `… token --out=<file>` mints
@@ -183,7 +210,7 @@ still hold, and do we tell the truth about what's missing?*
 | Non-Spark RESO feed | Flattens to the same standard | untested |
 | Non-RESO source, foreign keys | Flattens to the same standard | untested |
 | Attribution fields | `list_agent_name` / `list_office_name` always present — compliance, never null | untested end-to-end |
-| **Media resource synced** | Photos land in `media` and `primaryPhotoUrl` resolves — an empty media table served placeholders for 7+ sessions before the sync gap was treated as structural | ✗ failing — sync pulls Property only (bug filed 8/5, falsely marked fixed) |
+| **Media resource synced** | Photos land in `media` and `primaryPhotoUrl` resolves — an empty media table served placeholders for 7+ sessions before the sync gap was treated as structural | ✗ failing as of 2026-08-06 (bug filed 8/5, falsely marked fixed once). Code fix shipped since: sync 0.6.0 pulls `$expand=Media` and lifts the preferred photo into `primary_photo_url` — **not yet confirmed by an independent session** |
 | **Value normalization** | The same association under two spellings maps to ONE — live example: our own feed carries both `i-Tech MLS` and `iTech MLS` | untested; known instance unhandled |
 
 **Accuracy is part of every row.** A field that maps is not a field that

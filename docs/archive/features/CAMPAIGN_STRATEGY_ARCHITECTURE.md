@@ -1,3 +1,5 @@
+> Archived: planning doc; campaigns are documented in docs/campaigns/README.md, verified 2026-10-17
+
 # Campaign-Strategy Architecture - Centralized Marketing System
 
 ## Executive Summary

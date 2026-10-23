@@ -177,6 +177,30 @@ export interface IUser extends Document {
       expiresAt?: Date;
     }>;
 
+    // Affiliation & brokerage. Every agent has a brokerage; only a "team"
+    // agent has a Team. See the schema block for why this exists.
+    affiliation?: "solo" | "team";
+    brokerage?: {
+      name?: string;          // display, e.g. "Fathom Realty"
+      legalName?: string;     // compliance, e.g. "Fathom Realty Group, Inc."
+      licenseNumber?: string; // the brokerage's licence, not the agent's
+      address?: string;
+      phone?: string;
+      logo?: string;          // light backgrounds (dark artwork)
+      logoDark?: string;      // dark backgrounds (light artwork)
+    };
+    // Legacy, migration fallback only — prefer `brokerage.name` / the Team doc.
+    brokerageName?: string;
+    teamName?: string;
+    brokerLogo?: string;
+    brokerLogoDark?: string;
+    teamLogo?: string;
+    teamLogoDark?: string;
+    navLogo?: string;
+    navLogoDark?: string;
+    navWordmark?: { thin?: string; bold?: string };
+    brandMark?: { thin?: string; bold?: string };
+
     // Domain & Branding (for multi-tenancy)
     siteName?: string; // Display name on chat page (e.g., "chatRealty", "JPSREALTOR")
     customDomain?: string; // e.g., "josephsardella.com"
@@ -208,6 +232,24 @@ export interface IUser extends Document {
     metaTitle?: string; // Page title for SEO
     metaDescription?: string; // Meta description for SEO
     metaKeywords?: string[]; // SEO keywords
+
+    // Visitor tracking / ad platform tags, rendered into this tenant's pages.
+    //
+    // These are PUBLIC measurement IDs, not secrets — they ship in the HTML by
+    // design, which is why they live on agentProfile (agent-editable) rather
+    // than in env vars. The site previously read a single global
+    // NEXT_PUBLIC_META_PIXEL_ID, so every tenant shared one pixel and no agent
+    // could build an audience of their own visitors.
+    //
+    // googleAdsId is the piece that unblocks YouTube/Display remarketing: GA4
+    // alone cannot build Google Ads audiences without the AW- tag on the page.
+    tracking?: {
+      metaPixelId?: string; // e.g. "1378421466770456"
+      ga4MeasurementId?: string; // e.g. "G-XXXXXXXXXX"
+      googleAdsId?: string; // e.g. "AW-123456789" — required for YouTube remarketing
+      googleAdsConversionLabel?: string; // e.g. "AbC-D_efG" for conversion events
+      enabled?: boolean; // master switch; false renders no tags at all
+    };
 
     // AI Integrations (per-agent bring-your-own-key + API tokens for desktop skill)
     aiIntegrations?: {
@@ -275,6 +317,50 @@ export interface IUser extends Document {
       availablePages?: Array<{ id: string; name: string }>;
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
+    };
+  };
+
+  // MLS data feed (BYOD) — the agent's own replication credentials. See the
+  // schema for why this is top-level and why the ciphertext is select:false.
+  mlsFeed?: {
+    authMode?: 'bearer' | 'oauth';   // bearer = static token (Spark); oauth = client-credentials
+    baseUrl?: string;                // RESO OData root, e.g. https://replication.sparkapi.com/Reso/OData
+    tokenUrl?: string;               // oauth only
+    scope?: string;                  // oauth only, optional (Trestle wants "api")
+    // AES-256-GCM (src/lib/secrets.ts) of JSON {bearerToken} | {clientId, clientSecret}
+    credentialsEncrypted?: string;
+    last4?: string;
+    status?: 'connected' | 'disconnected' | 'invalid';
+    lastError?: string;              // reason code from the last failed verify
+    addedAt?: Date;
+    lastVerifiedAt?: Date;
+    networkField?: string;           // field associations are grouped on (OriginatingSystemName)
+    availableNetworks?: Array<{ name: string; count: number | null }>; // last discovery
+    totalListings?: number;          // everything the key reaches
+    networksCheckedAt?: Date;
+    networks?: string[];             // the agent's pick; empty = all (RESO_NETWORKS semantics)
+    propertyTypes?: string[];        // RESO PropertyType values the site carries
+    closedLookback?: 'none' | '1y' | '2y' | '5y' | 'all';
+    estimate?: any;                  // cached counts for the size meter
+    sync?: {
+      status?: 'idle' | 'queued' | 'running' | 'done' | 'error';
+      mode?: 'seed' | 'update';
+      scope?: any;
+      watermark?: string;
+      completedWatermark?: string;
+      cursor?: string;
+      cursorAt?: Date;
+      rowsUpserted?: number;
+      rowsRemoved?: number;
+      expectedRows?: number;
+      dbRows?: number;
+      requestedAt?: Date;
+      startedAt?: Date;
+      finishedAt?: Date;
+      lastRunAt?: Date;
+      lastError?: string;
+      leaseUntil?: Date;
+      lastNightlyFor?: string;
     };
   };
 
@@ -725,11 +811,76 @@ const UserSchema = new Schema<IUser>(
       videoIntro: String,
       insightsBannerImage: String,
 
+      // AFFILIATION + BROKERAGE (declared 2026-10-10).
+      //
+      // Every licensed agent has a BROKERAGE. Not every agent has a TEAM.
+      // Brokerage used to live only on the Team model, which left solo agents
+      // nowhere structured to put theirs — hence the ad-hoc top-level
+      // `User.brokerageName` and an `agentProfile.brokerageName` that
+      // /api/agent-branding read and projected but which was NEVER DECLARED
+      // here. Under Mongoose strict mode an undeclared path is dropped on
+      // write, so that field could only ever be set by a raw-driver write that
+      // bypassed the schema. Declaring both properly is the fix.
+      //
+      // `affiliation` is the explicit switch:
+      //   "solo" — brokerage, no team. `User.team` MUST be unset.
+      //   "team" — brokerage AND a `User.team` reference.
+      // Default "solo": a new agent has a brokerage before they have a team,
+      // and defaulting the other way would render an empty team slot.
+      affiliation: { type: String, enum: ["solo", "team"], default: "solo" },
+      brokerage: {
+        name: String,          // e.g. "Fathom Realty" — display name
+        legalName: String,     // e.g. "Fathom Realty Group, Inc." — compliance/legal docs
+        licenseNumber: String, // the BROKERAGE's licence, not the agent's
+        address: String,
+        phone: String,
+        logo: String,          // light backgrounds (dark artwork)
+        logoDark: String,      // dark backgrounds (light artwork)
+      },
+
       // Logos
+      // brokerLogo/brokerLogoDark are the LEGACY pair, still read by
+      // /api/agent-branding as a fallback while agents migrate onto
+      // `brokerage.logo`/`brokerage.logoDark`. teamLogo/teamLogoDark apply
+      // only when affiliation === "team".
       brokerLogo: String,
       brokerLogoDark: String,
       teamLogo: String,
       teamLogoDark: String,
+      // navLogo/navLogoDark are the SITE brand mark — the top-left logo in the
+      // nav and on share cards. Deliberately NOT a team field: it was stored in
+      // teamLogo until 2026-10-11, which meant a solo agent's own wordmark was
+      // suppressed along with their former team's branding and the nav silently
+      // fell back to the ChatRealty wordmark. A brokerage move must not erase an
+      // agent's personal mark, so this has its own pair.
+      // Convention, same as everywhere else here: `navLogo` is the artwork for
+      // LIGHT backgrounds (dark ink), `navLogoDark` for DARK backgrounds.
+      navLogo: String,
+      navLogoDark: String,
+      // navWordmark is the TEXT alternative to navLogo: the same two-weight
+      // treatment as the ChatRealty mark (thin + medium Jost, uppercase, wide
+      // tracking), e.g. thin "JPS" + bold "REALTOR". Text beats an uploaded
+      // image because it stays pixel-crisp at every size and inherits the
+      // theme's colour, so it needs no light/dark pair at all.
+      navWordmark: {
+        thin: String,
+        bold: String,
+      },
+      // brandMark is the STANDALONE corner mark — the badge in the hero/banner
+      // corner and on the chat page. It is the agent's own, not the
+      // brokerage's: a brokerage logo there is optional, and many agents would
+      // rather show a monogram. Same two-weight treatment as navWordmark.
+      // When unset, the corner falls back to the brokerage logo image.
+      brandMark: {
+        thin: String,
+        bold: String,
+      },
+
+      // Declared so Mongoose stops silently dropping them. These remain the
+      // MIGRATION fallbacks only — new writes belong on `brokerage.name` and,
+      // for a team, on the referenced Team document.
+      brokerageName: String,
+      teamName: String,
 
       // Share-card (OG image) background photo — rendered under a light
       // scrim on /api/og. Empty = flat soft-neutral card.
@@ -852,6 +1003,17 @@ const UserSchema = new Schema<IUser>(
         accent: String,
       },
 
+      // Visitor tracking / ad platform tags (public measurement IDs — see interface).
+      // Mongoose strict mode silently drops undeclared fields, so these must be
+      // declared here or the settings PUT would report success and persist nothing.
+      tracking: {
+        metaPixelId: String,
+        ga4MeasurementId: String,
+        googleAdsId: String,
+        googleAdsConversionLabel: String,
+        enabled: { type: Boolean, default: true },
+      },
+
       // SEO & Marketing
       metaTitle: String,
       metaDescription: String,
@@ -933,6 +1095,66 @@ const UserSchema = new Schema<IUser>(
         }],
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
+    },
+
+    // MLS data feed (BYOD) — the agent's own RESO / Spark replication
+    // credentials. Top-level, NOT under agentProfile: /api/user/profile returns
+    // and logs the whole agentProfile and deep-merges client writes into it, so
+    // a secret stored there would reach the browser and the logs, and could be
+    // overwritten without going through validation.
+    //
+    // credentialsEncrypted is select:false — a plain User.find() never loads
+    // it; only src/lib/mls-feed.ts opts in with +mlsFeed.credentialsEncrypted.
+    // CAUTION: .select("mlsFeed") (the parent path) DOES return it — verified
+    // 2026-10-16. Select the subpaths you need, as getMlsFeedStatus() does.
+    mlsFeed: {
+      authMode: { type: String, enum: ['bearer', 'oauth'] },
+      baseUrl: String,
+      tokenUrl: String,
+      scope: String,
+      credentialsEncrypted: { type: String, select: false },
+      last4: String,
+      status: { type: String, enum: ['connected', 'disconnected', 'invalid'], default: 'disconnected' },
+      lastError: String,
+      addedAt: Date,
+      lastVerifiedAt: Date,
+      // Which associations (data networks) the key reaches, and which the
+      // agent picked. `networks` has RESO_NETWORKS semantics in
+      // @chatrealty/sync: empty = everything the key reaches.
+      networkField: String,          // grouping field, e.g. OriginatingSystemName
+      availableNetworks: [{ _id: false, name: String, count: Number }],
+      totalListings: Number,
+      networksCheckedAt: Date,
+      networks: [String],
+      // WHAT the agent's database holds beyond associations (src/lib/mls-scope.ts).
+      propertyTypes: [String],       // RESO PropertyType values; default ["Residential"]
+      closedLookback: { type: String, enum: ['none', '1y', '2y', '5y', 'all'] },
+      // Last size estimate (counts per type / lookback) so the card loads instantly.
+      estimate: { type: Schema.Types.Mixed },
+      // Seed + nightly update progress (src/lib/mls-seed.ts). Serverless and
+      // chunked: each run pulls until its time budget, saves its place here,
+      // and the next cron tick resumes. `leaseUntil` stops two runs (cron and
+      // the Start button's first chunk) writing the same tenant at once.
+      sync: {
+        status: { type: String, enum: ['idle', 'queued', 'running', 'done', 'error'] },
+        mode: { type: String, enum: ['seed', 'update'] },
+        scope: { type: Schema.Types.Mixed },   // the scope this run was started with
+        watermark: String,                     // highest ModificationTimestamp written this run
+        completedWatermark: String,            // watermark of the last FINISHED run
+        cursor: String,                        // feed nextLink, to resume mid-run
+        cursorAt: Date,
+        rowsUpserted: Number,
+        rowsRemoved: Number,
+        expectedRows: Number,
+        dbRows: Number,                        // listings actually in the DB after the last finished run
+        requestedAt: Date,
+        startedAt: Date,
+        finishedAt: Date,
+        lastRunAt: Date,
+        lastError: String,
+        leaseUntil: Date,
+        lastNightlyFor: String,                // YYYY-MM-DD (Pacific) of the last nightly enqueue
       },
     },
 

@@ -1,7 +1,7 @@
 ---
 title: Actor Generation — placing the agent inside listing photos
 status: current
-last_verified: 2026-09-07
+last_verified: 2026-10-17
 owner: content
 related: [./README.md, ./carousel-slides.md, ./cover-slide.md, ./copy-voice.md]
 ---
@@ -18,7 +18,22 @@ size, lit by the room's own light.
 The goal is NOT a headshot pasted onto a wall, and it is NOT an estate agent
 standing in the middle of a room with his arm out.
 
-Implementation: `scripts/stage_geometric.py`, `scripts/floor_plane.py`.
+Implementation: the geometric stager is `scripts/stage_geometric.py` (with
+`scripts/floor_plane.py`), driven from TypeScript through the bridge
+`src/lib/content/stage-geometric.ts`. Photo choice is
+`src/lib/content/select-staging-photos.ts`; the shared Gemini prompt is
+`src/lib/content/staging-prompt.ts`; `src/lib/content/verify-staged-photo.ts` is
+the post-generation QC used by the per-slide imprint route.
+
+**Two staging paths exist and only one carries the gates in §9.**
+`scripts/build-pending-post.ts` (the daily-carousel pipeline,
+[auto-posting.md](./auto-posting.md)) uses the geometric stager.
+The hosted `POST /api/skill/images/agent-staged-listing` route (MCP
+`stage_listing_with_agent`) is a whole-frame Gemini edit that carries the
+`staging-prompt.ts` preservation clauses but runs **no verification pass** — see
+[carousel-slides.md](./carousel-slides.md).
+`src/lib/content/stage-composite.ts` (generate the figure alone, paste onto the
+untouched photo) is not imported by anything.
 
 ---
 
@@ -307,7 +322,7 @@ outside the figure ever gets brighter.
 | Scale ratio 0.70–1.32× | Giants and dolls, judged against the body mode |
 | Largest component only | **Hallucinated extra people** — segmentation labels every person in frame, so a second invented figure would otherwise be composited into a client's listing photo |
 | Room drift | Shadow transfer skipped if the frames no longer align |
-| **Identity (ArcFace)** | **A face that is not his � threshold keyed to face size, see �8** |
+| **Identity (ArcFace)** | **A face that is not his — threshold keyed to face size, see §8** |
 | Reaction: edge / height / width / feature overlap | Figure that wandered off the edge, shrank to full body, or covered the feature |
 
 **Occluded legs are not missing legs.** Leaning on an island puts the lower body
@@ -502,6 +517,10 @@ crop = im.crop((0, 0, int(im.width * 0.30), int(im.height * 0.06)))
 
 Then exclude every watermarked index, the furniture ones included: the
 watermark is part of the pixels and would print on the finished slide.
+
+(`scripts/tmp-watermark-strip.py` and `scripts/tmp-corner-strip.py` — named in this
+section — were untracked in git as of 2026-10-17; they exist only in Joseph's
+working copy. The crop above is the whole technique.)
 
 **AND THE BADGE IS NOT ALWAYS IN THAT CORNER.** 1321 Sea Life Avenue puts
 **"AI Enhanced"** in a rounded pill in the **bottom-right**, where the crop

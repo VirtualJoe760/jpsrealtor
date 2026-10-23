@@ -31,5 +31,13 @@ declare module "next-auth/jwt" {
     // Admin impersonation: set when admin is viewing as another user
     impersonatedBy?: string;  // Admin's email who is impersonating
     impersonatedByName?: string; // Admin's name
+    /** The agent's own subdomain — where a signed-in agent works (src/lib/agent-host.ts). */
+    agentSubdomain?: string;
+    /** Hand-off tokens (/api/auth/transfer, /api/auth/impersonate → /api/auth/receive). */
+    transferAuth?: boolean;
+    impersonation?: boolean;
+    targetUserId?: string;
+    /** Bare host a normal hand-off was minted for; receive refuses any other host. */
+    handoffHost?: string;
   }
 }

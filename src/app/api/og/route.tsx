@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
     .map((c: string) => c.trim())
     .filter(Boolean);
   const primaryColor: string = colorList[0] || "#1e3a5f";
-  // Team logo (e.g. Obsidian Group) replaces the platform wordmark on the
+  // Team logo (when the agent has one) replaces the platform wordmark on the
   // agent's card — ChatRealty is the parent platform's brand, not the
   // agent's agency. Relative paths resolve against this deployment.
   // Optional background photo (Brand settings → Share-Card Background).

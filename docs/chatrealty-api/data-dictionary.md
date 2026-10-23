@@ -1,7 +1,7 @@
 ---
 title: RESO Data Dictionary — Field Catalog
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-17
 related: [./build_plan.md, ./db-adapter.md, ./architecture.md]
 ---
 

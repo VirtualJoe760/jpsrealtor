@@ -49,7 +49,7 @@ fs.createReadStream(csvPath)
       console.log(`🧪 TEST MODE ENABLED — Sending to test number: ${testPhoneNumber}`);
 
       // Test message to the test number
-      const message = `Hey, my name's Joseph Sardella with eXp Realty. I wanted to know if your property at ${testAddress} was sold yet?`;
+      const message = `Hey, my name's Joseph Sardella with Fathom Realty. I wanted to know if your property at ${testAddress} was sold yet?`;
 
       const appleScript = `
       tell application "Messages"
@@ -79,7 +79,7 @@ fs.createReadStream(csvPath)
       const firstName = contact.first_name;
       const phone = contact.phone;
       const address = contact.address;
-      const message = `Hey, my name's Joseph Sardella with eXp Realty. I wanted to know if your property at ${address} was sold yet?`;
+      const message = `Hey, my name's Joseph Sardella with Fathom Realty. I wanted to know if your property at ${address} was sold yet?`;
 
       const appleScript = `
       tell application "Messages"

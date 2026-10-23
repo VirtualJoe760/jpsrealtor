@@ -8,6 +8,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import NavBrandMark from "@/app/components/brand/NavBrandMark";
+import { useBranding } from "@/app/contexts/BrandingContext";
 import {
   MessageSquare,
   Home,
@@ -50,40 +51,14 @@ export default function EnhancedNavbar() {
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [branding, setBranding] = useState<{
-    agentName?: string;
-    brokerageName?: string;
-    teamName?: string;
-    licenseNumber?: string;
-    phone?: string;
-    email?: string;
-    teamLogo?: string;
-    teamLogoDark?: string;
-  }>({});
+  // Shared provider, not a private fetch — see BrandingContext.
+  const { branding: brandingValue } = useBranding();
+  const branding = brandingValue || {};
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Same domain-owner branding resolution the sidebar uses.
-  useEffect(() => {
-    const host = typeof window !== "undefined" ? window.location.hostname : "";
-    let subdomain: string | null = null;
-    if (host.includes("chatrealty")) {
-      const parts = host.split("chatrealty")[0]?.replace(/\.$/, "");
-      subdomain = parts?.split(".").filter((s) => s && s !== "www").pop() || null;
-    } else if (host.endsWith(".localhost")) {
-      const sub = host.split(".localhost")[0];
-      if (sub && sub !== "www") subdomain = sub;
-    }
-    const qs = subdomain ? `?subdomain=${encodeURIComponent(subdomain)}` : "";
-    fetch(`/api/agent-branding${qs}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.branding) setBranding(data.branding);
-      })
-      .catch(() => {});
-  }, [status]);
 
   // Close the dashboard dropdown on outside click / Escape.
   useEffect(() => {
@@ -165,9 +140,6 @@ export default function EnhancedNavbar() {
       {/* Logo → home */}
       <button onClick={() => handleNavigate("/")} className="flex items-center shrink-0" aria-label="Home">
         <NavBrandMark
-          teamLogo={branding.teamLogo}
-          teamLogoDark={branding.teamLogoDark}
-          teamName={branding.teamName}
           isLight={isLight}
           wordmarkClassName={`text-[15px] ${isLight ? "text-gray-900" : "text-neutral-50"}`}
           logoClassName="h-9 w-auto max-w-[200px] object-contain"
@@ -272,7 +244,7 @@ export default function EnhancedNavbar() {
             {branding.agentName}
             {branding.licenseNumber && <> · DRE# {branding.licenseNumber}</>}
             <br />
-            eXp Realty · chatRealty
+            {branding.brokerageName}{branding.brokerageName && " · "}chatRealty
           </span>
         )}
 

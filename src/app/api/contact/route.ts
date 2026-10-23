@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
             Email: <a href="mailto:josephsardella@gmail.com">josephsardella@gmail.com</a>
           </p>
           <p>Thank you for reaching out, and I look forward to assisting you with your real estate journey.</p>
-          <p>Best regards,<br>Joseph Sardella | eXp Realty of Southern California<br>Your Trusted Coachella Valley Realtor<br>DRE# 02106916</p>
+          <p>Best regards,<br>Joseph Sardella | Fathom Realty Group, Inc.<br>Your Trusted Coachella Valley Realtor<br>DRE# 02106916</p>
         </div>
       `,
     };

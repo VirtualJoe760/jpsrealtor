@@ -117,6 +117,6 @@ module.exports = {
     italicLast: "DM me. Let's get you on the fairway.",
     handle: "@instadella",
     headshotPublicId: "jpsrealtor:agents:joseph-circular",
-    brokerLogoPublicId: "jpsrealtor:logos:EXP-white-square",
+    brokerLogoPublicId: "jpsrealtor:logos:fathom-logo-white",
   },
 };

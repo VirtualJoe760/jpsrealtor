@@ -35,11 +35,22 @@ const FALLBACK: AgentProfile = {
   name: "Joseph Sardella",
   email: "josephsardella@gmail.com",
   phone: "(760) 333-3676",
-  brokerageName: "eXp Realty",
+  // No brokerage here on purpose. This FALLBACK renders for whichever agent
+  // owns the host, so naming one agency stamps it onto every other agent's
+  // site when their fetch is slow or fails. Empty renders nothing.
+  brokerageName: "",
   licenseNumber: "02106916",
   headshot: "",
   heroPhoto: "https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/misc/real-estate/front-yard/front-yard_00017_.png",
-  bio: "With over 30 years of experience in the Coachella Valley, Joseph Sardella brings unmatched local expertise and a family legacy in real estate dating back to the 1970s.",
+  // "over 30 years of EXPERIENCE" was a licensing claim this bio could not
+  // support. Joey's own DRE licence does not go back 30 years; the 1970s date
+  // belongs to the FAMILY business, and he has lived in Indian Wells Country
+  // Club for 30+ years. Conflating residency and a family legacy into personal
+  // professional experience is exactly what DRE advertising rules (B&P Code
+  // §10140, Reg. 2770.5) treat as a misleading representation, and it was
+  // rendering on ~460 buy/sell pages. Reworded to say the true thing, which is
+  // also the better line.
+  bio: "A third-generation Coachella Valley real estate family, with a legacy dating back to the 1970s. Joseph Sardella grew up in Indian Wells Country Club and has called the valley home for over 30 years.",
   headline: "Your Coachella Valley Real Estate Expert",
   tagline: "Local expertise. Proven results.",
   brandColor: "#10b981",
@@ -55,10 +66,12 @@ const FALLBACK: AgentProfile = {
     { title: "Local Market Expert", description: "Born and raised in the Coachella Valley with deep knowledge of every neighborhood, HOA, and community." },
     { title: "Expert Negotiator", description: "Strategic negotiation skills that consistently deliver favorable outcomes for my clients." },
     { title: "White-Glove Service", description: "Personalized attention from first showing to closing day and beyond." },
-    { title: "Exclusive Access", description: "Off-market listings, pocket listings, and connections that only come from decades of local relationships." },
+    { title: "Exclusive Access", description: "Off-market listings, pocket listings, and connections built on a family\u2019s decades of local relationships." },
   ],
   stats: [
-    { label: "Years Experience", value: "30+" },
+    // Was "Years Experience: 30+" — same licensing problem as the bio above.
+    // "Years in the Valley" is the claim that is actually true.
+    { label: "Years in the Valley", value: "30+" },
     { label: "Homes Sold", value: "500+" },
     { label: "5-Star Reviews", value: "150+" },
   ],

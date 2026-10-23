@@ -127,7 +127,24 @@ export async function authenticateSkillRequest(req: NextRequest): Promise<SkillA
 
   // Best-effort tenant binding (ADDITIVE — never blocks or fails auth). See
   // `buildTenantBinding` for the resolve-and-attach logic + its test seam.
-  const tenantBinding = await buildTenantBinding(hash);
+  let tenantBinding = await buildTenantBinding(hash);
+
+  // SEEDED FROM SETTINGS (2026-10-16): an agent who seeded their database in
+  // Settings → Integrations owns an active tenant, but tokens minted in
+  // Settings were never bound to it — binding only ever happened through
+  // `npx @chatrealty/sync init`. Such a token read `dataSource: "none"`, and the
+  // MCP build guide then walked the agent through the CLI credential path for a
+  // database they already had. Bind it to the OWNER's own tenant on first use
+  // (never anyone else's; admins keep the internal dataset) and resolve again.
+  if (!tenantBinding.tenantId && !user.isAdmin) {
+    try {
+      if (await bindTokenToOwnerTenant(String(user._id), entry, hash)) {
+        tenantBinding = await buildTenantBinding(hash);
+      }
+    } catch {
+      // Best-effort, like the binding itself — never fail auth over it.
+    }
+  }
 
   // BYOD data-source resolution (2026-07-23): tenant-bound tokens use their
   // own DB; the dogfood dataset is reserved for admin (platform owner)
@@ -228,6 +245,38 @@ export async function buildTenantBinding(hash: string): Promise<TenantBinding> {
     tenantId: boundTenantId,
     getSql: () => tenantBindingDeps.loadTenantSql(boundTenantId),
   };
+}
+
+/**
+ * Bind a token to its OWNER's active tenant (see the SEEDED FROM SETTINGS note
+ * in authenticateSkillRequest). Atomic: the `tokenHashes: { $ne: hash }` filter
+ * makes two concurrent first requests push the entry once. Returns true when
+ * the owner has an active tenant (bound now or already).
+ */
+async function bindTokenToOwnerTenant(
+  ownerUserId: string,
+  entry: { last4?: string; name?: string; scopes?: string[] },
+  hash: string
+): Promise<boolean> {
+  const { default: TenantModel } = await import("@/models/control/Tenant");
+  const tenant: any = await TenantModel.findOne({ ownerUserId, status: "active" }).select("_id").lean();
+  if (!tenant) return false;
+  await TenantModel.updateOne(
+    { _id: tenant._id, tokenHashes: { $ne: hash } },
+    {
+      $push: {
+        tenant_tokens: {
+          tokenHash: hash,
+          last4: entry.last4 || "",
+          name: entry.name || "token",
+          scopes: Array.isArray(entry.scopes) ? entry.scopes : [],
+          createdAt: new Date(),
+        },
+      },
+      $addToSet: { tokenHashes: hash },
+    }
+  );
+  return true;
 }
 
 const NO_STORE = { "Cache-Control": "no-store" };

@@ -1,17 +1,37 @@
 ---
 title: MCP Server Rollout Plan
 status: current
-last_verified: 2026-06-04
-related: [./README.md, ./tools.md, ./scopes-and-safety.md, ./publishing.md]
+last_verified: 2026-10-17
+related: [./README.md, ./tools.md, ./scopes-and-safety.md, ./publishing.md, ./hosting.md, ./site-building.md]
 ---
 
 # MCP Server Rollout Plan
 
+> **TL;DR (2026-10-17).** Phase 1 shipped. Phase 2 is shipped except the
+> analytics tools, the `/legal/ai-tools` disclosure page and the audit log.
+> Phases 3 (CRM write, campaign drafts) and 4 (campaign send) are **not
+> started** — no routes, no tools. Much of what shipped since June was never in
+> this plan; it is listed under "Shipped outside the plan". The current tool
+> list is [tools.md](./tools.md).
+
 Phased ship plan. Each phase is a coherent, demoable chunk and includes the
 schema migrations, doc updates, and tech-debt deltas it incurs.
 
+## Shipped outside the plan (June–October 2026)
+
+| Item | Where |
+|---|---|
+| Hosted Streamable HTTP + OAuth connector — on the Vercel app, not a separate container | [hosting.md](./hosting.md) |
+| Build guide (`get_build_guide`, `guide://` resources) driving `create-chatrealty-site` | [site-building.md](./site-building.md) |
+| Site lifecycle: `connect_site`, `site_status`, `set_site_live`, tracking IDs, `get_site_claim_code` | `site_tools.ts`, `docs/chatrealty-api/external-site.md` |
+| Rental cash-flow tools (4) reading VPS-precomputed stats | [tools.md](./tools.md) §3 |
+| Carousel/image tools (4) + `post_instagram_carousel` | [tools.md](./tools.md) §8–9 |
+| Testing-phase tools: `report_bug`, `give_feedback`, `report_data_issue` | `docs/testing/` |
+| Two-tier exposure (agent / research) for stdio; `client_research` preset | `packages/mcp-server/src/tiers.ts` |
+| Free-tier mint gating (Website preset only) | [scopes-and-safety.md](./scopes-and-safety.md) |
+
 **Phase 1 is shipped** (commits `b8fa75b3` through `6b086b4c` on
-`feat/landing-page-claude-byok-and-skill`). Phase 2+ is design.
+`feat/landing-page-claude-byok-and-skill`).
 
 ## Phase 0 · Already shipped
 
@@ -73,7 +93,14 @@ landing-page drafts.
   areas, or platform-wide? Default platform-wide and let Claude filter
   feels right but worth confirming.
 
-## Phase 2 · Articles + CRM read + analytics + hosted MCP · 🟡 PARTIAL
+## Phase 2 · Articles + CRM read + analytics + hosted MCP · 🟡 MOSTLY SHIPPED
+
+Update 2026-10-17: the hosted endpoint shipped as `/api/mcp/mcp` on the
+existing Vercel app (stateless JSON responses, no SSE, no container) — the
+"Hosted MCP endpoint" row and the infra open question below are resolved. The
+`McpToolCallLog` collection listed under Phase 1 migrations was never created.
+Still open: analytics tools, `/legal/ai-tools` (no such route exists), the
+PII-redaction layer (it depends on the audit log).
 
 **Goal:** Claude can read leads to tailor content; agents on Claude Desktop
 can add ChatRealty as a Connector via URL (no `npx`).
@@ -104,9 +131,10 @@ can add ChatRealty as a Connector via URL (no `npx`).
   Connector → Search 'ChatRealty'" in Claude Desktop, we have to submit to
   Anthropic. Timeline + requirements unknown today.
 
-## Phase 3 · CRM write + campaign drafts
+## Phase 3 · CRM write + campaign drafts · ⏳ NOT STARTED
 
-**Goal:** Claude can manage contact notes and draft campaigns.
+**Goal:** Claude can manage contact notes and draft campaigns. The server
+split below has not happened either — one server carries 43 tools.
 
 ### What ships
 
@@ -132,7 +160,7 @@ can add ChatRealty as a Connector via URL (no `npx`).
   Claude (token: MacBook)" as a chip on contacts/campaigns? Probably yes —
   builds agent trust.
 
-## Phase 4 · Campaign send
+## Phase 4 · Campaign send · ⏳ NOT STARTED
 
 **Goal:** With explicit scope and a daily spend cap, Claude can launch
 campaigns end-to-end.
@@ -164,7 +192,9 @@ campaigns end-to-end.
 
 ## Telemetry to inform later phases
 
-Before committing to Phase 3/4 builds, watch from Phase 1/2:
+Before committing to Phase 3/4 builds, watch from Phase 1/2. (The source
+below, `McpUsageDaily`, depends on the unbuilt audit log, so none of these
+metrics are collected today.)
 
 | Metric | Source | Decision it informs |
 |---|---|---|

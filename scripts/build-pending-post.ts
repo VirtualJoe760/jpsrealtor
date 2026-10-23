@@ -49,7 +49,7 @@ cloudinary.config({
 const HEADSHOT_URL =
   "https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/headshots/head-shot-2026.png";
 const HEADSHOT_ID = "headshots/head-shot-2026";
-const BROKER_LOGO_ID = "jpsrealtor/logos/EXP-Black-square";
+const BROKER_LOGO_ID = "jpsrealtor/logos/fathom-logo-black";
 const HANDLE = "@instadella";
 const AGENT_EMAIL = "josephsardella@gmail.com";
 

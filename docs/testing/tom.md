@@ -1,8 +1,8 @@
 ---
 title: Tom — Testing on Mac Mini · architecture of an autonomous QA system
 status: current
-last_verified: 2026-08-05
-related: [README.md, coverage.md, agents/tom/README.md]
+last_verified: 2026-10-17
+related: [README.md, coverage.md, tickets.md, loop-console.md, agents/tom/README.md]
 audience: external — written to be read without prior context
 ---
 
@@ -102,7 +102,7 @@ correctness property, not an organisational convenience.
       │  ┌────────────────────────┐  claim · verify · fix  ┌────────────┐
 report│  │      CONTROL PLANE     │◄──────────────────────►│  REPAIRER  │
    +  └─►│ armed flag · reports · │  complete + resolution │ persistent,│
-disarm   │ ticket queue · mailbox │  notes (re-arms; also  │   event-   │
+disarm   │ ticket queue · mailbox │  notes (re-arms; also  │   poll-    │
          └───▲──────────────▲─────┘  resolves fingerprints)│   driven   │
              │              │                              └────────────┘
    tickets:  │              │ console: live stage, queues,
@@ -126,7 +126,7 @@ running artifact rather than believing them.
 |---|---|---|
 | **Builder** | Ephemeral — one process per test | Executes the build guide faithfully. Reports friction at the moment it is encountered. |
 | **Judge** | Persistent, scheduled | Selects what to test, provisions the scenario, spawns the builder, evaluates the running system, emits the report. **Triages inbound tickets into goals — field failures outrank scheduled coverage.** |
-| **Repairer** | Persistent, event-driven | Verifies each claim against source, repairs, updates documentation, closes the report — which resolves every ticket clustered under the fixed fingerprint — and re-arms the system. |
+| **Repairer** | Persistent, poll-driven (a short-interval scheduled task that exits at once when nothing is waiting) | Verifies each claim against source, repairs, updates documentation, closes the report — which resolves every ticket clustered under the fixed fingerprint — and re-arms the system. |
 | **Field reporter** | Unbounded — any customer's AI assistant | Files a structured ticket the moment a data/pipeline failure is hit, with the failing step and verbatim error in hand. Writes into the queue; never reads across it, never triages, never repairs. |
 | **Operator** | One human | Watches the live console (stage, queues, reports); holds an async mailbox to each agent. Intervenes only when the loop jams — never in the critical path. |
 
@@ -192,9 +192,17 @@ landed — the repairer closing a report — re-arms the system.
 This is the load-bearing idea. It is a **one-bit channel in which neither party
 can forge the other's half**. If the judge could re-arm itself, the signal would
 carry no information: it would be asserting that its own findings had been
-addressed. Enforcement is server-side, so the guarantee does not depend on
-either agent behaving correctly — an agent that tries to write the wrong
-direction receives a 403.
+addressed. The judge's half is enforced server-side, so that guarantee does not
+depend on the judge behaving correctly — an attempt to set the flag receives a
+403.
+
+*Be precise about the other half.* The repairer is not served by the HTTP
+control plane at all: it works the database directly through a command-line
+tool (and the operator's console can flip the flag either way), so "the
+repairer may only set" is held by the repairer's instructions, not by a status
+code. The asymmetry is deliberate in effect — the party with an incentive to
+self-certify (the judge) is the one that is mechanically fenced — but a claim
+of two-sided enforcement would overstate what is built.
 
 ### Invariant 2 — bounded work in flight
 
@@ -398,9 +406,12 @@ Teardown is dropping one database.
 wake-up reconstructs context from durable artifacts. Concurrency is therefore
 bounded by infrastructure, not by the evaluator's context window.
 
-**Server-side invariants.** The guarantees in §3 are enforced at the control
-plane, not by agent cooperation. Adding builders or judges does not weaken them
-and does not require re-reasoning about correctness.
+**Server-side invariants.** The judge-facing guarantees in §3 — one report in
+flight, the judge cannot re-arm itself — are enforced at the control plane, not
+by agent cooperation. Adding builders or judges does not weaken them and does
+not require re-reasoning about correctness. (The repairer's half is the
+exception noted in §3: it is by convention. Partitioning the queue would need
+to move it behind the same boundary.)
 
 ### The current bound, and how it lifts
 
@@ -585,6 +596,13 @@ indefinite blindness. The stream carries deltas; the poll re-fetches the
 snapshot; every reconnect re-syncs from the snapshot, which is what makes the
 inevitable connection resets on serverless invisible.
 
+The operator also holds one switch the agents cannot touch: a **mode** that
+parks the judge in an idle, chat-only state — on each wake-up it syncs its
+instructions and answers mail, then stops, with no dispatch, no judging and no
+report. It is orthogonal to the armed flag on purpose: the flag is the two
+agents' handshake, the mode is the human's. "Pause the judge so we can talk"
+therefore never has to disturb a handshake that is mid-cycle.
+
 The console also carries an asynchronous channel to each agent. It is
 deliberately a **mailbox, not a chat**: the agents wake on schedules, so the
 interface shows delivery semantics honestly — a message is "answered" only
@@ -599,8 +617,8 @@ the operator most needs to know: when to expect a response.
    │                                                        │
    │  SEPARATION      no role evaluates its own output      │
    │                                                        │
-   │  UNFORGEABLE     a one-bit channel where neither       │
-   │  HANDSHAKE       party can write the other's half      │
+   │  UNFORGEABLE     a one-bit channel; the judge cannot   │
+   │  HANDSHAKE       write the repairer's half (see §3)    │
    │                                                        │
    │  BOUNDED WORK    one unresolved unit; a refusal is     │
    │                  an alarm, not backpressure            │

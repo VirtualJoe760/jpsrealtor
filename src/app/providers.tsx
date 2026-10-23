@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { ReactNode, useEffect } from "react";
 import { ChatProvider } from "./components/chat/ChatProvider";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
+import { BrandingProvider } from "@/app/contexts/BrandingContext";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -43,7 +44,11 @@ export function Providers({ children }: ProvidersProps) {
     >
       <ImpersonationBanner />
       <ChatProvider>
-        {children}
+        {/* Branding is resolved once here, not per component. Four components
+            used to fetch it independently and each rendered the ChatRealty
+            wordmark while waiting, which made the platform's brand the loading
+            state for every agent's site. */}
+        <BrandingProvider>{children}</BrandingProvider>
       </ChatProvider>
     </SessionProvider>
   );

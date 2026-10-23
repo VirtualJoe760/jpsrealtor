@@ -5,13 +5,22 @@
 //   { action: "start", subdomain: "bethanyklier" }  → become that agent
 //   { action: "stop" }                               → return to admin account
 //
-// Only available to admin accounts. Sets a new JWT as the target user with
-// an `impersonatedBy` field so the app knows this is an admin session.
+// Only available to admin accounts. The impersonated session carries an
+// `impersonatedBy` field so the app knows this is an admin session.
+//
+// WHERE IT LIVES (2026-10-16): on the AGENT'S OWN SUBDOMAIN. Started from www
+// (Admin → Users → "Log in as"), this no longer overwrites the admin's www
+// session: it mints a 30-second hand-off token and returns `redirect` to
+// /api/auth/receive on {slug}.chatrealty.io, which sets a host-only session
+// there. The admin's www session is untouched, so "Exit to Admin" only has to
+// drop the subdomain session and go back. Started ON the agent's subdomain
+// (the /auth/admin-access chooser), it sets the cookie on that host directly.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getToken, encode } from "next-auth/jwt";
 import { authOptions } from "@/lib/auth";
+import { agentOrigin, platformOrigin, subdomainOfHost } from "@/lib/agent-host";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 
@@ -27,11 +36,34 @@ export async function POST(req: NextRequest) {
   const secret = process.env.NEXTAUTH_SECRET!;
   const { action, subdomain } = await req.json();
 
+  const hostHeader = req.headers.get("host") || "localhost";
+  const hostSub = subdomainOfHost(hostHeader.split(":")[0]);
+  const cookieName = process.env.NODE_ENV === "production"
+    ? "__Secure-next-auth.session-token"
+    : "next-auth.session-token";
+
   // ── Stop impersonation: restore admin session ──
   if (action === "stop") {
     const adminEmail = currentToken?.impersonatedBy;
     if (!adminEmail) {
       return NextResponse.json({ error: "Not currently impersonating" }, { status: 400 });
+    }
+
+    // On the agent's subdomain: the admin's own session is still on www, so
+    // just end this host's session and send them back there.
+    if (hostSub) {
+      const res = NextResponse.json({
+        message: "Returned to admin",
+        redirect: `${platformOrigin(req.nextUrl.protocol, hostHeader)}/admin/users`,
+      });
+      res.cookies.set(cookieName, "", {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 0,
+      });
+      return res;
     }
 
     await dbConnect();
@@ -64,10 +96,6 @@ export async function POST(req: NextRequest) {
       message: `Returned to admin account: ${admin.email}`,
       user: { name: admin.name, email: admin.email },
     });
-
-    const cookieName = process.env.NODE_ENV === "production"
-      ? "__Secure-next-auth.session-token"
-      : "next-auth.session-token";
 
     response.cookies.set(cookieName, adminToken, {
       httpOnly: true,
@@ -108,11 +136,55 @@ export async function POST(req: NextRequest) {
   // Look up the target agent by subdomain
   await dbConnect();
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("_id name email image roles isAdmin twoFactorEnabled")
+    .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain agentProfile.externalSite.status")
     .lean();
 
   if (!agent) {
     return NextResponse.json({ error: `Agent with subdomain "${subdomain}" not found` }, { status: 404 });
+  }
+
+  // An agent whose subdomain serves their own external site: that host runs
+  // the agent's code, and the proxy refuses to create a session there (doc
+  // audit M1/M2, 2026-10-17). Impersonating them needs a www-hosted
+  // impersonation mode that doesn't exist yet — say so instead of dead-ending.
+  const extStatus = (agent as any).agentProfile?.externalSite?.status;
+  if (extStatus === "live" || extStatus === "preview") {
+    return NextResponse.json(
+      {
+        error: `${agent.name || "This agent"}'s subdomain serves their own site, so "Log in as" isn't available for them yet.`,
+        reason: "external_site",
+      },
+      { status: 409 }
+    );
+  }
+
+  // Started anywhere but the agent's own subdomain (normally www): hand off to
+  // it. Nothing is set on THIS host, so the admin stays signed in here.
+  if (hostSub !== subdomain) {
+    const handoff = await encode({
+      token: {
+        id: "",
+        roles: [],
+        isAdmin: false,
+        transferAuth: true,
+        impersonation: true,
+        targetUserId: String(agent._id),
+        impersonatedBy: session.user.email,
+        impersonatedByName: session.user.name || undefined,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 30,
+      },
+      secret,
+      maxAge: 30,
+    });
+    const receive = new URL("/api/auth/receive", agentOrigin(req.nextUrl.protocol, hostHeader, subdomain));
+    receive.searchParams.set("token", handoff);
+    receive.searchParams.set("redirect", "/agent/dashboard");
+    return NextResponse.json({
+      message: `Now viewing as: ${agent.name} (${agent.email})`,
+      user: { name: agent.name, email: agent.email },
+      redirect: receive.toString(),
+    });
   }
 
   // Issue a new JWT as the agent, with impersonation marker
@@ -140,10 +212,6 @@ export async function POST(req: NextRequest) {
     message: `Now viewing as: ${agent.name} (${agent.email})`,
     user: { name: agent.name, email: agent.email },
   });
-
-  const cookieName = process.env.NODE_ENV === "production"
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
 
   response.cookies.set(cookieName, agentToken, {
     httpOnly: true,

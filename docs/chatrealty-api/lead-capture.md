@@ -1,8 +1,8 @@
 ---
 title: Lead Capture — Signup → auto-Contact (per-tenant CRM)
 status: current
-last_verified: 2026-08-06
-related: [./build_plan.md, ./db-adapter.md, ./connection-resolver.md]
+last_verified: 2026-10-17
+related: [./build_plan.md, ./db-adapter.md, ./connection-resolver.md, ./create-site-scaffolder.md]
 ---
 
 # Lead Capture (`src/lib/crm/`)
@@ -14,7 +14,10 @@ related: [./build_plan.md, ./db-adapter.md, ./connection-resolver.md]
 > (`src/lib/signup-origin.ts`) onto the per-tenant Postgres CRM (the `contact` /
 > `end_user` / `saved_search` tables from migration `0002_crm_leadloop`). It is
 > the entry point of the lead loop: the Contact then accrues favorites + saved
-> searches. **Non-blocking** — a CRM error never fails the signup.
+> searches. **Non-blocking** — a CRM error never fails the signup. The route
+> also mirrors the visitor into the owning agent's Mongo CRM so the dashboard
+> and MCP contact tools see it. A scaffolded site's inquiry form reaches this
+> through its own `/api/lead` route.
 
 `status: current` — Agent 32's modules (`upsert-contact-from-signup.ts`,
 `end-user.ts`), the BYO-auth route, and the live test are landed and pass **LIVE
@@ -43,6 +46,16 @@ untouched; a miss **inserts** one row.
 | `src/lib/crm/end-user.ts` | Agent 32 | `registerEndUser(adapter, …)` (citext-unique upsert) + `onSignup(adapter, payload)` — the single signup hook (create/link end_user → upsert contact) | **landed** |
 | `src/app/api/skill/contacts/from-signup/route.ts` | Agent 32 | BYO-auth `POST` endpoint: `withSkill` + zod validation → `onSignup` → `{ contactId, endUserId }` | **landed** |
 | `src/lib/crm/__tests__/lead-capture.live.test.ts` | Agent 32 | LIVE Neon test: one-contact create, re-signup no-dup, source/tag/link stamped, phone-only dedup; `after()` cleanup + pool close; SKIPs without conn | **landed** |
+| `src/lib/crm/mirror-to-owner.ts` | — (`79356506`) | `mirrorContactToOwner()` — copies the same visitor into the **owning agent's Mongo `Contact`** collection + activity feed, because the dashboard and the MCP contact tools read Mongo, not the tenant's Postgres. Best-effort, never fails the signup | **landed** |
+
+## The Mongo mirror — why a lead shows up in the dashboard
+
+`onSignup` writes the tenant's Postgres `contact` table. The agent's Contacts
+dashboard and `search_my_contacts` / `get_contact` / `my_recent_leads` query the
+Mongo `Contact` collection by `userId`. Without a bridge a real tenant-site
+signup was invisible to the agent. `POST /api/skill/contacts/from-signup` now
+calls `mirrorContactToOwner()` after `onSignup`, under `ctx.auth.user._id` (the
+token's owner), tagged `"Website Signup"`. Both writes are non-blocking.
 
 ## Two integration paths
 

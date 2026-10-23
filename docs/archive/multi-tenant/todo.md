@@ -1,3 +1,5 @@
+> Archived: superseded — March 2026 build checklist; what shipped is described in docs/multi-tenant/README.md and docs/chatrealty-api/, verified 2026-10-17
+
 # ChatRealty Multi-Tenant Platform - Implementation TODO
 
 **Created**: March 16, 2026

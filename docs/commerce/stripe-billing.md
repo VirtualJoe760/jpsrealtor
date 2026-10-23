@@ -1,11 +1,12 @@
 ---
 title: Stripe Billing & Credits
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-10-17
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 related:
   - ../campaigns/co-marketing-adspend.md
   - ./README.md
+  - ../admin/README.md
 ---
 
 # Stripe Billing & Credits
@@ -13,8 +14,8 @@ related:
 ## TL;DR
 
 ChatRealty bills via Stripe (test mode today) for **subscriptions** (agent tiers +
-general-user Pro) and **one-time credit top-ups**, plus **Stripe Identity** for
-agent KYC. All ad/mail/voicemail/co-marketing spend runs on the **internal credit
+general-user Pro) and **one-time credit top-ups**. **Stripe Identity** (agent
+ID checks) is built but parked since 2026-07-23. All ad/mail/voicemail/co-marketing spend runs on the **internal credit
 ledger** — Stripe is only touched to *buy* credits or subscribe. Checkout is
 server-created → redirect to Stripe-hosted pages (no card data touches the app;
 PCI-safe). **No Stripe Connect/payouts** — co-marketing settles via credits.
@@ -71,8 +72,8 @@ JWT carries `agentTier` + `isAdmin` so client gating avoids a DB call.
 | Billing portal | `POST /api/stripe/portal` | self-service |
 | General-user Pro | `GET/POST/DELETE /api/user/subscription` | $9.99/mo |
 | Credit top-up | `POST /api/points/topup` | dynamic amount, mode=`payment` |
-| Identity (KYC) | `src/lib/stripe-identity.ts` + `/api/webhooks/stripe-identity` | separate secret |
-| Admin comping | `POST /api/admin/credits` | internal ledger only (no Stripe) |
+| Identity (KYC) | `src/lib/stripe-identity.ts` + `/api/webhooks/stripe-identity` | separate secret; **PARKED** (unreachable) |
+| Admin comping | `POST /api/admin/credits` | internal ledger only (no Stripe); Admin → Subscriptions → Gift credits |
 | Account deletion | `/api/auth/delete-account` | cancels the Stripe subscription |
 
 Client checkout is initiated from `pricing/PricingClient.tsx`,

@@ -261,6 +261,72 @@ export async function publishArticle(
     console.log('[PUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
     console.log(`✅ Article published! Pushed to main branch (${dbResult._id})`);
   }
+
+  // Tell Bing and Yandex immediately, rather than waiting to be crawled.
+  //
+  // Articles are the highest-CTR pages on this site (1.74% vs 0.35% for city
+  // pages), so the lag between publishing and being findable costs more here
+  // than anywhere else. Google does not participate in IndexNow — for Google
+  // the signal is the sitemap's lastmod, which now comes from
+  // `articles.updatedAt` (see lib/sitemap-sources.ts) instead of the publish
+  // date it used to report.
+  //
+  // NEVER let this fail a publish. The article is already saved and deployed
+  // by this point; a search-engine ping that 503s must not surface as "publish
+  // failed" and send someone re-running the pipeline.
+  await pingIndexNowForArticle(article, slugId, options.userId);
+}
+
+/**
+ * Resolve the author's own domain and submit the new article URL.
+ *
+ * The host matters and cannot be hardcoded: one deployment serves many agents,
+ * so submitting every article to jpsrealtor.com would ask Bing to index one
+ * agent's URL for another agent's content. No resolvable domain means no ping.
+ */
+async function pingIndexNowForArticle(
+  article: ArticleFormData,
+  slugId: string,
+  userId?: string,
+): Promise<void> {
+  try {
+    if (!process.env.INDEXNOW_KEY || !userId) return;
+
+    const dbConnect = (await import('@/lib/mongoose')).default;
+    await dbConnect();
+    const User = (await import('@/models/User')).default;
+    const author: any = await User.findById(userId)
+      .select('agentProfile.customDomain agentProfile.subdomain')
+      .lean();
+
+    const custom = author?.agentProfile?.customDomain;
+    const subdomain = author?.agentProfile?.subdomain;
+    const bareHost = custom
+      ? String(custom).replace(/^www\./, '')
+      : subdomain
+        ? `${subdomain}.chatrealty.io`
+        : null;
+    if (!bareHost) return;
+
+    // getBaseUrl applies the supplementary→primary alias, so an article on
+    // josephsardella.com is submitted as its jpsrealtor.com canonical rather
+    // than as the domain the canonicals are consolidating away from.
+    const { getBaseUrl } = await import('@/lib/domain-utils');
+    const baseUrl = getBaseUrl(bareHost);
+    const canonicalHost = new URL(baseUrl).host;
+
+    const section = (article as any).section || (article as any).category;
+    if (!section) return;
+    const url =
+      section === 'landing-page'
+        ? `${baseUrl}/lp/${slugId}`
+        : `${baseUrl}/insights/${section}/${slugId}`;
+
+    const { submitToIndexNow } = await import('@/lib/indexnow');
+    await submitToIndexNow([url], canonicalHost);
+  } catch (error) {
+    console.warn('[PUBLISH] IndexNow ping failed (publish unaffected):', error);
+  }
 }
 
 /**

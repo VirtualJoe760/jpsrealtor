@@ -1,11 +1,23 @@
 ---
 title: ChatRealty API — Build Plan
-status: current
-last_verified: 2026-06-24
-related: [./architecture.md, ./research.md]
+status: partial
+last_verified: 2026-10-17
+related: [./architecture.md, ./research.md, ./ship-strategy.md, ../mcp/site-building.md]
 ---
 
 # ChatRealty API — Build Plan
+
+> **Plan, not a map of the code (checked 2026-10-17).** Large parts shipped —
+> tenant DBs + `DbAdapter`, the RESO data dictionary, `@chatrealty/sync`, lead
+> capture, the build guide, `create-chatrealty-site`. Many files this plan names
+> were never created or landed elsewhere, e.g. `src/lib/chat-search/repo/*`,
+> `src/lib/metering/*`, `src/lib/neon/provision.ts`,
+> `src/app/api/control/tenants/`, `src/app/api/tenant/signup/route.ts`,
+> `src/app/api/skill/research/saved-searches/route.ts`; the build guide lives in
+> `packages/mcp-server/src/build-guide/prompts.ts`, not
+> `packages/mcp-server/src/resources/build-guide.ts`. The distributed rate
+> limiter exists but is unwired ([rate-limiting.md](./rate-limiting.md)). Verify
+> any path here before relying on it; current state lives in the area docs.
 
 > **What this is.** The single, executable build plan for turning ChatRealty's
 > single-tenant `/api/skill/*` + MCP surface into a **managed, database-per-tenant

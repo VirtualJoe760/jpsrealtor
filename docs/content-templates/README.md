@@ -1,10 +1,10 @@
 ---
 title: ChatRealty Content Templates
 status: current
-last_verified: 2026-07-26
-last_verified_note: Slides 2-10 moved to src/ and exposed via MCP 2026-07-26; reel pipeline and storage layer unchanged since 2026-06-05.
+last_verified: 2026-10-17
+last_verified_note: Slides 2-10 moved to src/ and exposed via MCP 2026-07-26; storage layer unchanged since 2026-06-05. Broker logo repointed to Fathom 2026-10-10. Reel video backend removed 2026-08-07 (TBD). Re-checked against code 2026-10-17.
 owner: content
-related: [./cover-slide.md, ./carousel-slides.md, ./actor-generation.md, ./auto-posting.md]
+related: [./cover-slide.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ./auto-posting.md]
 ---
 
 # Content Templates
@@ -28,15 +28,21 @@ that auto-populates from Cloudinary on demand and is safe to delete.
 > **Hosted / MCP path.** Agents build slides from their own Claude session:
 > `create_listing_cover` for slide 1 and `create_carousel_slide` for the caption
 > bands, CMA card, text slides and closing CTA — see
-> [carousel-slides.md](./carousel-slides.md).
+> [carousel-slides.md](./carousel-slides.md). The automated path — a generated
+> carousel queued for review and published on a Tue/Thu/Sun slot — is a third
+> consumer of the same builders: see [auto-posting.md](./auto-posting.md), and
+> [actor-generation.md](./actor-generation.md) / [copy-voice.md](./copy-voice.md)
+> before writing or staging anything.
 >
 > As of 2026-07-26 those four non-cover layouts live in
 > `src/lib/cover-templates/carousel-slides.js` and
 > `scripts/lib/slide-templates.js` **re-exports** them, so there is one
 > implementation each. The **cover is still duplicated** across
 > `src/lib/cover-templates/simple-luxury.ts` and the script's
-> `buildCoverTransformation`, and those two must be kept in sync — that
-> duplication is what let them drift into shipping different layouts. Layout
+> `buildCoverTransformation` (both share the headline fitter
+> `src/lib/cover-templates/fit-headline.js`), and the rest of the layout must be
+> kept in sync by hand — that duplication is what let them drift into shipping
+> different layouts. Layout
 > invariants (flush headshot bleed, no bottom banner, hook width cap) are in
 > [cover-slide.md](./cover-slide.md) — read it before editing either.
 
@@ -54,7 +60,7 @@ that auto-populates from Cloudinary on demand and is safe to delete.
 | 2–5 | 4 staged shots — Joseph composited into each room with banner label | curated interior/exterior photos via Gemini staging |
 | 6 | CMA infographic — subdivision/city sales stats, listing price contextualized | `search_closed_listings` MCP data |
 | 7–9 | 3 cream-bg text posts — story, qualities-of-an-agent, pricing context | hand-authored per listing |
-| 10 | eXp CTA card — Joseph headshot, DRE, italic close, @instadella | shared template |
+| 10 | Broker CTA card — agent headshot, DRE, italic close, handle; broker logo from `cta.brokerLogoPublicId` (Fathom as of 2026-10-10; light/dark variant chosen by background luminance) | shared template |
 
 ### Inputs
 
@@ -94,7 +100,7 @@ module.exports = {
     italicLast: "DM me. Let's ...",
     handle: "@instadella",
     headshotPublicId: "jpsrealtor:agents:joseph-circular",
-    brokerLogoPublicId: "jpsrealtor:logos:EXP-white-square",
+    brokerLogoPublicId: "jpsrealtor:logos:fathom-logo-white",
     color,
   },
 };
@@ -125,10 +131,12 @@ jpsrealtor/content/<slug>/
 
 ### Reference listings
 
-- `48750-el-nido` (The Lodge) — first carousel shipped
+- `48750-el-nido` (The Lodge) — first carousel shipped. It has **no data file** in `scripts/data/carousels/`; it was built with the one-off scripts `scripts/post-el-nido-carousel.js` and `scripts/regen-el-nido-cover.js`.
 - `77655-iroquois` (IWCC)
 - `78890-lima` (The Citrus)
 - `81193-columbus` (Madison Club)
+
+(The last three are the data files that exist: `scripts/data/carousels/{77655-iroquois,78890-lima,81193-columbus}.js`.)
 
 ---
 
@@ -156,7 +164,7 @@ forward-dolly transitions and ending on a sunset shot.
 
 1. **Narration**: ElevenLabs from a per-listing script in `scripts/data/narration/<slug>.txt`. Measure duration with ffprobe; that's the audio timeline.
 2. **Empty rooms**: Gemini 2.5 Flash Image (NanoBanana) strips furniture from the 4 timelapse source photos while preserving architecture.
-3. **Video clips**: WAN 2.2 FLF2V via ComfyUI on RunPod Serverless (target). Each timelapse = (empty, staged) keyframe pair. Each dolly = single keyframe + forward camera motion prompt. Sunset = slow drift.
+3. **Video clips**: backend TBD. ComfyUI/RunPod self-hosted (WAN 2.2), Kling pro/std, and Luma ray-2 were all prototyped and deprecated 2026-08-07 — none are in the repo anymore. Each timelapse = (empty, staged) keyframe pair. Each dolly = single keyframe + forward camera motion prompt. Sunset = slow drift.
 4. **Stitch**: ffmpeg concatenates clips to match narration timeline, overlays audio, adds fade-to-black, exports H.264 MP4.
 
 ### Inputs
@@ -185,8 +193,8 @@ module.exports = {
 ```bash
 node scripts/generate-narration.js <slug> [voice_id]   # ElevenLabs → mp3
 node scripts/reel-prep-empties.js <slug>               # NanoBanana → 4 empty pngs
-node scripts/reel-kickoff-comfyui.js <slug>            # RunPod ComfyUI → 9 mp4s   (planned)
-node scripts/reel-stitch.js <slug>                     # ffmpeg → final mp4         (planned)
+(video-clip generation — backend TBD; ComfyUI/Kling/Luma all deprecated 2026-08-07)
+node scripts/reel-stitch.js <slug>                     # ffmpeg → final mp4         (planned, not in repo)
 ```
 
 ### Outputs (Cloudinary)
@@ -202,16 +210,19 @@ jpsrealtor/content/<slug>/
   meta/caption.txt
 ```
 
-### Cost & timing comparison
+### Cost & status
 
-| Provider | Per reel | Quality | Notes |
-|---|---|---|---|
-| Kling Pro v1-6 + Std v1 | ~$2.50 | known good | works today, requires account top-up |
-| Luma Dream Machine ray-2 | ~$2.50 | known good | requires separate Dream Machine API key |
-| **RunPod 4090 Serverless + WAN 2.2 + Lightning LoRA** | **~$0.25** | TBD | target architecture |
-| RunPod H100 Pod + WAN 2.2 | ~$0.45 | TBD | spike option |
+Narration (ElevenLabs, < 5 s) and empty-room generation (NanoBanana, < 10 s)
+work and are reusable. The video-clip step has no backend, so there is no
+end-to-end time or cost to quote. The three backends tried — self-hosted WAN 2.2
+on RunPod (~$0.02/reel warm), Kling (~$2.50/reel), Luma ray-2 (~$2.50/reel) —
+were removed from the repo on 2026-08-07. Do not propose reviving them without
+being asked.
 
-End-to-end: ~10 minutes (narration < 5s, empties < 10s, 9 video gens ~5–10 min parallel, stitch ~30s).
+> The registry entry for this template in `scripts/content-templates/index.js`
+> still lists the ComfyUI/Kling/Luma invocations and a `comfyConfig` block on
+> `fix/agent-wordmark-default`; the cleanup of that entry was an uncommitted edit
+> in the main checkout on 2026-10-17. This README is the accurate description.
 
 ### Reference listings
 

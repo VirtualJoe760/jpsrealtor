@@ -1,17 +1,21 @@
 ---
 title: MCP Scopes, Rate Limits, and Safety
 status: current
-last_verified: 2026-07-26
-related: [./README.md, ./tools.md, ./rollout-plan.md, ../integrations/README.md, ../content-templates/README.md]
+last_verified: 2026-10-17
+related: [./README.md, ./tools.md, ./site-building.md, ./rollout-plan.md, ../integrations/README.md, ../content-templates/README.md]
 ---
 
 # MCP Scopes, Rate Limits, and Safety
 
-> Phase 1 shipped: scopes catalog + 4 presets + UI picker + per-route
-> enforcement + tiered rate limits are all live.
-> `McpToolCallLog` collection, daily spend cap, and two-call confirmation
-> flow for `campaigns:send` remain design-only — they land with the
-> campaigns tools in Phase 3/4.
+> **TL;DR.** Live: a 15-scope catalog and 5 presets (+ Custom) in
+> `src/lib/skill-scopes.ts`, free-tier mint gating, per-route `requireScope`
+> in `src/lib/skill-auth.ts`, hosted tool filtering by `TOOL_SCOPE`
+> (`src/lib/mcp-tool-bridge.ts`), and per-token in-memory rate limits.
+> Design-only (no code): the `McpToolCallLog` audit collection, the daily
+> spend cap, and the two-call confirmation for `campaigns:send` — they land
+> with campaign tools, none of which exist yet. **Known gap:** no preset meant
+> for Claude work carries `site:manage`, so the site go-live tools are
+> unavailable to most Claude keys (see Presets).
 
 ## GOTCHA: connectors freeze scopes AND tool schemas at connect time
 
@@ -53,59 +57,63 @@ way — repeatedly, while the deploy was fine the whole time.
 ## Token scope model
 
 Tokens are minted with a set of **scopes** the agent picks at creation time
-in Settings → Integrations. A tool call requires the token to carry every
-scope the route declares; missing any scope returns `403 missing_scope` and
-the MCP server surfaces a structured error so Claude can ask the agent to
-revoke and re-issue with the right boxes checked.
+in Settings → Integrations (`/api/integrations/api-tokens`). A route call
+requires the scope it declares; a missing one returns
+`403 { error: "missing_scope", required, tokenScopes, isLegacyToken }`. A
+data scope (`listings:read`, `market:read`, …) on a token with no data source
+returns `403 no_data_source` first. On the hosted connector the bridge also
+hides tools whose `TOOL_SCOPE` entry the token lacks.
 
-### Schema change
+Scopes live on `User.agentProfile.aiIntegrations.apiTokens[].scopes`. A key
+resolves to the agent's own database through the tenant's `tokenHashes`
+(plus a `tenant_tokens` record); `authenticateSkillRequest` binds a
+non-admin's key to the tenant they own on first use.
 
-Add `scopes` to the existing token subdoc on `User.agentProfile.aiIntegrations.apiTokens[]`:
+**Legacy tokens** (an empty `scopes` array) resolve to
+`LEGACY_DEFAULT_SCOPES`: `site:manage`, `landing_pages:read`,
+`landing_pages:write`, `listings:read`, `market:read`, `analytics:read`. (The
+hosted bridge keeps its own fallback list without `site:manage`, but OAuth
+records store the already-resolved scopes, so it rarely applies.)
 
-```ts
-apiTokens: [{
-  tokenHash: string,
-  last4: string,
-  name: string,
-  scopes: string[],         // NEW — empty array = legacy "all read, no write"
-  createdAt: Date,
-  lastUsedAt?: Date,
-  revokedAt?: Date,
-}]
-```
+### Scope catalog (15)
 
-Legacy tokens (created before scopes exist) default to a safe read-only set
-on first call after the migration ships. They can be revoked + re-minted with
-explicit scopes at any time.
-
-### Scope catalog
-
-| Scope | Tools it unlocks | Risk |
+| Scope | Shipped tools it unlocks (hosted `TOOL_SCOPE`) | Risk |
 |---|---|---|
 | `landing_pages:read` | `list_my_landing_pages`, `get_landing_page` | none |
-| `landing_pages:write` | `create_landing_page`, `update_landing_page` (draft only) | low — drafts only |
+| `landing_pages:write` | `create_landing_page`, `update_landing_page` (drafts), and the image tools `stage_listing_with_agent`, `create_listing_cover`, `create_carousel_slide` | low |
 | `articles:read` | `list_my_articles`, `get_article` | none |
-| `articles:write` | `create_article`, `update_article` (draft only) | low |
-| `listings:read` | All listings search/get/photos/comparables | none — MLS data is public to licensed agents anyway |
+| `articles:write` | `create_article`, `update_article` — **can publish a draft** with `status:"published"` | medium — outward-facing |
+| `listings:read` | Listing search/detail/photos/comps/closed, the four cash-flow tools, `plan_listing_carousel`, `get_site_claim_code` | none — MLS data for licensed use |
 | `market:read` | Market stats, neighborhoods, mortgage rates, subdivision CMA | none |
 | `contacts:read` | `search_my_contacts`, `get_contact`, `my_recent_leads` | **medium** — PII flows to Claude |
-| `contacts:write` | `add_contact_note`, `create_contact`, `add_contact_label` | low — additive only, no delete |
-| `campaigns:read` | `list_my_campaigns`, `get_campaign`, `estimate_campaign_cost` | none |
-| `campaigns:write` | `create_*_campaign`, `update_campaign`, `archive_campaign` | low — drafts only |
-| `campaigns:send` | `send_campaign`, `launch_ad_campaign` | **high** — real money |
-| `analytics:read` | All `my_*` analytics tools | none |
+| `contacts:write` | none yet (CRM write tools are designed only) | low |
+| `campaigns:read` / `campaigns:write` | none yet | low |
+| `campaigns:send` | none yet — **never in a preset** | **high** — real money |
+| `analytics:read` | none yet (analytics tools designed only) | none |
+| `social:post` | `post_instagram_carousel` — publishes immediately; in no preset | **high** — public post |
+| `site:manage` | `site_status`, `connect_site`, `set_site_live` (and the `get_tracking` / `set_tracking` routes) | medium — `set_site_live` makes a site public (license-gated) |
+| `research:read` | Client-research surface; only the `client_research` preset grants it | none |
 
-### Default scope presets in the Integrations UI
+### Presets in the Integrations UI
 
-To avoid the agent staring at twelve checkboxes:
-
-| Preset | Scopes | Use case |
+| Preset (`PRESETS` id) | Scopes | Use case |
 |---|---|---|
-| **Website & listings** *(default; the ONLY preset on the Free plan)* | `listings:read`, `market:read` | Power a scaffolded create-chatrealty-site build — search + market data; lead capture (`contacts/from-signup`) needs no scope |
-| **Content drafting** | `landing_pages:*`, `articles:*`, `listings:read`, `market:read`, `analytics:read` | Write LPs and articles, look up market data and listings |
-| **Lead-aware drafting** | + `contacts:read` | Agents who want Claude to reference their actual leads when drafting |
-| **Full workspace** | + `contacts:write`, `campaigns:read`, `campaigns:write` | Power users — Claude can draft campaigns and manage contact notes |
-| **Custom** | Pick individual scopes | For agents who know exactly what they want |
+| **Website: CHAP, listings & blog** (`website`; default; the ONLY preset on the Free plan) | `listings:read`, `market:read`, `articles:read`, `articles:write`, `site:manage` | Power a scaffolded site (CHAP, listings, blog) and connect/launch it. Lead capture (`contacts/from-signup`) needs no scope. |
+| **Content drafting** (`content_drafting`) | `landing_pages:*`, `articles:*`, `listings:read`, `market:read`, `analytics:read` | Write LPs and articles with market context |
+| **Lead-aware drafting** (`lead_aware`) | content drafting + `contacts:read` | Claude references the agent's real leads |
+| **Full workspace** (`full_workspace`) | lead-aware + `contacts:write`, `campaigns:read`, `campaigns:write` | Power users. Explicitly excludes `campaigns:send`, `social:post` and `site:manage` |
+| **Client research** (`client_research`) | `research:read`, `listings:read`, `market:read` | A read-only token an agent can hand to a client |
+| **Custom** | Pick individual scopes | — |
+
+**Gap — `site:manage` is missing from every Claude-work preset.** Only
+`website` carries it. A paid agent who mints Content drafting, Lead-aware or
+Full workspace for Claude cannot reach `site_status` / `connect_site` /
+`set_site_live`: hidden on the hosted connector, 403 at the route on stdio.
+The build guide's go-live step therefore stalls unless the agent re-mints with
+the Website preset or adds `site:manage` under Custom (and, on hosted,
+reconnects). `get_site_claim_code` was moved to `listings:read` on 2026-10-17
+for this reason; the go-live tools were not. Reported as a bug; fix belongs in
+`src/lib/skill-scopes.ts`.
 
 ### Tier gating (2026-07-23)
 
@@ -125,22 +133,26 @@ for sending and revoking it when not in use.").
 
 ## Rate limits
 
-Per token. Sliding 1-minute window, in-memory backed (KV-backed eventually —
-see tech-debt entry for the rate limiter).
+`skillRateLimit()` in `src/lib/skill-auth.ts`: sliding 1-minute window,
+**in-memory per Vercel instance** (`src/lib/rate-limit.ts`), bucketed by
+tier + token last4 + token name. Each route picks its tier. The distributed
+Upstash limiter (`src/lib/rate-limit-kv.ts`) exists but no route uses it yet —
+see `docs/chatrealty-api/rate-limiting.md`.
 
-| Tier | Tools | Limit / min |
+| Tier | Typical routes | Limit / min |
 |---|---|---|
-| Read | All `:read` scopes | 100 |
-| Write | All `:write` scopes (draft) | 30 |
-| Send | `campaigns:send` | 5 |
-| Identity | `whoami`, `my_*` meta | 200 |
+| Identity | `/me`, `/me/profile`, `/me/stats` | 200 |
+| Read | `:read` routes | 100 |
+| Research | client-research routes | 60 |
+| Write | `:write` routes, Instagram post | 30 |
+| Send | `campaigns:send` (no route yet) | 5 |
 
 Over-limit returns `429 rate_limited` with `retryAfter` seconds. Claude reads
 that and either waits or asks the agent.
 
-## Daily spend cap (`campaigns:send`)
+## Daily spend cap (`campaigns:send`) — design only
 
-Per-token (NOT per-agent). On the token subdoc:
+Nothing below is built. Per-token (NOT per-agent). On the token subdoc:
 
 ```ts
 {
@@ -163,9 +175,10 @@ Server checks the cap on every `send_campaign` call:
 Default cap is **0 cents**. An agent who wants Claude to launch campaigns
 sets a per-day budget explicitly.
 
-## Audit log
+## Audit log — design only
 
-New collection: `McpToolCallLog`.
+Proposed collection `McpToolCallLog`. No model exists in `src/models/` and no
+route writes one.
 
 ```ts
 {
@@ -209,8 +222,8 @@ established). Any time a tool returns contact PII, it goes into Claude's
 context and is subject to Anthropic's retention.
 
 Mitigations in the design:
-- **Explicit scope.** `contacts:read` is opt-in, not in any default preset,
-  and the Settings UI shows a warning when the agent ticks it.
+- **Explicit scope.** `contacts:read` is opt-in: only the Lead-aware and Full
+  workspace presets carry it, never the default Website preset.
 - **Tool descriptions name the data flow.** Example for `get_contact`:
   *"Returns the contact's name, phone, email, and notes. This information
   will be visible to Claude (Anthropic) and used for the duration of the
@@ -224,9 +237,9 @@ The platform owner (you, Joseph) should publish a "What flows to Claude"
 disclosure on `/legal/ai-tools` before Phase 2 ships. Out of scope for this
 doc.
 
-## Approval flow for high-blast-radius actions
+## Approval flow for high-blast-radius actions — design only
 
-For `send_campaign` and `launch_ad_campaign` specifically, the server
+For `send_campaign` and `launch_ad_campaign` specifically (neither exists yet), the server
 implements a **two-call confirmation**:
 
 1. First call → returns `409 confirmation_required` with a `confirmationToken`
@@ -251,18 +264,17 @@ guard is server-side, so a malicious or runaway prompt loop can't bypass it.
 - **Doesn't retry on failure.** If a tool fails, Claude decides whether to
   retry, ask the agent, or move on. Silent retries hide errors and double
   the blast radius of writes.
-- **Doesn't auto-update.** Version pinning is the agent's responsibility
-  (`npx @chatrealty/mcp-server@1.2.0`). The hosted variant in Phase 2 can
-  ship updates centrally.
+- **Doesn't auto-update (stdio).** A stdio install runs whatever npm version
+  `npx` resolved. The hosted connector rebuilds from source on every deploy, so
+  it ships updates centrally.
 
 ## Tech-debt callouts
 
-Add to `docs/tech-debt.md` before Phase 2 ships:
-
-- `scopes` field migration on existing tokens. Default to a safe read-only
-  set on first call after the migration; surface a banner in the Integrations
-  tab asking the agent to revoke and re-mint with explicit scopes.
-- KV-backed rate limiter (the in-memory one already noted in tech-debt
-  becomes acute here — MCP clients can hit the server hard).
-- `CampaignExecution` needs an `mcpToken` field so we can attribute spend per
-  token for the daily cap math. Schema migration.
+- ~~`scopes` field migration on existing tokens~~ — done; legacy tokens resolve
+  to `LEGACY_DEFAULT_SCOPES`.
+- KV-backed rate limiter: the module exists (`src/lib/rate-limit-kv.ts`) but
+  `skillRateLimit` still uses the per-instance in-memory limiter.
+- `TOOL_SCOPE` gaps: `get_tracking`, `set_tracking`, `show_listing_board` have
+  route scopes but no bridge entry, so hosted lists them to every token.
+- `site:manage` absent from the Claude-work presets (see Presets).
+- `CampaignExecution` needs an `mcpToken` field before any spend-cap work.

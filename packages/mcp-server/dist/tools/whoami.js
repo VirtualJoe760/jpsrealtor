@@ -26,6 +26,12 @@ exports.whoami = {
             // The build guide's data-source branch depends on this — always surface
             // it (explicit "none" rather than an absent key, per CRBR bug report).
             dataSource: res.dataSource ?? "none",
+            // The seeded-database summary the build guide's step 1 reads
+            // (whoami.database). This handler rebuilds the response field by field,
+            // so a field the route adds is DROPPED unless it's listed here — the
+            // first claim-code release shipped with the guide pointing at a key this
+            // tool never returned (doc audit, 2026-10-17).
+            ...(res.database ? { database: res.database } : {}),
         };
     },
 };

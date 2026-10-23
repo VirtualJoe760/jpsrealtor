@@ -1,7 +1,7 @@
 ---
 title: Data tiers — storage allowances and the seed preflight
 status: current
-last_verified: 2026-08-10
+last_verified: 2026-10-17
 related: [./external-site.md, ./neon-setup.md, ../testing/coverage.md]
 ---
 
@@ -126,6 +126,70 @@ Mechanics:
 Incremental pulls skip the preflight — tens of rows need no ceremony. A
 preflight-internal failure never blocks a seed the operator asked for; it is
 advisory infrastructure.
+
+## Hosted seeding from Settings (2026-10-16)
+
+Agents no longer need the CLI or a VPS. **Settings → Integrations → MLS Data
+Feed**, after the key and association picker, now asks the two scope questions
+and seeds from the platform:
+
+1. **What should your site include?** — property-type checkboxes (RESO
+   `PropertyType`: Residential, Residential Lease, Residential Income /
+   multi-family, Land, Manufactured In Park, Commercial Sale/Lease, Business
+   Opportunity, Farm), each with its live for-sale count. Default Residential.
+2. **Closed listings?** — a lookback picker: none / 1 / 2 / 5 years / all, each
+   with its count and size. Closed history is most of a feed (GPS: 5,935
+   for-sale vs 219,617 closed), so a lookback beats an on/off switch.
+3. **Size meter** against the tier allowance (same `DATA_TIERS`, same ~20 KB /
+   listing default, measured from the tenant DB once it holds ≥500 rows).
+   Over the limit, **Start seeding is disabled and the panel names the
+   smallest tier that fits**. The seed route re-checks server-side and answers
+   `403 too_big` — the button is the explanation, not the enforcement.
+
+Measured on GPS (Spark, 2026-10-16): Residential for-sale 2,913 ≈ 57 MB (11% of
+Free); + 5 years closed ≈ 697 MB → blocked on Free, fits Beginner. A real seed
+of the 2,913 wrote 2,911 rows (two listings read twice mid-walk, merged by the
+upsert) into a **72 MB** database in ~110 s — one chunk.
+
+**Runtime — serverless, chunked, no VPS** (`src/lib/mls-seed.ts`):
+
+- `POST /api/integrations/mls-feed/seed` queues the run and does the first
+  chunk in `after()`; `GET /api/cron/mls-sync` (Vercel cron, every 5 min)
+  advances anything queued/running. Each chunk pages until a 240 s budget
+  (`maxDuration` 300) and saves its place after **every page** on
+  `User.mlsFeed.sync`; a lease (`leaseUntil`) stops the cron and the kick-off
+  writing one tenant at once.
+- Resume prefers the feed's nextLink (≤20 min old), else restarts from the
+  highest `ModificationTimestamp` written minus 1 ms. Safe because the walk is
+  `$orderby=ModificationTimestamp asc` and every write is an upsert on
+  `listing_key` — records sharing a timestamp are re-read, never skipped.
+- **Nightly update, fixed for everyone:** during the 3 AM Pacific hour the cron
+  queues one update per agent whose last run finished (`lastNightlyFor` makes
+  it once per night), re-pulling 26 h before the last finished watermark (the
+  CLI's overlap).
+- **Updates pull every status** in the agent's associations/types, upsert what
+  is still in scope, and **delete by key** what left it (expired, withdrawn,
+  closed outside the lookback). Deliberate divergence from the CLI, whose status
+  filter also applies to incrementals and which never deletes — so under the
+  CLI a listing that expires stops arriving and stays "Active" in the tenant DB.
+  On a live site that is a compliance problem (tracked in `../tech-debt.md`).
+- Reuses the sync package's RESO client, mapper and writer from its compiled
+  `packages/chatrealty-sync/dist/` — **not** `src/`: Turbopack can't resolve the
+  source's `./map.js`-style ESM imports to `.ts`. Rebuild `dist` when `src`
+  changes.
+
+**What the website builder does with it (2026-10-17):** `whoami` reports the
+seeded database (`dataSource: "tenant"` + `database`), and the MCP build guide
+claims a key for the new site with `get_site_claim_code` instead of using sample
+data or asking the agent for a token — [external-site.md](./external-site.md) →
+claim codes.
+
+Still open: **provisioning from the UI** — an agent with no tenant DB gets
+"Your ChatRealty database isn't set up yet" (provisioning is still the token
+flow, `POST /api/skill/tenant/provision`); **narrowing** a scope after seeding
+does not delete rows outside the new scope; and the **upgrade path** gap above
+still applies — "fits the Beginner plan" links to a Billing page that can't sell
+it yet.
 
 ## Where the enforcement is honest
 

@@ -29,6 +29,7 @@ import { GET as marketStats } from "@/app/api/skill/market/stats/route";
 import { GET as mortgageRates } from "@/app/api/skill/market/mortgage-rates/route";
 import { GET as neighborhood } from "@/app/api/skill/market/neighborhoods/[slug]/route";
 import { GET as subdivision } from "@/app/api/skill/market/subdivisions/[slug]/route";
+import { GET as areaCashflow } from "@/app/api/skill/rentals/area-cashflow/route";
 import { GET as contactsSearch } from "@/app/api/skill/contacts/search/route";
 import { GET as recentLeads } from "@/app/api/skill/contacts/recent-leads/route";
 import { GET as contactDetail } from "@/app/api/skill/contacts/[id]/route";
@@ -60,6 +61,7 @@ const ROUTES: Entry[] = [
   { re: /^\/api\/skill\/market\/mortgage-rates$/, handler: mortgageRates as RouteHandler, keys: [] },
   { re: /^\/api\/skill\/market\/neighborhoods\/([^/]+)$/, handler: neighborhood as RouteHandler, keys: ["slug"] },
   { re: /^\/api\/skill\/market\/subdivisions\/([^/]+)$/, handler: subdivision as RouteHandler, keys: ["slug"] },
+  { re: /^\/api\/skill\/rentals\/area-cashflow$/, handler: areaCashflow as RouteHandler, keys: [] },
   { re: /^\/api\/skill\/contacts\/search$/, handler: contactsSearch as RouteHandler, keys: [] },
   { re: /^\/api\/skill\/contacts\/recent-leads$/, handler: recentLeads as RouteHandler, keys: [] },
   { re: /^\/api\/skill\/contacts\/([^/]+)$/, handler: contactDetail as RouteHandler, keys: ["id"] },

@@ -104,27 +104,27 @@ export default function ComposePanel({ isLight, onClose, onSend, replyTo, forwar
     {
       name: 'Quick Response',
       subject: 'Re: Your Inquiry',
-      body: '<p>Thank you for reaching out!</p><p>I appreciate your interest and will get back to you shortly with more information.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>eXp Realty</p>'
+      body: '<p>Thank you for reaching out!</p><p>I appreciate your interest and will get back to you shortly with more information.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>Fathom Realty</p>'
     },
     {
       name: 'Property Inquiry',
       subject: 'Property Information',
-      body: '<p>Hi there,</p><p>Thank you for your interest in the property. I\'d be happy to provide you with more details and schedule a showing.</p><p>Please let me know your availability and I\'ll arrange a convenient time.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>eXp Realty<br>📞 (760) 333-2674</p>'
+      body: '<p>Hi there,</p><p>Thank you for your interest in the property. I\'d be happy to provide you with more details and schedule a showing.</p><p>Please let me know your availability and I\'ll arrange a convenient time.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>Fathom Realty<br>📞 (760) 333-3676</p>'
     },
     {
       name: 'Follow Up',
       subject: 'Following Up',
-      body: '<p>Hi,</p><p>I wanted to follow up on our recent conversation. Do you have any questions or need additional information?</p><p>I\'m here to help!</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>eXp Realty</p>'
+      body: '<p>Hi,</p><p>I wanted to follow up on our recent conversation. Do you have any questions or need additional information?</p><p>I\'m here to help!</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>Fathom Realty</p>'
     },
     {
       name: 'Thank You',
       subject: 'Thank You',
-      body: '<p>Hi,</p><p>Thank you for your time today. It was great speaking with you!</p><p>Please don\'t hesitate to reach out if you have any questions.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>eXp Realty<br>📧 josephsardella@gmail.com</p>'
+      body: '<p>Hi,</p><p>Thank you for your time today. It was great speaking with you!</p><p>Please don\'t hesitate to reach out if you have any questions.</p><p>Best regards,<br><strong>Joseph Sardella</strong><br>Fathom Realty<br>📧 josephsardella@gmail.com</p>'
     },
     {
       name: 'Professional Signature',
       subject: '',
-      body: '<br><br><hr style="border: 1px solid #e5e7eb;"><div style="font-family: Arial, sans-serif;"><p style="margin: 0;"><strong style="font-size: 16px; color: #1e40af;">Joseph Sardella</strong></p><p style="margin: 4px 0; color: #6b7280;">Real Estate Professional</p><p style="margin: 4px 0; color: #6b7280;">eXp Realty - Obsidian Group</p><p style="margin: 8px 0 4px 0;"><strong>DRE#:</strong> 02105816</p><p style="margin: 4px 0;"><strong>📞</strong> (760) 333-2674</p><p style="margin: 4px 0;"><strong>📧</strong> josephsardella@gmail.com</p><p style="margin: 4px 0;"><strong>🌐</strong> <a href="https://www.obsidiangroup.com" style="color: #3b82f6;">www.obsidiangroup.com</a></p></div>'
+      body: '<br><br><hr style="border: 1px solid #e5e7eb;"><div style="font-family: Arial, sans-serif;"><p style="margin: 0;"><strong style="font-size: 16px; color: #1e40af;">Joseph Sardella</strong></p><p style="margin: 4px 0; color: #6b7280;">Real Estate Professional</p><p style="margin: 4px 0; color: #6b7280;">Fathom Realty</p><p style="margin: 8px 0 4px 0;"><strong>DRE#:</strong> 02106916</p><p style="margin: 4px 0;"><strong>📞</strong> (760) 333-3676</p><p style="margin: 4px 0;"><strong>📧</strong> josephsardella@gmail.com</p><p style="margin: 4px 0;"><strong>🌐</strong> <a href="https://jpsrealtor.com" style="color: #3b82f6;">jpsrealtor.com</a></p></div>'
     }
   ];
 

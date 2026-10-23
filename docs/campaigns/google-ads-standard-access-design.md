@@ -1,7 +1,8 @@
 ---
 title: Google Ads API — Standard Access Application (design document + answers)
-status: current
-last_verified: 2026-06-20
+status: partial
+last_verified: 2026-10-17
+last_verified_note: The application text is kept as written. The "Code reality" box was checked against code on 2026-10-17; the text overstates what is built.
 related:
   - google-ads-go-live.md
 ---
@@ -13,6 +14,20 @@ related:
 > script. Model: ChatRealty **provisions accounts** for agents under the MCC
 > (Account Creation capability). Monetization is stated **positively** — what we do,
 > with no forward commitments about charging.
+
+> **Code reality (2026-10-17): this text describes more than is built.** Read it
+> against `src/lib/google-ads-api.ts` before submitting or demoing.
+>
+> | The design says | The code does |
+> |---|---|
+> | Account Creation: ChatRealty provisions each agent's account (`CustomerService.CreateCustomerClient`) | Nothing creates accounts. Agents connect an existing account by OAuth, pick a `customerId` (`listAccessibleCustomers`) and accept an MCC link ([README.md](./README.md), [google-ads-go-live.md](./google-ads-go-live.md)) |
+> | Campaign Management: edit, pause, enable, budget changes | Only create and list functions exist (`createFull{Search,Video}Campaign`, `listCampaigns`). Campaigns launch PAUSED and are enabled in Google Ads itself |
+> | Budget-capped to prepaid credits | Launch checks the credit balance once. There is no reservation and no spend debit (`launch-ads/route.ts:86` TODO) |
+> | OAuth tokens encrypted at rest | `adAccounts.google.refreshToken` is stored in plaintext (`api/auth/google-ads/callback/route.ts:88`) |
+>
+> Reporting (`listCampaigns` over `googleAds:searchStream`), Search and Video
+> creation, OAuth with the `adwords` scope, and the MCC `login-customer-id`
+> routing are real.
 
 ---
 

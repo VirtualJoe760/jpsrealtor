@@ -1,23 +1,24 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-07-02
-related: [./free-tier-gating.md, ../auth/README.md, ../multi-tenant/README.md]
-supersedes: docs/STRIPE_BILLING_SYSTEM.md
+last_verified: 2026-10-17
+related: [./stripe-billing.md, ./free-tier-gating.md, ../agent-onboarding/README.md, ../admin/README.md, ../multi-tenant/README.md]
+supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 ---
 
 # Commerce
 
 ## TL;DR
 
-Three layered systems that all run through Stripe but serve different purposes:
+Two live systems run through Stripe:
 (1) **`AgentSubscription`** — monthly recurring tier (Beginner $125 / Experienced
-$500 / Top Agent $1000) gating features and seeding marketing credits;
+$500 / Top Agent $1000) gating features and seeding marketing credits — though
+**only Free is purchasable today** (see `free-tier-gating.md`);
 (2) **`CreditLedger`** — in-app credit balance (1 credit = $0.10 of platform
-spend value) used to pay for Google/Meta ads, direct mail, and voicemail drops,
-with markup baked in at purchase time (25% / 20% / 15% by tier);
-(3) **`Transaction`** — closed-deal commission breakdown with stacked fees
-(swipe 15%, referral 25%, data broker 5%, handoff 5%, company split variable).
+spend value) used to pay for ads, direct mail, voicemail drops, SMS and email,
+with markup baked in at purchase time (25% / 20% / 15% by tier).
+A third model, **`Transaction`** (closed-deal commission maths), is schema-only —
+see [transactions-and-partnerships.md](./transactions-and-partnerships.md).
 Admin users bypass billing entirely: free Top Agent tier with 0% markup on
 top-ups. `PointsLedger` is a deprecated re-export shim over `CreditLedger` —
 new code MUST import from `@/models/CreditLedger` and `@/config/credits`.
@@ -29,18 +30,19 @@ new code MUST import from `@/models/CreditLedger` and `@/config/credits`.
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\AgentSubscription.ts` | Subscription lifecycle: tier, status, period dates, Stripe IDs, features, invoices, payment failures, addons, discounts, referrals. Pre-save hook auto-sets `features` block from `tier`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\CreditLedger.ts` | Credit balance + transactions[]. Collection name still `pointsledgers` (no data migration). Methods: `creditPoints()`, `debitPoints()`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\PointsLedger.ts` | **DEPRECATED** back-compat shim — re-exports `CreditLedger` + legacy `POINTS_TIERS` shape derived from `CREDIT_TIERS`. |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Transaction.ts` | Closed-deal record with `commission.fees[]`, `feeTracking` block, and `attribution`. Pre-save hook computes fee amounts and net commission. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Transaction.ts` | Closed-deal commission record. **Schema only — no importers.** |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Partnership.ts` | Agent ↔ service-partner co-marketing with RESPA JMA, cost-split terms, and `billingHistory`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\config\credits.ts` | **Single source of truth for credit math.** `CREDIT_SPEND_VALUE = $0.10`, `CREDIT_TIERS`, `CUSTOM_TOPUP_MARKUP = 0.15`, conversion helpers. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\config\stripe-prices.ts` | Stripe price IDs + `TIER_DETAILS` UI catalog. `tierFromPriceId()` reverse lookup. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\stripe-subscription.ts` | Lazy Stripe SDK singleton, `createOrGetStripeCustomer()`, `createCheckoutSession()`, `createCustomerPortalSession()`, `checkFeatureAccess()`. |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\stripe-identity.ts` | Stripe Identity verification session creation (KYC). |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\stripe-identity.ts` | Stripe Identity verification session creation (KYC). **PARKED** since 2026-07-23 — unreachable. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\stripe\checkout\route.ts` | POST — agent subscription checkout. Admin fast-path bypasses Stripe. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\stripe\portal\route.ts` | POST — customer billing portal session. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\webhooks\stripe\route.ts` | POST — subscription lifecycle + top-up payment events. Signature-verified. |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\webhooks\stripe-identity\route.ts` | POST — identity verification events. Signature-verified. |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\points\topup\route.ts` | POST — one-time credit top-up checkout. Tier rate resolved by subscription tier + purchase amount. |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\agent\verify-identity\route.ts` | POST — kicks off Stripe Identity session from agent application flow. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\webhooks\stripe-identity\route.ts` | POST — identity verification events. Signature-verified. **PARKED.** |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\points\topup\route.ts` | POST — one-time credit top-up checkout. Rate resolved from purchase amount + the **ledger's** `tier` field (not `AgentSubscription.tier`). |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\agent\verify-identity\route.ts` | POST — would start a Stripe Identity session. **PARKED** — needs phase `inquiry_approved`, which nothing sets. |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\admin\credits\route.ts` | POST — admin "gift credits" (`bonus` ledger entry, no Stripe). See [../admin/README.md](../admin/README.md). |
 
 ## Subscription tiers
 
@@ -110,82 +112,22 @@ Use `dollarsToCredits()` for ad budget conversions.
 
 **Transaction types** (`CreditTransactionType`):
 `subscription_credit`, `topup_purchase`, `campaign_spend`, `refund`, `bonus`,
-`partner_split_credit`, `partner_split_debit`, `adjustment`.
+`partner_split_credit`, `partner_split_debit`, `messaging_setup`,
+`email_setup`, `sms_send`, `email_send`, `adjustment`.
 
 **Channels** (`CampaignChannel`): `google_ads`, `meta_ads`, `youtube_ads`,
-`direct_mail`, `voicemail_drop`.
+`direct_mail`, `voicemail_drop`, `sms`, `email`.
 
 Storage gotcha: Mongoose collection name is **still `pointsledgers`** — the
 model was renamed but the collection name was kept to avoid a data migration.
-See `CreditLedger.ts:122`.
+See `CreditLedger.ts:152`.
 
-## Transactions (commission tracking)
+## Transactions, partnerships, Stripe Identity
 
-`Transaction` records a closed deal end-to-end: parties, sale price, commission
-percentages, stacked fees, attribution, timeline events, and uploaded documents.
-The pre-save hook (lines 293-312) computes:
-
-```
-commission.totalCommissionAmount = salePrice * (totalCommissionRate / 100)
-each fee.amount = totalCommissionAmount * (fee.percentage / 100)
-commission.agentNetCommission = agentGrossCommission - sum(fee.amounts)
-```
-
-**Stacked fee model** — the `commission.fees[]` array can hold any combination
-of these `FeeType` values (each with its own `recipient`):
-
-| Fee type | Default % | Recipient | When applied |
-|---|---:|---|---|
-| `swipe_match` | 15% | platform (ChatRealty) | Deal originated through swipe match (`feeTracking.swipeMatchFee.agentMatchId`) |
-| `referral` | 25% | referring agent | Out-of-state agent referred the client |
-| `data_broker` | 5% | agent or team | Agent/team that provided MLS access |
-| `handoff` | 5% | handoff agent | Lead was handed off mid-pipeline |
-| `company_split` | variable | brokerage | Brokerage's share (typically 20-30%) |
-
-The `feeTracking` block is a denormalized mirror keyed by fee type for
-reporting/lookups (vs. the array-shaped `commission.fees[]` which drives the
-math). Both are updated on every save.
-
-**Attribution** carries `source` (`swipe_match | ai_chat | map_search |
-direct_contact | referral | open_house | other`), `cookieId`, `sessionId`,
-`initialContactDate`, and optional links to `AgentMatch` and representation
-agreement docs.
-
-## Partnership (cost-sharing + RESPA)
-
-`Partnership` models the agent ↔ service-provider relationship (mortgage,
-title, etc.) for legal cost-shared marketing under RESPA's Joint Marketing
-Agreement framework.
-
-- **Compound unique index** on `(agentId, servicePartnerId)` — only one
-  partnership per pair.
-- **Cost split terms:** `equal` | `percentage` (`agentPercentage`/`partnerPercentage`) | `fixed` (`fixedAgentAmount`/`fixedPartnerAmount`), capped by `maxMonthlyContribution`.
-- **RESPA compliance:** `jointMarketingAgreement` flag, signed JMA document URL (Cloudinary), `jmaSignedAt`, explicit `agreedToTerms` consent.
-- **Linked campaigns:** `campaigns[]` references — when a campaign is created through a partnership, credits are debited from both sides per the terms.
-- **`billingHistory[]`:** per-campaign breakdown with `agentShare`, `partnerShare`, paid flags, and optional `stripeInvoiceId`.
-
-Status: `pending | active | suspended | terminated`. Active partnership flow
-is wired end-to-end but actual debit-on-campaign mechanics are still being
-hardened — see `docs/STRIPE_BILLING_SYSTEM.md:540-549` for the current state.
-
-## Stripe Identity (KYC)
-
-Identity verification is part of the agent application flow, not subscription
-checkout — it gates phase transitions in `user.agentApplication`.
-
-1. Applicant reaches `inquiry_approved` phase.
-2. `POST /api/agent/verify-identity` calls `createIdentityVerificationSession()`
-   with `type: "document"` and `require_id_number / require_live_capture /
-   require_matching_selfie`. The returned `url` is sent to the user.
-3. User completes verification on Stripe.
-4. `POST /api/webhooks/stripe-identity` receives one of:
-   - `identity.verification_session.verified` → `phase = "verification_complete"`, success email via Resend.
-   - `identity.verification_session.requires_input` → status `"requires_input"`, retry email.
-   - `identity.verification_session.canceled / processing` → logged only.
-
-Auth on the webhook is **Stripe signature verification**
-(`STRIPE_IDENTITY_WEBHOOK_SECRET`), NOT Turnstile — same signature pattern as
-the subscription webhook. Both webhooks set `export const dynamic = 'force-dynamic'`.
+Moved to [transactions-and-partnerships.md](./transactions-and-partnerships.md).
+In short: `Transaction` (commission maths) is schema-only — nothing imports it;
+`Partnership` is the live agent ↔ service-partner cost-share record (RESPA JMA);
+Stripe Identity is **parked** since 2026-07-23.
 
 ## Stripe Checkout + Portal
 
@@ -207,7 +149,8 @@ cancellations all flow through here (Stripe-hosted) — webhook events then
 sync state back to `AgentSubscription`.
 
 **Top-up checkout** (`POST /api/points/topup`): one-time payment mode. Tier
-rate resolution layers (purchase amount THEN subscription tier):
+rate resolution layers (purchase amount THEN the subscriber tier, which the
+route reads from the credit ledger's `tier` field, `src/app/api/points/topup/route.ts:53-84`):
 
 | Purchase amount | Non-subscriber | Beginner | Experienced | Top Agent | Admin |
 |---|---|---|---|---|---|
@@ -224,25 +167,23 @@ the webhook can credit the ledger on `checkout.session.completed`.
 - **`PointsLedger` is deprecated.** New code MUST import from
   `@/models/CreditLedger` and `@/config/credits`. The shim re-exports the model
   unchanged but routes legacy `POINTS_TIERS` math through the credits config.
-  Two routes (`/api/stripe/checkout/route.ts`, `/api/points/topup/route.ts`,
-  `/api/webhooks/stripe/route.ts`) still import the shim — they keep working,
-  but new work should swap them.
+  Twelve routes still import the shim (checked 2026-10-17): `api/admin/{credits,stats,subscriptions}`,
+  `api/campaigns/[id]/{launch-ads,send,send-mail,send-simple}`,
+  `api/dropcowboy/campaign`, `api/points`, `api/points/topup`,
+  `api/stripe/{checkout,subscription}`, `api/webhooks/stripe`. They keep
+  working; swap them when you touch them.
 - **Mongoose collection name mismatch.** `CreditLedger` model writes to the
-  `pointsledgers` collection (`CreditLedger.ts:122`). If you query directly via
+  `pointsledgers` collection (`CreditLedger.ts:152`). If you query directly via
   the driver, use the old collection name.
 - **Webhook signature verification is real** — both `/api/webhooks/stripe` and
   `/api/webhooks/stripe-identity` call `stripe.webhooks.constructEvent(body,
   sig, secret)` and return 400 on failure. They do NOT use Turnstile (Turnstile
   is for the public auth/lead forms, not server-to-server webhooks).
-- **`vercel.json` catch-all caches everything else.** The last `headers` rule
-  sets `Cache-Control: public, max-age=31536000, immutable` on `/(.*)`. Only
-  `/api/auth/*`, `/auth/*`, `/dashboard*`, and `/api/user/*` are explicit
-  `no-store`. `/api/webhooks/*` falls through to the catch-all at the edge —
-  the routes themselves set `export const dynamic = 'force-dynamic'` which
-  prevents Next.js prerender caching, but the `vercel.json` headers are added
-  at the edge regardless. In practice this is harmless because Stripe POSTs
-  (POST responses aren't cached by CDNs by default), but it's worth tightening
-  with explicit `no-store` rules for `/api/webhooks/*`.
+- **Caching (fixed 2026-07-25).** `vercel.json` now stamps every `/api/*`
+  response `no-store, max-age=0`, and the page catch-all
+  (`/((?!api/|_next/).*)`) is `max-age=0, must-revalidate`, so the webhooks
+  and billing routes are no longer exposed to the old year-long `immutable`
+  catch-all.
 - **Admin tier display.** When rendering "current plan" in dashboards, check
   `user.roles?.includes("admin")` BEFORE reading `subscription.tier` — admins
   always show as Top Agent at $0 with 10-year period, and top-up math uses
@@ -264,19 +205,22 @@ any new Stripe integration in this repo.
 
 ## Related
 
+- `./stripe-billing.md` — webhook events, idempotency, env vars, go-live runbook.
 - `./free-tier-gating.md` — free-tier feature gating, forced onboarding wizard, and server-side 403 guards.
-- `../auth/README.md` — agent application phases that gate Stripe Identity.
+- `../agent-onboarding/README.md` — agent application phases (and why Stripe Identity is parked).
+- `../admin/README.md` — admin Subscriptions page and credit gifting.
 - `../multi-tenant/README.md` — domain ownership vs. session user, relevant when scoping subscription-related UI.
 - `../crm/README.md` — Partnership integrations, contact campaign history.
 - (planned) `commerce/campaigns.md` — Google/Meta/Thanks.io/Drop Cowboy campaign mechanics and credit debit flow.
 
 ## Migration log
 
-Legacy `/docs/` commerce, billing, and pricing docs audited 2026-05-21:
+Legacy commerce docs, audited 2026-05-21 and re-checked 2026-10-17. All
+four now live in `docs/archive/` and stay there:
 
-| Doc | Path | Classification | Action |
-|---|---|---|---|
-| Stripe Billing System | `F:\web-clients\joseph-sardella\jpsrealtor\docs\STRIPE_BILLING_SYSTEM.md` | SUPERSEDED — Apr 24 2026, mostly current but has stale credit math (uses old `$0.125/credit` model — actual is `$0.10/credit` under unified `credits.ts`; "750 credits for Beginner" should be 1,000; "3,200 credits for Experienced" should be 4,167; "6,800 for Top Agent" should be 8,696). Useful sections (webhook event table, env vars, Stripe price IDs, service-partner TODO) merged into this README. | Move to `docs-v2/archive/` once cutover; mark `supersedes` to this README. |
-| Pricing Strategy | `F:\web-clients\joseph-sardella\jpsrealtor\docs\PRICING_STRATEGY.md` | OUTDATED — Jan 17 2026 "Planning" doc that predates Stripe rollout. Proposes "Inside vs Outside Agent" tiers and eXp rev-share that never shipped. Conflicts with current Beginner/Experienced/Top Agent. | Move to `docs-v2/archive/` with one-line note "January 2026 planning doc, superseded by commerce/README.md". |
-| Subscription UI | `F:\web-clients\joseph-sardella\jpsrealtor\docs\chatrealty\SUBSCRIPTION_UI.md` | PARTIAL — describes `PricingCard`, `/pricing` page, and `BillingStep` correctly but uses old tier names "starter/professional/enterprise" (current is `beginner/experienced/topagent`). Component file paths still exist. | Add frontmatter `status: partial`, fix tier-name references in body, link from this README's Related section. Or rewrite as `docs-v2/commerce/ui.md`. |
-| Multi-tenant index pricing section | `F:\web-clients\joseph-sardella\jpsrealtor\docs\multi-tenant\index.md` (lines 936-967, 1182, 1246) | OUTDATED — March 16 2026 architecture-design doc; references `"free | pro | ultimate | investor"` subscription enum and "sponsored" status that never made it into production. Conflicts with `SubscriptionTier` type. Doc itself is superseded by `docs-v2/multi-tenant/README.md`. | Strip pricing references from any future archive; doc as a whole is already superseded per `docs-v2/multi-tenant/README.md` frontmatter. |
+| Archived doc | Why it stays archived |
+|---|---|
+| `STRIPE_BILLING_SYSTEM.md` | Superseded by this README + `stripe-billing.md`; old `$0.125`/credit math (750/3,200/6,800 credits) |
+| `PRICING_STRATEGY.md` | Jan 2026 planning doc ("Inside vs Outside Agent", eXp rev-share) — never shipped |
+| `chatrealty/SUBSCRIPTION_UI.md` | Old tier names (starter/professional/enterprise); components still exist but `PricingCard`'s local `TIERS` is stale (see free-tier-gating.md) |
+| `multi-tenant/index.md` (pricing section) | `free/pro/ultimate/investor` enum that never reached production |

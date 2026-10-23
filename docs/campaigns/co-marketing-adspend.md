@@ -1,7 +1,8 @@
 ---
 title: Co-Marketing Group Ad-Spend (RESPA) — Design
 status: partial
-last_verified: 2026-06-11
+last_verified: 2026-10-17
+last_verified_note: The status banner and phased plan were checked against code on 2026-10-17. The design sections are the original spec and describe intent, not code.
 related:
   - ./README.md
   - ../archive/chatrealty/SERVICE_PARTNERS.md
@@ -10,7 +11,22 @@ related:
 
 # Co-Marketing Group Ad-Spend (RESPA) — Design
 
-> **Status: design/plan.** Not built. This is the spec for review before code.
+> **Status: backend built, no UI.** Phases A–D below exist in code: the
+> `CampaignFunding` model, `POST /api/campaigns/[id]/fund`,
+> `POST /api/campaigns/funding/[fundingId]/respond`, and `src/lib/co-marketing/`
+> (`allocation.ts`, `funding.ts`, `ad-launch.ts`, `notify.ts`). Nothing in the app
+> calls either route. Where the code differs from this spec:
+>
+> - **Approvals need a session.** The respond route uses `getServerSession`; the
+>   tokenized approve/deny links described below were not built.
+> - **The approval email lands nowhere useful.** It links to
+>   `/agent/campaigns?funding=<id>`, and that page never reads `funding`. A
+>   service partner is not an agent, so that page is not theirs to use anyway.
+> - **`maxMonthlyContribution` is stored but not enforced.** Only the partnership
+>   PATCH route writes it.
+> - **No settlement (Phase E) and no co-branding (Phase F).**
+>
+> The rest of this page is the original spec.
 
 ## TL;DR
 

@@ -1,18 +1,22 @@
 ---
 title: ChatRealty API — Rate Limiting (KV sliding window)
-status: current
-last_verified: 2026-06-25
-related: [./build_plan.md, ./architecture.md]
+status: partial
+last_verified: 2026-10-17
+related: [./build_plan.md, ./architecture.md, ../mcp/scopes-and-safety.md]
 ---
 
 # Rate Limiting
 
-> **TL;DR.** Per-tenant request limiting for `/api/skill/*` moves off the
-> single-instance in-memory limiter onto an Upstash-Redis **sliding window** that
-> is atomic across Vercel instances. It **fails open** (warn + in-memory fallback)
-> when Redis is unconfigured or unreachable, so a KV outage degrades limiting but
-> never takes the API down (architecture §216 "rate limiting must move off
-> in-memory to KV-backed before free signups").
+> **TL;DR.** `src/lib/rate-limit-kv.ts` is a finished Upstash-Redis **sliding
+> window** limiter that is atomic across Vercel instances and **fails open**
+> (warn + in-memory fallback) when Redis is unconfigured or unreachable. **It is
+> not wired in.** As of 2026-10-17 no route imports it (only its unit test);
+> `/api/skill/*` still limits with `skillRateLimit()` in `src/lib/skill-auth.ts`,
+> which is synchronous, in-memory per instance (`src/lib/rate-limit.ts`), and
+> keyed `skill:<tier>:<tokenLast4>:<tokenName>` — not by `tenantId`. Tier limits
+> are in [../mcp/scopes-and-safety.md](../mcp/scopes-and-safety.md#rate-limits).
+> The architecture requirement this module was built for ("move off in-memory
+> before free signups") is therefore still open.
 
 ## Files
 
@@ -22,9 +26,10 @@ related: [./build_plan.md, ./architecture.md]
 | `src/lib/rate-limit.ts` | In-memory sliding window. Canonical **fallback** shape + still used for single-instance limits (auth/forgot-password). |
 | `src/lib/__tests__/rate-limit-kv.test.ts` | Unit tests (mock Redis): fail-open when unconfigured; two concurrent callers share one window. |
 
-The `skill-auth.ts` integration (`skillRateLimit` → async, `tenantId`-keyed) is
-landed by Agent 11, which consumes `checkRateLimit` from here. Agent 06 does not
-edit `skill-auth.ts`.
+The planned `skill-auth.ts` integration (`skillRateLimit` → async,
+`tenantId`-keyed, assigned to Agent 11) **never landed** — `skillRateLimit` is
+still the synchronous in-memory version described in the TL;DR. Wiring it
+means making `skillRateLimit` async and awaiting it in every skill route.
 
 ## How it works
 

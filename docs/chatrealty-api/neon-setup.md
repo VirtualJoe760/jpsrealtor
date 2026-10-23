@@ -1,18 +1,60 @@
 ---
 title: Neon Setup & Provisioning
 status: current
-last_verified: 2026-08-10
-related: [./architecture.md, ./build_plan.md, ./db-adapter.md, ./data-dictionary.md]
+last_verified: 2026-10-17
+related: [./architecture.md, ./build_plan.md, ./db-adapter.md, ./data-dictionary.md, ./control-plane.md, ../multi-tenant/README.md]
 ---
 
 # Neon Setup & Provisioning
 
-> **TL;DR.** A typed Neon Management API client (`src/lib/neon/client.ts`) plus a
-> one-shot, repeatable CLI (`scripts/neon-setup.ts`) that — given a `NEON_API_KEY` —
-> creates a Neon project + database, enables **PostGIS** and **pg_trgm**, applies the
-> per-tenant data-plane schema (`src/lib/reso/migrations/0001_init.sql`), verifies it,
-> and prints the connection strings (passwords masked). This is the Neon mechanics
-> layer for the database-per-tenant keystone (architecture §2).
+> **TL;DR.** A typed Neon Management API client (`src/lib/neon/client.ts`) used
+> two ways. **Production tenants** are provisioned self-serve by
+> `src/lib/tenant/provision.ts` (`POST /api/skill/tenant/provision`, called by
+> `npx @chatrealty/sync init`): one Neon **project** per tenant. **Dev / manual
+> setup** uses the one-shot CLI `scripts/neon-setup.ts` — given a `NEON_API_KEY`
+> it creates a project, enables **PostGIS** and **pg_trgm**, applies
+> `src/lib/reso/migrations/0001_init.sql`, verifies, and prints masked
+> connection strings. The two apply **different DDL** — see "Which migration a
+> tenant gets".
+
+## Self-serve provisioning (the live path)
+
+`provisionTenant()` in `src/lib/tenant/provision.ts`:
+
+1. Idempotent per owner (`Tenant.ownerUserId` is unique): an existing tenant
+   binds the new token and re-issues its conn strings to it (the bearer token is
+   the trust anchor). Admin/dogfood tokens are refused by the route.
+2. New: `createProject({ name: "chatrealty-{slug}" })` → over the **direct**
+   URI: `CREATE EXTENSION postgis`, `pg_trgm` → schema → lead-loop DDL →
+   verify `property` **and** `end_user` exist.
+3. `Tenant` saved with `neon.{projectId,databaseName,roleName}` and both conn
+   strings encrypted (`src/lib/secrets.ts`); the route returns `dbUrl` (pooled)
+   and `directDbUrl`.
+4. Any failure deletes the project — Neon returns the password only at creation,
+   so a half-built project is unrecoverable.
+5. If the stored project has vanished, `reprovisionInPlace()` builds a new one
+   under the same `Tenant` (same `tenantId`, tokens keep working).
+6. `ensureLeadLoopSchema()` re-runs on every reconnect, healing tenants
+   provisioned before the lead-loop tables existed.
+
+A second, approval-gated implementation (`src/lib/tenant/provision-service.ts`,
+called by `provisioning-gate.ts`) applies `0001_init.sql`; it is not what the
+live route calls.
+
+## Which migration a tenant gets
+
+| Path | DDL applied |
+|---|---|
+| `provision.ts` (live, self-serve) | `src/lib/db/migrations/0000_supreme_maginty.sql` (drizzle-kit output) + `src/lib/reso/migrations/0004_leadloop_repair.sql` |
+| `provision-service.ts` (gate) and `scripts/neon-setup.ts` (CLI) | `src/lib/reso/migrations/0001_init.sql` |
+
+`src/lib/db/migrations/README.md` says provisioning applies `0001_init.sql` and
+the drizzle output is reference-only — that is not what `provision.ts` does.
+The drizzle file carries the tables and the `geom` column but only 20 `property`
+indexes against `0001_init.sql`'s 36; drizzle-kit cannot emit the GiST index on
+`geom`, the `pg_trgm` GIN index on `unparsed_address`, or the GIN indexes on
+`extras`. Self-serve tenants therefore lack them (correct results, slower geo /
+street / custom-field queries). Reported as a bug, not fixed here.
 
 ## The one manual step
 

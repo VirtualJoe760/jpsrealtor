@@ -1,3 +1,5 @@
+> Archived: migration plan, not a description of the running system — see docs/admin/README.md and docs/commerce/free-tier-gating.md, verified 2026-10-17
+
 # Agent Dashboard Migration & Activity Tracking System
 **Action Plan for AdminNav → AgentNav Migration**
 **Created:** December 23, 2025

@@ -7,6 +7,7 @@
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { getHeroData, HeroShell, HeroCTAs, HeroBusinessCard } from "./heroShared";
 import HeroFullWidth from "./HeroFullWidth";
+import BrandCornerMark from "@/app/components/brand/BrandCornerMark";
 
 export default function HeroVideo({ agentProfile }: { agentProfile: any }) {
   const { currentTheme } = useThemeClasses();
@@ -30,8 +31,13 @@ export default function HeroVideo({ agentProfile }: { agentProfile: any }) {
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/40 to-black/70" />
       </div>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/brand/EXP-white-square.png" alt="eXp Realty" className="absolute top-6 right-6 md:top-10 md:right-10 h-16 md:h-24 w-auto object-contain opacity-95 z-20" />
+      {/* Brokerage mark — from the agent record, never a hardcoded asset. */}
+      <BrandCornerMark
+        isLight={isLight}
+        className="absolute top-6 right-6 md:top-8 md:right-10 z-20"
+        wordmarkClassName="text-[22px] md:text-[30px] text-white"
+        logoClassName="h-12 md:h-16 w-auto object-contain opacity-95"
+      />
 
       <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
         <h1

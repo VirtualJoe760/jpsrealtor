@@ -1,3 +1,5 @@
+> Archived: superseded — the March 2026 cooperative-network vision (shared MLS pool) was replaced by bring-your-own-data; current model is docs/multi-tenant/README.md + docs/chatrealty-api/ship-strategy.md, verified 2026-10-17
+
 # ChatRealty.io Multi-Tenant Architecture
 
 **Created**: March 16, 2026

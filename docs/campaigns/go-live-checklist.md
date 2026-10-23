@@ -1,7 +1,7 @@
 ---
 title: Multi-Tenant Ads — Go-Live Checklist
 status: current
-last_verified: 2026-06-11
+last_verified: 2026-10-17
 related:
   - ./README.md
   - ../archive/multi-tenant/advertising/campaign-multi-tenant.md
@@ -9,8 +9,10 @@ related:
 
 # Multi-Tenant Ads — Go-Live Checklist
 
-What stands between the current branch (`feat/agency-multitenant-phase1`) and
-charging real agents to run ads on their own accounts. Ordered by gate.
+What stands between the code on `main` (Phases 1–2, merged from
+`feat/agency-multitenant-phase1`) and charging real agents to run ads on their
+own accounts. Ordered by gate. Re-checked against code 2026-10-17; Gates 1–3 are
+external or live tests and could not be checked from the repo.
 
 **Current status:** code mechanism built + unit-verified (Phase 1–2). **No real
 cross-agent launch has ever run.** Not production ready.
@@ -18,14 +20,17 @@ cross-agent launch has ever run.** Not production ready.
 ---
 
 ## Gate 0 — Pre-deploy hygiene
-- [x] **Cash-flow build errors fixed (working tree).** `cashflow-query.ts` is the
-      cash-flow feature's own untracked WIP in THIS repo (not a separate backend
-      session). Applied: `let derived` (:243) + import `getCurrentMortgageRate`
-      from the new shared `src/lib/listings/mortgage-rate.ts`. The helper is
-      committed; the 2-line fix ships with the cash-flow feature when it's committed.
+- [x] **Cash-flow build errors fixed.** `src/lib/listings/cashflow-query.ts` and
+      the shared `src/lib/listings/mortgage-rate.ts` are both committed now.
 - [x] **Live mortgage rate wired** (commit `493af993`): `get_mortgage_rates` +
       calculator now show the live 6.48% instead of the 6.85% fallback.
-- [ ] Merge/push `feat/agency-multitenant-phase1` and confirm CI build.
+- [x] Merge `feat/agency-multitenant-phase1` (merged to `main`). There is no CI
+      (no `.github/` in the repo); the build check is `npx tsc --noEmit` +
+      `npx next build` by hand.
+- [ ] **OAuth `state` signing fails open.** `src/lib/oauth-state.ts:16` falls back
+      to the literal `'fallback-secret'` when `NEXTAUTH_SECRET` is unset, so a
+      misconfigured environment signs ad-OAuth state with a public string. Make
+      it throw instead (tracked in `../review/README.md`).
 - [ ] Production env vars set: `GOOGLE_ADS_DEVELOPER_TOKEN`,
       `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (= MCC `206-304-7113`), `GOOGLE_CLIENT_ID/SECRET`,
       `META_ADS_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID`, `FACEBOOK_PAGE_ID`,

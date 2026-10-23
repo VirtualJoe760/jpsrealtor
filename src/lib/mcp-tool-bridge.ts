@@ -45,6 +45,7 @@ type AuthExtra = {
 const TOOL_SCOPE: Record<string, string> = {
   site_status: "site:manage",
   connect_site: "site:manage",
+  get_site_claim_code: "listings:read", // claimed key is capped to the asker's scopes (lib/site-claim.ts)
   set_site_live: "site:manage",
   // Listings / MLS
   search_listings: "listings:read",
@@ -53,6 +54,7 @@ const TOOL_SCOPE: Record<string, string> = {
   find_comparables: "listings:read",
   search_closed_listings: "listings:read",
   analyze_listing_cashflow: "listings:read",
+  get_area_cashflow: "listings:read",
   find_cashflowing_listings: "listings:read",
   get_going_rate: "listings:read",
   // Market data

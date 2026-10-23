@@ -1,3 +1,5 @@
+> Archived: one-off refactor summary for the chat tutorial, verified 2026-10-17
+
 # Tutorial System Refactor - Summary
 
 **Date:** December 27, 2025

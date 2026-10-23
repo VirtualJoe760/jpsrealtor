@@ -52,6 +52,7 @@ exports.RESEARCH_TOOL_NAMES = [
     "get_subdivision_cma",
     "get_mortgage_rates",
     // Investment / cash-flow (read — VPS-precomputed stats)
+    "get_area_cashflow",
     "find_cashflowing_listings",
     "get_going_rate",
     "analyze_listing_cashflow",

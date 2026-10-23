@@ -1,8 +1,8 @@
 ---
 title: Carousel slides 2-10 (hosted / MCP)
 status: current
-last_verified: 2026-07-26
-last_verified_note: Builders moved to src/ and exposed via create_carousel_slide; plan_listing_carousel added as the gathering step.
+last_verified: 2026-10-17
+last_verified_note: Builders moved to src/ and exposed via create_carousel_slide (2026-07-26). Re-checked against code 2026-10-17; the Villa Lima comparison table is a 2026-07-26 measurement and was not re-run.
 owner: content
 related: [./README.md, ./cover-slide.md, ./actor-generation.md]
 ---
@@ -44,8 +44,10 @@ implementation of each layout. Edit it in `src/`.
 
 **Placing the agent in a photo has its own contract — see [actor-generation.md](./actor-generation.md).** Read it before any Gemini call; photo selection is part of it.
 
-**Staging generates no text.** `stage_listing_with_agent`'s prompt ends
-`"no text overlays"` — correct, because image models render type badly. The
+**Staging generates no text.** `stage_listing_with_agent`'s shared prompt
+(`STAGING_BASE_PROMPT` in `src/lib/content/staging-prompt.ts`) ends "No text,
+watermarks, graphics, or blank bands at any edge" — correct, because image
+models render type badly. The
 room label and caption are composited afterwards by `kind:"banner"`. A staged
 photo that never gets banded is a bare photo; that is the missing step, not a
 model failure.
@@ -154,7 +156,12 @@ used the query path.
 Gathering is automated; **authoring is not, by design** — the copy is the part
 that has to sound like the agent.
 
-One real gap remains: `scripts/carousel-build.js` supports per-room `pose` and
-`expression` direction that the hosted `stage_listing_with_agent` route does
-not — it sends one fixed prompt for every photo. That is why the script-built
-carousels vary the agent's stance room to room and hosted output does not.
+Pose direction is no longer the gap it was. The hosted
+`stage_listing_with_agent` route takes an optional `placements[]` (one
+photo-aware direction per photo, naming objects visible in that frame) and,
+for photos without one, cycles `POSTURE_VARIATIONS` so a batch does not repeat a
+stance. What the hosted path still lacks is the geometric stager and its gates:
+it is a whole-frame Gemini edit with **no verification pass** (no scale, feet,
+identity or room-drift checks). The daily-carousel generator
+(`scripts/build-pending-post.ts`) is the only path with those gates; see
+[actor-generation.md](./actor-generation.md).

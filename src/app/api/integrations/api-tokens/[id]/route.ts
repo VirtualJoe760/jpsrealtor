@@ -39,5 +39,21 @@ export async function DELETE(
   user.markModified("agentProfile.aiIntegrations.apiTokens");
   await user.save();
 
+  // Since 2026-10-17 a Settings key is bound to the owner's tenant on first use
+  // and claimed website keys are bound at birth (skill-auth.ts, site-claim.ts),
+  // so the hash can sit in Tenant.tokenHashes too. Pull it there as well —
+  // skill auth already refuses it via the User row, but the tenant mirror must
+  // not keep matching a dead key (control-plane.md, denormalization invariant).
+  if (t.tokenHash) {
+    try {
+      const { default: TenantModel } = await import("@/models/control/Tenant");
+      const { TenantTokenRepo } = await import("@/lib/control/store");
+      const bound: any = await TenantModel.findOne({ tokenHashes: t.tokenHash }).select("tenantId").lean();
+      if (bound?.tenantId) await TenantTokenRepo.revokeToken(bound.tenantId, t.tokenHash);
+    } catch (err) {
+      console.error("[api-tokens] tenant unbind failed:", (err as Error)?.message);
+    }
+  }
+
   return NextResponse.json({ ok: true }, { headers: NO_STORE });
 }
