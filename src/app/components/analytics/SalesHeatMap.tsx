@@ -65,19 +65,37 @@ const MILES_TO_M = 1609.34
 const ZONE_LABEL_COUNT = 10
 
 /**
- * Styling for the permanent zone labels.
+ * Global CSS for the map: label-tile hit-testing, and the permanent zone labels.
  *
- * Leaflet renders tooltips into its own tooltipPane, outside this component's
- * DOM subtree, so these rules have to be global — a CSS module or a scoped
- * style would never match them. A plain <style> element emits global CSS and
- * keeps the rules next to the markup they belong to.
+ * These rules have to be global. Leaflet renders tooltips into its own
+ * tooltipPane and tiles into a pane, both outside this component's DOM subtree,
+ * so a CSS module or a scoped style would never match them. A plain <style>
+ * element emits global CSS and keeps the rules beside the markup they serve.
+ *
+ * ── The label tiles must not swallow hover ──────────────────────────────────
+ *
+ * The place-name layer sits in a pane ABOVE overlayPane so names draw over the
+ * data. That pane sets `pointer-events: none`, and the `.leaflet-layer` and
+ * `.leaflet-tile-container` beneath it inherit it — but Leaflet's own stylesheet
+ * sets `pointer-events: auto` back on `img.leaflet-tile`, which wins on the
+ * image itself. The result: `elementFromPoint` over the map returned a label
+ * tile, every grid cell stopped responding to hover, and the per-cell tooltips
+ * silently stopped appearing. Nothing errored — the mouse simply never reached
+ * the rectangles.
+ *
+ * So the images are turned off explicitly, not just their ancestors. Scoped to
+ * the label pane: the BASE tile pane keeps normal behaviour.
+ *
+ * ── The zone labels ─────────────────────────────────────────────────────────
  *
  * Default permanent tooltips are an opaque white box with a border and an
- * arrow. Fifty of those over a heat map is a mat of chrome, so they are
- * stripped back to text with a contrasting halo, which stays readable over any
- * colour the ramp puts underneath.
+ * arrow, which over a heat map is a mat of chrome. Stripped back to text with a
+ * contrasting halo that stays readable over any colour the ramp puts under it.
  */
-const ZONE_LABEL_CSS = `
+const MAP_CSS = `
+.leaflet-cr-basemap-labels-pane img.leaflet-tile {
+  pointer-events: none;
+}
 .leaflet-tooltip.cr-zone-label {
   background: none;
   border: none;
@@ -236,7 +254,7 @@ export default function SalesHeatMap({
 
   return (
     <>
-      <style>{ZONE_LABEL_CSS}</style>
+      <style>{MAP_CSS}</style>
       <MapContainer
         center={center}
         zoom={zoom}
