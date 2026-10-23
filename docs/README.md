@@ -23,6 +23,7 @@ then drill into the relevant area folder.
 | Custom domains, domain registry, agent directory | [`multi-tenant/custom-domains.md`](./multi-tenant/custom-domains.md), [`domain-owner-scoping.md`](./multi-tenant/domain-owner-scoping.md), [`agent-directory.md`](./multi-tenant/agent-directory.md) |
 | Articles, blog, insights, publishing pipeline | [`cms/README.md`](./cms/README.md) |
 | MLS listings, photos, VPS cron, subdivisions | [`listings/README.md`](./listings/README.md) |
+| Sales heat map, Analytics tab, the precompute read surface | [`analytics/README.md`](./analytics/README.md), [`analytics/sales-heatmap.md`](./analytics/sales-heatmap.md) |
 | Chat (CHAP), map, intent parsing, Groq narrate | [`chat/README.md`](./chat/README.md) |
 | Stripe, subscriptions, credits, commissions, free-tier gating | [`commerce/README.md`](./commerce/README.md) |
 | Ads and campaigns — Google/Meta ads, direct mail, voicemail, co-marketing (spends real money) | [`campaigns/README.md`](./campaigns/README.md) |

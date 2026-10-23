@@ -1,8 +1,29 @@
 # Real Estate Analytics API
 
-Comprehensive analytics API for calculating real estate financial metrics, market statistics, and investment analysis.
+This namespace holds **two surfaces with opposite rules.** Read this before
+adding a route — putting one in the other's half is a silent architecture
+break, not a style question.
 
-**Purpose**: Power AI responses and dynamic visualizations with accurate, on-the-fly real estate calculations.
+| | Calculation surface | Read surface |
+|---|---|---|
+| Routes | `appreciation`, `cashflow`, `compare`, `cma` | `sales-grid`, `hotspots`, `areas` |
+| Library | `src/lib/analytics/{calculations,aggregators}` | `src/lib/analytics/heatmap` |
+| Computes? | **Yes** — that is its job | **Never** |
+| Data | live listing collections | precomputed collections |
+| Consumer | AI answers, dynamic cards | the Analytics tab heat map |
+
+**The read surface never calculates.** Every number it returns is a stored
+field; each function is a `find` with a filter, a projection and a sort. No
+`$group`, no `$geoNear` aggregation, no arithmetic over rows after the fetch.
+If the tab needs a number that is not stored, it is **requested as a precompute
+field** rather than computed here. `lib/analytics/heatmap` must not import from
+`calculations/` or `aggregators/`.
+
+Everything below this line documents the **calculation** surface. The read
+surface is documented in `docs/analytics/sales-heatmap.md`.
+
+> Status note: the checklist at the bottom of this file predates the code —
+> `appreciation/route.ts` ships but is listed unchecked. Treat it as stale.
 
 ---
 

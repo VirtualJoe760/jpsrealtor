@@ -37,6 +37,7 @@ until 2026-10-10. Cloudinary holds all images.
 | CRM | `src/models/Contact.ts` | [crm/](./crm/) |
 | Listings / MLS | `src/models/unified-listing.ts` (collection `unified_listings`; closed history is `unified-closed-listing.ts`) | [listings/](./listings/) |
 | Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — tool index in [chat/TOOLS_INDEX.md](./chat/TOOLS_INDEX.md) |
+| Analytics — sales heat map (read-only over precomputes; never calculates) | `src/lib/analytics/heatmap/sources.ts` + `src/app/api/analytics/{sales-grid,hotspots,areas}` | [analytics/](./analytics/) — deep dive in [analytics/sales-heatmap.md](./analytics/sales-heatmap.md) |
 | Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) |
 | Campaigns & advertising (spends real money) | `src/app/api/campaigns/[id]/launch-ads/route.ts` + `src/models/Campaign.ts` | [campaigns/](./campaigns/) |
 | External integrations | `src/lib/` (each integration is one file) | [integrations/](./integrations/) |
