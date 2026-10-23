@@ -34,8 +34,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useTheme, useThemeClasses } from '@/app/contexts/ThemeContext'
-import type { GridCell, Hotspot, Viewport } from './SalesHeatMap'
-import { CELL_ZOOM } from './SalesHeatMap'
+// From heatmap-shared, never from ./SalesHeatMap: importing a VALUE out of the
+// map module pulls leaflet into this chunk and defeats the dynamic import.
+import {
+  CELL_ZOOM,
+  HEAT_RAMP,
+  HEAT_RAMP_DARK,
+  type GridCell,
+  type Hotspot,
+  type Viewport,
+} from './heatmap-shared'
 
 // Leaflet touches `window` at module scope, so it can never be server-rendered.
 const SalesHeatMap = dynamic(() => import('./SalesHeatMap'), {
@@ -60,9 +68,6 @@ const YEAR_OPTIONS = [
 /** Palm Desert — the agent's market, not the statewide centroid. */
 const DEFAULT_CENTER: [number, number] = [33.75, -116.37]
 const DEFAULT_ZOOM = 11
-
-const RAMP_LIGHT = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b']
-const RAMP_DARK = ['#184f95', '#256abf', '#2a78d6', '#3987e5', '#5598e7', '#86b6ef', '#cde2fb']
 
 interface AreaRow {
   key: string
@@ -121,6 +126,7 @@ export default function AnalyticsClient() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [showHeat, setShowHeat] = useState(true)
   const [showCells, setShowCells] = useState(true)
   const [showZones, setShowZones] = useState(true)
   const [showPins, setShowPins] = useState(true)
@@ -129,9 +135,13 @@ export default function AnalyticsClient() {
   // when zoomed out, individual cells when zoomed in.
   const [autoLayers, setAutoLayers] = useState(true)
   const zoom = viewport?.zoom ?? DEFAULT_ZOOM
-  const effShowCells = autoLayers ? zoom >= CELL_ZOOM : showCells
-  const effShowZones = autoLayers ? zoom < CELL_ZOOM : showZones
-  const effShowPins = autoLayers ? zoom < CELL_ZOOM : showPins
+  const zoomedIn = zoom >= CELL_ZOOM
+  // Radial below CELL_ZOOM, discrete rectangles at or above it — the same
+  // cells asked a different question. See SalesHeatMap's header.
+  const effShowHeat = autoLayers ? !zoomedIn : showHeat
+  const effShowCells = autoLayers ? zoomedIn : showCells
+  const effShowZones = autoLayers ? !zoomedIn : showZones
+  const effShowPins = autoLayers ? !zoomedIn : showPins
 
   // Panning fires moveend continuously; one in-flight fetch at a time.
   const reqId = useRef(0)
@@ -223,6 +233,10 @@ export default function AnalyticsClient() {
         {!autoLayers && (
           <>
             <label className="flex items-center gap-1.5 text-sm">
+              <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} />
+              <span className={textSecondary}>Heat</span>
+            </label>
+            <label className="flex items-center gap-1.5 text-sm">
               <input type="checkbox" checked={showCells} onChange={(e) => setShowCells(e.target.checked)} />
               <span className={textSecondary}>Cells</span>
             </label>
@@ -259,6 +273,7 @@ export default function AnalyticsClient() {
           <SalesHeatMap
             cells={cells}
             zones={zones}
+            showHeat={effShowHeat}
             showCells={effShowCells}
             showZones={effShowZones}
             showPins={effShowPins}
@@ -272,13 +287,20 @@ export default function AnalyticsClient() {
           <div
             className={`pointer-events-none absolute bottom-8 left-3 z-[1000] rounded px-3 py-2 text-[11px] shadow ${panel} ${textPrimary}`}
           >
-            <div className="mb-1 font-medium">Sales {year === 'all' ? '(all years)' : year}</div>
+            <div className="mb-1 font-medium">
+              Sales {year === 'all' ? '(all years)' : year}
+              <span className={`ml-1 font-normal ${textMuted}`}>
+                · {zoomedIn ? 'cells' : 'heat'}
+              </span>
+            </div>
             <div className="flex items-center gap-1">
-              <span className={textMuted}>fewer</span>
-              {(dark ? RAMP_DARK : RAMP_LIGHT).map((c) => (
-                <span key={c} className="inline-block h-3 w-4" style={{ background: c }} />
-              ))}
-              <span className={textMuted}>more</span>
+              <span className={textMuted}>cold</span>
+              <span className="flex overflow-hidden rounded-sm">
+                {(dark ? HEAT_RAMP_DARK : HEAT_RAMP).map((c) => (
+                  <span key={c} className="inline-block h-3 w-3" style={{ background: c }} />
+                ))}
+              </span>
+              <span className={textMuted}>hot</span>
             </div>
           </div>
         </div>

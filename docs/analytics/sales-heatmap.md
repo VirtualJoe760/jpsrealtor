@@ -121,20 +121,64 @@ Medians never sum or average. They are per area, per year, full stop.
 
 ## Rendering notes
 
-Cells are drawn as **rectangles on their true bbox**, not a blurred heat layer.
-The data is already gridded and each cell carries its own caption and median; a
-gaussian blur discards that, has no clickable unit, and rescales with zoom so
-the same market looks hotter when you zoom in. It would also invent gradient
-between unrelated cells.
+### The same cells, rendered two ways by zoom
 
-Colour is the `dataviz` skill's published sequential blue ramp (steps 100→700),
-used unchanged — one hue, light→dark, never a rainbow. Dark mode gets its own
-stepping rather than an inverted flip: over dark tiles the bright end has to
-mean "more" or hot cells vanish into the basemap. A legend states the direction
-in both modes, so magnitude is never inferred from colour alone.
+| Zoom | Layer | Question it answers |
+|---|---|---|
+| `< 12` | radial heat (leaflet.heat) + zone rings + pins | "where is it hot?" |
+| `>= 12` | rectangles on each cell's true bbox | "what is THIS block?" |
 
-Layers follow zoom by default (zones + pins below z12, cells at or above), with
-a manual override.
+Both are needed and neither is a downgrade. At 0.005° a cell is a couple of
+screen pixels when zoomed out, so rectangles degenerate into confetti the eye
+cannot aggregate — a blur is the honest summary. Zoomed in, a rectangle maps
+one-to-one onto a stored document, is clickable, and carries its own caption,
+median and name-coverage; a blur there would invent gradient between two
+unrelated cells and give nothing to click.
+
+> An earlier version rendered rectangles at every zoom and argued against a heat
+> layer outright. That reasoning holds at high zoom and fails at low zoom.
+
+Two things the heat layer needs to be told explicitly:
+
+- **`max` must be passed.** Left to itself leaflet.heat normalises against the
+  hottest point on screen, so panning into empty desert repaints the desert as
+  hot.
+- **The gradient starts at 0.05, not 0.** Stop 0 is painted across the whole
+  blurred tail, which washes colour over genuinely empty areas.
+
+Over the blur, zone circles are a **neutral thin ring with no fill** — a
+boundary, not a second intensity encoding. Ramp-coloured rings on top of the
+blur made the eye read two competing signals for one quantity. They take ramp
+colour only when the blur is off.
+
+### Colour
+
+**Turbo, cold blue → hot red**, sampled at 11 stops, defined once in
+`heatmap-shared.ts`. Dark mode drops the two coldest indigo stops, which are
+invisible against dark tiles — a floor on the same ramp, not a different
+palette and not a flip.
+
+Turbo rather than the classic jet rainbow: jet gives green a huge perceptual
+stretch and has false edges at the cyan and yellow boundaries, inventing
+structure that is not in the data.
+
+The tradeoff, recorded so it is not re-litigated: a multi-hue ramp makes
+**relative** intensity easy to see and **absolute** value hard to judge, because
+the eye ranks lightness but not hue. A single hue is better for reading a value
+off the map; this is a density map where the job is spotting concentration. So
+colour is never the only carrier of a number — every cell and zone has its count
+in a hover tooltip and in the detail panel, and the legend is always on screen.
+(This is a deliberate departure from the `dataviz` skill's "sequential = one
+hue, never a rainbow" default, made on an explicit product call.)
+
+### Bundle note
+
+`heatmap-shared.ts` holds the constants, types and ramp, and imports nothing
+from Leaflet. `SalesHeatMap` is `dynamic(..., { ssr: false })` because Leaflet
+touches `window` at module scope — importing `CELL_ZOOM` or the ramp as a
+**value** from the map module pulls leaflet, react-leaflet and leaflet.heat back
+into the parent chunk and defeats the split. `import type` would be erased;
+`CELL_ZOOM` is not a type.
 
 ## Not built yet
 

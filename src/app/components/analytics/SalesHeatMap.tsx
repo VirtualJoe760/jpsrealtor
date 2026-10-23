@@ -1,87 +1,58 @@
 'use client'
 
 /**
- * Leaflet map for the Analytics tab — three toggleable layers over SoCal.
+ * Leaflet map for the Analytics tab — four toggleable layers over SoCal.
  *
- * Why rectangles rather than a blurred heat layer (leaflet.heat):
+ * ── Two renderings of the same cells, by zoom ───────────────────────────────
  *
- * The data is ALREADY gridded into 0.005° cells by the precompute, and each
- * cell carries its own caption, median and name-coverage. A gaussian blur
- * throws exactly that away: it renders a smear with no clickable unit, it
- * rescales with zoom so the same market looks hotter when you zoom in, and it
- * would invent gradient between two cells that are genuinely unrelated. Drawing
- * the real cell bbox keeps every pixel traceable to one stored document, which
- * is the same reason the read layer refuses to compute. It also avoids adding a
- * dependency that is unmaintained and has no types.
+ * Below CELL_ZOOM the grid is drawn as a RADIAL heat layer; at or above it, as
+ * discrete rectangles on each cell's true bbox. They answer different
+ * questions and neither is a downgrade of the other:
  *
- * Colour is the dataviz skill's published sequential blue ramp, used unchanged.
- * Sequential = one hue, light->dark; never a rainbow. Dark mode gets its own
- * stepping rather than an inverted flip: over dark tiles the BRIGHT end has to
- * mean "more", or high-volume cells disappear into the basemap. The legend
- * states the direction in both modes so it is never inferred from colour alone.
+ *   zoomed out — "where is it hot?" A blur is the honest answer. At 0.005°
+ *     a cell is a couple of screen pixels, so rectangles degenerate into
+ *     confetti and the eye cannot aggregate them.
+ *   zoomed in  — "what is THIS block?" A rectangle is the honest answer. It
+ *     maps one-to-one onto a stored document, it is clickable, and it carries
+ *     its own caption, median and name-coverage. A blur at this zoom would
+ *     invent gradient between two unrelated cells and give nothing to click.
+ *
+ * The earlier version shipped rectangles at every zoom and argued against a
+ * heat layer outright. That reasoning holds at high zoom and fails at low zoom,
+ * which is why both now exist rather than one replacing the other.
+ *
+ * Colour is Turbo, cold blue → hot red; see heatmap-shared.ts for why a
+ * multi-hue ramp here and what it costs.
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Rectangle, Circle, CircleMarker, Tooltip, useMapEvents } from 'react-leaflet'
-import type { LatLngBoundsExpression } from 'leaflet'
+import { useEffect, useMemo } from 'react'
+import {
+  MapContainer,
+  TileLayer,
+  Rectangle,
+  Circle,
+  CircleMarker,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
+import L, { type LatLngBoundsExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.heat'
+import {
+  CELL_ZOOM,
+  HEAT_RAMP,
+  HEAT_RAMP_DARK,
+  heatGradient,
+  rampColor,
+  type GridCell,
+  type Hotspot,
+  type Viewport,
+} from './heatmap-shared'
 
-export interface GridCell {
-  lat: number
-  lng: number
-  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }
-  sales: number
-  medianClosePrice: number | null
-  medianPricePerSqft: number | null
-  caption: { label: string; kind: string; reason: string }
-  city: string | null
-  postalCode: string | null
-}
-
-export interface Hotspot {
-  zoneId: string
-  rank: number
-  lat: number
-  lng: number
-  radiusMiles: number
-  sales: number
-  cellCount: number
-  label: string
-  labelKind: string
-  city: string | null
-  /** Needed by the detail panel to resolve a zone to its market_history row. */
-  postalCode: string | null
-  medianClosePrice: number | null
-  medianPricePerSqft: number | null
-  partialYear: boolean
-  yearMonthsCovered: number | null
-  /** Resolved server-side; see zoneLookupKey. Null when the zone has no key. */
-  lookup: { scope: string; key: string; wider: boolean } | null
-}
-
-export interface Viewport {
-  bbox: string
-  zoom: number
-}
-
-/** The skill's sequential blue, steps 100 -> 700. Low magnitude recedes. */
-const RAMP_LIGHT = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b']
-/** Dark-mode stepping: bright = more, so hot cells survive the dark basemap. */
-const RAMP_DARK = ['#184f95', '#256abf', '#2a78d6', '#3987e5', '#5598e7', '#86b6ef', '#cde2fb']
+export type { GridCell, Hotspot, Viewport }
 
 const MILES_TO_M = 1609.34
-
-/** Zoom at which the view switches from zones to individual cells. */
-export const CELL_ZOOM = 12
-
-function rampColor(weight: number, max: number, dark: boolean): string {
-  const ramp = dark ? RAMP_DARK : RAMP_LIGHT
-  if (max <= 0) return ramp[0]
-  // sqrt keeps a handful of very hot cells from flattening everything else to
-  // the first step; it shapes the colour scale only, never a reported number.
-  const t = Math.sqrt(Math.min(weight, max) / max)
-  return ramp[Math.min(ramp.length - 1, Math.floor(t * ramp.length))]
-}
 
 function usd(n: number | null): string {
   return n == null ? '—' : `$${n.toLocaleString()}`
@@ -96,7 +67,9 @@ function ViewportWatcher({ onChange }: { onChange: (v: Viewport) => void }) {
   function emit() {
     const b = map.getBounds()
     onChange({
-      bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(5)).join(','),
+      bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+        .map((n) => n.toFixed(5))
+        .join(','),
       zoom: map.getZoom(),
     })
   }
@@ -107,9 +80,58 @@ function ViewportWatcher({ onChange }: { onChange: (v: Viewport) => void }) {
   return null
 }
 
+/**
+ * The radial layer, via leaflet.heat.
+ *
+ * `max` is passed explicitly. Left to itself leaflet.heat normalises against
+ * the hottest point currently on screen, so panning from Palm Desert to empty
+ * desert would repaint the desert as "hot" — the scale has to stay fixed to the
+ * data in view, not to the brightest thing in it.
+ */
+function HeatLayer({
+  cells,
+  max,
+  dark,
+  radius,
+}: {
+  cells: GridCell[]
+  max: number
+  dark: boolean
+  radius: number
+}) {
+  const map = useMap()
+  const points = useMemo(
+    () => cells.map((c) => [c.lat, c.lng, c.sales] as [number, number, number]),
+    [cells],
+  )
+
+  useEffect(() => {
+    if (!points.length) return
+    // @types/leaflet.heat augments L, but the call is still loose enough that
+    // the cast documents what we rely on.
+    const layer = (L as unknown as {
+      heatLayer: (pts: [number, number, number][], opts: Record<string, unknown>) => L.Layer
+    }).heatLayer(points, {
+      radius,
+      blur: Math.round(radius * 0.75),
+      max: max || 1,
+      minOpacity: 0.25,
+      maxZoom: CELL_ZOOM,
+      gradient: heatGradient(dark),
+    })
+    layer.addTo(map)
+    return () => {
+      map.removeLayer(layer)
+    }
+  }, [map, points, max, dark, radius])
+
+  return null
+}
+
 interface Props {
   cells: GridCell[]
   zones: Hotspot[]
+  showHeat: boolean
   showCells: boolean
   showZones: boolean
   showPins: boolean
@@ -124,6 +146,7 @@ interface Props {
 export default function SalesHeatMap({
   cells,
   zones,
+  showHeat,
   showCells,
   showZones,
   showPins,
@@ -136,6 +159,7 @@ export default function SalesHeatMap({
 }: Props) {
   const maxCell = useMemo(() => cells.reduce((m, c) => Math.max(m, c.sales), 0), [cells])
   const maxZone = useMemo(() => zones.reduce((m, z) => Math.max(m, z.sales), 0), [zones])
+  const ramp = dark ? HEAT_RAMP_DARK : HEAT_RAMP
 
   // Esri's Gray Canvas, not CARTO.
   //
@@ -143,7 +167,7 @@ export default function SalesHeatMap({
   // tiles, but stamped "API KEY REQUIRED" across every one of them, which is
   // how this shipped the first time. Esri's canvas layers are keyless and are
   // purpose-built as a backdrop for data overlays: desaturated, low-contrast,
-  // and without the POI clutter that fights a choropleth.
+  // and without the POI clutter that fights a heat ramp.
   //
   // NOTE the axis order. Esri serves {z}/{y}/{x} — y BEFORE x — unlike almost
   // every other XYZ provider. Swapping them silently returns tiles for the
@@ -153,7 +177,12 @@ export default function SalesHeatMap({
     : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
 
   return (
-    <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+    <MapContainer
+      center={center}
+      zoom={zoom}
+      style={{ height: '100%', width: '100%' }}
+      scrollWheelZoom
+    >
       <TileLayer
         url={tiles}
         maxZoom={16}
@@ -161,19 +190,24 @@ export default function SalesHeatMap({
       />
       <ViewportWatcher onChange={onViewportChange} />
 
+      {showHeat && cells.length > 0 && (
+        <HeatLayer cells={cells} max={maxCell} dark={dark} radius={zoom <= 9 ? 16 : 24} />
+      )}
+
       {showCells &&
         cells.map((c, i) => {
           const bounds: LatLngBoundsExpression = [
             [c.bbox.minLat, c.bbox.minLng],
             [c.bbox.maxLat, c.bbox.maxLng],
           ]
+          const color = rampColor(c.sales, maxCell, dark)
           return (
             <Rectangle
               key={`c${i}`}
               bounds={bounds}
               pathOptions={{
-                color: rampColor(c.sales, maxCell, dark),
-                fillColor: rampColor(c.sales, maxCell, dark),
+                color,
+                fillColor: color,
                 fillOpacity: 0.62,
                 weight: 0.5,
               }}
@@ -189,26 +223,39 @@ export default function SalesHeatMap({
         })}
 
       {showZones &&
-        zones.map((z) => (
-          <Circle
-            key={z.zoneId}
-            center={[z.lat, z.lng]}
-            radius={z.radiusMiles * MILES_TO_M}
-            pathOptions={{
-              color: rampColor(z.sales, maxZone, dark),
-              fillColor: rampColor(z.sales, maxZone, dark),
-              fillOpacity: 0.22,
-              weight: 2,
-            }}
-            eventHandlers={{ click: () => onSelectZone(z) }}
-          >
-            <Tooltip direction="top" opacity={1}>
-              <strong>{z.label}</strong>
-              <br />
-              {z.sales} sales · rank #{z.rank} · {z.radiusMiles.toFixed(2)} mi radius
-            </Tooltip>
-          </Circle>
-        ))}
+        zones.map((z) => {
+          // Over the heat layer a zone is a BOUNDARY, not a second intensity
+          // encoding. Drawing the ring in ramp colour too put bright green and
+          // yellow outlines on top of the blur, so the eye read the ring and
+          // the blur as competing signals for the same thing. Neutral, thin
+          // and low-fill here; ramp-coloured only when the blur is off and the
+          // circle has to carry intensity by itself.
+          const color = showHeat
+            ? dark
+              ? 'rgba(255,255,255,0.35)'
+              : 'rgba(17,17,17,0.35)'
+            : rampColor(z.sales, maxZone, dark)
+          return (
+            <Circle
+              key={z.zoneId}
+              center={[z.lat, z.lng]}
+              radius={z.radiusMiles * MILES_TO_M}
+              pathOptions={{
+                color,
+                fillColor: color,
+                fillOpacity: showHeat ? 0 : 0.22,
+                weight: showHeat ? 1 : 2,
+              }}
+              eventHandlers={{ click: () => onSelectZone(z) }}
+            >
+              <Tooltip direction="top" opacity={1}>
+                <strong>{z.label}</strong>
+                <br />
+                {z.sales} sales · rank #{z.rank} · {z.radiusMiles.toFixed(2)} mi radius
+              </Tooltip>
+            </Circle>
+          )
+        })}
 
       {showPins &&
         zones.slice(0, 20).map((z) => (
@@ -217,8 +264,8 @@ export default function SalesHeatMap({
             center={[z.lat, z.lng]}
             radius={6}
             pathOptions={{
-              color: dark ? '#1a1a19' : '#fcfcfb',
-              fillColor: dark ? '#cde2fb' : '#0d366b',
+              color: dark ? '#0b0b0b' : '#ffffff',
+              fillColor: ramp[ramp.length - 1],
               fillOpacity: 1,
               weight: 2,
             }}
