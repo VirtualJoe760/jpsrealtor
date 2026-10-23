@@ -203,8 +203,23 @@ reaches nobody.
 ## 8. Conventions
 
 - TypeScript throughout; `npx tsc --noEmit` before committing.
-- `npx next build` before shipping anything touching a page — a broken route is
-  worse than the bug being fixed.
+- **`npm run build`** — never bare `npx next build` — before shipping anything
+  touching a page. A broken route is worse than the bug being fixed.
+
+  It has to be the npm script because `prebuild` compiles
+  `packages/mcp-server` and regenerates the MDX mirror first. `npx next build`
+  skips the lifecycle hook, so `packages/mcp-server/dist/tools/index.js` stays
+  stale and the build dies with six `Module not found` errors
+  (`./create_carousel_slide.js`, `./give_feedback.js`, …) that point at the MCP
+  package and have nothing to do with whatever you changed.
+
+- **A Next build reports success on failure here.** `npx next build` exits 0
+  even when Turbopack aborts, so the exit code is not evidence. Check that
+  `.next/BUILD_ID` exists, or grep the output for `Build error occurred`.
+  Likewise, a `node_modules` symlink or Windows junction — e.g. one pointed at
+  another worktree to skip an install — fails with
+  `Symlink node_modules is invalid, it points out of the filesystem root`,
+  again behind exit 0. Each worktree needs a real `npm ci`.
 - Comments explain **why**, especially the failure a rule prevents. Several
   rules here exist because something shipped broken; keep that provenance.
 - Commit messages: what changed, and what it cost to learn.
