@@ -5,28 +5,41 @@ import { useEffect, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initMetaPixel, pageView, FB_PIXEL_ID } from "@/lib/meta-pixel";
 
-function MetaPixelCore() {
+/** pixelId comes from agentProfile.tracking (resolved server-side); it falls back
+ *  to the platform env pixel so existing tenants keep reporting unchanged. */
+interface MetaPixelProps {
+  pixelId?: string;
+}
+
+function MetaPixelCore({ pixelId }: MetaPixelProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const activeId = (pixelId || "").trim() || FB_PIXEL_ID;
 
   useEffect(() => {
     // Initialize Meta Pixel on mount
-    initMetaPixel();
-  }, []);
+    initMetaPixel(activeId);
+  }, [activeId]);
 
   useEffect(() => {
-    // Skip Pixel on URLs carrying lat/lng — Meta blocks these as PII (May 2026 notice).
-    // lat/lng stay in the URL for Google Ads / YouTube attribution; Meta retargeting
-    // doesn't use radius targeting so suppressing PageView here is functionally safe.
+    // Fires on EVERY route, including map URLs carrying lat/lng.
+    //
+    // This used to bail out when lat/lng were present, to avoid Meta's "parameters
+    // blocked" notice. That cost far more than it saved: MapLayer writes lat/lng into
+    // the URL on every pan/zoom — on /chap AND on / — so the pixel went silent on the
+    // map and on the homepage the moment anyone touched it, i.e. exactly where
+    // engagement happens. Meta strips suspected PII from event_source_url and still
+    // records the event, so the suppression traded real conversion data for a clean
+    // dashboard. autoConfig is off (see lib/meta-pixel.ts), which is the correct fix
+    // for the underlying PII concern — it stops the query string being sent as event
+    // parameters at all.
     if (pathname) {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("lat") || url.searchParams.has("lng")) return;
       pageView();
     }
   }, [pathname, searchParams]);
 
   // Render the noscript pixel for users without JavaScript
-  if (!FB_PIXEL_ID) {
+  if (!activeId) {
     return null;
   }
 
@@ -36,17 +49,17 @@ function MetaPixelCore() {
         height="1"
         width="1"
         style={{ display: "none" }}
-        src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
+        src={`https://www.facebook.com/tr?id=${activeId}&ev=PageView&noscript=1`}
         alt=""
       />
     </noscript>
   );
 }
 
-export default function MetaPixel() {
+export default function MetaPixel({ pixelId }: MetaPixelProps) {
   return (
     <Suspense fallback={null}>
-      <MetaPixelCore />
+      <MetaPixelCore pixelId={pixelId} />
     </Suspense>
   );
 }

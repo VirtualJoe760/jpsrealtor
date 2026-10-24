@@ -36,7 +36,10 @@ export interface EmailAgent {
 const DEFAULT_AGENT: EmailAgent = {
   name: 'Joseph Sardella',
   headshot: 'https://res.cloudinary.com/duqgao9h8/image/upload/v1774327194/headshots/head-shot-2026.png',
-  brokerage: 'eXp Realty',
+  // Last-resort identity when no agent resolves. Left blank rather than
+  // naming an agency: resolveEmailAgent() falls back here for ANY tenant, and
+  // a wrong brokerage in a compliance footer is worse than none.
+  brokerage: '',
   licenseNumber: '02106916',
   phone: '(760) 333-3676',
   email: 'josephsardella@gmail.com',
@@ -78,6 +81,9 @@ export async function resolveEmailAgent(
           licenseNumber: 1,
           phone: 1,
           email: 1,
+          'agentProfile.brokerage': 1,
+          'agentProfile.brokerageName': 1,
+          'agentProfile.licenseNumber': 1,
           'agentProfile.brandColor': 1,
           'agentProfile.secondaryColor': 1,
           'agentProfile.subdomain': 1,
@@ -92,8 +98,16 @@ export async function resolveEmailAgent(
     return {
       name: user.name || DEFAULT_AGENT.name,
       headshot: user.image || DEFAULT_AGENT.headshot,
-      brokerage: user.brokerageName || DEFAULT_AGENT.brokerage,
-      licenseNumber: user.licenseNumber || DEFAULT_AGENT.licenseNumber,
+      // Brokerage: new agentProfile.brokerage first, then the legacy fields.
+      // Compliance footers carry this, so it must track the agent's CURRENT
+      // brokerage rather than whatever was denormalized onto the user doc.
+      brokerage:
+        user.agentProfile?.brokerage?.name ||
+        user.agentProfile?.brokerageName ||
+        user.brokerageName ||
+        DEFAULT_AGENT.brokerage,
+      licenseNumber:
+        user.agentProfile?.licenseNumber || user.licenseNumber || DEFAULT_AGENT.licenseNumber,
       phone: user.phone || DEFAULT_AGENT.phone,
       email: user.email || DEFAULT_AGENT.email,
       website: user.agentProfile?.subdomain

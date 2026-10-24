@@ -1,3 +1,5 @@
+> Archived: planning doc; agent data scoping shipped and is documented in docs/multi-tenant/README.md, verified 2026-10-17
+
 # Agent CRM & CMS Scoping Implementation
 **Multi-Tenant Data Isolation for Agents**
 **Last Updated:** December 27, 2025

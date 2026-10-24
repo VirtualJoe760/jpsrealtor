@@ -58,7 +58,7 @@ function generateAbout(cityName, countyName, listingCount, wikiExtract) {
     ? `${cityName} offers a growing real estate market with ${listingCount} active listings. From starter homes to established properties, the area provides opportunities for buyers at different price points.`
     : `${cityName} has a select real estate market with available properties for buyers seeking a unique community in ${countyName}.`;
 
-  const ctaParagraph = `For personalized guidance on buying, selling, or investing in ${cityName}, contact Joseph Sardella at (760) 333-3676. As a California real estate expert with eXp Realty, Joseph provides market insights and dedicated service across Southern California and the Coachella Valley.`;
+  const ctaParagraph = `For personalized guidance on buying, selling, or investing in ${cityName}, contact Joseph Sardella at (760) 333-3676. As a California real estate expert with Fathom Realty, Joseph provides market insights and dedicated service across Southern California and the Coachella Valley.`;
 
   return `${wikiIntro}\n\n${realEstateParagraph}\n\n${ctaParagraph}`;
 }

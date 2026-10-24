@@ -262,7 +262,7 @@ export default function DropCowboyCampaign({ isLight }: DropCowboyCampaignProps)
                     value={voicemailText}
                     onChange={(e) => setVoicemailText(e.target.value)}
                     rows={6}
-                    placeholder="Hi, this is Joseph Sardella with eXp Realty. I wanted to reach out about..."
+                    placeholder="Hi, this is Joseph Sardella with Fathom Realty. I wanted to reach out about..."
                     className={`w-full px-4 py-3 rounded-lg border transition-all resize-none ${
                       isLight
                         ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'

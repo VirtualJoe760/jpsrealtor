@@ -26,7 +26,10 @@ export default function ImpersonationBanner() {
         body: JSON.stringify({ action: "stop" }),
       });
       if (res.ok) {
-        window.location.href = "/admin";
+        // On an agent's subdomain the route ends that host's session and
+        // returns www's admin URL (the admin was never signed out there).
+        const data = await res.json().catch(() => ({}));
+        window.location.href = data.redirect || "/admin";
       } else {
         setExiting(false);
       }

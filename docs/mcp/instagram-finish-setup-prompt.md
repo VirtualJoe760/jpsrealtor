@@ -1,31 +1,25 @@
 ---
 title: Prompt — finish Instagram publish setup
-status: partial
-last_verified: 2026-07-26
-last_verified_note: Steps 1-6 verified DONE against live Meta state 2026-07-26. The App ID in the original fact table was wrong (see below) and step 4's deploy has landed. Steps 7-8 still outstanding.
+status: outdated
+last_verified: 2026-10-17
 related: [./instagram-posting.md, ./README.md]
 ---
 
 # Prompt — finish Instagram publish setup
 
-## ⚠️ Verified state as of 2026-07-26 — read this before the steps below
+> **Historical one-shot handoff prompt (2026-06-04).** Its "current state"
+> (`@chatrealty/mcp-server@0.6.0`, code "not deployed yet", branch
+> `feat/landing-page-claude-byok-and-skill`) is long past: the route, the
+> `social:post` scope and the Instagram OAuth scopes in
+> `src/app/api/auth/meta-ads/connect/route.ts` are all on main, and the tool is
+> now hosted-connector-only. Use [instagram-posting.md](./instagram-posting.md)
+> for the live setup. Candidate for `docs/archive/`.
 
-Live checks against Meta (read-only) show most of this doc is already done,
-and that its **Meta App ID was wrong**.
+## App ID correction — still current, keep this if the rest is archived
 
-| Check | Result |
-|---|---|
-| `instagram_basic` | ✅ granted |
-| `instagram_content_publish` | ✅ granted |
-| IG Business Account resolves from the Page | ✅ `17841400926130218` via Page `109387773924627` |
-| OAuth scope list deployed (step 4) | ✅ on `main` — `src/app/api/auth/meta-ads/connect/route.ts` requests both IG scopes |
-| Stored token type | ⚠️ **USER token, not a Page token** |
-| `GET /me/accounts` | ⚠️ **returns empty** — no Page token obtainable, `business_management` was never granted |
-| Token expiry | ⚠️ **2026-08-04** — this is the "temporary key" |
-| `social:post` on the `crt_live_*` token | ❌ not granted — `post_instagram_carousel` is filtered out of the MCP tool list |
-
-**App ID correction.** The fact table below originally listed
-`3698458803622960` as "app name: chatRealty". That is wrong — queried by name:
+The fact table below originally listed `3698458803622960` as "app name:
+chatRealty". That is wrong, and the distinction still matters because it
+decides which app an App Review or Business Verification must be filed on:
 
 | App ID | Actual name | Role |
 |---|---|---|
@@ -33,10 +27,9 @@ and that its **Meta App ID was wrong**.
 | `3698458803622960` | **JPSREALTOR** (link: jpsrealtor.com) | `FACEBOOK_CLIENT_ID` — legacy fallback, only used if `META_APP_ID` is unset |
 
 `src/app/api/auth/meta-ads/connect/route.ts` prefers `META_APP_ID`, so every
-live connection is made against **chatRealty / 1706325400803513**. Any App
-Review, Business Verification, or permission request must be filed on **that**
-app. Filing against 3698458803622960 does nothing for production. Replace the
-dashboard URLs in the steps below accordingly.
+live connection is made against **chatRealty / 1706325400803513**. Filing
+against 3698458803622960 does nothing for production. The dashboard URLs in
+the steps below are wrong for the same reason.
 
 Hand this entire document to whoever is finishing the Instagram setup
 (a browser-controlling Claude, another Claude instance, or a human).

@@ -1,3 +1,5 @@
+> Archived: NotificationToast still exists (src/app/components/NotificationToast.tsx, used by /chap) — restore candidate for docs/chat/; content unchecked, verified 2026-10-17
+
 # Notification System - Market Snapshot Alerts
 
 **Status**: ✅ Production Ready

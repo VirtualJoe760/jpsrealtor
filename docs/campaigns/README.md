@@ -1,7 +1,7 @@
 ---
 title: Campaigns & Multi-Tenant Advertising
 status: current
-last_verified: 2026-07-02
+last_verified: 2026-10-17
 related:
   - ../archive/campaigns/CAMPAIGNS_CURRENT_STATE.md
   - ../archive/multi-tenant/advertising/campaign-multi-tenant.md
@@ -60,7 +60,17 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
   token gate. The wizard collects a YouTube video link (required — the creative
   must be a hosted video), budget, headline, CTA. **Unverified live** (dev-token
   gated): the bidding (`manualCpv`) + ad-group type + retargeting-audience
-  attachment are best-effort per the v18 spec and launch PAUSED for agent review.
+  attachment are best-effort against the API reference and launch PAUSED for
+  agent review.
+- **Google Ads API is v24** (`GOOGLE_ADS_API_VERSION` in `google-ads-api.ts`,
+  bumped from the sunset v18 in `0e790d2e`). The code comment asks for a check
+  against the v24 reference on the first live launch, because enums and fields
+  shift across major versions.
+- **Voicemail and direct mail do not re-check opt-outs.** The contact pickers
+  (`api/contacts/list`, `crm/labels/[id]/create-campaign`) drop `doNotContact`
+  contacts, but `campaigns/[id]/send`, `send-simple`, `send-mail` and
+  `api/dropcowboy/campaign` send to whatever is attached, and `voicemailOptOut`
+  is never read. See `../crm/README.md`.
 - **thanks.io / Drop Cowboy are not OAuth.** Agency-on-behalf means per-agent
   sub-accounts (thanks.io) / per-agent Brand + number pool (Drop Cowboy), under
   ChatRealty's master account, billed via credit-passthrough.
@@ -79,7 +89,7 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
 | File | Role |
 |---|---|
 | `src/app/api/campaigns/[id]/launch-ads/route.ts` | Launch entry — threads per-agent creds for Google + Meta |
-| `src/lib/google-ads-api.ts` | Google Ads REST v18 client; `runWithGoogleCreds` + ALS `getConfig` |
+| `src/lib/google-ads-api.ts` | Google Ads REST v24 client; `runWithGoogleCreds` + ALS `getConfig` |
 | `src/lib/meta-ads-api.ts` | Meta Marketing v21 client; `runWithMetaCreds` + ALS `getConfig` |
 | `src/lib/thanksio.ts` | Direct mail client (single key today) |
 | `src/app/api/campaigns/[id]/send/route.ts` | Drop Cowboy voicemail send (env team creds today) |

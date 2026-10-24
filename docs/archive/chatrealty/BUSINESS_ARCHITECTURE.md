@@ -1,3 +1,5 @@
+> Archived: superseded by docs/chatrealty-api/ship-strategy.md (BYOD business model) and docs/multi-tenant/README.md, verified 2026-10-17
+
 # ChatRealty — Business & Technical Architecture
 
 **Date:** April 22, 2026

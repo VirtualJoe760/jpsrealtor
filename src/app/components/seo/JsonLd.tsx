@@ -50,7 +50,13 @@ export async function OrganizationJsonLd() {
         .select(
           "name phone licenseNumber brokerageName " +
             "agentProfile.cellPhone agentProfile.officePhone agentProfile.licenseNumber " +
-            "agentProfile.brokerageName agentProfile.headshot agentProfile.socialMedia " +
+            // agentProfile.brokerage is the CURRENT model (name, legalName,
+            // licenseNumber); brokerageName is the legacy field. This selected
+            // only the legacy pair, so an agent migrated onto the new model
+            // and with the old field empty emitted no brokerage at all — the
+            // responsible broker missing from the one node that names it.
+            "agentProfile.brokerage agentProfile.brokerageName " +
+            "agentProfile.headshot agentProfile.socialMedia " +
             "agentProfile.serviceAreas agentProfile.metaDescription agentProfile.headline"
         )
         .lean()
@@ -60,6 +66,11 @@ export async function OrganizationJsonLd() {
           (v): v is string => typeof v === "string" && v.startsWith("http")
         )
         const license = ap.licenseNumber || u.licenseNumber
+        const brk = ap.brokerage || {}
+        // Newest model first, legacy as the migration fallback — the same
+        // precedence as /api/agent-branding and components/SiteFooter.
+        const brokerageName = brk.name || ap.brokerageName || u.brokerageName
+        const brokerageLegalName = brk.legalName || brokerageName
         const structuredData: Record<string, unknown> = {
           "@context": "https://schema.org",
           "@type": "RealEstateAgent",
@@ -78,19 +89,53 @@ export async function OrganizationJsonLd() {
             },
           }),
           ...(sameAs.length > 0 && { sameAs }),
-          ...((ap.brokerageName || u.brokerageName) && {
+          // `parentOrganization`, not just `memberOf`. An agent does not
+          // merely belong to a brokerage — the brokerage is the licensed
+          // entity legally responsible for the agent's advertising, and
+          // parentOrganization is the relation that states that. Both are
+          // emitted: memberOf was here first and consumers may key on it.
+          ...(brokerageName && {
+            parentOrganization: {
+              "@type": "RealEstateOrganization",
+              name: brokerageName,
+              ...(brokerageLegalName !== brokerageName && { legalName: brokerageLegalName }),
+              ...(brk.licenseNumber && {
+                identifier: {
+                  "@type": "PropertyValue",
+                  propertyID: "CA DRE License",
+                  value: brk.licenseNumber,
+                },
+              }),
+            },
             memberOf: {
               "@type": "RealEstateOrganization",
-              name: ap.brokerageName || u.brokerageName,
+              name: brokerageName,
             },
           }),
-          ...(Array.isArray(ap.serviceAreas) && ap.serviceAreas.length > 0 && {
-            areaServed: ap.serviceAreas
-              .map((a: any) => a?.name || a)
-              .filter(Boolean)
-              .slice(0, 20)
-              .map((name: string) => ({ "@type": "City", name })),
-          }),
+          // NO street address: none is stored, and inventing one for a
+          // RealEstateAgent node is a claim about a physical place of business
+          // that a reviewer can check. State and country are both true and are
+          // what actually disambiguates this agent from a same-named one
+          // elsewhere.
+          address: {
+            "@type": "PostalAddress",
+            addressRegion: "CA",
+            addressCountry: "US",
+          },
+          // The service area is the STATE plus the named local markets. Listing
+          // only the six Coachella Valley cities while the site publishes city
+          // pages for ~230 California markets understated the scope to the one
+          // consumer that reads this field literally.
+          areaServed: [
+            { "@type": "State", name: "California" },
+            ...(Array.isArray(ap.serviceAreas)
+              ? ap.serviceAreas
+                  .map((a: any) => a?.name || a)
+                  .filter(Boolean)
+                  .slice(0, 20)
+                  .map((name: string) => ({ "@type": "City", name }))
+              : []),
+          ],
         }
         return (
           <script
@@ -283,6 +328,87 @@ export function PropertyListingJsonLd({
         unitCode: "FTK",
       },
     }),
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// PlaceJsonLd (added 2026-10-14)
+// ---------------------------------------------------------------------------
+//
+// City and subdivision pages previously emitted only BreadcrumbList. Nothing
+// told Google WHAT the page was about as an entity — a page titled "Indio
+// Homes for Sale" with no Place node is a document that mentions a city, not a
+// page about that city. `geo` is the part that disambiguates: there is an Indio
+// in California and one in Kentucky, and coordinates settle which.
+//
+// `City` and `Neighborhood` are both schema.org subtypes of Place, so the type
+// is passed in rather than hardcoded — a subdivision is not a city and marking
+// it as one is a false statement about the entity.
+
+interface PlaceJsonLdProps {
+  /** "City" for a municipality, "Neighborhood" for a subdivision. */
+  type: "City" | "Neighborhood"
+  name: string
+  description?: string
+  url: string
+  /** Omitted entirely when absent — a Place with a null geo is worse than none. */
+  latitude?: number
+  longitude?: number
+  /** The city a neighborhood sits inside, as a containment link. */
+  containedIn?: { name: string; url: string }
+  /** Region name from `cities.region`, e.g. "Coachella Valley". */
+  regionName?: string
+}
+
+export function PlaceJsonLd({
+  type,
+  name,
+  description,
+  url,
+  latitude,
+  longitude,
+  containedIn,
+  regionName,
+}: PlaceJsonLdProps) {
+  const hasGeo =
+    typeof latitude === "number" &&
+    typeof longitude === "number" &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
+
+  const structuredData: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": type,
+    name,
+    url,
+    ...(description && { description }),
+    ...(hasGeo && {
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude,
+        longitude,
+      },
+    }),
+    ...(containedIn && {
+      containedInPlace: {
+        "@type": "City",
+        name: containedIn.name,
+        url: containedIn.url,
+      },
+    }),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: containedIn?.name || name,
+      ...(regionName && { addressRegion: "CA" }),
+      addressCountry: "US",
+    },
   }
 
   return (

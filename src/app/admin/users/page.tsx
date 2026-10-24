@@ -256,8 +256,9 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message);
-        // Redirect to the agent dashboard
-        window.location.href = "/agent/dashboard";
+        // The session opens on the AGENT'S OWN subdomain (via the hand-off the
+        // route returns); this tab's admin session on www is left alone.
+        window.location.href = data.redirect || "/agent/dashboard";
       } else {
         toast.error(data.error || "Impersonation failed");
       }

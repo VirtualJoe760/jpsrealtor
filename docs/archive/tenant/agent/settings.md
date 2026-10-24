@@ -1,3 +1,5 @@
+> Archived: superseded — the dashboard edit-mode UI described here was replaced by the /agent/settings wizard; see docs/agent-onboarding/README.md, verified 2026-10-17
+
 # Agent Settings Guide
 
 **UI/UX Documentation for Agent Profile Management**

@@ -1,34 +1,13 @@
-import { Metadata } from 'next'
-import IframeSearch from '@/components/IframeSearch'
+import { permanentRedirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'Property Listings | Palm Desert & Coachella Valley Homes for Sale',
-  description: 'Browse the latest homes for sale in Palm Desert, Indian Wells, La Quinta, and the greater Coachella Valley. Find your perfect property with Joseph Sardella.',
-  keywords: ['Palm Desert homes for sale', 'Coachella Valley real estate', 'houses for sale', 'MLS listings', 'property search'],
-  openGraph: {
-    title: 'Property Listings | Palm Desert & Coachella Valley Homes for Sale',
-    description: 'Browse the latest homes for sale in Palm Desert, Indian Wells, La Quinta, and the greater Coachella Valley. Find your perfect property with Joseph Sardella.',
-    images: [
-      {
-        url: 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-desert.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Palm Desert Homes for Sale',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Property Listings | Palm Desert & Coachella Valley Homes for Sale',
-    description: 'Browse the latest homes for sale in Palm Desert, Indian Wells, La Quinta, and the greater Coachella Valley.',
-    images: ['https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/city-images/palm-desert.jpg'],
-  },
+// /listings used to be a full-page iframe of joseph.obsidianregroup.com — the
+// Obsidian Group's IDX search. That dependency left with the brokerage, and an
+// iframe of a host we no longer have an account on renders an empty page to
+// every visitor with no error we'd ever see.
+//
+// The platform's own MLS map search at /mls-listings is the replacement. A 308
+// keeps the accumulated SEO value of /listings (it ranks for "Palm Desert homes
+// for sale") pointed at the page that now does the job.
+export default function Listings() {
+  permanentRedirect('/mls-listings')
 }
-
-const Listings = () => {
-  return (
-    <IframeSearch />
-  )
-}
-
-export default Listings

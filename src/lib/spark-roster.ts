@@ -31,6 +31,10 @@ const HOST = "https://replication.sparkapi.com/v1";
 export interface RosterAgent {
   sparkId: string;
   mlsId: string;
+  /** The agent id listings carry as listAgentMlsId (e.g. "d83203"). `mlsId` is the MLS system's id, not the agent's. */
+  shortId: string | null;
+  /** The office id listings carry as listOfficeMlsId. */
+  officeShortId: string | null;
   name: string;
   firstName: string;
   lastName: string;
@@ -58,6 +62,8 @@ function shape(a: any): RosterAgent {
   return {
     sparkId: a.Id,
     mlsId: a.MlsId,
+    shortId: a.ShortId || null,
+    officeShortId: a.OfficeShortId || null,
     name: a.Name || [a.FirstName, a.LastName].filter(Boolean).join(" "),
     firstName: a.FirstName || "",
     lastName: a.LastName || "",
@@ -91,6 +97,17 @@ async function query(filter: string, limit = 25): Promise<RosterAgent[]> {
 export async function agentById(sparkId: string): Promise<RosterAgent | null> {
   if (!sparkId) return null;
   const r = await query(`UserType Eq 'Member' And Id Eq '${sparkId.replace(/'/g, "")}'`, 1);
+  return r[0] || null;
+}
+
+/**
+ * Look an agent up by state licence number. Listings carry no licence field, so
+ * this is the bridge from a user's licence to the listAgentMlsId on their listings.
+ */
+export async function agentByLicense(licenseNumber: string): Promise<RosterAgent | null> {
+  const lic = (licenseNumber || "").replace(/[^0-9A-Za-z]/g, "");
+  if (!lic) return null;
+  const r = await query(`UserType Eq 'Member' And LicenseNumber Eq '${lic}'`, 2);
   return r[0] || null;
 }
 

@@ -1,3 +1,5 @@
+> Archived: Drop Cowboy voicemail is still in code (/api/dropcowboy, campaigns send) — restore candidate for docs/campaigns/; content unchecked, verified 2026-10-17
+
 # Drop Cowboy Voicemail Campaign System - Architecture
 
 ## System Overview

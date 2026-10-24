@@ -1,8 +1,8 @@
 ---
 title: DB-Agnostic Adapter — Interface, DTOs & Mappers
 status: current
-last_verified: 2026-08-06
-related: [./build_plan.md, ./architecture.md]
+last_verified: 2026-10-17
+related: [./build_plan.md, ./architecture.md, ./neon-setup.md, ./connection-resolver.md]
 ---
 
 # DB-Agnostic Adapter (`src/lib/db/`)
@@ -29,9 +29,10 @@ adapter passes the shared contract suite **LIVE against Neon** (see below).
 | `src/lib/db/mongo-adapter.ts` | Agent 02 | Legacy/self-host Mongo implementation (`createMongoAdapter`) | **landed** |
 | `src/lib/db/__tests__/mongo-adapter.test.ts` | Agent 02 | Query-reproduction + read-path contract tests (node:test) | **landed** |
 | `src/lib/db/postgres-adapter.ts` | Agent 09 | Neon/Postgres implementation (`createPostgresAdapter`) via Drizzle neon-http | **landed** |
-| `src/lib/db/schema/{listings,contacts,index}.ts` | Agent 09 | Drizzle table definitions mirroring `0001_init.sql` (property/member/office/media + contact + registry/migrations) | **landed** |
+| `src/lib/db/schema/{listings,contacts,crm,neighborhoods,index}.ts` | Agent 09 + later | Drizzle table definitions (property/member/office/media, contact, CRM lead-loop, neighborhoods, registry/migrations) | **landed** |
+| `src/lib/db/neighborhoods-repo.ts` | later | Per-tenant neighborhoods reads (live test: `__tests__/neighborhoods-repo.live.test.ts`) | **landed** |
 | `drizzle.config.ts` | Agent 09 | drizzle-kit config (schema barrel + `NEON_DIRECT_CONN_URI` for migrations) | **landed** |
-| `src/lib/db/migrations/*` | Agent 09 | drizzle-kit-generated reference DDL (the canonical per-tenant migration is Agent 04's `0001_init.sql`) | **landed** |
+| `src/lib/db/migrations/*` | Agent 09 | drizzle-kit-generated DDL. Its README calls it a reference artifact, but the self-serve provisioner **applies `0000_supreme_maginty.sql`** — see [neon-setup.md](./neon-setup.md) → "Which migration a tenant gets" | **landed** |
 | `src/lib/db/__tests__/postgres-adapter.test.ts` | Agent 09 | Shared contract suite, **LIVE** against Neon (skips cleanly without conn) | **landed** |
 
 ## Postgres adapter (`postgres-adapter.ts`, Agent 09)
@@ -85,9 +86,13 @@ across dialects. Design:
 - **Attribution (§3.8).** `list_agent_name` / `list_office_name` are always in the
   projection; the live contract test asserts their presence on every DTO.
 - **Contacts.** No `ownerId`/`userId` scoping — on the Postgres path the database
-  IS the tenant boundary. The `contact` table is defined in the Drizzle schema but
-  is **not yet in `0001_init.sql`** (CRM-on-Postgres is a later cutover, Agent 21);
-  the live test scopes its fixtures by an `extras.testMarker`.
+  IS the tenant boundary. `contact`, `end_user` and `saved_search` are not in
+  `0001_init.sql`; they come from `src/lib/reso/migrations/0002_crm_leadloop.sql`
+  / `0004_leadloop_repair.sql` (the latter runs on every provision and
+  reconnect). Tenant-site signups are also mirrored into the agent's Mongo
+  `Contact` collection (`src/lib/crm/mirror-to-owner.ts`) so the dashboard and
+  MCP contact tools see them. The live test scopes its fixtures by an
+  `extras.testMarker`.
 
 The contract test runs **LIVE against Neon**: it loads `NEON_POOLED_CONN_URI`
 from `.env.local`, **skips cleanly** when absent, seeds ~20 `property` rows under

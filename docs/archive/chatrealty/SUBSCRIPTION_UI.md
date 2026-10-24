@@ -1,3 +1,5 @@
+> Archived: superseded by docs/commerce/README.md and docs/commerce/free-tier-gating.md (tier names here are outdated), verified 2026-10-17
+
 # Subscription UI
 
 ## Overview

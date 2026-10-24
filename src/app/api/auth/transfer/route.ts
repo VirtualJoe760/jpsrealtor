@@ -15,10 +15,19 @@
 //   4. Redirects to https://chatrealty.io/api/auth/receive?token=xxx&redirect=/path
 //   5. The receive endpoint validates the token and sets the session cookie
 
+//
+// HOST-BOUND (2026-10-17, doc audit M1): the token names the one host it may be
+// redeemed on (`handoffHost`), and receive refuses it anywhere else. Before, a
+// token minted for an agent subdomain could be replayed on www — and on a
+// subdomain serving an external site, the receive request (token in the query
+// string) was proxied to the agent's own deployment. An impersonation session
+// is never converted into a plain one here: it would come out the other side as
+// a real agent session with no impersonation marker.
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { encode } from "next-auth/jwt";
+import { encode, getToken } from "next-auth/jwt";
 
 // Domains that are part of our platform (allowed transfer targets)
 const ALLOWED_DOMAINS = new Set([
@@ -74,6 +83,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
+  // Impersonation stays where it is (see header): go to the target unsigned.
+  const raw = await getToken({ req, secret });
+  if (raw?.impersonatedBy) {
+    console.warn("[Auth Transfer] Impersonation session not transferred");
+    return NextResponse.redirect(target);
+  }
+
+  const targetUrl = new URL(target);
   const transferToken = await encode({
     token: {
       email: session.user.email,
@@ -85,6 +102,8 @@ export async function GET(req: NextRequest) {
       isAdmin: false,
       // Mark this as a transfer token with short expiry
       transferAuth: true,
+      // Redeemable on this host only (receive checks it).
+      handoffHost: targetUrl.hostname.toLowerCase(),
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 30, // 30 second expiry
     },
@@ -93,7 +112,6 @@ export async function GET(req: NextRequest) {
   });
 
   // Build the receive URL on the target domain
-  const targetUrl = new URL(target);
   const receiveUrl = new URL("/api/auth/receive", targetUrl.origin);
   receiveUrl.searchParams.set("token", transferToken);
   receiveUrl.searchParams.set("redirect", targetUrl.pathname + targetUrl.search + targetUrl.hash);

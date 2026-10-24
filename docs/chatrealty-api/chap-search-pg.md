@@ -1,7 +1,7 @@
 ---
 title: "CHAP search on Postgres — area stats + glue"
-status: current
-last_verified: 2026-06-25
+status: partial
+last_verified: 2026-10-17
 related:
   - ./spike-chap-postgis.md
   - ./build_plan.md
@@ -18,6 +18,12 @@ related:
 > renderer's `PreviewResult` shape. This is the Postgres twin of the Mongo
 > `computeAreaStats`/`preview.ts` path — the legacy Mongo chat-search is
 > untouched and still serves the legacy single-tenant app.
+>
+> **Status (2026-10-17): built, not wired.** Both modules exist and are
+> described accurately below, but nothing outside `src/lib/chap/` imports
+> `searchListingsPg` or `computeAreaStatsPg` — only the live test does. CHAP on
+> a scaffolded agent site runs the template's own `/api/chat` tool loop over
+> the `/api/skill/*` listing routes instead.
 
 ## Files (linchpins)
 

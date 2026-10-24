@@ -1,11 +1,19 @@
 ---
 title: ChatRealty API — Productization Research
-status: current
-last_verified: 2026-06-24
-related: [../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-safety.md, ../listings/README.md]
+status: partial
+last_verified: 2026-10-17
+related: [../mcp/README.md, ../mcp/hosting.md, ../mcp/scopes-and-safety.md, ../listings/README.md, ./ship-strategy.md]
 ---
 
 # ChatRealty API — Productization Research
+
+> **Point-in-time research (2026-06-24).** The direction held — BYOD tenant
+> databases, an API + MCP build guide, the scaffolder as on-ramp — but
+> [ship-strategy.md](./ship-strategy.md) (corrected 2026-07-23) supersedes the
+> business model here. Notably: the agent's Claude work runs on their own Claude
+> subscription through the MCP (no Anthropic API key), and the only BYOK key in
+> the shipped product is the site's CHAP LLM key (`CHAT_API_KEY`, Groq
+> recommended). For what exists today read [../mcp/site-building.md](../mcp/site-building.md).
 
 > **What this is.** Research feeding the next doc (`architecture.md`) for turning
 > ChatRealty's internal `/api/skill/*` + MCP surface into a **sold product**: a

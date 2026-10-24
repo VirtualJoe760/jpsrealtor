@@ -1,3 +1,5 @@
+> Archived: superseded by docs/integrations/README.md (GBP) and docs/cms/README.md (publish cross-post), verified 2026-10-17
+
 # GBP Auto-Posting — CMS Integration
 
 Automatic Google Business Profile posting when articles are published through the CMS.

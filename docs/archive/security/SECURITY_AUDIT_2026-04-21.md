@@ -1,3 +1,5 @@
+> Archived: point-in-time audit (April 2026); since superseded by the July 2026 default-deny /api gate in src/proxy.ts and per-route hardening, verified 2026-10-17
+
 # Security Audit Report
 
 > Date: 2026-04-21 | Status: CRITICAL issues found — remediation in progress

@@ -1,11 +1,16 @@
 ---
 title: Prompt for backend Claude — flatten script date-typing fix
-status: current
-last_verified: 2026-06-04
-related: [./README.md]
+status: outdated
+last_verified: 2026-10-17
+related: [./README.md, ../chatrealty-api/spike-chap-postgis.md]
 ---
 
 # Prompt for backend Claude — flatten script date-typing fix
+
+> **Historical one-shot handoff prompt (2026-06-04)** addressed to the
+> backend (VPS / `chatrealty-backend`) Claude, not to this repo. Whether the
+> fix landed lives in that repo; nothing here tracks it. It is not about the
+> MCP surface. Candidate for `docs/archive/`.
 
 Copy the section below this line into the backend Claude on the PC that
 owns the MLS sync pipeline. It's self-contained — no prior context needed.

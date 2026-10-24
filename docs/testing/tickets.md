@@ -1,8 +1,8 @@
 ---
 title: Tickets — reactive ingress, fingerprinting, and triage
 status: current
-last_verified: 2026-08-05
-related: [tom.md, coverage.md, README.md, repairer.md, agents/tom/AGENTS.md]
+last_verified: 2026-10-17
+related: [tom.md, coverage.md, README.md, repairer.md, loop-console.md, agents/tom/AGENTS.md]
 ---
 
 # Tickets
@@ -95,18 +95,24 @@ forbids); **GET and PATCH require an admin-account token** — tickets carry
 verbatim traces from every tenant, so customers file into the queue but never
 browse it, and the triage/chat surfaces belong to the loop's own agents
 (whose tokens live on the owner account). Redaction is enforced structurally:
-`envVarNames` containing `=` rejects the whole ticket.
+an `envVarNames` entry containing `=` (or over 200 characters) rejects the
+whole ticket, and `payloadShape` / `packageVersions` are refused — not
+truncated — if either serializes past 20,000 bytes
+(`src/app/api/skill/tickets/route.ts`). `howFar` is one of `auth`, `fetch`,
+`normalise`, `persist`, `serve`, `build-guide`, `other` (anything else is
+stored as `other`).
 
 | Call | Body / params | Purpose |
 |---|---|---|
-| `POST /api/skill/tickets` | `{ association, failingStep, errorText, howFar?, errorClass?, payloadShape?, envVarNames?, packageVersions?, notes? }` | File. Returns `{ fingerprint, population, status, reopened }` |
-| `GET /api/skill/tickets?status=open` | — | Fingerprints, population-first (triage read) |
+| `POST /api/skill/tickets` | `{ association, failingStep, errorText, howFar?, errorClass?, payloadShape?, envVarNames?, packageVersions?, notes? }` | File. Returns `{ ok, ticketId, fingerprint, population, status, reopened, message }` (201) |
+| `GET /api/skill/tickets?status=open` | `status` ∈ open, triaged, in_progress, resolved (default `open`; an unrecognised value returns all) | Fingerprints, population-first, max 50 (triage read) |
 | `GET /api/skill/tickets?fingerprint=x&tickets=3` | — | One cluster + its recent tickets |
 | `PATCH /api/skill/tickets` | `{ fingerprint, status?, goal?, triageNote?, resolutionNotes?, reportId? }` | Move through triage |
 
 Tom's existing poll (`GET /api/skill/testing`) also carries
 `openTickets: { count, fingerprints[≤5] }` and `unreadMessages`, so ticket
-awareness costs him zero extra calls on the no-op path.
+awareness costs him zero extra calls on the no-op path. `count` includes
+`in_progress` fingerprints; the listed ≤5 are only `open`/`triaged`.
 
 ## Triage — Tom's assessment
 
@@ -138,10 +144,12 @@ system, not a sibling of it.
 
 - **`/admin/loop`** — fingerprints with population and status, expandable,
   manual resolve; the loop stage; chat to each agent. Nav: "Loop Console".
-- **`scripts/agent-feedback.mjs`** — `tickets` (open fingerprints),
-  `ticket-resolve <fingerprint> "notes"` (repairer closes one when its fix
-  lands).
-- **MCP** — `report_data_issue` (@chatrealty/mcp-server ≥ 0.21.0). The tool
+- **`scripts/agent-feedback.mjs`** — `tickets` (open/triaged/in_progress
+  fingerprints, 25 max), `ticket-resolve <fingerprint> "notes"` (repairer closes
+  one when its fix lands; writes Mongo directly, so unlike the API's `PATCH` it
+  does not require a token).
+- **MCP** — `report_data_issue` (`packages/mcp-server/src/tools/report_data_issue.ts`,
+  shipped in @chatrealty/mcp-server 0.21.0; the package is at 0.26.0 now). The tool
   description carries the redaction rules; the server enforces them again.
 
 ## Console chat — delivery semantics

@@ -217,8 +217,12 @@ function buildCtaTransformation(cta) {
       0.114 * parseInt(hex.slice(4, 6), 16)) / 255;
   const bgIsLight = lum > 0.55;
   const requested = oid(cta.brokerLogoPublicId);
+  // Light background wants the dark-artwork logo and vice versa. The name
+  // pair is a convention: "<brand>-logo-black" / "<brand>-logo-white".
+  // An eXp-specific `EXP-?square` rewrite used to live here; it only matched
+  // the former brokerage's asset names and went with the 2026-10 rebrand.
   const brokerLogo = bgIsLight
-    ? requested.replace(/[-_]?white/i, "").replace(/EXP-?square/i, "EXP-Black-square")
+    ? requested.replace(/[-_]?white/i, "")
     : requested.replace(/Black/i, "white");
   // Body copy has to flip with it, or light text lands on a light card.
   const BODY = bgIsLight ? "rgb:1F1F1F" : `rgb:${CREAM}`;

@@ -3,7 +3,7 @@
 // Final CTA — now includes agent identity:
 //   - Pre-built circular headshot
 //   - Joseph Sardella · DRE 02106916
-//   - eXp Realty logo (white version for teal background)
+//   - Fathom Realty logo (white version for teal background)
 //
 // Regenerates slide-10 for the El Nido carousel.
 
@@ -38,7 +38,7 @@ const D = {
   italicLast: "DM me. Let's make your real estate goals happen.",
   handle: "@instadella",
   headshotPublicId: "jpsrealtor:agents:joseph-circular",
-  brokerLogoPublicId: "jpsrealtor:logos:EXP-white-square",
+  brokerLogoPublicId: "jpsrealtor:logos:fathom-logo-white",
 };
 
 function buildTransformation() {

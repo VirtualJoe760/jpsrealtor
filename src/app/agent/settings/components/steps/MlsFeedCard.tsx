@@ -8,9 +8,10 @@
 // after saving, this card only ever knows the host, the auth mode and the last
 // four characters.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Database, Check, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
+import MlsSeedPanel, { type SeedFeedSlice } from "./MlsSeedPanel";
 
 type FeedStatus = {
   status: "connected" | "disconnected" | "invalid";
@@ -27,7 +28,7 @@ type FeedStatus = {
   totalListings: number | null;
   networksCheckedAt: string | null;
   networks: string[];
-};
+} & Omit<SeedFeedSlice, "networks">;
 
 const fmt = (n: number) => n.toLocaleString();
 
@@ -112,6 +113,12 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [savingPick, setSavingPick] = useState(false);
   const autoDiscovered = useRef(false);
+  // The seed panel reports changes (estimate, saved types, live progress)
+  // back here; stable so its polling effect isn't torn down every render.
+  const mergeFeed = useCallback(
+    (next: Partial<SeedFeedSlice>) => setFeed((f) => (f ? ({ ...f, ...next } as FeedStatus) : f)),
+    []
+  );
 
   useEffect(() => {
     (async () => {
@@ -475,6 +482,11 @@ export default function MlsFeedCard({ isLight }: { isLight: boolean }) {
             </>
           )}
         </div>
+      )}
+
+      {/* What goes in the database + seeding — once associations are saved */}
+      {connected && !replacing && feed && feed.networks.length > 0 && feed.sync && (
+        <MlsSeedPanel isLight={isLight} feed={feed} onFeed={mergeFeed} />
       )}
 
       {/* Saved key stopped working */}

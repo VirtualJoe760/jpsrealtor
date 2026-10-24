@@ -1,37 +1,64 @@
 ---
 title: create-chatrealty-site (frontend scaffolder)
-last_verified: 2026-08-06
-owner: platform
-status: shipped — PUBLISHED to npm; current create-chatrealty-site@0.17.1 (2026-08-06)
+status: current
+last_verified: 2026-10-17
+related: [../mcp/site-building.md, ./external-site.md, ../mcp/publishing.md, ./data-tiers.md, ../testing/mcp/web-design/README.md]
 ---
 
 # create-chatrealty-site
 
-The frontend on-ramp for the ChatRealty API. One command scaffolds a working
-Next.js real-estate site wired to a tenant's `/api/skill/*` endpoints, which the
-developer then customizes. This is the starter UI the [build plan](build_plan.md)
-§8.2 deliberately left out of scope ("the customer builds their own UI; we ship
-the data + build-guide") — now shipped as a `create-next-app`-style generator so
-customers don't start from a blank page.
+> **TL;DR.** `npx create-chatrealty-site@latest my-site --test-data` scaffolds a
+> working Next.js 15 real-estate site (listings + clustered map, detail pages
+> with IDX attribution, CHAP chat, account-gated favorites, lead capture, blog,
+> neighborhoods, an hourly sync cron) that reads the ChatRealty API server-side.
+> The MCP build guide drives it: step 2 runs exactly that command, then — for an
+> agent whose listings are already seeded — swaps sample data for the agent's
+> own database with `get_site_claim_code` (no token pasted). Source:
+> `packages/create-chatrealty-site/` (`src/cli.ts` + `template/`);
+> `package.json` 0.17.1. The version history below is the record of why each
+> template rule exists.
 
-Source: `packages/create-chatrealty-site/`.
+The frontend on-ramp for the ChatRealty API — the starter UI the
+[build plan](build_plan.md) §8.2 originally left out of scope, shipped as a
+`create-next-app`-style generator.
+
+## How the build guide uses it (2026-10-17)
+
+1. `npx create-chatrealty-site@latest my-site --test-data`, then
+   `cd my-site && npm install` (`--test-data` = 47 watermarked sample listings,
+   no token, no network; localhost only).
+2. If `whoami` reported `dataSource: "tenant"`, Claude calls
+   `get_site_claim_code`, writes the returned `claimScript` to
+   `chatrealty-claim.mjs`, runs `node chatrealty-claim.mjs <code>`, deletes it
+   and restarts `npm run dev`. The script trades the one-time code at
+   `POST /api/skill/site/claim` and rewrites `.env.local`: adds
+   `CHATREALTY_API_TOKEN`, removes `CHATREALTY_TEST_DATA`. No scaffolder release
+   was needed — the script ships in the MCP tool response
+   (`packages/mcp-server/src/tools/site_tools.ts`). See
+   [external-site.md](./external-site.md) → claim codes.
+3. An agent who already holds a website key can still pass `--token`.
+4. Deploy hard-fails while `CHATREALTY_TEST_DATA=true` (`template/next.config.mjs`
+   throws when `VERCEL` or `CI` is set). After deploy: `connect_site` →
+   preview → `set_site_live`. Full flow: [../mcp/site-building.md](../mcp/site-building.md).
 
 ## Usage
 
 ```bash
-npm create chatrealty-site@latest my-site
-# or
-npx create-chatrealty-site my-site
-# non-interactive (CI / scripting):
+npx create-chatrealty-site@latest my-site --test-data   # what the build guide runs
 npx create-chatrealty-site my-site --token crt_live_xxx --api-base http://localhost:3000
+npm create chatrealty-site@latest my-site               # interactive
 ```
 
-Inputs (prompted, or via `--token`/`--api-base` flags or `CHATREALTY_API_TOKEN`/
-`CHATREALTY_API_BASE` env): target directory, API base (default
-`https://www.chatrealty.io`), and the tenant API token (`crt_live_…`). The CLI
-verifies the token against `GET /api/skill/me` (warns + continues on failure so a
-bad token doesn't block scaffolding), copies `template/`, and writes `.env.local`
-(mode 0600) with the token + base.
+Flags (`--help` prints them): `--test-data`, `--token`, `--api-base` (default
+`https://www.chatrealty.io`, or `CHATREALTY_API_BASE`), `--chat-key` (enables
+CHAP; or `CHAT_API_KEY`), `--no-chap`, `--agent-name` / `--brokerage` /
+`--market` (test-data persona from the interview), `--yes`/`-y`. Non-TTY stdin
+is non-interactive automatically. With a token, the CLI verifies it against
+`GET /api/skill/me` (warns and continues on failure), copies `template/`, and
+writes `.env.local` (mode 0600) with the token + base, a generated
+`AUTH_SECRET`, a generated `CRON_SECRET`, and commented identity/market/sync
+blocks. In test-data mode `.env.local` carries `CHATREALTY_TEST_DATA=true` and
+the token line commented out.
 
 **v0.17.1 (2026-08-06) — CHAP was told it must search and didn't, and one city
 had two different medians one click apart.** Session-20 judge run (Patricia
@@ -590,7 +617,8 @@ posts in test mode) — the CMS→site loop is closed. **Neighborhoods index**
 derived from live data; homepage rebuilt as a sectioned neutral canvas for the
 guide's design step.
 
-**TEST DATA mode (v0.2.0, 2026-07-23):** `--test-data` (or Enter at the token
+**TEST DATA mode (v0.2.0, 2026-07-23; data replaced in v0.3.0 — 47 listings
+today):** `--test-data` (or Enter at the token
 prompt) scaffolds with **zero token, zero network** against 25 fictitious sample
 listings bundled in `template/data/test-listings.json` (fake cities in empty
 Mojave desert, `public/test-photos/*.svg` placeholder art, "Demo Realty — Test
@@ -613,22 +641,38 @@ is reused for all prompts so piped/non-interactive stdin works.
 
 ## What the template ships (full build-guide scope)
 
-A Next.js 15 App Router site (`template/`) covering the whole build guide:
+A Next.js 15 App Router site (`template/`; `next ^15.1.6`, React 19,
+`next-auth` v5 beta, Leaflet + `leaflet.markercluster`, `@chatrealty/sync
+^0.6.4`). Pages: `/`, `/listings` (+ `/listings/[key]`), `/search` (only when
+CHAP presentation is "search"), `/discover`, `/favorites`, `/account`,
+`/neighborhoods`, `/blog`, `/about`, `/contact`. API routes: `/api/listings`
+(+ `by-keys`), `/api/lead`, `/api/chat`, `/api/account/*`, `/api/auth/*`,
+`/api/sync/cron` (hourly via `vercel.json`).
 
 - **Listings search** — `ListingsBrowser` (client) with filters (city, price, beds,
   baths, pool), grid/map toggle, and Load-more, fetching the app's own
-  `/api/listings` proxy.
-- **Interactive map** — Leaflet price-pin markers with popups. `dynamic(…,
-  {ssr:false})` lives in a client wrapper (`ListingMapClient`) so server pages can
-  render it; Leaflet CSS is imported in the map component, not `globals.css`.
-- **Listing detail** — server page (`getListing`) with full facts, remarks, a map,
-  the inquiry form, and **IDX attribution** on every view ("Listed by {office} —
-  {agent}"). The attribution rule is honored on cards, popups, and detail.
-- **Favorites** — `useFavorites` (localStorage, custom-event sync) mirroring the
-  platform's guest model.
-- **Lead capture** — `/api/lead` proxy → `POST /api/skill/contacts/from-signup`,
-  with a honeypot field + in-memory rate limit.
-- **Neighborhoods** — server page combining `getMarketStats` + `searchListings`.
+  `/api/listings` proxy. The unfiltered browse is scoped to `MARKET_CITIES` →
+  `AGENT_SERVICE_AREAS` → the profile's service areas.
+- **Interactive map** — Leaflet price pins, **clustered**, with popups.
+  `dynamic(…, {ssr:false})` lives in a client wrapper (`ListingMapClient`).
+- **Listing detail** — server page with facts, remarks, map, `PhotoGallery`,
+  the inquiry form, and **IDX attribution** ("Listed by {office} — {agent}") on
+  cards, popups, detail and CHAP results.
+- **Favorites** — behind sign-in when accounts are enabled (magic link, Google,
+  Facebook via the agent's own OAuth keys; `SignInDialog`, `AccountMenu`,
+  `/api/account/*`); guest/test mode keeps them on-device. `RecommendedRail`
+  and the `SwipeDeck` build on saved homes.
+- **Lead capture** — `/api/lead` → `POST /api/skill/contacts/from-signup`, with
+  a honeypot + per-IP rate limit and optional Cloudflare Turnstile.
+- **CHAP** — one presentation chosen by `CHAP_PRESENTATION` in
+  `lib/chap-presentation.ts` (widget / panel / search); hidden until
+  `CHAT_API_KEY` is set.
+- **Neighborhoods, blog, about, contact** — hydrated from the agent profile
+  (or `AGENT_*` overrides).
+- **Sync** — `/api/sync/cron` runs `@chatrealty/sync` slices for a site with
+  its own `CHATREALTY_DB_URL`; refuses to run without `CRON_SECRET`.
+- `middleware.ts` sets baseline security headers; `DESIGN.md` documents the
+  design tokens and variant axes.
 
 ## Security model
 
@@ -639,9 +683,10 @@ through the app's own `/api/*` route handlers. Client components never import th
 server client or see the token. `.env.local` is git-ignored by the generated
 `.gitignore`.
 
-## Verification (v0.1)
+## Verification (v0.1, historical)
 
-Both the CLI and the emitted template are proven:
+At v0.1 both the CLI and the emitted template were proven (the page count has
+grown since):
 
 - CLI compiles (`tsc`), scaffolds 28 files, renames dotfiles, writes `.env.local`,
   exercises the token-verify path (401 → warn → continue).
@@ -659,10 +704,14 @@ Both the CLI and the emitted template are proven:
 
 ## Not yet done
 
-- ~~Not published to npm~~ **Published 2026-07-10**: `create-chatrealty-site@0.1.0`
-  live on the registry, verified end-to-end via `npx create-chatrealty-site@latest`.
-  npm account `jsardella`; org `chatrealty` reserved for `@chatrealty/*` libs.
-  Republish = bump version + `npm publish` (needs the bypass-2FA granular token).
+- ~~Not published to npm~~ **Published 2026-07-10** (`0.1.0`); the version
+  history above runs to `0.17.1`, the current `package.json`. The registry was
+  not re-checked on 2026-10-17 (no network). npm account `jsardella`; org
+  `chatrealty` reserved for `@chatrealty/*` libs. Republish = bump version +
+  `npm publish` (needs the bypass-2FA granular token) — see
+  [../mcp/publishing.md](../mcp/publishing.md).
+- The package `README.md` (shipped to npm) still describes the pre-account
+  template; fixed in the repo 2026-10-17, reaches npmjs.com on the next publish.
 - Endpoints consumed match the current `/api/skill/*` shapes; if those routes move
   to the productized OData surface (build plan Spec 6), update `lib/chatrealty.ts`.
 - v0.2 direction per [ship-strategy.md](ship-strategy.md): template becomes a thin

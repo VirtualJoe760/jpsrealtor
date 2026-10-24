@@ -1,8 +1,9 @@
 ---
 title: ChatRealty API — Connection Resolver (THE KEYSTONE)
 status: current
-last_verified: 2026-06-25
+last_verified: 2026-10-17
 related:
+  - ../multi-tenant/README.md
   - ./build_plan.md
   - ./control-plane.md
   - ./neon-setup.md
@@ -46,11 +47,18 @@ related:
 
 ## How a request resolves
 
-1. The handler wrapper (`withSkill`/`withOdata`, Agent 13) calls
-   `resolveAdapterForRequest(auth)`.
+1. `withSkill` (`src/lib/skill-api/with-skill.ts`) calls
+   `resolveAdapterForRequest(auth)`; tenant-aware read routes that aren't
+   wrapped (e.g. `listings/search`) call `resolveAdapter(auth.tenantId)` or
+   `auth.getSql()` directly when the token is tenant-bound, and otherwise keep
+   their legacy Mongo query. (`withOdata` was planned and does not exist.)
 2. **No `tenantId`** → `resolveAdapter(DEFAULT_TENANT_ID)` → the shared Mongo data
    plane (lazy `import("@/lib/mongoose")`, wrap the native `Db` in the Mongo
-   adapter). This is the cutover fallback — most legacy traffic still rides Mongo.
+   adapter). Since the BYOD gate (2026-07-23) only **admin / dogfood** tokens
+   get here: a token with `dataSource: "none"` is refused before resolution
+   (`requireScope` for data scopes; `withSkill` for tenant writes), because
+   falling back would serve the owner's licensed dataset and drop an unbound
+   tenant's leads into the shared store.
 3. **A `tenantId`** → `resolveTenantById(id)` (one indexed control-plane lookup,
    `status:"active"` only) → `decryptTenantConnUri(tenant, "pooled")` →
    `createPostgresAdapter(conn)`.
@@ -61,8 +69,11 @@ related:
 
 - **One adapter per `tenantId`.** Concurrent first-calls collapse onto a single
   in-flight construction (`inflight` map) so two requests never race two pools.
-- **LRU bounds + idle TTL.** `max: 200`, `ttl: 10min` (build_plan §6.2). An idle
-  tenant evicts so a long-lived serverless instance doesn't pin every pool.
+- **LRU bounds + TTL.** `max: 200`, `ttl: 10min` (build_plan §6.2), for both
+  the adapter cache and the `TenantSql` cache. `updateAgeOnGet` is not set, so
+  the TTL counts from construction, not from last use: every cached handle is
+  rebuilt at most 10 minutes after it was made, busy or idle, and a long-lived
+  serverless instance never pins a pool.
 - **Dispose closes the pool.** ANY removal — evict, TTL expiry, manual delete,
   `clear()` — fires `dispose → adapter.close() → pool.end()`. This is the
   keystone's #1 failure-mode guard: a leaked WS pool exhausts Postgres connection
@@ -83,6 +94,9 @@ related:
 - **The default Mongo path is lazy.** `@/lib/mongoose` is imported only when the
   default tenant is actually resolved, so the keystone (and its unit tests) never
   pull in Mongoose unless that path is taken.
+- **Nothing calls `evictAdapter` / `evictTenantSql` yet.** When
+  `reprovisionInPlace` (`src/lib/tenant/provision.ts`) rebuilds a vanished Neon
+  project, warm instances keep the old cached handle for up to 10 minutes.
 - **`getTenantSql` is Postgres-only.** The default Mongo tenant has no SQL handle
   — `getTenantSql(DEFAULT_TENANT_ID)` throws `TenantUnavailableError`.
 - **Mockability.** The control-DB lookup and both adapter factories are injected

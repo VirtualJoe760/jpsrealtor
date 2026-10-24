@@ -20,10 +20,10 @@ import "@fontsource/jost/400.css";
 import "@fontsource/jost/500.css";
 import "@fontsource/jost/600.css";
 import "@fontsource/jost/700.css";
-import Footer from "./components/Footer";
 import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
+import GoogleTags from "@/app/components/seo/GoogleTags";
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
 import { getServerTenantConfig } from "@/lib/nav-layout";
 
@@ -85,10 +85,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: cfg.siteDescription,
     metadataBase: new URL(cfg.baseUrl),
-    keywords:
-      cfg.type === "platform"
-        ? ["real estate platform", "AI real estate", "find a realtor", "ChatRealty"]
-        : ["real estate", "homes for sale", "local realtor"],
+    // NO `keywords`. Google has ignored the meta keywords tag since 2009, and
+    // because metadata merges field by field, a sitewide value is inherited by
+    // every page that does not override it — which is how a Coachella Valley
+    // keyword list ended up on the Riverside page. Nothing reads it, so the
+    // only thing it can do is be wrong. See lib/seo-metadata.ts.
     authors: [{ name: cfg.siteName, url: cfg.baseUrl }],
     creator: cfg.siteName,
     publisher: cfg.siteName,
@@ -210,7 +211,7 @@ export default async function RootLayout({
         {/* Apple Touch Icons */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         {/* Favicon */}
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
@@ -272,31 +273,24 @@ export default async function RootLayout({
         <PersonJsonLd />
         <WebSiteJsonLd />
 
-        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}');
-              `}
-            </Script>
-          </>
-        )}
+        {/* Was hardwired to NEXT_PUBLIC_GA_MEASUREMENT_ID, i.e. one analytics
+            property for every tenant and no Google Ads tag at all. Now resolved
+            per tenant from agentProfile.tracking, with the env values as the
+            platform fallback. */}
+        <GoogleTags tracking={tenant.tracking} />
         <ClientLayoutWrapper
           initialTheme={serverTheme}
           initialPreference={serverPreference}
           navLayout={navLayout}
           themeLocked={themeLocked}
           forcedTheme={themeLocked ? serverTheme : undefined}
+          metaPixelId={tenant.tracking.metaPixelId}
         >
+          {/* No page footer (2026-10-17, Joseph: hide it on every page). Privacy
+              and Terms moved into the sidebar — see components/LegalLinks.
+              components/SiteFooter is kept, unrendered, for its DRE/broker
+              resolution; restoring it is one line here. */}
           {children}
-          <Footer />
         </ClientLayoutWrapper>
       </body>
     </html>

@@ -12,6 +12,23 @@ import { City } from '@/models/cities';
 import Subdivision from '@/models/subdivisions';
 import { createSlug } from '@/lib/utils/slug';
 
+/**
+ * Subdivision names the MLS uses to mean "no subdivision". They are not places,
+ * so they must never become a URL: a /neighborhoods/<city>/not-applicable page
+ * is thin duplicate content, and the sitemap used to declare 41 of them across
+ * Southern California. Exported so sitemap-generator.ts filters on exactly the
+ * same list this directory does — a URL in the sitemap but not in the directory
+ * has no inbound link, which is how pages land in "crawled, not indexed".
+ */
+export const NON_PLACE_SUBDIVISION_NAMES = [
+  'Not Applicable', 'N/A', 'NA', 'None', 'NONE',
+  'Other', 'Unknown', 'Custom', 'not applicable',
+];
+
+export function isNonPlaceSubdivision(name?: string | null): boolean {
+  return !name || NON_PLACE_SUBDIVISION_NAMES.includes(name);
+}
+
 interface SubdivisionData {
   name: string;
   slug: string;
@@ -91,6 +108,31 @@ function getCountyNameForCity(county: string, city: string): string {
 }
 
 /**
+ * Sub-county AREA labels. `getCountyNameForCity` returns either a real county
+ * name ("Riverside", "Los Angeles") or one of these area names, and the two
+ * read differently in a sentence: "Riverside County" needs the suffix,
+ * "Coachella Valley County" is nonsense.
+ */
+const AREA_LABELS = new Set(['Coachella Valley', 'Joshua Tree Area']);
+
+/**
+ * Human label for a tier-2 slug such as `riverside-county` or
+ * `coachella-valley-county`.
+ *
+ * The slug always ends in `-county` because that is how the directory builds
+ * it, but the LABEL must not blindly follow. The back-link on the Riverside
+ * city page read "Back to Riverside" — pointing at the county page, which is a
+ * different place from the city of the same name and the single most confusing
+ * link on the page. Indio's read "Back to Coachella Valley" and was already
+ * right, which is why this needs to be a function and not a suffix.
+ */
+export function formatCountyLabel(name: string): string {
+  if (!name) return '';
+  if (AREA_LABELS.has(name)) return name;
+  return /\bcounty\b/i.test(name) ? name : `${name} County`;
+}
+
+/**
  * Find a city by slug in the neighborhoods directory.
  * Returns the city data and county name, or null if not found.
  */
@@ -143,7 +185,7 @@ export async function getNeighborhoodsDirectory(): Promise<RegionData[] | null> 
     for (const sub of subdivisions) {
       const cityName = (sub as any).city;
       const name = (sub as any).name;
-      if (!name || ['Not Applicable', 'N/A', 'NA', 'None', 'NONE', 'Other', 'Unknown', 'Custom', 'not applicable'].includes(name)) {
+      if (isNonPlaceSubdivision(name)) {
         continue;
       }
       if (!subsByCity[cityName]) subsByCity[cityName] = [];

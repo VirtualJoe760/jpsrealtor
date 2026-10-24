@@ -18,7 +18,7 @@ export interface AgentLegalInfo {
   agentName: string;          // e.g. "Joseph Sardella"
   licenseNumber?: string;     // DRE # / license number
   businessEntity?: string;    // e.g. "JPS & Company LLC"
-  brokerageName?: string;     // e.g. "eXp Realty of Southern California"
+  brokerageName?: string;     // e.g. "Fathom Realty Group, Inc."
   brandName?: string;         // platform brand, default "ChatRealty"
   platformEntity?: string;    // operator behind the platform, default "JPS & Company LLC"
   websiteUrl?: string;        // the agent's branded site
@@ -33,7 +33,7 @@ const brand = (i: AgentLegalInfo) => i.brandName || 'ChatRealty';
 const operator = (i: AgentLegalInfo) => i.platformEntity || 'JPS & Company LLC';
 const stateOf = (i: AgentLegalInfo) => i.state || 'California';
 
-/** "Joseph Sardella, operating as JPS & Company LLC through eXp Realty…" */
+/** "Joseph Sardella, operating as JPS & Company LLC through Fathom Realty…" */
 function partyDescriptor(i: AgentLegalInfo): string {
   let s = i.agentName;
   if (i.licenseNumber) s += `, licensed real estate agent (DRE# ${i.licenseNumber})`;

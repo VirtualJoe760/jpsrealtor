@@ -160,7 +160,7 @@ export default function MarketingConsentPage() {
                 <p><strong>Legal Entity:</strong> JPS & Company LLC</p>
                 <p><strong>DBA:</strong> Joseph Sardella</p>
                 <p><strong>Real Estate License:</strong> DRE# 02106916</p>
-                <p><strong>Broker:</strong> eXp Realty of Southern California</p>
+                <p><strong>Broker:</strong> Fathom Realty Group, Inc.</p>
                 <p><strong>Contact:</strong> (760) 333-2674 | josephsardella@gmail.com</p>
                 <p><strong>Website:</strong> www.jpsrealtor.com</p>
               </div>
@@ -250,7 +250,7 @@ export default function MarketingConsentPage() {
                   <p className="font-semibold mb-1">Information Sharing:</p>
                   <ul className="list-disc pl-6 space-y-1">
                     <li>We will <strong>never</strong> sell your personal information to third parties</li>
-                    <li>Your information may be shared with our broker (eXp Realty) as required for real estate transactions</li>
+                    <li>Your information may be shared with our broker (Fathom Realty Group, Inc.) as required for real estate transactions</li>
                     <li>We use trusted service providers (SendFox for email, Twilio for SMS) who are contractually obligated to protect your data</li>
                     <li>We may disclose information if required by law or to protect our rights</li>
                   </ul>
@@ -307,7 +307,7 @@ export default function MarketingConsentPage() {
                   <li><strong>Phone:</strong> (760) 333-2674</li>
                   <li><strong>Email:</strong> josephsardella@gmail.com</li>
                   <li><strong>Website:</strong> www.jpsrealtor.com</li>
-                  <li><strong>Address:</strong> eXp Realty of Southern California, Palm Desert, CA</li>
+                  <li><strong>Address:</strong> Fathom Realty Group, Inc., Palm Desert, CA</li>
                 </ul>
               </div>
             </section>
@@ -409,7 +409,7 @@ export default function MarketingConsentPage() {
                 Get the latest real estate insights, market updates, and property listings delivered to you
               </p>
               <p className={`text-sm mt-2 ${isLight ? 'text-gray-500' : 'text-gray-400'}`}>
-                DRE# 02106916 | eXp Realty of Southern California
+                DRE# 02106916 | Fathom Realty Group, Inc.
               </p>
             </div>
 
@@ -839,7 +839,7 @@ export default function MarketingConsentPage() {
             }`}>
               <p>
                 Joseph Sardella | DRE# 02106916<br />
-                JPS & Company LLC | eXp Realty of Southern California<br />
+                JPS & Company LLC | Fathom Realty Group, Inc.<br />
                 Palm Desert, CA
               </p>
             </div>

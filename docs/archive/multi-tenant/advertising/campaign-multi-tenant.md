@@ -1,3 +1,5 @@
+> Archived: superseded by docs/campaigns/README.md (agency multi-tenant advertising), verified 2026-10-17
+
 # Multi-Tenant Ad Campaign Architecture
 
 **Status:** Plan (not yet implemented)

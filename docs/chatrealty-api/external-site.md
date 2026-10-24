@@ -1,7 +1,7 @@
 ---
 title: External sites — MCP-built deployments on the multi-tenant edge
 status: current
-last_verified: 2026-08-05
+last_verified: 2026-10-17
 related: [./architecture.md, ../ARCHITECTURE.md, ../multi-tenant/README.md, ./create-site-scaffolder.md]
 ---
 
@@ -46,14 +46,24 @@ platform-rendered page is the fallback whenever no external site is connected.
    └─ otherwise                          → platform-rendered fallback
 ```
 
-The external site owns its subdomain's **whole `/api` surface** too
-(`/api/site-config` excluded to prevent recursion) — the built site's own API
-routes answer, not the platform's.
+The external site owns its subdomain's **`/api` surface** too — the built
+site's own API routes answer, not the platform's — with two exclusions:
+`/api/site-config` (prevents recursion) and the four **platform-pinned
+hand-off routes** (`/api/auth/transfer`, `receive`, `impersonate`,
+`signout-chain`). Forwarding those handed session tokens to the agent's code
+(review M1, fixed 2026-10-17); on a serving host `receive` / `impersonate`
+answer 403 so the platform never creates a session where the agent's code
+runs. The platform's own pages (`/auth`, `/agent`, `/admin`, `/dashboard`)
+move to www on such a subdomain, and an agent with an external site works on
+www — see `../multi-tenant/README.md`. Client account pages on the agent's
+own site (`/dashboard` served by the deployment) are a separate, open piece
+of work.
 
 ## The lifecycle (MCP tools ↔ skill routes)
 
 | Step | Tool | Route | Effect |
 |---|---|---|---|
+| 0. Data | `get_site_claim_code` | `POST /api/skill/site/claim-code`, then `POST /api/skill/site/claim` | Agents with a seeded database: the site claims its own key, already bound to that database — nothing pasted, no sample data (claim codes, below) |
 | 1. Deploy | — | — | Builder deploys to the agent's Vercel; env vars server-side; test-data mode hard-fails deploys |
 | 2. Connect | `connect_site` | `POST /api/skill/site/connect` | Validates URL (https, never `*.chatrealty.io` — proxy loop), sets `externalSite.{deploymentUrl,status:"preview",connectedAt}`, **and registers the subdomain with Vercel** (below). Preview = agent + admins only, via signed link |
 | 3. Go live | `set_site_live` | `POST /api/skill/site/go-live` | **License gate** (`licenseNumber` on file → else 409 `license_required`); sets `status:"live"` + `liveAt`. Public from that moment |
@@ -61,6 +71,76 @@ routes answer, not the platform's.
 
 State lives at `User.agentProfile.externalSite` (`deploymentUrl`, `status:
 none|preview|live`, `connectedAt`, `liveAt`).
+
+## Building on the agent's seeded database — claim codes (2026-10-17)
+
+An agent who seeded listings in Settings → Integrations
+([data-tiers.md](./data-tiers.md) → Hosted seeding) already has a tenant
+database. The build used to ignore it: the guide scaffolded with sample data,
+then asked the agent for a `crt_live_` key to paste into `.env.local` — a
+secret through the chat, for a step the agent had no reason to understand. Now
+the MCP build tool finds the database itself and the site gets its key without
+anyone handling it.
+
+1. **`whoami` says the data is there.** `GET /api/skill/me` returns
+   `dataSource: "tenant"` plus a `database` block: `listings` (rows written
+   by the last seed/update), `associations`, `propertyTypes`,
+   `closedHistory`, `lastSyncedAt`, `updates: "nightly, automatic"`. Build
+   guide step 1 treats that as "data step done" — no RESO credentials, no
+   `sync init`, never sample data.
+2. **The agent's own MCP key reaches it.** A key minted in Settings lives only
+   on the User, but tenant routing resolves by `Tenant.tokenHashes`, so those
+   keys read `dataSource: "none"`. `authenticateSkillRequest`
+   (`src/lib/skill-auth.ts`) now binds a non-admin's key to the tenant they
+   **own** (`ownerUserId`, `status: "active"`) on first use and re-resolves.
+   Admin keys are never auto-bound — admin reads the dogfood corpus
+   ([ship-strategy.md](./ship-strategy.md)). Revoking a key in Settings pulls it
+   from the tenant mirror too.
+3. **`get_site_claim_code`** (scope `listings:read`, `POST
+   /api/skill/site/claim-code`) mints a one-time code: `XXXX-XXXX-XXXX`, 12
+   characters from an alphabet without 0/O/1/I/L, valid 15 minutes, one use,
+   only its sha256 stored (`src/models/SiteClaim.ts`, TTL-indexed). 409
+   `no_database` without an active tenant. The tool returns the code, the
+   database summary and `claimScript` — never a key.
+4. **The site trades the code for its key.** Claude writes `claimScript` to
+   `chatrealty-claim.mjs` in the site root, runs `node chatrealty-claim.mjs
+   <code>`, deletes it. The script calls `POST /api/skill/site/claim`
+   (public; 10 tries per 15 min per IP), which spends the code atomically and
+   mints a website key **bound to the tenant at birth** — the website preset
+   **capped to the scopes of the key that asked** — then
+   rewrites `.env.local`: drops any `CHATREALTY_API_TOKEN` /
+   `CHATREALTY_TEST_DATA` line, appends the new key, and prints only
+   "Connected … (N listings)". The key goes ChatRealty → disk; the conversation
+   sees the code and the count.
+
+**Why `listings:read` and a cap, not `site:manage`** (same day, after the first
+push): no Claude-access preset carries `site:manage` — only the Website preset
+does, and `full_workspace` excludes it on purpose — and the hosted MCP shows a
+tool only if the key holds its scope. Gated on `site:manage`, the tool was
+invisible to almost every agent's Claude, and so is `connect_site` (see
+`docs/review/` for that gap). The cap is what makes the lower gate safe: the
+code stores the asking key's scopes (`SiteClaim.scopes`) and the claimed key
+gets `PRESETS.website.scopes ∩ those`. A content-drafting key yields listings,
+market and articles; only a key that already had `site:manage` passes it on. A
+built site calls no `/api/skill/site/*` route, so it loses nothing.
+
+Refusals: 410 `invalid_or_used` (expired, spent or wrong — call the tool
+again), 409 `token_limit` (10 active keys; checked **before** the code is spent,
+so a full list doesn't burn it), 400 `malformed`.
+
+**Why a script the tool hands back, not a scaffolder flag:** it works with every
+published `create-chatrealty-site` and needs no npm release. It is a
+`String.raw` template in `packages/mcp-server/src/tools/site_tools.ts` — as a
+plain template the `\/` and `\r?\n` in its regexes collapsed and the first
+end-to-end run handed Claude a script that died on parse ("Unexpected token
+'const'"). Keep backticks and `${` out of it.
+
+Verified locally 2026-10-17 against a seeded GPS tenant (14,788 rows), running
+the **compiled** tool: owner-binding, `whoami.database`, a code with no key in
+the tool output, the script passing `node --check`, `.env.local` rewritten
+(one key line, sample mode gone, other lines kept, CRLF input), the claimed key
+reading `dataSource: "tenant"` and present in `tokenHashes`, spent and
+unknown codes → 410. Test keys revoked afterwards.
 
 ## Subdomain registration — the part that was broken
 

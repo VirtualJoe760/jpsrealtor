@@ -183,6 +183,9 @@ export const authOptions: NextAuthOptions = {
           // Agent tier + onboarding gate (see subscription-helpers.ts + proxy.ts).
           token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
           token.agentTier = await getAgentTier(String(dbUser._id));
+          // Where this agent's site lives — the proxy sends a signed-in agent
+          // there (src/lib/agent-host.ts) without a DB call per request.
+          token.agentSubdomain = (dbUser as any).agentProfile?.subdomain || undefined;
           token.permissionsCheckedAt = Date.now();
         }
       }
@@ -199,6 +202,7 @@ export const authOptions: NextAuthOptions = {
           token.isAdmin = dbUser.isAdmin;
           token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
           token.agentTier = await getAgentTier(String(dbUser._id));
+          token.agentSubdomain = (dbUser as any).agentProfile?.subdomain || undefined;
           token.permissionsCheckedAt = Date.now();
         }
       }
@@ -218,13 +222,14 @@ export const authOptions: NextAuthOptions = {
       ) {
         await dbConnect();
         const dbUser = await User.findById(token.id as string)
-          .select("roles isAdmin agentProfile.onboardingComplete")
+          .select("roles isAdmin agentProfile.onboardingComplete agentProfile.subdomain")
           .lean();
         if (dbUser) {
           token.roles = (dbUser as any).roles;
           token.isAdmin = (dbUser as any).isAdmin;
           token.onboardingComplete = !!(dbUser as any).agentProfile?.onboardingComplete;
           token.agentTier = await getAgentTier(String((dbUser as any)._id));
+          token.agentSubdomain = (dbUser as any).agentProfile?.subdomain || undefined;
         }
         // Stamp even on a missing user so a deleted account doesn't re-query
         // on every request for the cookie's remaining lifetime.
@@ -251,6 +256,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).requiresTwoFactor = token.requiresTwoFactor;
         (session.user as any).agentTier = token.agentTier ?? "free";
         (session.user as any).onboardingComplete = !!token.onboardingComplete;
+        (session.user as any).agentSubdomain = token.agentSubdomain ?? null;
         // Admin impersonation
         if (token.impersonatedBy) {
           (session.user as any).impersonatedBy = token.impersonatedBy;

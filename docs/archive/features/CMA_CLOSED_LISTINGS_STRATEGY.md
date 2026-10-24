@@ -1,3 +1,5 @@
+> Archived: strategy doc; closed listings + CMA live in docs/listings/README.md, verified 2026-10-17
+
 # CMA Closed Listings Strategy
 
 **Date**: December 4, 2025

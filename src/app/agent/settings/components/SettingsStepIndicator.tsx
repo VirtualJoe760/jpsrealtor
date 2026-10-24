@@ -15,6 +15,7 @@ import {
   Building2,
   Plug,
   CreditCard,
+  Target,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,6 +31,7 @@ export type SettingsStep =
   | "calendar"
   | "gbp"
   | "integrations"
+  | "tracking"
   | "billing";
 
 export interface SettingsStepDef {
@@ -60,6 +62,7 @@ const STEPS: SettingsStepDef[] = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "gbp", label: "Google Business", icon: Building2 },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "tracking", label: "Tracking & Ads", icon: Target },
   { id: "billing", label: "Billing", icon: CreditCard },
 ];
 

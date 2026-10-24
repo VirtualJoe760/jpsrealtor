@@ -56,6 +56,24 @@ export type MlsFeedStatus = {
   networksCheckedAt: string | null;
   /** The agent's pick. Empty = everything the key reaches (RESO_NETWORKS semantics). */
   networks: string[];
+  propertyTypes: string[];
+  closedLookback: "none" | "1y" | "2y" | "5y" | "all";
+  /** Last size estimate (src/lib/mls-seed.ts estimateScope), or null. */
+  estimate: any;
+  /** Seed / nightly update progress — sanitized: no feed cursor, no lease internals. */
+  sync: {
+    status: "idle" | "queued" | "running" | "done" | "error";
+    mode: "seed" | "update" | null;
+    rowsUpserted: number;
+    rowsRemoved: number;
+    expectedRows: number | null;
+    dbRows: number | null;
+    requestedAt: string | null;
+    startedAt: string | null;
+    finishedAt: string | null;
+    lastRunAt: string | null;
+    lastError: string | null;
+  };
 };
 
 export type MlsFeedReason =
@@ -294,16 +312,9 @@ export async function testMlsFeed(input: MlsFeedInput): Promise<MlsFeedTestResul
 // Associations — which data networks a key reaches
 // ---------------------------------------------------------------------------
 
-/**
- * The field associations are grouped on — the same one @chatrealty/sync's
- * RESO_NETWORKS filters (`networkField` default in reso-fetch.ts), so what the
- * agent picks here means exactly what it means to the sync. It names the MLS a
- * listing originates from. NOT ListOfficeAOR / ListAgentAOR: those name the
- * listing office's REALTOR association, and filtering a site on them would hide
- * valid MLS listings (GPS tags both "California Desert Association of Realtors"
- * and "Greater Palm Springs Realtors" inside one MLS).
- */
-export const NETWORK_FIELD = "OriginatingSystemName";
+// The grouping field lives in mls-feed-constants.ts so the browser card can share it.
+export { NETWORK_FIELD } from "@/lib/mls-feed-constants";
+import { NETWORK_FIELD } from "@/lib/mls-feed-constants";
 const MAX_NETWORKS = 50;
 
 export type MlsNetwork = { name: string; count: number | null };
@@ -374,7 +385,10 @@ export async function discoverMlsNetworks(input: MlsFeedInput, field = NETWORK_F
 
 const STATUS_FIELDS =
   "mlsFeed.status mlsFeed.authMode mlsFeed.baseUrl mlsFeed.tokenUrl mlsFeed.scope mlsFeed.last4 mlsFeed.lastError mlsFeed.addedAt mlsFeed.lastVerifiedAt " +
-  "mlsFeed.networkField mlsFeed.availableNetworks mlsFeed.totalListings mlsFeed.networksCheckedAt mlsFeed.networks";
+  "mlsFeed.networkField mlsFeed.availableNetworks mlsFeed.totalListings mlsFeed.networksCheckedAt mlsFeed.networks " +
+  "mlsFeed.propertyTypes mlsFeed.closedLookback mlsFeed.estimate " +
+  "mlsFeed.sync.status mlsFeed.sync.mode mlsFeed.sync.rowsUpserted mlsFeed.sync.rowsRemoved mlsFeed.sync.expectedRows mlsFeed.sync.dbRows " +
+  "mlsFeed.sync.requestedAt mlsFeed.sync.startedAt mlsFeed.sync.finishedAt mlsFeed.sync.lastRunAt mlsFeed.sync.lastError";
 
 function toStatus(f: any): MlsFeedStatus {
   return {
@@ -394,7 +408,27 @@ function toStatus(f: any): MlsFeedStatus {
     totalListings: typeof f?.totalListings === "number" ? f.totalListings : null,
     networksCheckedAt: f?.networksCheckedAt ? new Date(f.networksCheckedAt).toISOString() : null,
     networks: Array.isArray(f?.networks) ? f.networks.map(String) : [],
+    propertyTypes: Array.isArray(f?.propertyTypes) && f.propertyTypes.length ? f.propertyTypes.map(String) : ["Residential"],
+    closedLookback: ["none", "1y", "2y", "5y", "all"].includes(f?.closedLookback) ? f.closedLookback : "none",
+    estimate: f?.estimate ?? null,
+    sync: {
+      status: ["queued", "running", "done", "error"].includes(f?.sync?.status) ? f.sync.status : "idle",
+      mode: f?.sync?.mode ?? null,
+      rowsUpserted: Number(f?.sync?.rowsUpserted ?? 0),
+      rowsRemoved: Number(f?.sync?.rowsRemoved ?? 0),
+      expectedRows: typeof f?.sync?.expectedRows === "number" ? f.sync.expectedRows : null,
+      dbRows: typeof f?.sync?.dbRows === "number" ? f.sync.dbRows : null,
+      requestedAt: iso(f?.sync?.requestedAt),
+      startedAt: iso(f?.sync?.startedAt),
+      finishedAt: iso(f?.sync?.finishedAt),
+      lastRunAt: iso(f?.sync?.lastRunAt),
+      lastError: f?.sync?.lastError ?? null,
+    },
   };
+}
+
+function iso(d: unknown): string | null {
+  return d ? new Date(d as any).toISOString() : null;
 }
 
 /** Sanitized status — safe to return to the browser. Never includes the ciphertext. */
@@ -543,4 +577,41 @@ export async function setMlsNetworks(userId: string, picked: string[]): Promise<
     { $set: { "mlsFeed.networks": Array.from(new Set(picked)) } }
   );
   return getMlsFeedStatus(userId);
+}
+
+/**
+ * An exact-count helper bound to one set of credentials: same URL safety check,
+ * same token exchange, one `$top=0&$count=true` request per call. Used by the
+ * size estimate and the seed's "expected rows".
+ */
+export async function feedCounter(
+  input: MlsFeedInput
+): Promise<{ count: (filter: string | null) => Promise<number | null> } | FeedFailure> {
+  const unsafe = await checkUrls(input);
+  if (unsafe) return unsafe;
+  try {
+    const tok = await resolveAccessToken(input);
+    if ("reason" in tok) return tok;
+    return {
+      count: async (filter) => {
+        const params: Record<string, string> = { $top: "0", $count: "true" };
+        if (filter) params.$filter = filter;
+        // A count that can't be had is unknown (null), never a thrown error:
+        // one slow connection to the MLS (ConnectTimeoutError, seen 2026-10-16)
+        // used to turn the whole estimate into a 500.
+        try {
+          const res = await fetchNoRedirect(`${input.baseUrl}/Property?${new URLSearchParams(params).toString()}`, {
+            headers: { authorization: `Bearer ${tok.token}`, accept: "application/json" },
+          });
+          if (!res.ok) return null;
+          const n = ((await res.json().catch(() => null)) as any)?.["@odata.count"];
+          return typeof n === "number" ? n : null;
+        } catch {
+          return null;
+        }
+      },
+    };
+  } catch (err: any) {
+    return networkFailure(err);
+  }
 }

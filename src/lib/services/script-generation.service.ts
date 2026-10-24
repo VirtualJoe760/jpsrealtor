@@ -521,7 +521,7 @@ CRITICAL INSTRUCTIONS:
    f. Close: "Thanks and have a great day!"
 
 EXAMPLE (THIS IS THE STYLE TO MATCH - 71 words):
-"Hey this is Joe with eXp Realty. Just saw that your property recently expired from the MLS and wanted to see if you were still interested in selling. Our office is currently accepting new listings in our portfolio. I would be grateful for the opportunity to earn your business. Please call me back at 760-333-3676 at your earliest convenience. You can learn more about me by visiting my website jpsrealtor.com. Thanks and have a great day!"
+"Hey this is Joe with Fathom Realty. Just saw that your property recently expired from the MLS and wanted to see if you were still interested in selling. Our office is currently accepting new listings in our portfolio. I would be grateful for the opportunity to earn your business. Please call me back at 760-333-3676 at your earliest convenience. You can learn more about me by visiting my website jpsrealtor.com. Thanks and have a great day!"
 
 ${voicePersonality ? `\nVOICE STYLE: ${voicePersonality}` : ''}
 

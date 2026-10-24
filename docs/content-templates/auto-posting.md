@@ -1,22 +1,26 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
-status: planned
+status: partial
 last_verified: 2026-10-17
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
-related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ../integrations/twilio.md]
+related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
 
 # Automated carousel posting
 
-**Status: planned.** Nothing in this doc is built yet. It is the agreed design.
-
 ## TL;DR
 
-A cron builds candidate carousels from the team's active listings, uploads the
-slides to Cloudinary, and texts the agent. The agent reviews on the dashboard
-and approves — or replies `POST` by SMS. Approved posts publish on the next
-Tue/Thu/Sun slot. Nothing publishes without explicit approval. Slides are
-deleted from Cloudinary after publishing.
+**Status: partly built.** A generated carousel is a `PendingPost`. The agent
+reviews it in the Instagram tab of the agent CMS (`/agent/cms`) or texts
+`POST <code>`; an hourly cron publishes **approved** posts in the Tue/Thu/Sun
+9am-Pacific slot, one carousel per slot, and deletes the slides from Cloudinary
+afterwards. Nothing publishes without `approvedAt`.
+
+**Not built:** scheduled generation (the `daily-carousel` skill builds one post
+per run — it is not a Vercel cron), the "posts are ready" text to the agent, the
+2-hour grace window and expiry/roll-forward, and the sweep for declined posts.
+See "Implementation map" below.
 
 Instagram has no drafts or scheduling API (verified against Meta's live docs
 2026-07-26 — the container endpoint accepts no `scheduled_publish_time` and
@@ -24,23 +28,24 @@ exposes no drafts endpoint), so the review-and-schedule step is ours to own.
 
 ## Decisions
 
-| Question | Answer |
-|---|---|
-| SMS approval keyword | **`POST`** — `YES`/`START`/`STOP`/`HELP` are carrier-mandated A2P keywords and cannot be repurposed |
-| Multiple queued | keyword carries a short code (`POST A4`); bare `POST` works when exactly one is pending |
-| Unapproved at slot time | **grace window of 2 hours** after the slot — approve inside it and it still posts. Past that it rolls to the next slot date |
-| Never approved | never publishes. Rolls forward until declined or expired |
-| Listing pool | **The Obsidian Group** (see below) |
-| Generation cadence | **Sun / Tue / Thu**, each run targeting a slot **≥3 days out** |
-| Candidates per run | **multiple** — the agent declines or regenerates ones that came out badly |
-| Posting slots | **Tue / Thu / Sun** for carousels. Reels on other days, later — the reel pipeline is still WIP |
-| Listing preference | newer listings preferred, not required |
-| Slide retention | delete from Cloudinary after a successful publish |
+| Question | Decision | Reality (2026-10-17) |
+|---|---|---|
+| SMS approval keyword | **`POST`** — `YES`/`START`/`STOP`/`HELP` are carrier-mandated A2P keywords and cannot be repurposed | Built. Regex accepts `POST` or `POST <letter><digit>` only (`APPROVE_RE` in `src/lib/messaging/post-approval-sms.ts`) |
+| Multiple queued | keyword carries a short code (`POST A4`); bare `POST` works when exactly one is pending | Built, as described. Only `awaiting_review` posts answer to a code |
+| Unapproved at slot time | grace window of 2 hours | **Not built.** The cron posts only inside the 9am hour; an approved post that misses it goes at the next slot |
+| Never approved | never publishes | True. Nothing expires or rolls it — `rollCount`, `notifiedAt`, `remindedAt` are written as defaults and read by nothing |
+| Listing pool | **The Obsidian Group** (see below) | Selected by the skill's scratch scripts, not by app code |
+| Generation cadence | Sun / Tue / Thu, each run ≥3 days out | **Daily** attempt by the `daily-carousel` skill (`.claude/skills/daily-carousel/source-post.md`); it builds only when a never-queued listing exists |
+| Posting slots | **Tue / Thu / Sun** for carousels | Built: `POST_DAYS` / `POST_HOUR = 9` / `America/Los_Angeles` in `src/app/api/cron/publish-pending/route.ts` and `nextPostSlot()` in `src/app/api/agent/pending-posts/[id]/route.ts`. Reels: not built (backend TBD) |
+| Listing preference | newer listings preferred, not required | Judgement in the skill |
+| Slide retention | delete from Cloudinary after a successful publish | Built, inline in the publish cron (not a separate sweep) |
 
 ## Identifying the team
 
-The Obsidian Group is **not** an MLS office. Team listings carry
-`listOfficeName: "eXp Realty Of Southern California Inc"` — the brokerage,
+The Obsidian Group is **not** an MLS office. As of 2026-07-26 team listings carried
+`listOfficeName: "eXp Realty Of Southern California Inc"` (the team has since moved
+brokerages — the 2026-10 rebrand to Fathom Realty Group, `d816b548` — so
+re-check the office strings; the co-list rule below is what identifies the pool) — the brokerage,
 shared with hundreds of unrelated agents — and the office string is not even
 consistent within the team (`eXp Realty of California Inc` also appears).
 
@@ -109,6 +114,13 @@ luxury format. Selection must filter to `A`, require enough photos to stage
 listing.
 
 ## Pool depth and what it means for cadence
+
+> **Everything from here to "## Implementation map" is a dated log**, not a
+> description of current state. Each "Re-measured" entry records what the pool,
+> the queue and the builds looked like on one day in 2026-08/09 (counts, queue
+> depth, which listings were struck and why). The reusable lessons are cross-
+> referenced from `actor-generation.md` and `copy-voice.md`; the numbers are not
+> maintained.
 
 Measured 2026-07-26:
 
@@ -830,7 +842,7 @@ The oldest unreviewed post (R4, 2800 Vista Chino) has been sitting **30 days**.
 And every listing that has ever been queued has a live `awaiting_review` build in
 that stack — **zero listings have only declined builds** — so there is no listing
 anywhere in the pool that could be rebuilt without putting a second version of
-one house in front of the agent, which `source-post.md` names as the agent's
+one house in front of the agent, which `.claude/skills/daily-carousel/source-post.md` names as the agent's
 problem to untangle.
 
 That makes "build nothing" the correct output rather than a failure to find
@@ -995,7 +1007,7 @@ room #36 shows unfurnished. Nobody has lived in this house; there is no
 un-staged furnished frame to find.
 
 **The queue held two live builds of 71817 Samarkand Drive for 20 days.**
-`source-post.md` §4 says to pick the better build and delete the other *before
+`.claude/skills/daily-carousel/source-post.md` §4 says to pick the better build and delete the other *before
 reporting*, and both R4 and F2 were queued on 2026-08-16 and both left
 `awaiting_review`. That instruction is written as a step inside a build, so no
 later run looked for a duplicate it had not created itself — which is why one
@@ -1695,104 +1707,35 @@ consecutive clean run — of which **18 are publishable**, still **0 approved**,
 and still one listing ever posted (53806 Ridge Road, two `posted` records).
 Code **G6**, id `6ad40e450b45e02118b579e5`, 8 slides.
 
-## Pipeline
+## Implementation map
 
-```
-cron (Sun/Tue/Thu)
-  │  pick N listings from the pool, newest-first, skipping recently posted
-  ▼
-build carousel  ── plan → cover → stage rooms → band → CMA → text → CTA
-  │              (actor-generation.md governs every Gemini call)
-  ▼
-upload slides to Cloudinary  →  create PendingPost (status: awaiting_review)
-  │
-  ▼
-SMS the agent: "2 posts ready to review — <link>"
-  │
-  ├── dashboard: approve / decline / regenerate / schedule
-  └── SMS reply "POST A4" → approved
-  │
-  ▼
-publish cron (Tue/Thu/Sun slot + 2h grace)
-  │  approved?  → publish to Instagram, SMS confirmation, delete Cloudinary slides
-  │  not approved? → SMS reminder, roll to next slot
-  ▼
-PendingPost → posted / rolled / declined
-```
+| Piece | Where | Notes |
+|---|---|---|
+| Model | `src/models/PendingPost.ts` | Scoped by `agentId`. Statuses: `generating`, `awaiting_review`, `approved`, `posted`, `declined`, `expired`, `failed` — there is no `scheduled` status; a schedule is `scheduledFor` on an `approved` post. Slides are `{ n, publicId \| null, url, kind }`; text and CTA slides have no `publicId` (they are transforms over a built-in sample). |
+| Generator | `scripts/build-pending-post.ts <slug> [--exclude 3,7,12]` | Copy lives in `scripts/data/pending/<slug>.ts`, hand-written per listing. Pipeline: `selectStagingPhotos` → `stageGeometric` (`scripts/stage_geometric.py`) → band → cover → CMA (only if the subdivision has closed-sale stats) → text + CTA → insert `awaiting_review`. It always inserts and never supersedes, so a rebuild makes a second record. Hardcodes Joseph's headshot, email, handle and broker logo — tenant one. |
+| Scheduled generation | `.claude/skills/daily-carousel/` | A scheduled Claude task, not a Vercel cron. `vercel.json` only schedules `auto-approve-partners`, `publish-pending` (hourly) and `mls-sync`. |
+| Review UI | `src/app/agent/cms/components/InstagramContent.tsx` | Rendered on `/agent/cms`. |
+| Review API | `GET /api/agent/pending-posts`, `PATCH /api/agent/pending-posts/[id]` (`approve` / `decline` / `schedule`), `GET /api/agent/pending-posts/archive`, `POST /api/agent/pending-posts/[id]/imprint` (regenerate one slide from the agent's note) | Approving without a slot stamps `scheduledFor = nextPostSlot()`. Decline keeps per-slide `slideFeedback`. |
+| SMS approval | `src/lib/messaging/post-approval-sms.ts`, called from `/api/crm/sms/webhook` **before** the contact lookup | Only the agent's own cell can approve; a client texting `post` falls through to normal handling. |
+| Publish | `src/app/api/cron/publish-pending/route.ts`, `src/lib/instagram-publish.ts` | Hourly; acts only at 9:00 Pacific on Sun/Tue/Thu (`?force=1` overrides). Takes `approved` posts, first-approved first, **one per slot**. Skips (and marks `expired`) a listing already `posted`. A failure leaves the post `approved` and counts `failedAttempts`; at 5 it becomes `failed`. On success it destroys the Cloudinary assets, empties `slides`, sets `assetsDeletedAt` and `archivedAt`. |
+| Disclosure | `is_ai_generated` | Sent to Meta by default (`isAiGenerated !== false`). |
 
-## The `PendingPost` model
+## Not built, and what it would take
 
-Scoped by `agentId` from day one — this is a user feature, not a Joseph
-feature.
+- **"Posts are ready" text.** The senders exist — `notifyPostsReady`, `notifyPostSlotDue` and `notifyPostPublished` in `src/lib/messaging/notify-agent-posts.ts`, on `TWILIO_ALERT_NUMBER` — but nothing calls them (not the generator, the publish cron or the skill), so nothing texts the agent about a queued post and approval by SMS needs the agent to already know the code. Texting the agent themselves is low-volume to an opted-in recipient and works on the shared number; texting *other* agents at scale is A2P-gated per `twilio.md`.
+- **Grace window, expiry, roll-forward.** The publish cron has no notion of a missed slot beyond "approved posts go at the next 9am slot". Unapproved posts stay `awaiting_review` forever.
+- **Sweep for declined/expired posts.** Their Cloudinary assets are kept (the agent may regenerate from the same source) and nothing ever removes them. Any sweep must stay a separate job so a failed delete never makes a successful post look failed.
+- **Reels** on non-carousel days — the `staging-timelapse-reel` video backend is TBD (ComfyUI, Kling and Luma were all evaluated and deprecated 2026-08-07).
+- **Multi-tenant pool and cost control.** Per-agent pool config, per-agent number + A2P, and credit billing for Gemini spend (roughly $0.16–$0.40 per build) are all open. `PendingPost` is `agentId`-scoped from the start; the generator is not.
 
-Fields worth calling out:
+## Scratch scripts the skill depends on
 
-- `agentId` — owner. Every query filters on it.
-- `listingKey` + a denormalized address/price snapshot, so the review UI
-  doesn't refetch and the record still reads correctly after the listing
-  changes.
-- `slides[]` — Cloudinary public_ids **and** urls. Public_ids are what the
-  cleanup job deletes; urls are what Instagram fetches.
-- `caption`.
-- `approvalCode` — the 2-char code in the SMS.
-- `status` — `generating | awaiting_review | approved | scheduled | posted | declined | failed | expired`.
-- `scheduledFor` — the slot it's aimed at. Rolls forward on miss.
-- `rollCount` — so a post can expire rather than roll forever.
-- `igPostId` + `permalink` after publishing.
-- `generation` — which listing, which photo indices, which poses. Needed for
-  **regenerate** to rebuild with different choices rather than from scratch.
-
-## SMS
-
-Everything needed already exists (`docs/integrations/twilio.md`):
-
-- **Outbound** — `src/lib/messaging/notify-agent.ts` already texts the agent's
-  cell from the platform number. Lead alerts use it today.
-- **Inbound** — `/api/crm/sms/webhook` already resolves the agent by the `To`
-  number and handles keywords.
-
-Two things to add:
-
-1. A `POST <code>` branch in the webhook, **before** the contact lookup. The
-   webhook is contact-oriented; an inbound from the agent's own cell is not a
-   client message and must not be threaded as one.
-2. Point the Twilio webhook URL at production. ngrok appears nowhere in
-   application code — "taking it live" is Twilio console configuration.
-
-> **A2P.** Texting the agent *themselves* is low-volume to a known, opted-in
-> recipient and works today on the shared platform number. Texting *other
-> agents* at scale is A2P-gated per `twilio.md` — that gate lands with the
-> multi-tenant rollout, not with this feature.
-
-## Cloudinary lifecycle
-
-Slides are uploaded for one purpose: to give Instagram a public URL to fetch.
-Once published, Instagram serves its own copy and ours is dead weight.
-
-- Delete slide assets after a **successful** publish, keeping `igPostId` and
-  `permalink` on the record.
-- Do **not** delete on decline immediately — the agent may regenerate from the
-  same source. Sweep declined/expired posts after a retention window.
-- The cleanup must be a **separate sweep job**, not inline with publish. A
-  delete failing must never make a successful post look failed.
-
-## Phases
-
-| Phase | Scope |
-|---|---|
-| **1** | `PendingPost` model + generation script (manual invoke) → produces a reviewable record |
-| **2** | Review UI — grid of slides, caption, approve / decline / regenerate / schedule |
-| **3** | SMS notify + `POST` keyword in the webhook + production webhook URL |
-| **4** | Cron: generate Sun/Tue/Thu; publish Tue/Thu/Sun with 2h grace and roll |
-| **5** | Cloudinary sweep |
-| **6** | Multi-tenant: per-agent pool config, per-agent number + A2P, credit billing for Gemini spend |
-
-## Open questions
-
-- **Reels** on non-carousel days depend on the `staging-timelapse-reel`
-  pipeline, which is WIP (video-generation backend TBD — ComfyUI, Kling, and
-  Luma were all evaluated and deprecated 2026-08-07). Out of scope until
-  carousels are running.
-- **Cost control.** Each build is roughly $0.16-$0.40 of Gemini. Generating
-  multiple candidates three times a week needs a per-agent cap before this is
-  a paid feature.
+`scripts/tmp-stale-queue.js`, `tmp-pool3.js`, `tmp-pool4.js`, `tmp-detail2.js`,
+`tmp-drop-slide.js`, `tmp-graft-slide.js`, `tmp-retire-duplicate.js`,
+`tmp-retext-pending-post.ts` and `tmp-selector-dump.ts` are committed.
+`scripts/reband-pending-post.ts`, `scripts/recover-pending-post.ts`,
+`scripts/tmp-pool-check.js` (superseded by `tmp-pool3.js`),
+`scripts/tmp-cover-preview.ts`, `scripts/tmp-watermark-strip.py` and
+`scripts/tmp-corner-strip.py` are referenced throughout this doc but were
+**untracked in git** as of 2026-10-17 — they exist only in Joseph's working
+copy, so a fresh clone cannot run them.

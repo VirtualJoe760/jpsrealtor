@@ -1,3 +1,5 @@
+> Archived: superseded by docs/seo/README.md, verified 2026-10-17
+
 # Multi-Domain SEO Architecture
 
 All SEO output (JSON-LD structured data, meta tags, OpenGraph, canonical URLs) is now domain-aware. The system detects the serving hostname and adapts its output for three domain categories:

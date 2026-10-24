@@ -82,11 +82,6 @@ fs.createReadStream(csvPath)
             contentType: 'image/png',
           },
           {
-            filename: 'obsidian-about.jpg',
-            path: path.join(process.cwd(), 'public', 'marketing', 'obsidian-about.jpg'),
-            contentType: 'image/jpeg',
-          },
-          {
             filename: 'sellers-coverage.pdf',
             path: path.join(process.cwd(), 'public', 'marketing', 'sellers-coverage.pdf'),
             contentType: 'application/pdf',
@@ -126,11 +121,6 @@ fs.createReadStream(csvPath)
             path: path.join(process.cwd(), 'public', 'joey', 'email-banner.png'),
             cid: 'email-banner',
             contentType: 'image/png',
-          },
-          {
-            filename: 'obsidian-about.jpg',
-            path: path.join(process.cwd(), 'public', 'marketing', 'obsidian-about.jpg'),
-            contentType: 'image/jpeg',
           },
           {
             filename: 'sellers-coverage.pdf',

@@ -28,7 +28,7 @@ import ListingOptionsCard from "./ListingOptionsCard";
 import ClarificationCard from "./ClarificationCard";
 import { extractFiltersFromQuery, applyFiltersToListings } from "@/app/utils/chat/filter-extractor";
 import { getMapCenter } from "@/lib/geo-centers";
-import { getDefaultSiteName } from "@/lib/domain-classify";
+import { nameWordmark } from "@/lib/agent-wordmark";
 
 // New modular components
 import ChatInput from "./ChatInput";
@@ -43,6 +43,8 @@ import EndOfQueueModal from "./EndOfQueueModal";
 import type { MapListing } from "@/types/types";
 import { useChatTutorial, TutorialManager } from "@/app/components/tutorial";
 import YouTube from "@/app/components/mdx/YouTube";
+import { BrandSlotPlaceholder, useBranding } from "@/app/contexts/BrandingContext";
+import BrandCornerMark, { useHasCornerMark } from "@/app/components/brand/BrandCornerMark";
 
 // Contact import props
 interface ContactImportContext {
@@ -69,31 +71,19 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   const { messages, addMessage, clearMessages, setUnreadMessage, setNotificationContent, hasUnreadMessage } = useChatContext();
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Site name: from agent profile (siteName field) or domain default
-  const [siteName, setSiteName] = useState("chatRealty");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Set hostname-based default first
-    setSiteName(getDefaultSiteName(window.location.hostname));
-    // Then check if agent has a custom siteName via branding API
-    const hostname = window.location.hostname;
-    const isSubdomain =
-      hostname.endsWith(".localhost") ||
-      (hostname.includes("chatrealty") && hostname !== "chatrealty.io" && hostname !== "www.chatrealty.io");
-    if (isSubdomain) {
-      const sub = hostname.includes("chatrealty")
-        ? hostname.split("chatrealty")[0]?.replace(/\.$/, "").split(".").pop()
-        : hostname.split(".localhost")[0];
-      if (sub) {
-        fetch(`/api/agent-branding?subdomain=${sub}`)
-          .then((r) => r.ok ? r.json() : null)
-          .then((data) => {
-            if (data?.branding?.siteName) setSiteName(data.branding.siteName);
-          })
-          .catch(() => {});
-      }
-    }
-  }, []);
+  // Brokerage mark and site name come from the shared branding provider.
+  // This used to be a fourth independent /api/agent-branding fetch; the widget
+  // also hardcoded a brokerage asset pair once, so the chat landing kept
+  // showing a brokerage the agent had left. Undefined = render no mark.
+  const { branding: sharedBranding, isPlatform, resolved: brandingResolved } = useBranding();
+  // The hero title, in order: the agent's explicit Site Name → their own name
+  // as a wordmark → CHATREALTY. Their name is the default on an agent's site;
+  // it used to be "chatRealty" for everyone (getDefaultSiteName), which put
+  // the platform brand on top of every agent's chat page. CHATREALTY is now
+  // only for platform hosts, or an agent who typed "chatRealty" on purpose.
+  const explicitSiteName = sharedBranding?.siteName?.trim() || "";
+  const heroNameMark = !isPlatform ? nameWordmark(sharedBranding?.agentName) : null;
+  const hasCornerMark = useHasCornerMark(isLight);
 
   // Cycling placeholder text (conditional based on mode)
   const placeholders = mode === 'contact_import'
@@ -1490,17 +1480,22 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
             <div className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-2 md:gap-8 px-4">
               {/* Logo & Brand */}
               <div className="flex items-center justify-center gap-3">
+                {/* No mark → no badge box and no divider. Rendering both empty
+                    left a stray rule and pushed the title off-centre. */}
+                {hasCornerMark && (
+                <>
                 <motion.div
                   whileHover={{ scale: 1.1, rotateY: 15, rotateX: 5 }}
                   className="w-22 h-22 md:w-24 md:h-24"
                 >
-                  <Image
-                    src={isLight ? "/images/brand/exp-Realty-Logo-black.png" : "/images/brand/EXP-white-square.png"}
-                    alt="eXp Realty"
-                    width={96}
-                    height={96}
-                    className="object-contain"
-                    priority
+                  {/* Text brand mark when the agent has one, brokerage logo
+                      otherwise — same component the hero corners use, so the
+                      chat page cannot drift from the rest of the site. */}
+                  <BrandCornerMark
+                    isLight={isLight}
+                    className="flex h-full w-full items-center justify-center"
+                    wordmarkClassName={`text-[34px] md:text-[40px] ${isLight ? "text-gray-900" : "text-white"}`}
+                    logoClassName="h-full w-full object-contain"
                   />
                 </motion.div>
 
@@ -1511,12 +1506,19 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                       : "bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
                   }`}
                 />
+                </>
+                )}
 
                 <h1 className={`text-4xl md:text-5xl ${isLight ? "text-gray-900" : "text-white"}`}>
-                  {siteName === "chatRealty" ? (
-                    <Wordmark />
+                  {explicitSiteName && explicitSiteName !== "chatRealty" ? (
+                    <span className="font-light tracking-wider">{explicitSiteName}</span>
+                  ) : !isPlatform && !brandingResolved ? (
+                    // Don't flash CHATREALTY while the agent's name is loading.
+                    <BrandSlotPlaceholder className="h-[1em] w-64" />
+                  ) : heroNameMark && explicitSiteName !== "chatRealty" ? (
+                    <Wordmark thin={heroNameMark.thin} bold={heroNameMark.bold} spaced />
                   ) : (
-                    <span className="font-light tracking-wider">{siteName}</span>
+                    <Wordmark />
                   )}
                 </h1>
               </div>

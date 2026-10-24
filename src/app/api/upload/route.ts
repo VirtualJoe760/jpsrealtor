@@ -8,6 +8,7 @@ import {
   uploadArticleFeaturedImage,
   uploadArticleOGImage,
   uploadImage,
+  uploadAgentLogo,
 } from "@/lib/cloudinary";
 
 export async function POST(req: NextRequest) {
@@ -47,6 +48,22 @@ export async function POST(req: NextRequest) {
       case "og":
         result = await uploadArticleOGImage(base64);
         break;
+      case "logo": {
+        // Brand marks keep their alpha and are namespaced per agent.
+        const variant = formData.get("variant") === "dark" ? "dark" : "light";
+        const uploaded = await uploadAgentLogo(
+          base64,
+          (session.user as any).id || (session.user as any).email,
+          variant
+        );
+        result = {
+          url: uploaded.secure_url,
+          publicId: uploaded.public_id,
+          width: uploaded.width,
+          height: uploaded.height,
+        };
+        break;
+      }
       default:
         result = await uploadImage(base64, "articles/content");
         result = {

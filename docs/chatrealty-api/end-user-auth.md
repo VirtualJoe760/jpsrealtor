@@ -1,8 +1,13 @@
 ---
 title: End-user auth + account favorites (Phase B)
-status: template-complete; platform built (untested vs live tenant)
-last_verified: 2026-07-23
+status: partial
+last_verified: 2026-10-17
+related: [./ship-strategy.md, ./lead-capture.md, ./external-site.md, ../multi-tenant/README.md]
 ---
+
+> **Status:** template complete; platform routes built and re-verified against
+> code 2026-10-17. Still unverified at runtime: the "Untested paths" section
+> below (needs a live tenant). Previously carried a non-standard status string.
 
 # End-user auth + account favorites (Phase B)
 
@@ -25,7 +30,12 @@ last_verified: 2026-07-23
 3. **PURELY BYOD — end-user data lives in the agent's tenant DB.** End-user
    accounts + favorites are stored in the agent's ChatRealty (Postgres) database,
    never in a shared pool. No cross-tenant visibility: an end-user of agent A
-   never sees agent B's data, and never appears in agent B's CRM.
+   never sees agent B's data, and never appears in agent B's CRM. *As built
+   (2026-07-25):* `request` and `upsert` also mirror the visitor into the
+   **owning agent's** Mongo `Contact` (scoped by that agent's `userId`) plus an
+   `AgentActivity` feed entry (`src/lib/crm/mirror-to-owner.ts`), because the
+   agent dashboard and MCP contact tools read Mongo. Best-effort; it never
+   fails a signup.
 4. **Degrade to guest when auth isn't available.** In test-data mode and on the
    free tier (no provisioned tenant DB), there is nowhere to persist an account,
    so the template runs **guest-only**: favorites stay in localStorage exactly as
@@ -71,7 +81,8 @@ last_verified: 2026-07-23
 Tenant-scoped via `withSkill` (same tenant keystone as every other skill route).
 Every route hard-guards `auth.tenantId` — no tenant → HTTP 501, which the
 template reads as "accounts unavailable" and degrades to guest. **Built and
-type-clean; not yet exercised against a live provisioned tenant.**
+type-clean; not yet exercised against a live provisioned tenant.** No scope
+check and no rate limit on any of these routes (ship-strategy B2).
 
 - `POST /auth/request` — `{ email, origin, siteName }` → `onSignup` (create/find
   end-user + mirror a deduped Contact), mint a single-use magic-link token

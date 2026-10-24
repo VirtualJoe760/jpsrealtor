@@ -11,6 +11,7 @@ import {
   UserCircle,
   CreditCard,
   Settings,
+  TrendingUp,
 } from 'lucide-react';
 import type { NavItem } from '../types';
 
@@ -69,6 +70,17 @@ export const getNavItems = (
       icon: FileText,
       exact: false,
       show: true,
+    },
+    {
+      // Admin-only while the sales heat map is evaluated on real data. This
+      // only hides the link; each of the three /api/analytics read routes
+      // enforces the same rule with requireAdmin(), which is the gate that
+      // actually matters.
+      href: '/agent/analytics',
+      label: 'Analytics',
+      icon: TrendingUp,
+      exact: false,
+      show: isAdmin,
     },
     {
       href: '/agent/settings',

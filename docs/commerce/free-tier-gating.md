@@ -1,8 +1,8 @@
 ---
 title: Free-Tier Gating & Forced Onboarding
 status: current
-last_verified: 2026-07-02
-related: [README.md, ../auth/README.md]
+last_verified: 2026-10-17
+related: [README.md, ../auth/README.md, ../admin/README.md]
 ---
 
 # Free-tier gating & forced onboarding
@@ -45,7 +45,7 @@ New agents must complete the setup wizard before using the portal.
 |---|---|---|
 | Flag | `User.agentProfile.onboardingComplete` (default `false`) | Set `true` when the wizard is finished/skipped |
 | JWT | `src/lib/auth.ts` | Stamps `onboardingComplete` + `agentTier` at sign-in; `trigger:"update"` re-reads them so `session.update()` refreshes without re-login |
-| Middleware guard | `src/proxy.ts` | A non-admin agent whose `onboardingComplete === false` is redirected to `/agent/settings?onboarding=true` (except when already there) |
+| Middleware guard | `src/proxy.ts` (`portalGates()`, applied on www **and** on agent subdomains since 2026-10-16) | A non-admin agent whose `onboardingComplete === false` is redirected to `/agent/settings?onboarding=true` (except when already there) |
 | Wizard | `src/app/agent/settings/components/SettingsWizard.tsx` | On Finish/Skip: PUTs `onboardingComplete:true`, calls `session.update()`, lands on the sidebar view |
 
 **Gotcha — JWT staleness:** the guard checks `onboardingComplete === false` **explicitly** (not falsy).
@@ -53,8 +53,9 @@ Existing agents whose JWT predates the field carry `undefined` and are NOT trapp
 A client-side `localStorage` flag is a secondary fallback.
 
 **Deploy note — existing-agent backfill:** if a cohort of agents predates this feature, run a one-off
-`onboardingComplete=true` backfill so they aren't sent through the wizard. Not urgent today (only the
-admin — exempt — and one test agent exist).
+`onboardingComplete=true` backfill so they aren't sent through the wizard. (The July 2026 note that
+"only the admin and one test agent exist" no longer holds; the explicit `=== false` check above is
+what protects agents whose record has no value.)
 
 ## Gating map
 
@@ -67,20 +68,27 @@ admin — exempt — and one test agent exist).
 | Settings → Integrations (hide Ad accounts / Messaging / Email blocks) | `.../settings/components/SettingsSidebar.tsx` | `showPaid` wrap; AI keys + Legal stay free |
 | Plan step / Billing panel | `.../settings/components/steps/BillingSettings.tsx` | Free = current; paid tiers greyed "Coming soon" |
 | `/agent/subscription` (retired standalone page) | `src/proxy.ts` | Redirects → `/agent/settings?section=billing` |
+| Paid portal pages (`/agent/campaigns`, `/agent/messages`, `/agent/email`, `/agent/dashboard/domains`) | `src/proxy.ts` (`PAID_AGENT_PATHS`) | Free, non-admin agent → `/agent/settings?section=billing` |
 
 ### Server (enforce) — free-tier → 403
 
 Client hiding is not enough; these routes reject free-tier agents (admins exempt) via
-`isFreeTier(userId)`:
+`isFreeTier(userId)` (15 routes, checked 2026-10-17):
 
-| Route | Feature |
+| Route (under `src/app/api/`) | Feature |
 |---|---|
-| `src/app/api/crm/send-email/route.ts` | Email send |
-| `src/app/api/crm/sms/send/route.ts` | SMS send |
-| `src/app/api/agent/messaging/provision/route.ts` | Provision Twilio number |
-| `src/app/api/campaigns/create/route.ts` | Create campaign |
-| `src/app/api/campaigns/[id]/launch-ads/route.ts` | Launch ads |
-| `src/app/api/domains/purchase/route.ts` | Buy custom domain |
+| `crm/send-email`, `agent/email` | Email send / email setup |
+| `crm/sms/send`, `agent/messaging/provision` | SMS send / provision a Twilio number |
+| `campaigns/create`, `campaigns/[id]/{send,send-mail,send-simple,launch-ads,fund}` | Campaign create, send, mail, ads, funding |
+| `campaigns/funding/[fundingId]/respond` | Approving co-marketing ad funding |
+| `dropcowboy/campaign` | Voicemail drops |
+| `domains/purchase`, `agent/domains` | Buying / mapping a custom domain |
+| `integrations/api-tokens` | Not a block: free tier may only mint tokens with `FREE_TIER_SCOPES` (403 names the disallowed scopes) |
+
+> **Gap:** the API-token scope cap is enforced only when the token is minted.
+> `src/lib/skill-auth.ts` does not re-check tier on each request, and
+> `PUT /api/user/profile` will write `agentProfile.aiIntegrations.apiTokens`
+> directly (see [../agent-identity/agent-profile.md](../agent-identity/agent-profile.md)).
 
 Guard pattern (matches each route's own error envelope):
 

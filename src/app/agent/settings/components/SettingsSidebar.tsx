@@ -15,6 +15,7 @@ import DomainSeoStep from "./steps/DomainSeoStep";
 import ServiceAreasStep from "./steps/ServiceAreasStep";
 import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
+import TrackingStep from "./steps/TrackingStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
 import BillingSettings from "./steps/BillingSettings";
 import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
@@ -163,6 +164,8 @@ export default function SettingsSidebar({
             </div>
           </div>
         );
+      case "tracking":
+        return <TrackingStep {...stepProps} />;
       case "billing":
         return <BillingSettings {...stepProps} />;
     }

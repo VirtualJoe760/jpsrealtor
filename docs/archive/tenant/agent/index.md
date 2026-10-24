@@ -1,3 +1,5 @@
+> Archived: superseded — agentProfile is edited in the /agent/settings wizard (src/app/agent/settings/components/steps/); see docs/agent-identity/README.md and docs/agent-onboarding/README.md, verified 2026-10-17
+
 # Agent Profile System
 
 **Part of the ChatRealty.io Multi-Tenant Platform**

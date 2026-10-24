@@ -211,7 +211,7 @@ export function buildSimpleLuxuryTransformations(
 
     // 10. Specs
     // y:605 budgets for a TWO-line credit above. Long brokerage names
-    // ("eXp Realty Of Southern California Inc") wrap at width 360; the shipped
+    // ("Fathom Realty Group, Inc.") wrap at width 360; the shipped
     // carousel uses y:590 only because its credits happen to fit on one line.
     // Don't tighten this back to 590 — it crowds the wrapped second line.
     {

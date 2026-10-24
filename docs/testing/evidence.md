@@ -1,12 +1,19 @@
 ---
 title: Evidence — what the loop has actually produced
-status: current
-last_verified: 2026-08-05
-related: [tom.md, README.md, agents/tom/MEMORY.md]
+status: partial
+last_verified: 2026-10-17
+related: [tom.md, README.md, coverage.md, agents/tom/MEMORY.md]
 audience: external — readable without ChatRealty context
 ---
 
 # Evidence
+
+> **Snapshot, not a live ledger.** The numbers below were computed on
+> 2026-08-05 and cover sessions 5–10. They have not been refreshed: this repo
+> cannot read the report store, and `coverage.md` already cites later sessions
+> (14 and 17, 2026-08-05/06) that are not in the table. Treat every count as
+> "as of session 10". The method in §7 reproduces them against
+> `agenttestreports`. The package versions quoted in §4 are dated there.
 
 `tom.md` describes how the loop is built. This file is the record of what it
 has done, drawn from the report store and the judge's own cross-session memory.
@@ -118,9 +125,10 @@ the judge reported that a fix named in the resolution notes did not exist in
 the npm package the builder actually installed. Builders were scaffolding
 0.8.0 while the guide described 0.9.0 behaviour. "Committed" and "shipped" are
 indistinguishable from inside the repository and completely distinguishable
-from outside it — which is the position the judge occupies. *(Both packages
-currently match their published versions: scaffolder 0.13.0, MCP server
-0.20.9.)*
+from outside it — which is the position the judge occupies. *(As of
+2026-08-05 both packages matched their published versions: scaffolder 0.13.0,
+MCP server 0.20.9. The repo's `package.json` files now read scaffolder 0.17.1
+and MCP server 0.26.0; whether those are published is not checked here.)*
 
 **Two regressions in fixes that had been marked complete.** Session 9 re-tested
 two items the session 8 resolution notes claimed were fixed:

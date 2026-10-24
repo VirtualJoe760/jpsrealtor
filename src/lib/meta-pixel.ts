@@ -8,14 +8,26 @@ declare global {
   }
 }
 
+// Platform fallback. Per-tenant IDs come from agentProfile.tracking.metaPixelId
+// and are passed in at init time, because this module is loaded in the browser
+// where only NEXT_PUBLIC_* env vars exist and they are the same for every tenant.
 export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 
+// The pixel actually in use for this request's tenant. Set by initMetaPixel so
+// that pageView()/trackEvent() report against the agent's own pixel rather than
+// the platform's — without it, every agent site fed one shared audience.
+let activePixelId = FB_PIXEL_ID;
+
+export const getActivePixelId = () => activePixelId;
+
 // Initialize Meta Pixel
-export const initMetaPixel = () => {
-  if (!FB_PIXEL_ID) {
+export const initMetaPixel = (pixelId?: string) => {
+  const id = (pixelId || "").trim() || FB_PIXEL_ID;
+  if (!id) {
     console.warn("Meta Pixel ID not found. Skipping initialization.");
     return;
   }
+  activePixelId = id;
 
   (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
     if (f.fbq) return;
@@ -47,23 +59,27 @@ export const initMetaPixel = () => {
   // map view (/chap?view=map&lat=…&lng=…) that auto-collection is what kept tripping Meta's
   // "parameters blocked by Meta" warnings (lat & lng) even after manual events were suppressed.
   // Turning autoConfig off means only the events we explicitly fire reach Meta.
-  window.fbq?.("set", "autoConfig", false, FB_PIXEL_ID);
+  window.fbq?.("set", "autoConfig", false, id);
 
-  window.fbq?.("init", FB_PIXEL_ID);
+  window.fbq?.("init", id);
   // Initial PageView is dispatched by MetaPixel.tsx so it goes through the lat/lng guard.
 };
 
-// Meta flags lat/lng as PII. Suppress any Pixel event when those params are in the URL,
-// because fbq always attaches event_source_url = window.location.href.
-const hasBlockedUrlParams = (): boolean => {
-  if (typeof window === "undefined") return false;
-  const params = new URL(window.location.href).searchParams;
-  return params.has("lat") || params.has("lng");
-};
+// NOTE: there is deliberately no lat/lng suppression here any more.
+//
+// fbq always attaches event_source_url = window.location.href, and MapLayer writes
+// lat/lng into the URL on every pan/zoom (on /chap and on /). Gating events on those
+// params therefore silenced the pixel across the entire map experience and the
+// homepage — every Lead, ViewContent and Search fired from there was dropped before
+// it left the browser. Meta strips suspected PII from event_source_url on their side
+// and still records the event, so the gate destroyed data to avoid a cosmetic
+// Events Manager warning.
+//
+// The real protection is autoConfig: false in initMetaPixel() above, which stops the
+// query string being collected as event parameters in the first place. Keep it off.
 
 // Track page view
 export const pageView = () => {
-  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", "PageView");
   }
@@ -71,7 +87,6 @@ export const pageView = () => {
 
 // Track standard events
 export const trackEvent = (name: string, options: Record<string, any> = {}) => {
-  if (hasBlockedUrlParams()) return;
   if (window.fbq) {
     window.fbq("track", name, options);
   }
@@ -181,5 +196,46 @@ export const trackViewTopListings = (listings: Array<{
     currency: "USD",
     content_category: "favorites_collection",
     num_items: listings.length,
+  });
+};
+
+// Custom event: View City page (for retargeting)
+//
+// Deliberately NOT routed through trackViewContent: that helper stamps
+// content_type "property" and a listingKey, so a city would enter the audience
+// as a listing that no catalog can ever match. A city is a place — the intent
+// signal worth retargeting is "shopping this market", not "viewed this home".
+export const trackViewCity = (city: {
+  name: string;
+  county?: string;
+  listingCount?: number;
+}) => {
+  trackEvent("ViewContent", {
+    content_ids: [`city:${city.name}`],
+    content_type: "destination",
+    content_name: city.name,
+    content_category: "city",
+    city: city.name,
+    region: city.county,
+    num_items: city.listingCount ?? 0,
+  });
+};
+
+// Custom event: View Article (for retargeting)
+//
+// content_category carries the article's own category so audiences can be built
+// per topic — a buyer reading financing guides is a different campaign from a
+// seller reading market reports. Articles are the highest-CTR pages on the site
+// (1.74% vs 0.35% for city pages), so this is the cheapest audience to fill.
+export const trackViewArticle = (article: {
+  slug: string;
+  title?: string;
+  category?: string;
+}) => {
+  trackEvent("ViewContent", {
+    content_ids: [`article:${article.slug}`],
+    content_type: "article",
+    content_name: article.title || article.slug,
+    content_category: article.category || "insights",
   });
 };

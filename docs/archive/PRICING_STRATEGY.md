@@ -1,3 +1,5 @@
+> Archived: January 2026 planning doc — "Inside/Outside Agent" tiers and rev-share never shipped; current pricing is docs/commerce/README.md, verified 2026-10-17
+
 # Pricing & Monetization Strategy
 
 **Last Updated:** January 17, 2026

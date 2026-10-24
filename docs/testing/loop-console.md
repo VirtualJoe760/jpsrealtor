@@ -1,8 +1,8 @@
 ---
 title: Loop Console — the live admin surface, and how it streams
 status: current
-last_verified: 2026-08-05
-related: [README.md, tickets.md, repairer.md, tom.md]
+last_verified: 2026-10-17
+related: [README.md, tickets.md, repairer.md, tom.md, ../admin/README.md]
 ---
 
 # Loop Console (`/admin/loop`)
@@ -12,11 +12,17 @@ The one admin surface for the feedback loop (consolidated 2026-08-05;
 mostly — how the streaming works, because that part has real design decisions
 in it.
 
+Code: page `src/app/admin/loop/page.tsx`; backing API
+`src/app/api/admin/loop/route.ts` (session + `isAdmin`; `GET` composite
+payload, `GET ?report=<id>` lazy full markdown, `POST` an admin chat message,
+`PATCH` for ticket status, report lifecycle, the toggle, or Tom's mode); stream
+`src/app/api/admin/loop/stream/route.ts`.
+
 ## Layout, top to bottom
 
 | Panel | What it shows |
 |---|---|
-| **Stage banner** | Derived stage (armed / report-waiting / repairing / paused — computed, never stored), the flippable toggle, the `● live / ○ polling` stream badge, and presence chips for both agents |
+| **Stage banner** | Derived stage (idle / armed / report-waiting / repairing / paused — computed, never stored; **idle** = Tom's operator switch is set to Idle and outranks everything else), the Idle/Working switch for Tom, the flippable testing toggle (who flipped it last, and when), the `● live / ○ polling` stream badge, and presence chips for both agents. A pipeline strip below it shows Armed → Build + judge → Report → Repair; "Build + judge" is never reported by the API (the control plane cannot see a build in flight), so it only appears as the gap between Armed and Report |
 | **Agent chat · Activity** | The mailbox to Tom and the repairer; the merged event timeline. Deliberately the first row — it's what "is anything happening?" actually asks |
 | **Field tickets · Session reports** | Fingerprint clusters (population-first, expandable, resolvable); reports with full markdown on expand + lifecycle buttons. The tickets card is `self-start` so an empty queue doesn't render as a giant dead box |
 | **Bug reports · Feedback submissions** | Read-only views of `report_bug` and `give_feedback` stores; triage stays in `scripts/cr-bugs.mjs` / `cr-feedback.mjs` |
@@ -42,15 +48,18 @@ delivering: `● live` or `○ polling`.
 
 SSE — **Server-Sent Events**: an admin-gated route that returns a
 `text/event-stream` response and never finishes it. Four MongoDB **change
-streams** (`collection.watch()`, Atlas replica set required) feed it:
-`loopmessages`, `agenttestreports`, `ticketfingerprints`, `testingstates`.
+streams** (`collection.watch()`, a replica set is required — the production
+cluster is DigitalOcean Managed MongoDB, not Atlas) feed it: `loopmessages`,
+`agenttestreports`, `ticketfingerprints`, `testingstates`.
 
-Two event types only, and that asymmetry is the design:
+Two event types carry data, and that asymmetry is the design (a third, `hello`,
+is just the connect handshake with a timestamp; a change-stream `error` is
+reported as a `bump` of kind `stream-degraded`):
 
 | Event | When | Payload | Client reaction |
 |---|---|---|---|
-| `chat` | a `loopmessages` **insert** | the full message | append instantly (deduped by id — the poll may have won the race) |
-| `bump` | anything else changed | `{ kind }` only | debounced (400ms) re-fetch of `GET /api/admin/loop` |
+| `chat` | a `loopmessages` **insert** | the full message | append instantly (deduped by id — the poll may have won the race), then a debounced re-fetch for the activity feed and unread counts |
+| `bump` | anything else changed (a message ack, a report/ticket change, any `testingstates` write — including the Idle/Working switch) | `{ kind }` only | debounced (400ms) re-fetch of `GET /api/admin/loop` |
 
 Why not typed events for every mutation? Because the composite GET is already
 the single source of truth for page state, and duplicating its shaping logic

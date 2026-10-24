@@ -1,3 +1,5 @@
+> Archived: campaign UI still exists (src/app/agent/campaigns); content unchecked — restore candidate for docs/campaigns/, verified 2026-10-17
+
 # Campaign UI - Implementation Summary
 
 ## What I Built

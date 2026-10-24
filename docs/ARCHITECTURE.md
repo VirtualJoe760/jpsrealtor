@@ -17,7 +17,9 @@ etc.) is owned by an agent (`User`). Public pages scope content to the **domain
 owner** — jpsrealtor.com → Joseph, bethanyklier.chatrealty.io → Bethany — via
 `src/lib/resolveDomainOwner.ts`. Identity is NextAuth JWT; cross-domain sessions
 use a transfer → receive handshake; signout is a chained multi-apex flow. MongoDB
-Atlas is the source of truth; Cloudinary holds all images.
+is the source of truth — a DigitalOcean **Managed MongoDB** cluster
+(`jpsrealtor-mongodb-911080c1`), **not Atlas**, despite what this line said
+until 2026-10-10. Cloudinary holds all images.
 
 ## Subsystem map
 
@@ -26,16 +28,24 @@ Atlas is the source of truth; Cloudinary holds all images.
 | Routing | `src/proxy.ts` | [routing/](./routing/) — subdomains serve EITHER the platform-rendered page OR a proxy-rewrite onto the agent's own MCP-built deployment; see [chatrealty-api/external-site.md](./chatrealty-api/external-site.md) |
 | Theming (system-pref default, Dynamic Island sync) | `src/app/contexts/ThemeContext.tsx` | [theming/](./theming/) |
 | Auth | `src/lib/auth.ts` | [auth/](./auth/) |
-| Multi-tenant scoping | `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) |
+| Multi-tenant scoping — one deployment, every host | `src/proxy.ts` + `src/lib/agent-host.ts` + `src/lib/resolveDomainOwner.ts` | [multi-tenant/](./multi-tenant/) — also [custom-domains](./multi-tenant/custom-domains.md), [domain-owner-scoping](./multi-tenant/domain-owner-scoping.md) |
+| Admin dashboard, "Log in as", moderation | `src/app/admin/` + `src/lib/admin-auth.ts` | [admin/](./admin/) |
+| Agent identity (affiliation / brokerage / team) | `src/models/User.ts` (`agentProfile.brokerage`) + `src/app/api/agent-branding/route.ts` | [agent-identity/](./agent-identity/) |
+| Agent onboarding — signup → manual approval → subdomain | `src/app/api/admin/applications/agents/route.ts` + `src/lib/generate-subdomain.ts` | [agent-onboarding/](./agent-onboarding/) |
+| SEO — canonicals, sitemaps, structured data | `src/lib/domain-utils.ts` (`getBaseUrl`) + `src/lib/sitemap-generator.ts` | [seo/](./seo/) |
 | CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
-| CRM | `src/models/Contact.ts` | [crm/](./crm/) — [full dialer build plan](./crm/dialer/build-plan.md) (saved simulation queues/attempts + agent lock + inline contact editing; credit reservations and isolated Stripe test wallets added; live voice and billing activation pending) |
-| Listings / MLS | `src/models/unified-listing.ts` | [listings/](./listings/) |
-| Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — *not yet written* |
+| CRM | `src/models/Contact.ts` | [crm/](./crm/) — [dialer build plan](./crm/dialer/build-plan.md) |
+| Listings / MLS | `src/models/unified-listing.ts` (collection `unified_listings`; closed history is `unified-closed-listing.ts`) | [listings/](./listings/) |
+| Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — tool index in [chat/TOOLS_INDEX.md](./chat/TOOLS_INDEX.md) |
+| Analytics — sales heat map (read-only over precomputes; never calculates) | `src/lib/analytics/heatmap/sources.ts` + `src/app/api/analytics/{sales-grid,hotspots,areas}` | [analytics/](./analytics/) — deep dive in [analytics/sales-heatmap.md](./analytics/sales-heatmap.md) |
 | Commerce | `src/models/AgentSubscription.ts` | [commerce/](./commerce/) |
+| Campaigns & advertising (spends real money) | `src/app/api/campaigns/[id]/launch-ads/route.ts` + `src/models/Campaign.ts` | [campaigns/](./campaigns/) |
 | External integrations | `src/lib/` (each integration is one file) | [integrations/](./integrations/) |
-| MCP server (agent's Claude → ChatRealty) | `packages/mcp-server/` (planned) + `src/app/api/skill/*` | [mcp/](./mcp/) |
+| MCP server (agent's Claude → ChatRealty) | `packages/mcp-server/` + `src/lib/mcp-tool-bridge.ts` (hosted) + `src/app/api/skill/*` | [mcp/](./mcp/) — Claude building the agent's site: [mcp/site-building.md](./mcp/site-building.md) |
 | Content templates — IG carousels, cover slides, reels | `scripts/carousel-build.js` + `src/lib/cover-templates/` | [content-templates/](./content-templates/) |
-| API productization — headless backend BaaS (**planned/design**) | `src/app/api/skill/*` + Neon per-tenant DB | [chatrealty-api/](./chatrealty-api/) |
+| API productization — headless backend, BYOD Neon DB per tenant (built: provisioning, hosted seeding, claim codes; open items in ship-strategy) | `src/app/api/skill/*` + `src/models/control/Tenant.ts` + `src/lib/mls-seed.ts` | [chatrealty-api/](./chatrealty-api/) |
+| Testing / judge loop — Tom (judge), Test Claude (builder), the repairer, tickets, `/admin/loop` | `src/app/api/skill/testing/route.ts` + `src/models/AgentTesting.ts` + `src/models/LoopTicket.ts` + `src/app/admin/loop/page.tsx` | [testing/](./testing/) — operational reference: [testing/mcp/web-design/](./testing/mcp/web-design/) |
+| Review queue — bugs awaiting a decision | — | [review/](./review/) |
 
 ## Cross-cutting invariants
 
@@ -43,11 +53,12 @@ These bite hardest when forgotten. Read every time.
 
 - **Multi-tenant scoping.** Any public endpoint displaying content MUST use `resolveDomainOwner` — not `session.user.id`. Failure mode: visitors see the wrong agent's data, or empty pages on apex domains. See [multi-tenant/](./multi-tenant/).
 - **Vercel `after()`.** Background work on serverless functions needs `after()` from `next/server` to survive the 200 response. Bare fire-and-forget is killed when the function returns. Used in `/api/crm/contacts/import/confirm` and similar.
-- **API caching.** `vercel.json` currently sets `/api/(.*)` to `Cache-Control: no-store, max-age=0`; immutable caching is scoped to static assets. Dynamic API routes should also return explicit `Cache-Control: no-store` to protect private responses if deployment headers change.
+- **`vercel.json` caching — FIXED, and this entry used to be wrong.** It claimed the catch-all put `max-age=31536000, immutable` on every path "including `/api/*`". It does not: the catch-all source is `/((?!api/|_next/).*)` (`vercel.json:13`), which *excludes* `api/` and `_next/`, and now sets only `public, max-age=0, must-revalidate` (it used to stamp `immutable` on non-API HTML too — the 2026-07-25 PWA favorites leak; see [tech-debt.md](./tech-debt.md)). `immutable` is scoped to `/_next/static/*` and `/fonts/*`; `/images/*` gets 1 day + stale-while-revalidate. A later `/api/(.*)` rule sets `no-store, max-age=0`. Verified against `vercel.json` 2026-10-17 (last-match-wins ordering still applies). So an API route does **not** need its own `no-store` for production — but note those headers are Vercel-only and do not apply in `next dev`, so set it explicitly on responses that must never be cached locally either (e.g. error responses).
 - **Middleware file is `src/proxy.ts`**, not `middleware.ts` (Next.js 16 renamed the convention; many legacy docs still say middleware).
-- **Windows absolute paths** for all file ops (Claude Code bug with relative paths).
+- **Absolute paths** for all file ops (Claude Code bug with relative paths). The prefix differs per machine — macOS `/Users/averagexjoe/Documents/websites/jpsrealtor/...`, Windows `F:\web-clients\joseph-sardella\jpsrealtor\...`. See AGENTS.md rule 1.
+- **No component hardcodes a brokerage.** One deployment serves many agents, so a literal brokerage name or logo asset in shared code stamps one agency onto every other agent's site. Resolve from `/api/agent-branding`. See [agent-identity/](./agent-identity/).
 - **CMS source of truth is MongoDB.** The MDX files in `src/posts/` are a git-stored mirror; production reads from Mongo only.
-- **Cookies are domain-scoped.** Sign-in on `jpsrealtor.com` does NOT carry to `chatrealty.io`. Cross-domain transfer goes through `/api/auth/transfer` → `/api/auth/receive`.
+- **Cookies are host-scoped.** On `chatrealty.io` and every agent subdomain the session cookie is **host-only** (2026-10-16) — www and `{sub}.chatrealty.io` each hold their own; only `jpsrealtor.com` / `josephsardella.com` set an apex-wide cookie (`src/app/api/auth/receive/route.ts`). Moving between hosts always goes `/api/auth/transfer` → `/api/auth/receive`. See [auth/](./auth/) and [multi-tenant/](./multi-tenant/).
 - **Two content paths, and they are not interchangeable.** Joseph's own posts ship from the LOCAL scripts (`scripts/carousel-build.js` → `scripts/carousel-upload-and-publish.js`), which read `.env.local` and hit the Meta Graph API directly — no MCP, no token scopes, no connector. The MCP tools (`create_listing_cover`, `create_carousel_slide`, `post_instagram_carousel`) are the PRODUCT, for other agents. When the job is "get a post out", use the scripts; when the job is "make the product work", use the MCP path and verify it separately. Conflating the two turns a 20-minute task into a day. See [content-templates/](./content-templates/).
 - **MCP connectors freeze scopes AND tool schemas at connect time.** Shipping a new tool, a new tool parameter, or a token scope does nothing for an already-connected client until it reconnects — and an unknown parameter is silently STRIPPED client-side by the cached schema, so it looks like a broken deploy rather than a stale connection. Never iterate on tool surface through a live connector. See [mcp/scopes-and-safety.md](./mcp/scopes-and-safety.md).
 
@@ -60,33 +71,22 @@ These bite hardest when forgotten. Read every time.
 5. `src/lib/signout-chain.ts` — multi-apex signout orchestration
 6. `src/models/User.ts` — anchors most relationships via `agentProfile`
 7. `src/models/Contact.ts` — CRM model with phones[] / emails[] arrays
-8. `src/models/unified-listing.ts` — MLS listing model
+8. `src/models/unified-listing.ts` — MLS listing model (Active listings; closed history is `unified-closed-listing.ts`)
 9. `src/app/api/articles/list/route.ts` — reference impl for `resolveDomainOwner` scoping
 
 ## Known tech debt
 
-See [tech-debt.md](./tech-debt.md) for the live list. Most recent entries from the May 2026 work:
-- Historical API cache catch-all was corrected; preserve the current API `no-store` rule.
-- Several public-facing API routes still scope by `session.user.id`
+See [tech-debt.md](./tech-debt.md) for the live list (fixed items stay in it, marked resolved). Open as of 2026-10-17:
+- Most public-facing API routes still scope by `session.user.id` rather than `resolveDomainOwner` (audit never done)
 - `AGENT_DOMAIN_MAP` in `proxy.ts` is hardcoded empty
-- `Campaign` model has a duplicate `campaignId` index warning
+- `DomainRegistry` writes `domain_registry` but six modules read `domainregistries` (admin-approved custom domains don't resolve on that path alone)
+- Older OAuth/ad-platform credentials on `User` are stored plaintext; only newer features use `src/lib/secrets.ts`
+- Joseph's name/DRE#/phone are hardcoded in shared CRM components (tenant leak)
+- Rate limiting is per-serverless-instance; the Upstash limiter exists but nothing uses it
 
-Dialer provider work now has an unscheduled lease/fencing foundation; see [provider jobs](./crm/dialer/provider-jobs.md). A separate gated Twilio adapter and signed status inbox are implemented; no live dispatch is connected.
-
-Dialer agent audio preferences/tests are local browser controls; persistent phone-agent audio is planned in [agent audio](./crm/dialer/agent-audio.md).
-
-The Contacts dialer now defaults to a compact contact summary and two-pane desktop view, with a collapsible 10-row paginated queue; mobile swipe navigation remains.
-
-Dialer MLS defaults now match the existing contact nearby-sales query, with optional explicit filters; inline dialer credits were removed in favor of navigation credit management.
-
-
-<!-- Dialer layout verified 2026-10-18 -->
-Dialer layout: the full-width contact/calling row sits above Property and MLS comps tools. The duplicate Contact tab is removed. MLS comps use a subject-home marker and numbered comparable markers linked to the sale list; missing coordinates are omitted from the map. Mobile uses Dialer, Property tools and Queue panels. The gear opposite Back to contacts groups audio devices, desktop queue visibility and saved-session recovery; the previous preview/header block is removed. Calls remain simulated.
-
-Dialer settings open in a native modal overlay with an independent scroll area, backdrop dismissal and Escape support. Opening settings does not move the calling workspace; focus returns to the gear when closed. Verified 2026-10-18.
-
-Inline dialer contact editing (verified 2026-10-18): the full-contact launcher is replaced by editable name, phone/email lists with primary selection, and address fields in the calling row. Save contact uses owner-scoped PATCH with validated detail fields; legacy primary phone/email values stay synchronized. Unsaved details block leaving or changing contacts. Saved queue phone snapshots remain unchanged. Address edits clear old map coordinates so research cannot silently use the previous home. The existing contact panel phone/email PATCH rejection is fixed by this shared API extension.
-
-Sold-comps map interactions (verified 2026-10-18): pointer hover or keyboard focus previews the MLS photo, sold price, address and beds/baths/size without zooming. Click/tap opens a native property-details dialog with saved closed-listing media, description, sale/build/lot/pool facts, attribution and external research links. Sale-list Property details offers the same view, including sales without map coordinates. The contact-owned comparables route projects primaryPhotoUrl/media/publicRemarks/listingId from unified_closed_listings; no active-listing or live-provider fallback is used. Missing facts/photos remain explicitly unavailable. Mobile map gestures preserve one-finger panel scrolling.
-
-Property photo enrichment (2026-10-18): contacts and sold-property dialogs share free, best-effort address-verified photo lookup and provenance-aware caching. POST lookups can seed declared externalPhotos fields on contacts/closed listings; MLS media is preserved. Source blocks are reported; no paid search provider or bypass is used. See [property-photo-discovery](./crm/property-photo-discovery.md).
+Dialer state as of 2026-10-18 (calls are still simulated; no live dispatch) is
+tracked in [crm/dialer/implementation-status.md](./crm/dialer/implementation-status.md),
+with the provider lease/fencing foundation in
+[crm/dialer/provider-jobs.md](./crm/dialer/provider-jobs.md) and best-effort
+address-verified photo lookup in
+[crm/property-photo-discovery.md](./crm/property-photo-discovery.md).

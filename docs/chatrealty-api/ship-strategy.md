@@ -1,8 +1,8 @@
 ---
 title: ChatRealty Ship Strategy — v1 Agent Sites
 status: current
-last_verified: 2026-10-16
-related: [./architecture.md, ./build_plan.md, ./create-site-scaffolder.md, ../chat/TOOLS_INDEX.md, ./lead-capture.md]
+last_verified: 2026-10-17
+related: [./architecture.md, ./build_plan.md, ./create-site-scaffolder.md, ./external-site.md, ./data-tiers.md, ./end-user-auth.md, ../multi-tenant/README.md, ../chat/TOOLS_INDEX.md, ./lead-capture.md]
 ---
 
 # Ship Strategy & v1 Agent-Site Build Plan
@@ -14,32 +14,38 @@ tethered by **end-user auth that runs through ChatRealty** (client behavior accr
 in the agent's ChatRealty CRM), and pay for **actions on that data** (campaigns,
 client-facing MCP research, done-for-you listing treatment). Updates reach shipped
 sites via a three-layer model: server-side brain (zero-touch), npm-package organs
-(`npm update`), scaffolded shell (customer-owned). Phase A is runnable **today**
-with the published `create-chatrealty-site@0.1.0`.
+(`npm update`), scaffolded shell (customer-owned). Status 2026-10-17: Phase P
+(provisioning + sync) shipped, hosted seeding and site claim codes shipped,
+B1 (end-user auth API) built; the `@chatrealty/auth` / `@chatrealty/ui`
+packages, server-driven CHAP tools and the claim/representation flow are open.
 
 Decided with Joseph (2026-07 sessions; finalized 2026-07-23). This doc is the map
 every build session executes against; it does not re-litigate strategy.
 
 ## Gotchas (read before building)
 
-- **`/api/skill/contacts/from-signup` has NO scope check and NO rate limit** — it
-  uses the minimal `withSkill` wrapper (`src/lib/skill-api/with-skill.ts:154-189`),
-  which does bearer auth + tenant binding only. Fine at current volume; **Phase B
-  must add a rate tier** before shipping auth to many sites (workstream B2).
-- **The hosted MCP bridge does not enforce tiers.** `src/lib/mcp-tool-bridge.ts`
-  lists `ALL_TOOLS` with zero references to `tiers.ts` — tier filtering is
-  stdio-only today. This is a **hard blocker (D0)** for client-facing MCP: a buyer
-  token on the hosted bridge would see agent tools.
+- **`/api/skill/contacts/from-signup` and `/api/skill/end-users/*` have NO
+  scope check and NO rate limit** — they use the minimal `withSkill` wrapper
+  (`src/lib/skill-api/with-skill.ts`), which does bearer auth + tenant binding
+  only. Fine at current volume; **B2 must add a rate tier** before auth ships to
+  many sites.
+- **The hosted MCP bridge filters by scope, not by tier.**
+  `src/lib/mcp-tool-bridge.ts` hides and refuses any tool whose scope the token
+  lacks (`TOOL_SCOPE` map), so a buyer-style token no longer sees CRM/CMS/social
+  tools. It still never consults `tiers.ts` / `RESEARCH_TOOL_NAMES`, and tools
+  absent from `TOOL_SCOPE` (identity, docs, testing, UI) are visible to every
+  token. **D0 stays a blocker** for client-facing MCP until the research
+  allow-list is enforced on the hosted transport.
 - **Don't invent identity fields — they exist.** `User.ts` already carries
-  `agentRelationship` (User.ts:1005), `representationAgreement` (User.ts:361-369),
-  `signupOrigin` (User.ts:610-616), and `Contact.linkedUserId` (Contact.ts:153).
-  Phase B/D reuse these.
+  `agentRelationship`, `representationAgreement`, `signupOrigin`, and
+  `Contact.ts` carries `linkedUserId`. Phase B/D reuse these.
 - **CHAP production is already Groq** (`openai/gpt-oss-120b` agent loop,
   `llama-3.1-8b-instant` narrator — `src/lib/chat-v2/reasoning-routing.ts:20`,
   `src/lib/chat-search/narrate.ts:385`). BYOK-Groq for agent sites is the proven
   stack, not an experiment.
-- **npm publishes** need the bypass-2FA granular token (account `jsardella`,
-  expires **2026-10-08**; see the create-site-scaffolder doc). `@chatrealty/*`
+- **npm publishes** need the bypass-2FA granular token (account `jsardella`;
+  this doc recorded an expiry of **2026-10-08**, which has passed — whether it
+  was re-minted was not verified; see the create-site-scaffolder doc). `@chatrealty/*`
   packages publish scoped under the `chatrealty` org (mcp-server and
   install-skill already live there); only the scaffolder stays unscoped for the
   `npm create` convention.
@@ -81,9 +87,12 @@ site — the free site must stay a complete website.
 | **Tenant site** (`{slug}.chatrealty.io`) | Agents who don't use Claude | Turnkey hosted site, live on profile completion |
 | **MCP / own-site** (scaffolder or hand-built) | Agents building their own brand | Their site on the ChatRealty backend (listings, CHAP, auth, CMS) |
 
-An agent is on ONE track: MCP-path agents don't run a tenant site — their
-subdomain eventually **redirects to their own site**. The tenant site is the
-no-Claude on-ramp; the MCP is the own-brand path; both feed the same CRM/tether.
+An agent is on ONE track: MCP-path agents don't run a tenant site — once their
+own deployment is connected and set live, `src/proxy.ts` **reverse-proxies**
+their subdomain (pages and the whole `/api` surface) onto it
+([external-site.md](./external-site.md)); it is a rewrite, not a redirect, so
+the URL stays `{slug}.chatrealty.io`. The tenant site is the no-Claude on-ramp;
+the MCP is the own-brand path; both feed the same CRM/tether.
 
 **What NEVER ships as code:** CHAP engine internals (parse/preview/tool
 executors), cmaStats + aggregation builders, control plane/tenancy, campaign
@@ -100,8 +109,8 @@ dogfood app.
    path is self-serve; a flow that ends in "ask ChatRealty" marks a missing API,
    not an answer. INTERIM (pre-launch testing, while the owner is the only
    customer): routing a step through ChatRealty is acceptable scaffolding — each
-   such step is a named launch blocker (today: tenant/database provisioning →
-   Phase P).
+   such step is a named launch blocker (tenant/database provisioning was the
+   last one; Phase P removed it 2026-07-23).
 3. **Product voice, not plumbing.** No token fragments, HTTP status codes, or
    internal field names in anything an agent-customer reads.
 
@@ -129,8 +138,8 @@ dogfood app.
    purely BYOD, no outside agent gets any value until their tenant DB exists
    and the sync CLI is publishable (build_plan Phases 1-3 provisioning; sync =
    Phase 4, Agent 24). Publishing sync before provisioning exists is still
-   forbidden (vaporware rule) — which is exactly why provisioning is now the
-   top build priority, not a someday item.
+   forbidden (vaporware rule) — which is exactly why provisioning became the
+   top build priority. Both shipped 2026-07-23 (Phase P below).
 8. **BYOD always** (2026-07-23): the dogfood dataset is admin-only; unbound
    tokens see `dataSource: "none"` and data reads/writes refuse loudly. Never
    re-introduce a hosted/shared listing pool — it is a data-license violation,
@@ -146,11 +155,11 @@ dogfood app.
 
 | Package | Status | Contents |
 |---|---|---|
-| `create-chatrealty-site` (unscoped — `npm create` convention) | **v0.1.0 published** | scaffolder + all-shell template |
-| `@chatrealty/auth` | Phase B | end-user identity client: React hooks + route helpers for magic-link + session |
-| `@chatrealty/ui` | Phase C | CHAP chat widget, listing card/detail/grid, favorites UI — attribution enforced in-package |
-| `@chatrealty/mcp-server` | exists | agent + (Phase D) client research tiers |
-| `@chatrealty/sync` | holstered | customer MLS→tenant-Postgres CLI |
+| `create-chatrealty-site` (unscoped — `npm create` convention) | **published** (repo at 0.17.1) | scaffolder + all-shell template (account UI, Turnstile, security middleware already in the template) |
+| `@chatrealty/auth` | Phase B — not started (no package) | end-user identity client: React hooks + route helpers for magic-link + session |
+| `@chatrealty/ui` | Phase C — not started (no package) | CHAP chat widget, listing card/detail/grid, favorites UI — attribution enforced in-package |
+| `@chatrealty/mcp-server` | **published** (repo at 0.26.0) | agent + (Phase D) client research tiers |
+| `@chatrealty/sync` | **published** (repo at 0.8.0) | customer MLS→tenant-Postgres CLI |
 
 Versioning policy: semver; breaking template/package changes get a migration note
 in the package README + docs site. Compliance fixes (attribution) always land in
@@ -164,11 +173,14 @@ in the package README + docs site. Compliance fixes (attribution) always land in
 | Site account | per-tenant, magic-link verified | synced favorites, saved searches | name, email, agent → Contact (via `onSignup`, `src/lib/crm/end-user.ts`) |
 | Claimed account | platform-level, explicit opt-in | client-facing MCP research tools | representation status (agent-attested), MCP usage signal |
 
-Reuse map (do not reinvent): `User.roles` default `["endUser"]` (User.ts:645-649);
+Reuse map (do not reinvent): `User.roles` default `["endUser"]`;
 `User.agentRelationship`; `User.representationAgreement`; `User.signupOrigin`
 (add a `"magic_link"` method value); `Contact.linkedUserId` + the
-`linkUserToAgent` dedup pattern (`src/lib/signup-origin.ts:113-175`);
+`linkUserToAgent` dedup pattern (`src/lib/signup-origin.ts`);
 `/api/skill/contacts/from-signup` (zod body: email|phone required, consent block).
+As built, tenant-site end-users live in the tenant DB's `end_user` table (not
+`User`) and are mirrored into the agent's Mongo CRM by
+`src/lib/crm/mirror-to-owner.ts`.
 
 Privacy: this makes ChatRealty a consumer-data processor across agent sites —
 CCPA applies (California). Signup UI ships with consent language; the agent owns
@@ -179,8 +191,8 @@ questions until the claim step, which is explicit consent.
 
 Free = **CHAP + the ChatRealty login connect + the CMS blog** (confirmed with
 Joseph 2026-07-23), on the agent's own BYOD data. Free scopes:
-`FREE_TIER_SCOPES` in `src/lib/skill-scopes.ts` (listings:read, market:read,
-articles:read, articles:write).
+`FREE_TIER_SCOPES` in `src/lib/skill-scopes.ts` (site:manage, listings:read,
+market:read, articles:read, articles:write); free-tier preset: `website`.
 
 | Free (complete site + the hook) | Paid (actions on the data) |
 |---|---|
@@ -199,14 +211,15 @@ template) needs B3 + C2. D depends on B.
 
 ### Phase A — First agent site (internal dogfood run)
 
-No code. Prove the shipped v0.1.0 end-to-end from a second machine. NOTE
-(2026-07-23): with the BYOD gate live, this runbook works only with an ADMIN
-(dogfood) token — a customer token returns `no_data_source` until tenant
-provisioning ships. The first true CUSTOMER run is gated on the provisioning
-phase below. Customers aren't dead-ended meanwhile: scaffolder v0.2.0 ships
-**TEST DATA mode** (`--test-data`, no token — 25 bundled fictitious listings,
-permanent banner, never launched publicly) so the site is previewable while
-the backend setup happens.
+No code. Prove the shipped scaffolder end-to-end from a second machine. With
+the BYOD gate, a customer token returns `no_data_source` until the agent has a
+tenant DB — provisioned by `npx @chatrealty/sync init` (Phase P, shipped) and
+seeded by the CLI or from Settings → Integrations → MLS Data Feed (hosted,
+2026-10-16). Since 2026-10-17 the MCP build guide claims a site key bound to
+that database (`get_site_claim_code`, [external-site.md](./external-site.md))
+instead of having the agent paste a token. **TEST DATA mode** (`--test-data`,
+no token — bundled fictitious listings, permanent banner) keeps the site
+previewable on localhost before data exists; it must never be deployed.
 
 1. On chatrealty.io (Google login fixed 2026-07-11): **Agent → Settings →
    Integrations** → mint token, preset **Full workspace**. Copy the `crt_live_…`
@@ -223,6 +236,12 @@ the backend setup happens.
 
 ### Phase B — End-user auth (the tether)
 
+**Status 2026-10-17:** B1 built (`src/app/api/skill/end-users/{auth/request,
+auth/verify,auth/upsert,me,favorites}` — end-users live in the tenant DB, see
+[end-user-auth.md](./end-user-auth.md)); B4 partly (favorites GET/PUT
+whole-set, template merge on sign-in); B6 partly (template `middleware.ts`
+security headers + optional Turnstile on the inquiry form). B2, B3, B5 open.
+
 - **B1 — Platform magic-link API.** OWNS `src/app/api/skill/end-users/*`:
   `POST auth/request` (email + name + consent → send magic link; create/link
   User with `signupOrigin.method: "magic_link"` + `agentRelationship` from the
@@ -233,7 +252,7 @@ the backend setup happens.
   site domain; re-signup links, never duplicates.
 - **B2 — Harden the signup surface.** OWNS rate limiting for `from-signup` and
   the new B1 routes (per-token `write` tier or a dedicated `signup` tier in
-  `src/lib/skill-auth.ts:233-244`) + Turnstile-compatible hook for the template
+  `RATE_LIMIT_TIERS`, `src/lib/skill-auth.ts`) + Turnstile-compatible hook for the template
   form. Depends: B1. Accept: burst signups 429 without breaking normal flow.
 - **B3 — `@chatrealty/auth` package.** OWNS `packages/chatrealty-auth/`:
   `useEndUser()` hook, `<SignInDialog>` (magic-link UX), route helpers that
@@ -267,6 +286,9 @@ the backend setup happens.
 
 ### Phase C — CHAP on agent sites
 
+**Status 2026-10-17:** not started — no `/api/skill/chap/*` route, no
+`packages/chatrealty-ui`.
+
 - **C1 — Server-driven CHAP tool definitions.** OWNS `GET
   /api/skill/chap/tools`: returns the tool JSON schemas the widget's loop may
   call, each mapping to an existing skill route (search, detail, comparables,
@@ -291,7 +313,9 @@ the backend setup happens.
   `src/lib/mcp-tool-bridge.ts`: filter `tools/list` AND `tools/call` through
   `toolsForTier` (`packages/mcp-server/src/tiers.ts` — `research:read` tier and
   `RESEARCH_TOOL_NAMES` already exist). Accept: a research-tier credential can
-  list/call only the research allow-list on the hosted transport.
+  list/call only the research allow-list on the hosted transport. *(Partial:
+  list and call are scope-filtered via `TOOL_SCOPE`; the research allow-list is
+  not applied and unscoped tools stay visible.)*
 - **D1 — Claim flow.** OWNS the "claim your ChatRealty account" invite (email +
   dashboard surface): site account → platform account; records the claim,
   preserves `agentRelationship`. Depends: B1.
@@ -344,9 +368,17 @@ Self-serve, zero humans in the loop:
   sequence (init → creds → doctor → test fetch → seed → VPS cron) — the last
   "ask ChatRealty" in the product is gone.
 
-Remaining P follow-ups: metering (Agent 23), suspended/teardown lifecycle
-tooling, and CHAP-on-tenant-Postgres (the chap-search-pg port) so tenant
-sites get full CHAP server-side.
+- **Hosted seeding (2026-10-16)** and **site claim codes (2026-10-17)** — see
+  [data-tiers.md](./data-tiers.md) and [external-site.md](./external-site.md).
+
+Remaining P follow-ups: provisioning from the UI (an agent with no tenant
+still needs the token flow), metering (Agent 23), suspended/teardown
+lifecycle tooling, CHAP-on-tenant-Postgres (the chap-search-pg port), and the
+schema gap in [neon-setup.md](./neon-setup.md) → "Which migration a tenant
+gets" (self-serve tenants miss the GiST / trigram / `extras` indexes).
+`POST /api/skill/tenant/provision` takes **any** valid token of the owner and
+returns the raw pooled + direct DB URLs — including to a scope-capped website
+key.
 
 **Sync CLI UX spec (Joseph, 2026-07-23)** — the onboarding conversation IS the
 product surface, so the CLI must support it first-class:
@@ -355,8 +387,9 @@ product surface, so the CLI must support it first-class:
    from the agent's MLS credentials (RESO Web API or Spark), env-var only.
    *(2026-10-16: agents can now also store the key on the platform — Settings →
    Integrations → MLS Data Feed, live-tested then AES-256-GCM encrypted on
-   `User.mlsFeed`; see `../integrations/README.md`. The sync CLI does not read
-   the stored key yet — it is still env-var only.)*
+   `User.mlsFeed`; see `../integrations/README.md`. The same card now seeds the
+   agent's tenant DB from the platform — serverless, chunked, nightly updates;
+   see `./data-tiers.md` → Hosted seeding. The CLI path still works, env-var only.)*
 2. **Small local test fetch** — a low-commitment mode that validates the
    credentials and previews a sample of the agent's feed on their own machine
    before any DB or server exists (maps to `doctor` + a bounded sample pull).
@@ -373,5 +406,5 @@ product surface, so the CLI must support it first-class:
 | `from-signup` abuse (no scope, no rate limit today) | B2 hardening before multi-site scale |
 | Hosted-bridge tier gap | D0 is a hard blocker for any client credential |
 | BRBC is a California (C.A.R.) form | store as generic representation agreement; CA-first is fine |
-| npm publish token expires 2026-10-08 | re-mint quarterly or move to GitHub Actions trusted publishing |
+| npm publish token (recorded expiry 2026-10-08 — passed) | re-mint quarterly or move to GitHub Actions trusted publishing |
 | Reseller scaffolds many sites on free tier | that's the agency-tier channel (see agency multi-tenant plan), not a leak |

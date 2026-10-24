@@ -1,3 +1,5 @@
+> Archived: the tutorial system is still in code (src/app/components/tutorial/) with no current doc — restore candidate for docs/chat/; content unchecked, verified 2026-10-17
+
 # Chat Tutorial System with Toasty 🐕
 **Interactive First-Time User Onboarding with Mascot Guide**
 **Last Updated:** December 28, 2025

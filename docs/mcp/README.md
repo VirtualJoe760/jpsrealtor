@@ -1,189 +1,125 @@
 ---
 title: ChatRealty MCP Server
-status: partial
+status: current
 last_verified: 2026-10-23
-last_verified_note: v0.26.0 package build verified; 40 registered tools; historical sections below need a full refresh
-related: [../integrations/README.md, ../cms/README.md, ../crm/README.md, ../listings/README.md, ./publishing.md, ./hosting.md]
+last_verified_note: Tool count re-counted from packages/mcp-server/src/tools/index.ts ALL_TOOLS on 2026-10-23 — 43 (META 13, MLS 6, INVESTMENT 4, MARKET 4, CMS_LP 4, CMS_ARTICLES 4, CRM_READ 3, IMAGES 4, SOCIAL 1); package.json 0.26.0.
+related: [./tools.md, ./site-building.md, ./scopes-and-safety.md, ./hosting.md, ./publishing.md, ./rollout-plan.md, ../integrations/README.md, ../chatrealty-api/external-site.md]
 ---
 
 # ChatRealty MCP Server
 
-The package version and registry count above were checked against source. For the current tool catalog, use [tools.md](./tools.md); older phase descriptions in this overview remain historical.
+> **TL;DR.** `@chatrealty/mcp-server` (`packages/mcp-server/`, package.json
+> **0.26.0**) lets an agent's own Claude subscription read and write their
+> ChatRealty workspace through **43 typed tools**: identity, MLS listings,
+> rental cash-flow, market data, landing pages, articles, CRM reads, the
+> website-building lifecycle (claim a site key, connect, go live), carousel
+> images and Instagram posting. Every tool is a thin wrapper over a
+> `/api/skill/*` route, authenticated with the agent's `crt_live_` token. It
+> ships two ways: **stdio** (`npx @chatrealty/mcp-server`, token in env) and
+> **hosted** (`https://www.chatrealty.io/api/mcp/mcp`, OAuth custom connector).
+> The headline use today is building the agent's website — see
+> [site-building.md](./site-building.md).
 
-> **Status: Phase 1 shipped, Phase 2 partial, hosted transport built.**
-> `@chatrealty/mcp-server` v0.26.0 registers **40 tools** across agent meta / MLS /
-> market / CMS landing pages (Phase 1) plus CMS articles, CRM read, images, and
-> Instagram (Phase 2). Code lives in `packages/mcp-server/`. Backend routes under
-> `src/app/api/skill/*` enforce per-token scopes (12 scopes, 4 UI presets) and
-> tiered rate limits (identity / read / write / send). The legacy
-> `@chatrealty/install-skill` ships alongside as a fallback for Claude Code
-> installs without MCP support. Both packages live on npm under the `@chatrealty`
-> scope — see [publishing.md](./publishing.md).
->
-> **New (2026-06-09): the hosted Streamable HTTP + OAuth transport is built.**
-> The same 26 tools are now served as a Next.js route on Vercel (`/api/mcp/mcp`)
-> behind a minimal OAuth 2.1 (DCR + PKCE) shim, so agents can add ChatRealty as a
-> *custom connector* in the Claude mobile/web apps and search the MLS from a
-> phone. No Redis, no new infra — see [hosting.md](./hosting.md). Phase 3/4 (CRM
-> writes, campaign drafts, sends) remain in design — see
-> [rollout-plan.md](./rollout-plan.md).
+## Where things are
 
-## TL;DR
+| Doc | Covers |
+|---|---|
+| [tools.md](./tools.md) | Every tool: scope, route, and which transport shows it |
+| [site-building.md](./site-building.md) | The build-guide flow end to end, known gaps, versions |
+| [scopes-and-safety.md](./scopes-and-safety.md) | Scope catalog, presets, rate limits, the connector-cache gotcha |
+| [hosting.md](./hosting.md) | Hosted Streamable HTTP + OAuth transport |
+| [publishing.md](./publishing.md) | npm release procedure for the packages |
+| [instagram-posting.md](./instagram-posting.md) | `post_instagram_carousel` setup |
+| [rollout-plan.md](./rollout-plan.md) | Phase history and the unbuilt CRM-write / campaign phases |
 
-`@chatrealty/mcp-server` is a Model Context Protocol server that lets an agent's
-**existing Claude subscription** (Claude.ai web, Claude Desktop, Claude Code) read
-and write data on their ChatRealty platform: pulling MLS listings, drafting
-landing pages and articles, reviewing leads, building campaigns. The agent never
-pastes an Anthropic API key — billing for inference stays on their Claude account;
-ChatRealty just exposes typed tools they can call.
+## Status (2026-10-17)
 
-Auth reuses the same `crt_live_*` API tokens defined in
-[`../integrations/README.md`](../integrations/README.md) (sha256-hashed,
-revokable, optionally scoped). Two transports are built: **stdio** (local
-`npx @chatrealty/mcp-server` process, env-var token) and **hosted Streamable
-HTTP** (`/api/mcp/mcp` on Vercel, OAuth 2.1 token) for one-click custom-connector
-install in the Claude mobile/web apps — see [hosting.md](./hosting.md).
+| Area | State |
+|---|---|
+| Read tools: listings, closed sales, comps, photos, market stats, CMA, neighborhoods, mortgage rates, cash-flow | Shipped |
+| CMS: landing pages + articles (create / list / get / update; articles can publish a draft) | Shipped |
+| CRM read (`contacts:read`, opt-in) | Shipped |
+| Site lifecycle: `get_site_claim_code`, `connect_site`, `site_status`, `set_site_live`, tracking IDs | Shipped |
+| Build guide (`get_build_guide` + stdio `guide://` resources) | Shipped |
+| Images + Instagram posting | Shipped, hosted connector only (stdio agent tier hides them) |
+| CRM write, campaign drafts, campaign send, analytics tools | **Designed only** — see [rollout-plan.md](./rollout-plan.md) |
+| `McpToolCallLog` audit collection, daily spend cap, two-call confirmation | **Designed only** — no model or code exists |
 
-The MCP server is intentionally a *thin transport adapter* over the existing
-`/api/skill/*` REST surface. Every tool maps 1:1 to a route, so docs and tests
-live with the route, not the MCP wrapper.
-
-## Why MCP (and not just the skill)
-
-| | Skill (Markdown + curl) | MCP server |
-|---|---|---|
-| Discovery in Claude UI | Markdown instruction Claude reads at activation | Tools listed in the tool tray, agent sees them by name |
-| Install on Claude Desktop | Manual file edits | Native "Add Connector" UI |
-| Install on Claude Code | `npx install-skill` | `claude mcp add chatrealty` |
-| Parameter validation | None — Claude builds JSON, curl, hopes | JSON Schema enforced by the protocol; bad input rejected before the API call |
-| Errors | curl stderr, Claude has to parse | Structured `{ isError: true, content: ... }` Claude renders inline |
-| Auth | `$CHATREALTY_API_TOKEN` env var | Same — token passed at server start |
-| Updates | Agent re-runs installer | `npm update -g`, or auto-refresh for hosted variant |
-
-Skills work everywhere MCP works, but the UX gap is large enough that we treat
-the skill as the Claude-Code-power-user fallback and MCP as the headline path.
-
-## Capability map (target surface)
-
-| Domain | Read | Write | Phase |
-|---|---|---|---|
-| **MLS / Listings** | search, get, photos, comparables | — (MLS is upstream; we don't write it) | 1 |
-| **Market data** | market stats, mortgage rates, subdivision CMA, neighborhood info | — | 1 |
-| **CMS / Landing pages** | list, get | create, update | 1 |
-| **CMS / Articles** | list, get | create, update | 2 |
-| **CRM / Contacts** | search, get, recent leads, contact history | add note, create contact | 2-3 |
-| **Campaigns** | list, get, spend summary | create (draft), update | 3 |
-| **Campaigns / Send** | — | launch postcard / voicemail / email / ads | 4 (separate scope, separate consent) |
-| **Agent meta** | profile, stats | — | 1 |
-
-Full per-tool catalog with schemas: [tools.md](./tools.md).
-Token scopes that gate each domain: [scopes-and-safety.md](./scopes-and-safety.md).
-Per-phase shipping plan: [rollout-plan.md](./rollout-plan.md).
+Scopes: 15 in `src/lib/skill-scopes.ts`; presets `website` (the only one on
+the Free plan), `content_drafting`, `lead_aware`, `full_workspace`,
+`client_research`, plus Custom. Rate tiers in `src/lib/skill-auth.ts`:
+identity 200/min, read 100/min, write 30/min, send 5/min, research 60/min.
 
 ## Architecture
 
 ```
-                                          ChatRealty backend
-                                          (Vercel / Next.js)
-Claude Desktop / Code / .ai                       │
-       │                                          │
-       │  MCP tool call                           │
-       ▼                                          │
-@chatrealty/mcp-server (stdio, local)             │
-       │                                          │
-       │  HTTPS, Bearer crt_live_...              │
-       ▼                                          │
-/api/skill/* route ──────────────────────────────►┤
-                                                  │
-                                          ┌───────┴───────┐
-                                          │   MongoDB     │
-                                          │   Atlas       │
-                                          └───────────────┘
+Claude Code / Desktop ── stdio ──► @chatrealty/mcp-server (local)  ─┐  HTTPS, Bearer crt_live_
+                                                                     ├─► /api/skill/* ──► MongoDB (legacy)
+Claude web / mobile ── OAuth + Streamable HTTP ──► /api/mcp/mcp ─────┘    (scopes,        or the agent's
+                         (src/lib/mcp-tool-bridge.ts, in-process        rate limits)    tenant Postgres
+                          dispatch to the skill routes)
 ```
 
-Two transports planned. Both auth identically:
-
-| Transport | Install UX | Hosting | Status |
+| Transport | Install | Filtering | Code it runs |
 |---|---|---|---|
-| **stdio (local)** | `npx @chatrealty/mcp-server` + JSON config snippet | On agent's machine | **built** (v0.8.0) |
-| **Streamable HTTP (hosted)** | Claude mobile/web "Add custom connector" → paste `/api/mcp/mcp` URL → OAuth | The Next app on Vercel (optionally `mcp.chatrealty.io`) | **built** — see [hosting.md](./hosting.md) |
+| stdio | `claude mcp add chatrealty -- npx -y @chatrealty/mcp-server` + `CHATREALTY_API_TOKEN` | Tier (`tiers.ts`): agent = all but carousel/Instagram; `CHATREALTY_TIER=research` = read-only allow-list | The npm version installed |
+| Hosted | Claude → Connectors → Add custom connector → `https://www.chatrealty.io/api/mcp/mcp` → paste token | Token scopes (`TOOL_SCOPE`); no tier filter | Current source, rebuilt on every Vercel build |
 
-stdio is simpler: it's a small Node CLI on the agent's machine that speaks MCP
-over stdin/stdout and calls our REST API for every tool. We don't host
-anything new for v1; the existing `/api/skill/*` endpoints carry the load.
+The MCP layer holds no business logic: a tool declares its JSON Schema and
+calls one route. Docs and tests for behavior live with the route.
 
-Hosted MCP lets agents add ChatRealty as a Connector with one paste of a URL,
-which is the experience Anthropic is rapidly building toward in Claude Desktop.
-We do it second because we don't want to operate a new long-lived service
-before we know agents will use it.
-
-## Linchpin files (when built)
+## Linchpin files
 
 | File | Purpose |
 |---|---|
-| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\index.ts` | stdio MCP server entry — wires tools to `/api/skill/*` routes |
-| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\tools\` | One file per tool; each declares JSON Schema + the API path it calls |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-auth.ts` | Already exists — bearer token auth used by every `/api/skill/*` route |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\skill\` | All MCP tools land here as REST endpoints; MCP server is a transport, not a second source of truth |
-| `F:\web-clients\joseph-sardella\jpsrealtor\src\models\McpToolCallLog.ts` | New collection — every tool invocation logged for audit (designed in `scopes-and-safety.md`) |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\tools\index.ts` | `ALL_TOOLS` registry + `SERVER_INSTRUCTIONS` |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\tools\` | One file per tool (site lifecycle tools share `site_tools.ts`) |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\build-guide\prompts.ts` | The build guide — single source for the tool, the resources and the docs site |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\tiers.ts` | stdio tier filter |
+| `F:\web-clients\joseph-sardella\jpsrealtor\packages\mcp-server\src\index.ts` | stdio entry |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\mcp-tool-bridge.ts` | Hosted registration + `TOOL_SCOPE` |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\mcp\[transport]\route.ts` | Hosted endpoint |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-auth.ts` | Token auth, `dataSource`, `requireScope`, rate limits |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\skill-scopes.ts` | Scope catalog + presets + free-tier gating |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\site-claim.ts` | Claim codes for site keys |
 
-## Gotchas to design around
+## Gotchas
 
-- **PII through Claude.** CRM read tools surface lead names/phones/emails to
-  Claude — Claude logs are visible to Anthropic. Mark every CRM tool in its
-  description so the agent understands data flow, and gate CRM tools behind a
-  separate `contacts:read` scope an agent must opt into when minting a token.
-- **Token = blank check.** Today's `crt_live_*` tokens are all-or-nothing. With
-  campaigns and contacts in scope, we need per-token scopes. Add a `scopes: string[]`
-  field on `User.agentProfile.aiIntegrations.apiTokens[]` before Phase 2 ships.
-- **Campaign launches spend real money.** Postcard send goes through Thanks.io
-  (per-piece pricing), voicemail through Drop Cowboy, ads through Google/Meta.
-  Any "send" tool needs a separate `campaigns:send` scope AND a per-day spend
-  cap. Defaults to OFF.
-- **MLS is upstream and not always ours to write.** Listings come from CRMLS /
-  GPS via the nightly cron. Tools that "edit a listing" don't exist — we'd be
-  fighting the sync. Listing-flavored writes are about LP/article content
-  *about* listings, not the listing record itself.
-- **Audit log isn't free.** Every tool call writes one document. Index for
-  `(userId, createdAt)`; tier the retention (90 days hot, archive after).
-- **MCP tool count has a discoverability ceiling.** Anthropic recommends ≤20
-  tools per server before naming collisions confuse the model. We're going to
-  blow past that easily — group tools by domain and consider splitting into
-  multiple MCP servers (`chatrealty-cms`, `chatrealty-crm`, `chatrealty-campaigns`)
-  if any single one gets large.
-- **Backwards compatibility.** Once an agent installs the server and Claude
-  learns the tool names, renaming a tool breaks every saved conversation. Pick
-  names that age well; deprecate by adding new tools, not by renaming.
+- **The two transports show different tools.** A carousel tool missing in
+  Claude Code but present on claude.ai is the tier filter, not a bug. See
+  [tools.md](./tools.md) → Two surfaces.
+- **Connectors freeze scopes and schemas at connect time.** Nothing you ship
+  reaches a connected client until it reconnects; new parameters are silently
+  stripped. See [scopes-and-safety.md](./scopes-and-safety.md).
+- **stdio users get nothing until a publish.** Hosted rebuilds from source;
+  stdio runs whatever npm version is installed. Bump the version before
+  publishing — the registry rejects a republish. See [publishing.md](./publishing.md).
+- **PII through Claude.** CRM tools put lead names/phones/emails into Claude's
+  context. `contacts:read` is opt-in and in neither the `website` nor the
+  `content_drafting` preset.
+- **Campaign sends spend real money.** No send tool exists yet; when built,
+  it needs `campaigns:send` (never in a preset) plus a spend cap.
+- **Tool count.** 43 tools is well past the ~20 where model tool selection
+  degrades. The planned split into several servers has not happened; tiering
+  and scope filtering are the only reduction today.
+- **Never rename a tool.** Saved conversations reference names; add and
+  deprecate instead.
 - **A rule that lives in step 2 arrives after the damage.** *(verified
-  2026-08-10, `@chatrealty/mcp-server` 0.25.3.)* The build guide's VOICE rule —
-  never narrate tooling, never speak internal field values — sat only in
-  `scaffold-your-site` step 0. But step 1 is `check-your-data-source`, and
-  `whoami` tells the model to call it "once at the start of any session", so the
-  first sentence a real estate agent ever read was composed before the rule was.
-  A judged session opened "Let me start by pulling the build guide" (CRBR
-  `6a7a23e4`). The rule is now one exported `VOICE_RULE` in
-  `build-guide/prompts.ts`, interpolated into steps 1–3 **and** returned by
-  `get_build_guide` on the no-id listing call plus the `guide://` index preamble.
-  The general lesson for anything added to this guide: **the no-id listing and
-  the resource index are the only surfaces read before the model speaks.** A
-  constraint that isn't on one of them is not in force for the opening turn, no
-  matter which step body carries it.
-- **Branch labels are internal vocabulary the model will repeat.** The same
-  report found the guide branching on the literal `dataSource` values
-  (`tenant` / `none` / `dogfood`) while forbidding internal field names in
-  replies — so the model reasoned in a language it was barred from speaking, and
-  said `dogfood` to a customer. Any enum the guide branches on now ships an
-  approved customer-facing phrasing beside it. Related trap: an enum whose empty
-  case is named (`none`) makes every other value read as "not empty", and a
-  session inferred "has real data" from the account type without making a single
-  listing call. Account type is never inventory — only returned rows are.
+  2026-08-10, 0.25.3; still true.)* The build guide's VOICE rule once sat only in
+  `scaffold-your-site`, but step 1 runs first, so a judged session opened "Let me
+  start by pulling the build guide" (CRBR `6a7a23e4`). `VOICE_RULE` is now one
+  export in `build-guide/prompts.ts`, prefixed to every step and returned by the
+  no-id `get_build_guide` call and the `guide://` index. The no-id listing and
+  the resource index are the only surfaces read before the model speaks.
+- **Branch labels are internal vocabulary the model will repeat.** The guide
+  branches on `dataSource` values (`tenant` / `none` / `dogfood`) and now ships a
+  customer-facing phrase beside each, after a session said `dogfood` to a
+  customer. An enum whose empty case is named makes every other value read as
+  "has data"; account type is never inventory — only returned rows are.
 
 ## Related
 
-- [tools.md](./tools.md) — full tool catalog by domain
-- [scopes-and-safety.md](./scopes-and-safety.md) — token scope model, rate limits, audit
-- [rollout-plan.md](./rollout-plan.md) — phased ship plan
-- [../integrations/README.md](../integrations/README.md) — `crt_live_*` token model (parent doc)
-- [../cms/README.md](../cms/README.md) — landing-page draft endpoint backing Phase 1 write tools
-- [../crm/README.md](../crm/README.md) — Contact model + label system Phase 2/3 tools sit on top of
-- `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\` — predecessor skill; still ships for Claude Code users who don't want MCP
+- [../integrations/README.md](../integrations/README.md) — `crt_live_*` token model
+- [../chatrealty-api/external-site.md](../chatrealty-api/external-site.md) — serving a Claude-built site on the agent's subdomain, claim codes
+- [../chatrealty-api/create-site-scaffolder.md](../chatrealty-api/create-site-scaffolder.md) — the scaffolder the guide drives
+- `F:\web-clients\joseph-sardella\jpsrealtor\packages\install-skill\` — legacy landing-page skill, still offered in Settings → Integrations

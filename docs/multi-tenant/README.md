@@ -1,182 +1,177 @@
 ---
-title: Multi-tenant scoping (resolveDomainOwner)
+title: Multi-tenancy — one deployment, many sites, one database per agent
 status: current
-last_verified: 2026-08-05
-related: [../routing/README.md, ../auth/README.md, ../chatrealty-api/external-site.md]
+last_verified: 2026-10-17
+related:
+  - ./domain-owner-scoping.md
+  - ./custom-domains.md
+  - ./agent-directory.md
+  - ../routing/README.md
+  - ../auth/README.md
+  - ../chatrealty-api/external-site.md
+  - ../chatrealty-api/control-plane.md
+  - ../chatrealty-api/connection-resolver.md
+  - ../chatrealty-api/data-tiers.md
 supersedes: docs/multi-tenant/index.md
 ---
 
-# Multi-tenant scoping
+# Multi-tenancy
 
 ## TL;DR
 
-ChatRealty is a multi-tenant platform: one Next.js deployment serves multiple
-branded sites. Every public-facing endpoint that displays content scoped to
-"this site" MUST resolve **the domain owner** (which agent owns this hostname?)
-and filter by that — not by `session.user.id`. The helper that does this is
-`src/lib/resolveDomainOwner.ts`. Forgetting this rule is the single most
-common bug in this codebase.
+One Next.js deployment on Vercel serves every site: the platform
+(`chatrealty.io`), every agent subdomain (`{slug}.chatrealty.io`), custom
+domains (`jpsrealtor.com`, agent-bought domains), and — by reverse proxy —
+agent sites hosted on the agent's own Vercel. `src/proxy.ts` decides per
+request from the `Host` header. **Content** on platform-rendered pages is scoped
+to the agent who owns the hostname (`resolveDomainOwner`, see
+[domain-owner-scoping.md](./domain-owner-scoping.md)), not to whoever is signed
+in. **Listing data** for the product API is bring-your-own-data: each agent's
+MLS feed lives in their own Neon Postgres database, found through a control
+plane (`Tenant`) keyed by API-token hash. Two different isolation models — know
+which one a route uses.
 
-**Everything below applies to the platform-rendered path only.** Since
-2026-07-24 a subdomain can instead carry an agent's **own MCP-built
-deployment**: when `agentProfile.externalSite` is connected and live (or
-previewed via signed link), `src/proxy.ts` rewrites the subdomain's pages AND
-its entire `/api` surface onto that deployment *before* any of this scoping
-runs — the external site owns the hostname outright. That is the primary
-tenancy path going forward; this document governs the fallback. Full model:
-`../chatrealty-api/external-site.md`.
+## The host matrix (as `src/proxy.ts` runs it today)
+
+| Host | What serves it | Owner / data |
+|---|---|---|
+| `chatrealty.io`, `www.chatrealty.io` (dev: `chatrealty.localhost`) | Platform. `/` rewrites to `/chat-landing`; a signed-in **agent** hitting `/`, `/dashboard*` or `/agent*` is sent to their own subdomain (below). Admins stay on www. | Fallback owner (Joseph) for any content lookups |
+| `agent.chatrealty.io` (dev: `agent.localhost`) | Admin-only preview of the owner site. Non-admins are redirected to www. | Joseph's content |
+| `{slug}.chatrealty.io` (dev: `{slug}.localhost`) | **Either** the agent's own external deployment (reverse proxy, pages + whole `/api`) **or** the platform-rendered agent site, or `/coming-soon`. Agent portal (`/agent`, `/dashboard`, `/admin`, `/auth`) always renders from the platform. | `agentProfile.subdomain` |
+| `jpsrealtor.com`, `josephsardella.com` (+ www) | `OWNER_HOSTNAMES` — normal routing, insights homepage. No agent-home redirect. | Joseph (DomainRegistry / `customDomain`; see SEO note) |
+| Any other host (agent custom domains) | Falls through to normal routing. `AGENT_DOMAIN_MAP` is empty, so no rewrite happens at the edge. | `agentProfile.customDomain`, then the legacy `domainregistries` collection, then Joseph |
+| Bare `localhost:3000` | Not the platform (host lacks "chatrealty") — renders the primary agent's site. Use `chatrealty.localhost:3000` for the platform. | Joseph |
+
+Order inside `proxy()`: `/api/*` first (external-site rewrite for agent
+subdomains, then the deny-by-default API gate) → static bypass → owner hosts →
+`agent.` → agent subdomain → platform root → `AGENT_DOMAIN_MAP` → auth
+protection. Details: [../routing/README.md](../routing/README.md).
+
+## Agent subdomains
+
+**Minting.** `generateSubdomain()` (`src/lib/generate-subdomain.ts`) slugs the
+name (`[a-z0-9]{3,30}`, reserved words like `agent`/`api`/`admin` refused,
+conflicts get `2`, `3`, …) on admin approval of an agent application
+(`src/app/api/admin/applications/agents/route.ts`) and in a `User` pre-save hook
+(`src/models/User.ts`). It then **awaits** `ensureSubdomainRegistered()` —
+`*.chatrealty.io` is wildcard DNS on Cloudflare, but the Vercel project cannot
+hold a wildcard while DNS is on Cloudflare, so every subdomain must be added to
+the project individually or Vercel 404s it before `proxy.ts` runs.
+Backfill: `scripts/backfill-vercel-subdomains.ts`.
+
+**Serving.** For a page request on `{slug}.chatrealty.io` the proxy asks
+`GET /api/site-config?subdomain={slug}` on the platform host (edge code can't
+reach Mongo):
+
+1. `externalSite.status` `live` (or `preview` + valid signed preview credential,
+   `?crpv=` → 15-min `cr_site_preview` cookie) → `rewriteToExternal()` onto
+   `externalSite.deploymentUrl`, with NextAuth session cookies stripped. The
+   same check runs first for `/api/*`, so the external site owns its whole API
+   — except the four platform-pinned hand-off routes (`/api/auth/transfer`,
+   `receive`, `impersonate`, `signout-chain`), and on such a host `receive` /
+   `impersonate` answer 403 (see auth/README.md, "Host-bound hand-offs").
+   Full lifecycle: [../chatrealty-api/external-site.md](../chatrealty-api/external-site.md).
+2. Agent exists but `isSiteReady()` (the profile checklist,
+   `src/lib/agent-site-readiness.ts`) is false → rewrite to `/coming-soon`.
+3. Otherwise → the normal app routes render; the agent is found by the
+   Host header (see the header gotcha below).
+
+**Two "site live" rules exist** — the edge gate above uses the checklist only;
+`/api/agent/public` reports `hasActiveSubscription = checklist ||
+active/trialing AgentSubscription || agentProfile.siteForceActive`. They
+disagree for force-activated or paid-but-incomplete agents. Free-tier policy:
+[../commerce/free-tier-gating.md](../commerce/free-tier-gating.md).
+
+## Sessions per host (since 2026-10-16)
+
+`src/lib/agent-host.ts` is the shared, edge-safe rulebook. **A signed-in agent
+works on their own subdomain**, and sessions there are **host-only cookies**
+(`getCookieDomain()` in `src/lib/auth.ts` returns `undefined`), so a session is
+never sent to www, to another agent's site, or to an agent's external
+deployment.
+
+- **Moving hosts:** `/api/auth/transfer?target=…` (allowed: chatrealty.io,
+  jpsrealtor.com, josephsardella.com, localhost and their subdomains) mints a
+  30-second NextAuth-encrypted token → `/api/auth/receive` on the target host
+  re-reads the user from Mongo and sets a 30-day cookie. Only
+  `jpsrealtor.com`/`josephsardella.com` get an apex-wide cookie.
+- **Agent sent home:** `agentHomeSubdomain()` — real agent session (role
+  `realEstateAgent`, not admin, not impersonating), platform host, workspace
+  path → `sendAgentHome()` → transfer → receive on the subdomain.
+- **Admin "Log in as":** `/api/auth/impersonate` mints a hand-off whose
+  redemption is bound to the agent's own host; the admin's www session is
+  untouched. An admin on an agent subdomain's portal without impersonating is
+  sent to `/auth/admin-access`.
+- **Portal gates** (`portalGates()` — billing redirect, onboarding wizard,
+  free-tier page blocks) run on agent subdomains as well as www.
+
+More: [../auth/README.md](../auth/README.md).
+
+## Custom domains
+
+Two acquisition paths, two collections — see
+[custom-domains.md](./custom-domains.md). In short: buying through
+`/api/domains/purchase` writes `agentProfile.customDomain` (resolves); requesting
+a mapping (`/api/agent/domains` → admin approval) writes `domain_mappings` +
+`domain_registry` (does **not** resolve — the resolvers read `domainregistries`).
+Community/landing-page targets are stored but never applied at request time.
+
+## BYOD data plane (product API + MCP)
+
+| Piece | File | Role |
+|---|---|---|
+| Control plane | `src/models/control/Tenant.ts`, `src/lib/control/store.ts` | One `Tenant` per agent (`ownerUserId` unique) on the shared Mongo; encrypted Neon conn strings; `tokenHashes[]` mirror. Statuses: pending, approved, provisioning, **active** (only one that serves), suspended, teardown, rejected, provision_failed |
+| Token → tenant | `src/lib/skill-auth.ts` | Token must exist on the User; then `Tenant.tokenHashes` lookup. Non-admin keys minted in Settings auto-bind to the owner's active tenant on first use. Result `dataSource`: `tenant` / `dogfood` (admin only) / `none` (data reads 403 `no_data_source`) |
+| Connection | `src/lib/tenant/resolve-connection.ts` | LRU-cached per-tenant adapter / SQL handle |
+| Provisioning | `src/lib/tenant/provision.ts` via `POST /api/skill/tenant/provision` (CLI `npx @chatrealty/sync init`) | One **Neon project per tenant**, PostGIS + pg_trgm, schema, encrypted conn strings |
+| Seeding | `src/lib/mls-seed.ts`, `src/lib/mls-feed.ts`, Settings → Integrations → MLS Data Feed, `GET /api/cron/mls-sync` (every 5 min, `vercel.json`) | Hosted seed + nightly updates from the agent's stored (encrypted) MLS key; or the customer-run CLI |
+
+Deep dives: [control-plane](../chatrealty-api/control-plane.md),
+[connection-resolver](../chatrealty-api/connection-resolver.md),
+[neon-setup](../chatrealty-api/neon-setup.md),
+[data-tiers](../chatrealty-api/data-tiers.md) (hosted seeding).
+The platform's own sites (jpsrealtor.com etc.) still read the legacy shared
+Mongo (`unifiedlistings`), which is the owner's dataset — never served to
+other agents' tokens.
 
 ## Gotchas
 
-- **A public-facing endpoint must ALSO be in the proxy's allowlist**
-  (`PUBLIC_API_EXACT` / `PUBLIC_API_PREFIXES` in `src/proxy.ts`). The
-  deny-by-default API gate 401s anything else without a session.
-  `/api/agent-branding` was left out from 2026-07-02 to 2026-07-25, which
-  silently hid the required agency treatment (agent name + DRE#) from every
-  logged-out visitor — invisible to the owner because his own browser was
-  always signed in. If a "public" route feeds UI, verify it with a
-  cookie-less curl, not a logged-in browser.
-- **Strip `www.` before host lookups.** `agentProfile.customDomain` and
-  `domainregistries.domain` hold specific host forms; all four resolvers
-  (`resolveDomainOwner`, `getDomainConfigFromHeaders`, `/api/agent/public`,
-  `/api/agent-branding`) now match apex + www equivalently (2026-07-25).
+- **`x-agent-subdomain` is set on the *response*, not the request.** The proxy
+  calls `response.headers.set(...)` on `NextResponse.next()`, which goes to the
+  browser; route handlers and `headers()` never see it. Code that parses the
+  Host itself works (`/api/agent/public`, `/api/agent-branding`,
+  `agent-site`, `signup-origin`, `og-image-source`); `resolveDomainOwner` does
+  **not** parse the Host for subdomains, so callers that rely on the header —
+  root layout `getServerTenantConfig()` (nav layout, theme, **tracking IDs**),
+  `SiteFooter`, `JsonLd`, `about`, privacy/terms — likely resolve the
+  **fallback owner** on agent subdomains. Unverified at runtime; check with a
+  cookie-less request to an agent subdomain.
+- **A public endpoint must also be in the proxy allowlist**
+  (`PUBLIC_API_EXACT` / `PUBLIC_API_PREFIXES`) or anonymous visitors get 401.
+  Verify public routes with a cookie-less request, not a signed-in browser.
+- **External-site agents work on www (2026-10-17, review M2).** Their
+  subdomain's `/api` is their deployment — the scaffold even runs its own
+  NextAuth at `/api/auth/[...nextauth]` — so the platform portal can't run
+  there. www sends an agent home only after `/api/site-config` confirms the
+  subdomain serves no external site (live or preview); a failed lookup keeps
+  them on www (fail-closed: www always works, and guessing could bounce
+  www ⇄ subdomain). On a subdomain that IS serving an external site,
+  `/auth`, `/agent`, `/admin` and `/dashboard` go to the same path on www via
+  that host's (pinned) `/api/auth/transfer`. Going straight to www from the
+  proxy loops in `next dev`, which rewrites a middleware redirect to its own
+  origin into a relative Location. The scaffold has no pages at those paths.
+- **Strip `www.` before host lookups** — all owner resolvers match apex + www.
+- **`agent` is reserved** (admin preview host and `generate-subdomain`'s
+  reserved list).
+- **Unregistered subdomain = Vercel 404**, not a proxy bug.
+- **`/agent-site/[[...slug]]` is orphaned** — nothing rewrites to it; the
+  subdomain homepage is the normal `/` route.
 
-## The rule
+## Files
 
-> **Public endpoints scoping content MUST use `resolveDomainOwner(request)`,
-> NOT `session.user.id`.**
-
-The visitor (`session.user.id`) is whoever is signed in right now. The domain
-owner is whichever agent owns the hostname being visited. Those are usually
-different people. Examples of the failure mode:
-
-- Unauthenticated visitor on `jpsrealtor.com`: `session.user.id` is undefined → filter is dropped → every agent's content shows. (This was the Bethany-Klier-article-on-jpsrealtor bug.)
-- Bethany signed in on `jpsrealtor.com`: `session.user.id` is Bethany's → filter shows Bethany's content even though she's on Joseph's site.
-- Joseph signed in on `jpsrealtor.com`: works for the wrong reason.
-
-Correct behavior in all three cases: show **Joseph's** content because the *site* is his.
-
-## How `resolveDomainOwner` works
-
-`src/lib/resolveDomainOwner.ts` takes a `Request`, walks the chain below, and returns the owner's `_id`:
-
-| Order | Source | Lookup |
-|---|---|---|
-| 1 | `?subdomain=` query param or `x-agent-subdomain` header (proxy-set) | `User.findOne({ "agentProfile.subdomain": subdomain })` |
-| 2 | Host header → `agentProfile.customDomain` | `User.findOne({ "agentProfile.customDomain": host })` |
-| 3 | Host header → `DomainRegistry` collection (`status: active`) | `db.collection("domainregistries").findOne(...)` |
-| 4 | Fallback | `User.findOne({ email: process.env.PRIMARY_AGENT_EMAIL })` (defaults to `josephsardella@gmail.com`) |
-
-Return shape:
-
-```ts
-{
-  ownerId: string | null,                                // Mongo _id as string
-  source: "subdomain" | "customDomain" | "domainRegistry" | "primaryAgentFallback" | null,
-  host: string,
-  subdomain: string | null,
-}
-```
-
-The helper calls `await dbConnect()` itself so callers don't need to. It returns just the id — callers that need the full User document run their own `.findById(ownerId).select(...).lean()` query with their own projection.
-
-## Domain ownership model
-
-Every agent has a `User` document with an `agentProfile` subdocument. Ownership facets:
-
-| Where the owner is recorded | Field | Example |
-|---|---|---|
-| Agent's chatrealty subdomain | `agentProfile.subdomain` | `bethanyklier` (resolves `bethanyklier.chatrealty.io`) |
-| Agent's custom domain | `agentProfile.customDomain` | `janesmith.com` |
-| Mapped via registry | `domainregistries.{domain, ownerId, status}` | Joseph's jpsrealtor.com is here (or could be) |
-| Primary platform owner | `process.env.PRIMARY_AGENT_EMAIL` | `josephsardella@gmail.com` |
-
-## Endpoints currently using `resolveDomainOwner`
-
-| Endpoint | Purpose |
-|---|---|
-| `/api/agent/public` | Full agent profile for the current site (hero, bio, photos) |
-| `/api/agent-branding` | Sidebar branding (DRE#, brokerage, contact buttons) |
-| `/api/articles/list` | Insights/blog scoped to domain owner's authored articles |
-
-## Endpoints that probably SHOULD use it but don't
-
-Pending audit. Candidates from the grep done earlier:
-
-- `/api/cms/*` (landing pages, blog drafts that surface publicly)
-- Any "agent's listings" feed / featured-listings endpoint
-- Any sitemap-by-agent generator
-- CRM endpoints are **agent-private** so they correctly scope by `session.user.id` — different category, don't migrate.
-
-The systematic fix is to grep every API route for `session.user.id`, classify each as agent-private vs. public-facing, and migrate the public-facing ones to `resolveDomainOwner`.
-
-## Special domains
-
-| Domain | Role | Owner resolution |
-|---|---|---|
-| `chatrealty.io` / `www.chatrealty.io` | Platform marketing | Falls back to PRIMARY_AGENT_EMAIL (Joseph). `/` rewrites to `/chat-landing` so resolution rarely runs. |
-| `agent.chatrealty.io` | Admin-only owner preview | Treated as Joseph's site by content; admin gate is in the proxy. |
-| `jpsrealtor.com` / `www.jpsrealtor.com` | Joseph's PRIMARY apex (the SEO asset: indexed since 2023) | `DomainRegistry` ownerId (rows exist, `agent_custom`, active). All lookups strip `www.` first (2026-07-25). |
-| `josephsardella.com` / `www.josephsardella.com` | Joseph's SUPPLEMENTARY apex | `agentProfile.customDomain` exact match. Canonical/og URLs point at jpsrealtor.com via `SUPPLEMENTARY_DOMAIN_CANONICALS` in `src/lib/domain-utils.ts` (interim consolidation hint; host-level 301 planned at launch after the corporate-filter recategorization of jpsrealtor.com lands). |
-| `{slug}.chatrealty.io` | Agent subdomain | `agentProfile.subdomain` lookup. |
-| Custom agent domains | Agent's branded site | `agentProfile.customDomain` then `DomainRegistry` lookup. |
-
-## Subscription / site-live gate
-
-Resolving the domain owner decides *whose* data a public page shows. A second,
-independent gate decides *whether* that owner's public site renders at all:
-
-- `src/app/api/agent/public/route.ts` and `src/app/agent-site/[[...slug]]/`
-  compute `siteLive = getSiteReadiness(agent).complete || <active|trialing
-  AgentSubscription> || agentProfile.siteForceActive`. When false, the branded
-  subdomain shows a **"Coming Soon"** placeholder instead of the full site.
-- The agent viewing **their own** site, and admins, bypass this gate (preview).
-
-**Free-plan interaction (resolved 2026-07-02):** a free agent's public site goes
-live when they **finish profile setup**, not behind a paid subscription. The
-go-live checklist is `src/lib/agent-site-readiness.ts` (`getSiteReadiness`: name,
-phone, banner photo, headshot, headline, personal story/video) — the *same*
-helper the dashboard shows the agent. Feature-tier gating
-(`AgentSubscription.tier` or no record → `"free"`, via
-`src/lib/subscription-helpers.ts`) is a separate concern: the portal works
-immediately; the public subdomain publishes once the checklist is complete. Full
-matrix: [../commerce/free-tier-gating.md](../commerce/free-tier-gating.md).
-
-## Gotchas
-
-- **`session.user.id` is for agent-private endpoints only.** "Show me my CRM contacts" → `session.user.id`. "Show me the articles on this site" → `resolveDomainOwner`. Don't mix these up.
-- **The fallback returns Joseph.** If `PRIMARY_AGENT_EMAIL` is misconfigured (or that user doesn't exist), the resolver returns `null` and the caller has to handle that defensively. Look at `/api/articles/list`'s handling: if `ownerId` is null AND admin-bypass isn't set, return empty rather than leaking the whole network.
-- **Mongoose casts the string id to ObjectId** when you pass `filters.authorId = ownerId` and the schema field is ObjectId. So you don't need to wrap in `new mongoose.Types.ObjectId(...)` unless using raw Mongo collection access.
-- **`AGENT_DOMAIN_MAP` in `proxy.ts` is empty.** Custom-domain agents get resolved by content endpoints via the chain above, but the proxy doesn't know about them. If a custom domain ever needs URL rewriting (`/` → `/agent/{id}`), that gap matters.
-- **`DomainRegistry` lookup uses raw mongo — AND reads the WRONG collection.** `src/lib/resolveDomainOwner.ts:100` queries `mongoose.connection.db.collection("domainregistries")`, but the `DomainRegistry` Mongoose model (`src/models/DomainRegistry.ts:285`) is bound to `collection: "domain_registry"`. So the admin approval/provisioning flow writes a custom domain into `domain_registry` while this resolver reads `domainregistries` — they're two different collections (1 vs 4 docs as of 2026-06-08). A newly-approved custom domain may not resolve to its agent here; it only works if `agentProfile.customDomain` (the earlier resolver step) is also set. Tracked in `../tech-debt.md`. Fix = unify on one collection for both the model and the resolver, then migrate the legacy docs.
-
-## Reference implementation
-
-Look at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\articles\list\route.ts` for the canonical pattern:
-
-```ts
-const { ownerId, source } = await resolveDomainOwner(request);
-const isAdmin = !!session?.user?.isAdmin && !isImpersonating;
-const showAll = searchParams.get("all") === "true";
-
-const filters: any = {};
-if (!(isAdmin && showAll)) {
-  if (!ownerId) {
-    return NextResponse.json({ success: true, articles: [], total: 0 });
-  }
-  filters.authorId = ownerId;
-}
-```
-
-Three things to note: admin `?all=true` bypass, defensive empty-result on null owner, single filter set from the resolved id.
-
-**Exception — `?mine=true`:** the same `/api/articles/list` route also serves the
-agent CMS, where scoping must be the *logged-in agent* (`session.user.id`), not
-the domain owner. That's the one place a "public content" endpoint intentionally
-scopes by session instead of `resolveDomainOwner`. See `../cms/README.md` scoping
-modes.
-
-## Related models
-
-- `User` (`src/models/User.ts`) — `agentProfile.subdomain`, `agentProfile.customDomain`
-- `DomainRegistry` — raw collection, not modeled in src/models/ but documented in `docs/DOMAIN_REGISTRY.md` (legacy — verify)
+`src/proxy.ts`, `src/lib/agent-host.ts`, `src/lib/resolveDomainOwner.ts`,
+`src/lib/generate-subdomain.ts`, `src/app/api/site-config/route.ts`,
+`src/app/api/auth/{transfer,receive,impersonate}/route.ts`,
+`src/models/{DomainRegistry,DomainMapping}.ts`, `src/models/control/Tenant.ts`,
+`src/lib/tenant/`, `src/lib/control/store.ts`, `src/lib/skill-auth.ts`,
+`src/lib/mls-seed.ts`, `vercel.json` (headers + crons only — no rewrites).

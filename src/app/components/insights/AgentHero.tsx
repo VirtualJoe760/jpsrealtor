@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { MessageCircle, MapPin, Phone, LogIn, UserPlus, Search } from "lucide-react";
+import BrandCornerMark from "@/app/components/brand/BrandCornerMark";
 
 interface AgentHeroProps {
   agentProfile: any;
@@ -23,6 +24,15 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
   // active theme. Dark falls back to the light hero if no dark variant is set, then
   // a generic fallback chain.
   const ap = agentProfile?.agentProfile;
+
+  // Brokerage mark from the agent record. Both layouts below used to hardcode
+  // the same asset path, so the brokerage could not change without a deploy.
+  const brk = ap?.brokerage || {};
+  const brokerageName = brk.name || agentProfile?.brokerageName || ap?.brokerageName;
+  // Theme-aware, like every other logo slot: `logo` is the dark-ink artwork
+  // for LIGHT backgrounds, `logoDark` the light-ink artwork for dark ones.
+  // This picked logoDark unconditionally, so light mode got the chrome
+  // variant, which is near-invisible on a pale hero.
   const heroLight = ap?.heroImage || ap?.heroPhoto;
   const heroDark = ap?.heroImageDark || ap?.heroPhotoDark;
   const heroImage = (isLight ? heroLight : (heroDark || heroLight)) ||
@@ -153,14 +163,12 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
 
           {/* MOBILE LAYOUT — hidden on md+ via CSS, no JS state needed */}
             <div className="md:hidden relative z-10 h-full flex flex-col">
-              {/* Top Right eXp Logo */}
-              <div className="absolute top-6 right-6 z-20">
-                <img
-                  src="/images/brand/EXP-white-square.png"
-                  alt="eXp Realty"
-                  className="h-16 w-auto object-contain opacity-95"
-                />
-              </div>
+              <BrandCornerMark
+                isLight={isLight}
+                className="absolute top-6 right-6 z-20"
+                wordmarkClassName="text-[24px] text-white"
+                logoClassName="h-16 w-auto object-contain opacity-95"
+              />
 
               {/* Top section: Headline + Buttons - centered in top half */}
               <div
@@ -275,14 +283,12 @@ const AgentHero: React.FC<AgentHeroProps> = ({ agentProfile }) => {
 
           {/* DESKTOP LAYOUT — hidden below md via CSS */}
             <div className="hidden md:flex relative z-10 h-full flex-col">
-              {/* Top Right eXp Logo */}
-              <div className="absolute top-12 right-12 z-20">
-                <img
-                  src="/images/brand/EXP-white-square.png"
-                  alt="eXp Realty"
-                  className="h-28 w-auto object-contain opacity-95"
-                />
-              </div>
+              <BrandCornerMark
+                isLight={isLight}
+                className="absolute top-12 right-12 z-20"
+                wordmarkClassName="text-[40px] text-white"
+                logoClassName="h-28 w-auto object-contain opacity-95"
+              />
 
               {/* Headline, Buttons, and Business Card - stacked with spacing */}
               <div className="flex-1 flex flex-col justify-center w-full">
