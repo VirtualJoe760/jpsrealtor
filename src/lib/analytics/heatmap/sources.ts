@@ -505,6 +505,126 @@ export async function getAreas(opts: {
   return filtered.slice(0, limit)
 }
 
+// ─────────────────────────────────────────────────────
+// Individual closed sales inside one cell
+// ─────────────────────────────────────────────────────
+
+export interface CellSale {
+  closeDate: string | null
+  closePrice: number | null
+  listPrice: number | null
+  listAgentName: string | null
+  listAgentMlsId: string | null
+  listOfficeName: string | null
+  address: string | null
+  slugAddress: string | null
+  beds: number | null
+  baths: number | null
+  livingArea: number | null
+  yearBuilt: number | null
+  subdivisionName: string | null
+}
+
+/**
+ * The actual closed transactions inside a grid cell's bbox.
+ *
+ * ── Why this one reads the SOURCE collection ────────────────────────────────
+ *
+ * Everything else here reads a precompute. This reads
+ * `unified_closed_listings` directly, and that is still within the invariant:
+ * it is a `find` with a filter, a projection and a sort, and every field
+ * returned is stored on the listing document. The rule bans COMPUTING — no
+ * `$group`, no aggregation, no arithmetic over rows. Listing records is a
+ * lookup.
+ *
+ * It is also the only way to answer "who sold these?" at cell resolution. A
+ * precompute would have to store the agent roster of all 34,082 cells to say
+ * what three rows say directly, and the question is only ever asked for one
+ * cell at a time, on click.
+ *
+ * ── Use lat/lng, NOT the 2dsphere index ─────────────────────────────────────
+ *
+ * This collection has `coordinates_2dsphere` and
+ * `coordinates.coordinates_2dsphere`, and both are a trap here. Measured
+ * 2026-10-25 on one Palm Desert cell: a `$geoWithin` Polygon on `coordinates`
+ * returned 0 rows in 23ms while the lat/lng range returned the 3 real sales —
+ * those documents have no usable `coordinates` value, so the geo index
+ * silently UNDER-returns rather than erroring. The scalar pair is populated
+ * and is covered by `latitude_1_longitude_1_closeDate_1_propertyType_1`.
+ *
+ * (Note this is the opposite conclusion to `sales_grid`, where `$geometry`
+ * beats `$box` precisely because its `center` IS a populated GeoJSON point.
+ * The right index depends on which field the collection actually fills.)
+ *
+ * Cost: ~8s on a cold index page, 41ms once warm, for the same query. The
+ * route caches, and a cell is only fetched on click.
+ */
+export async function getCellSales(opts: {
+  bbox: Bbox
+  year: number | null
+  limit: number
+}): Promise<CellSale[]> {
+  const conn = await db()
+  const { bbox, year, limit } = opts
+
+  const filter: Record<string, unknown> = {
+    propertyType: PROPERTY_TYPE,
+    latitude: { $gte: bbox.minLat, $lt: bbox.maxLat },
+    longitude: { $gte: bbox.minLng, $lt: bbox.maxLng },
+  }
+  if (year !== null) {
+    filter.closeDate = {
+      $gte: new Date(Date.UTC(year, 0, 1)),
+      $lt: new Date(Date.UTC(year + 1, 0, 1)),
+    }
+  }
+
+  const rows = await conn
+    .collection('unified_closed_listings')
+    .find(filter, {
+      projection: {
+        _id: 0,
+        closeDate: 1,
+        closePrice: 1,
+        listPrice: 1,
+        listAgentName: 1,
+        listAgentMlsId: 1,
+        listOfficeName: 1,
+        unparsedAddress: 1,
+        slugAddress: 1,
+        bedsTotal: 1,
+        bathroomsTotalInteger: 1,
+        livingArea: 1,
+        yearBuilt: 1,
+        subdivisionName: 1,
+      },
+      limit,
+    })
+    .sort({ closeDate: -1 })
+    .toArray()
+
+  return rows.map((r) => ({
+    closeDate: r.closeDate ? new Date(r.closeDate).toISOString() : null,
+    closePrice: r.closePrice ?? null,
+    listPrice: r.listPrice ?? null,
+    listAgentName: r.listAgentName ?? null,
+    // Normalised: the feed mixes `D71557`, `d84740`, `50364` and
+    // `MRM-EVBENSSAR`, and one id can carry several name spellings
+    // ("Sarah Benson" / "SARAH BENSON"). Grouping in the UI keys on this.
+    listAgentMlsId: r.listAgentMlsId ? String(r.listAgentMlsId).trim().toUpperCase() : null,
+    listOfficeName: r.listOfficeName ?? null,
+    address: r.unparsedAddress ?? null,
+    slugAddress: r.slugAddress ?? null,
+    beds: r.bedsTotal ?? null,
+    // bathroomsFull was empty on every row sampled; the Integer field is the
+    // populated one. Falling back to it rather than rendering "?".
+    baths: r.bathroomsTotalInteger ?? null,
+    livingArea: r.livingArea ?? null,
+    yearBuilt: r.yearBuilt ?? null,
+    subdivisionName: r.subdivisionName ?? null,
+  }))
+}
+
 /**
  * One area by its exact key — what the detail panel opens when a zone is clicked.
  *
