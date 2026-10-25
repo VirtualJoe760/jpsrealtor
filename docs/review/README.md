@@ -1,7 +1,7 @@
 ---
 title: Review queue — bugs and inconsistencies awaiting Joseph's decision
 status: current
-last_verified: 2026-10-24
+last_verified: 2026-10-25
 related: [../tech-debt.md, ../AGENTS.md, ../chatrealty-api/external-site.md]
 ---
 
@@ -154,23 +154,42 @@ the branch) or whether the exposure is acceptable; note a force-push does not
 unpublish anything already fetched or indexed. Not actioned here — rewriting a
 pushed branch's history is the owner's call.
 
-### R7 · HIGH · The Gemini project is denied access — the carousel pipeline cannot run at all
-Every `generateContent` call on `GEMINI_API_KEY` (`.env.local`) returns
-`403 PERMISSION_DENIED — "Your project has been denied access. Please contact
-support."` Reproduced on `gemini-2.5-flash` and `gemini-flash-latest`, on a
-vision call and on a bare text prompt, repeatedly on 2026-10-24. The key still
-authenticates (`GET /v1beta/models` returns the full catalogue), so this is
-project-level authorisation, not an expired key. No fallback key exists:
-production and development have no `GEMINI_API_KEY` and preview's is an empty
-string (checked with the stored `VERCEL_API_TOKEN`).
+### R7 · HIGH · The Gemini bill is unpaid — the carousel pipeline cannot run at all
+**Updated 2026-10-25: it is a bill, not a ban, and that changes the fix.** The
+403 is unchanged in status and reproduces exactly as before, but the message
+now names the cause and the remedy:
+
+```
+403 PERMISSION_DENIED — "Your billing account has an outstanding balance.
+Make a payment at https://aistudio.google.com/billing to restore service."
+```
+
+On 2026-10-24 the same call returned the generic *"Your project has been denied
+access. Please contact support."*, which is why this was first written up as an
+enforcement action needing an appeal. Re-probe a 403 before trusting a
+transcription of it — only the message moved.
+
+Reproduced on `gemini-2.5-flash` and `gemini-flash-latest`, on a vision call and
+on a bare text prompt, on 2026-10-24 and again on 2026-10-25. The key still
+authenticates (`GET /v1beta/models` returns the full catalogue). No fallback key
+exists: production and development have no `GEMINI_API_KEY` and preview's is an
+empty string (checked with the stored `VERCEL_API_TOKEN`).
 
 Photo reading, selection, staging and verification are all Gemini, so the daily
-carousel produced **no build on 2026-10-24** and will keep producing none.
-**Suggested fix:** Joseph to appeal/restore the blocked project in Google AI
-Studio, or mint a key on a different project and set it with
-`~/.claude/tools/ask-secret.sh "Gemini API key" --env GEMINI_API_KEY
-/f/web-clients/joseph-sardella/jpsrealtor/.env.local`. Only the account owner
-can do this; it is not fixable from here.
+carousel produced **no build on 2026-10-24 or 2026-10-25** and will keep
+producing none.
+
+**Suggested fix:** Joseph pays the outstanding balance at
+<https://aistudio.google.com/billing>. Making a payment is not an action a
+scheduled run may take, and the page needs a Google sign-in that no browser in
+the session had, so this is handed over rather than done. Afterwards, re-probe
+with `npx ts-node -O '{"module":"commonjs"}' scripts/tmp-gemini-probe.ts "$(node
+scripts/tmp-one-photo-url.js 20261008180938726483000000)"` and, on a pass, build
+17 Lugo Drive — its copy is already written and linted
+(`scripts/data/pending/lugo-drive.ts`). Minting a key on a different project
+with `~/.claude/tools/ask-secret.sh "Gemini API key" --env GEMINI_API_KEY
+/f/web-clients/joseph-sardella/jpsrealtor/.env.local` remains the alternative if
+the balance is disputed.
 
 ### R8 · med · `selectStagingPhotos` reports an API outage as "not stageable"
 `assessOne` ends `catch { return null }`

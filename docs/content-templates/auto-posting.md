@@ -1,8 +1,8 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-24
-last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
+last_verified: 2026-10-25
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25 — same status, different message, see "Blocked 2026-10-25". The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
@@ -1836,6 +1836,88 @@ remaining nine have no live row at all, or live rows that are other doors in the
 same building (U5, L7) or another brokerage's listing (V9). Repointing a queued
 record at a new key stays the agent's call, not a scheduled run's.
 
+### Blocked 2026-10-25 — same 403, different reason: the Gemini bill is unpaid
+
+**No build, second consecutive day. But the error text changed overnight and
+the new one is actionable, which the old one was not.**
+
+2026-10-24 returned a generic denial — *"Your project has been denied access.
+Please contact support."* — which reads as an enforcement action with no
+self-service remedy, and that is how it was written up. Today the same call
+returns:
+
+```
+403 {"error":{"code":403,"message":"Your billing account has an outstanding
+     balance. Make a payment at https://aistudio.google.com/billing to restore
+     service. ...","status":"PERMISSION_DENIED"}}
+```
+
+**So it is a bill, not a ban.** Paying it restores service; nobody needs to
+contact support. Worth re-probing a 403 rather than trusting yesterday's
+transcription of it — the status code was identical and only the message moved.
+
+`scripts/tmp-dump-why.ts 20261008180938726483000000` still returns
+`urls=35 assessed=0 stageable=0`, i.e. every frame is failing the call, so the
+2026-10-24 warning stands: **17 Lugo Drive is not a thin listing and must not be
+struck.** The counts are an artefact of the outage.
+
+Joseph is the only one who can clear this — making a payment is not an action a
+scheduled run may take. The AI Studio billing page needs a Google sign-in that
+neither browser in this session has: the in-app browser is signed out, and the
+Chrome extension was not connected. So this one is handed over as a link, which
+is the one case where that is the correct output.
+
+#### What was done instead: the copy is written and waiting
+
+`scripts/data/pending/lugo-drive.ts` is drafted in full against the record and
+the remarks — hook, cover body, six room captions, three text slides, CTA and
+the Instagram caption — and measured against the §8 budgets by
+`scripts/tmp-copy-lint.ts` (new, scratch), which prints every string against its
+cap. All pass. **Nothing in it has been checked against a render**, because no
+render exists.
+
+So the build is one command behind the payment:
+
+```bash
+npx ts-node -O '{"module":"commonjs"}' scripts/build-pending-post.ts lugo-drive
+```
+
+Exclusions cannot be chosen yet — `--exclude` filters the selector's own top 14
+*after* it chooses, and the selector cannot run. Dump first, exclude from the
+dump, then count what survives.
+
+Three things the record settles that are worth not re-deriving:
+
+| | |
+|---|---|
+| `bedroomsTotal` | **unset** on this listing. `build-pending-post.ts:350` falls back to `bedsTotal` = 3, so the spec strip reads `3 BD \| 2 BA \| 1,581 SQFT`. Not a bug, but it is why the cover body names neither |
+| Pool | `poolFeatures: "Community, In Ground"`, `poolPrivateYN` unset. **There is no private pool.** The clubhouse pool and the semi-private pool across the street are the only water, and every line in the config is worded so it cannot be read as the home's own |
+| Cover | index 0, the front entry. Its right half — bougainvillea, shuttered windows, lawn, palms — is what survives the panel. #30 (fairway, mountains, jasmine over the brick wall) is the better photograph but shows no house |
+
+The photographs were inspected directly, which costs nothing and needs no
+Gemini: the frames are professionally lit, undistorted and furnished throughout.
+Only the *assessment* of them is blocked.
+
+#### Where the queue stands
+
+**29 `awaiting_review` against 29 distinct listings** — no duplicates, tenth
+consecutive clean run — **0 approved**, two `posted` records, both 53806 Ridge
+Road. Twelve of the 29 have left `unifiedlistings`; **17 are publishable**.
+Unchanged from 2026-10-24.
+
+`tmp-relist-check.js` re-run in full: **still no queued post is publishable as
+built after a relist.** K6 3010 N Chuperosa $749,000 → $699,000, E4 7798 Acoma
+$299,000 → $294,000 and A8 5803 Los Santos $414,999 → $399,000 all still print
+a price their listing has moved away from. The rest have no live row, or live
+rows that are other doors in the same building (U5, L7) or another brokerage's
+listing (V9).
+
+The pool is **39 broad / 32 key-matched**, one row different from yesterday and
+none of it material: 41142 Calle Bosque and the old 5803 Los Santos key left,
+68148 Madrid arrived, and three queued listings cut their price. The eleven
+FRESH stageable rows and the six disqualifications are unchanged, so the
+2026-10-24 candidate table stands as written and 17 Lugo is still the pick.
+
 ## Implementation map
 
 | Piece | Where | Notes |
@@ -1862,6 +1944,14 @@ record at a new key stays the agent's call, not a scheduled run's.
 `scripts/tmp-stale-queue.js`, `tmp-pool3.js`, `tmp-pool4.js`, `tmp-detail2.js`,
 `tmp-drop-slide.js`, `tmp-graft-slide.js`, `tmp-retire-duplicate.js`,
 `tmp-retext-pending-post.ts` and `tmp-selector-dump.ts` are committed.
+
+Added 2026-10-25, all scratch and all safe to delete: `tmp-copy-lint.ts <slug>`
+measures a pending config's strings against the copy-voice.md §8 budgets before
+a build; `tmp-listing-facts.js <listingKey>` prints the copy-relevant fields and
+the public remarks; `tmp-one-photo-url.js <listingKey>` prints one media URL, so
+`tmp-gemini-probe.ts` can be pointed at a real frame without hand-assembling one
+(the probe takes a URL argument and fails with `Failed to parse URL from
+undefined` when called bare, which is how two runs lost a few minutes).
 `scripts/reband-pending-post.ts`, `scripts/recover-pending-post.ts`,
 `scripts/tmp-pool-check.js` (superseded by `tmp-pool3.js`),
 `scripts/tmp-cover-preview.ts`, `scripts/tmp-watermark-strip.py` and
