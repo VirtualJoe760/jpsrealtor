@@ -378,7 +378,7 @@ export default function AnalyticsClient() {
         {/* Side list + detail */}
         <aside className={`flex w-96 shrink-0 flex-col border-l ${border} ${panel}`}>
           {selection ? (
-            <DetailPanel selection={selection} onClose={() => setSelection(null)} />
+            <DetailPanel selection={selection} year={year} onClose={() => setSelection(null)} />
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div
@@ -426,9 +426,11 @@ export default function AnalyticsClient() {
 
 function DetailPanel({
   selection,
+  year,
   onClose,
 }: {
   selection: NonNullable<Selection>
+  year: string
   onClose: () => void
 }) {
   const { currentTheme } = useTheme()
@@ -461,6 +463,8 @@ function DetailPanel({
           <p className={`pt-1 text-[11px] ${textMuted}`}>
             One ~0.3 mile grid cell. Medians are per cell and are never averaged together.
           </p>
+
+          <CmaButton cell={selection.cell} year={year} />
 
           <div className={`border-t pt-3 ${border}`}>
             {selection.loading ? (
@@ -626,6 +630,68 @@ function CellSalesList({ sales }: { sales: CellSale[] }) {
       <p className={`text-[11px] ${textSecondary}`}>
         Counts describe the list above, not a market statistic.
       </p>
+    </div>
+  )
+}
+
+/**
+ * Downloads the tile's CMA as a PDF.
+ *
+ * Generation is a cold Chromium launch plus two collection reads, so it is
+ * slow enough (seconds) that firing it from a bare <a> would look broken. The
+ * fetch keeps the button in a visible pending state and surfaces the route's
+ * own error text — a 404 here means "no comparables in this tile", which is a
+ * real answer and not a failure.
+ */
+function CmaButton({ cell, year }: { cell: GridCell; year: string }) {
+  const { textMuted, border } = useThemeClasses()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const run = async () => {
+    setBusy(true)
+    setErr(null)
+    const b = cell.bbox
+    const bbox = [b.minLng, b.minLat, b.maxLng, b.maxLat].join(',')
+    try {
+      const res = await fetch(`/api/analytics/cma?bbox=${bbox}&year=${year}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Could not generate the CMA')
+      }
+      const blob = await res.blob()
+      const name =
+        res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'cma.pdf'
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not generate the CMA')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pt-1">
+      <button
+        onClick={run}
+        disabled={busy}
+        className={`w-full rounded border px-3 py-1.5 text-xs font-medium ${border} ${
+          busy ? 'opacity-60' : 'hover:underline'
+        }`}
+      >
+        {busy ? 'Building CMA…' : 'Download CMA (PDF)'}
+      </button>
+      {err && <p className={`mt-1 text-[11px] ${textMuted}`}>{err}</p>}
+      {busy && (
+        <p className={`mt-1 text-[11px] ${textMuted}`}>
+          Collecting comparables and rendering five pages — this takes a few seconds.
+        </p>
+      )}
     </div>
   )
 }
