@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { Settings } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useTheme } from '@/app/contexts/ThemeContext';
 import ContactsTab from '@/app/components/crm/ContactsTab';
 import AgentNav from '@/app/components/AgentNav';
@@ -15,6 +16,11 @@ import type { Contact } from '@/app/components/crm/contacts/types';
 
 export default function AgentContactsPage() {
   const { currentTheme } = useTheme();
+  const { data: session } = useSession();
+  // The dialer is an admin-only feature while calls are simulated. This hides
+  // the entry points; the gate that matters is `dialerOwner()` in
+  // src/lib/dialer/session-server.ts, since a client check protects nothing.
+  const dialerEnabled = Boolean(session?.user?.isAdmin);
   const isLight = currentTheme === 'lightgradient';
   const [showToolbar, setShowToolbar] = useState(true);
   const [activeView, setActiveView] = useState<'contacts' | 'dialer'>('contacts');
@@ -26,17 +32,18 @@ export default function AgentContactsPage() {
   const [launch, setLaunch] = useState(0);
   const [recent, setRecent] = useState<SavedDialerSession[]>([]);
   useEffect(() => {
-    if (activeView !== 'contacts') return;
+    if (activeView !== 'contacts' || !dialerEnabled) return;
     let cancelled = false;
     fetch('/api/crm/dialer/sessions', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
       .then(data => { if (!cancelled && data) setRecent(data.sessions); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [activeView]);
+  }, [activeView, dialerEnabled]);
   function openDialer(group: Contact[], label: string) {
-    if (!group.length) return;
+    if (!group.length || !dialerEnabled) return;
     setDialerSettingsOpen(false); setSavedId(undefined); setLaunch(value => value + 1); setDialerContacts([...group]); setDialerLabel(label); setActiveView('dialer');
   }
   function resumeDialer(id: string) {
+    if (!dialerEnabled) return;
     setDialerSettingsOpen(false); setSavedId(id); setDialerLabel(recent.find(item => item._id === id)?.name || 'Saved calling session');
     setDialerContacts([]); setDialerDirty(false); setLaunch(value => value + 1); setActiveView('dialer');
   }
@@ -111,14 +118,14 @@ export default function AgentContactsPage() {
           </div>
         </div>
 
-        {activeView === 'dialer' && <div className="mb-4 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"><button disabled={dialerDirty} title={dialerDirty ? 'Save call notes before returning to contacts' : undefined} onClick={() => setActiveView('contacts')} className="min-h-11 rounded-xl border border-emerald-500/30 px-4 text-sm font-semibold text-emerald-600">← Back to contacts</button><p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{dialerLabel} · {savedId && !recent.some(item => item._id === savedId) ? 'Saved progress' : `${savedId ? recent.find(item => item._id === savedId)?.items.length : dialerContacts.length} contacts`}</p><button type="button" aria-label="Dialer settings" aria-expanded={dialerSettingsOpen} aria-controls="dialer-settings" onClick={() => setDialerSettingsOpen(value => !value)} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/30 text-emerald-600"><Settings size={20} /></button></div>}
+        {activeView === 'dialer' && dialerEnabled && <div className="mb-4 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"><button disabled={dialerDirty} title={dialerDirty ? 'Save call notes before returning to contacts' : undefined} onClick={() => setActiveView('contacts')} className="min-h-11 rounded-xl border border-emerald-500/30 px-4 text-sm font-semibold text-emerald-600">← Back to contacts</button><p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{dialerLabel} · {savedId && !recent.some(item => item._id === savedId) ? 'Saved progress' : `${savedId ? recent.find(item => item._id === savedId)?.items.length : dialerContacts.length} contacts`}</p><button type="button" aria-label="Dialer settings" aria-expanded={dialerSettingsOpen} aria-controls="dialer-settings" onClick={() => setDialerSettingsOpen(value => !value)} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/30 text-emerald-600"><Settings size={20} /></button></div>}
 
-        {activeView === 'contacts' && recent.length > 0 && <div className="mb-4 px-4 sm:px-6 lg:px-8"><p className="mb-2 text-sm font-semibold">Saved dialing queues · simulation</p><div className="flex gap-2 overflow-x-auto">{recent.map(item => <button key={item._id} onClick={() => resumeDialer(item._id)} className="min-w-48 rounded-xl border border-emerald-500/30 px-4 py-3 text-left text-sm"><span className="block font-semibold">{item.name}</span><span>{item.items.filter(row => row.outcome).length}/{item.items.length} reviewed · {item.status === 'completed' ? 'View' : 'Resume'}</span></button>)}</div></div>}
+        {activeView === 'contacts' && dialerEnabled && recent.length > 0 && <div className="mb-4 px-4 sm:px-6 lg:px-8"><p className="mb-2 text-sm font-semibold">Saved dialing queues · simulation</p><div className="flex gap-2 overflow-x-auto">{recent.map(item => <button key={item._id} onClick={() => resumeDialer(item._id)} className="min-w-48 rounded-xl border border-emerald-500/30 px-4 py-3 text-left text-sm"><span className="block font-semibold">{item.name}</span><span>{item.items.filter(row => row.outcome).length}/{item.items.length} reviewed · {item.status === 'completed' ? 'View' : 'Resume'}</span></button>)}</div></div>}
         {/* Keep the contact list mounted so switching views preserves filters and selection. */}
         <div className={`flex-1 overflow-hidden ${activeView === 'contacts' ? '' : 'hidden'}`}>
-          <ContactsTab isLight={isLight} showToolbar={showToolbar} onOpenDialerGroup={openDialer} onOpenDialer={contact => openDialer([contact], 'Single contact')} />
+          <ContactsTab isLight={isLight} showToolbar={showToolbar} onOpenDialerGroup={dialerEnabled ? openDialer : undefined} onOpenDialer={dialerEnabled ? contact => openDialer([contact], 'Single contact') : undefined} />
         </div>
-        {activeView === 'dialer' && <div className="min-h-0 flex-1 overflow-y-auto"><SavedDialerWorkspace key={launch} isLight={isLight} contacts={dialerContacts} label={dialerLabel} sessionId={savedId} settingsOpen={dialerSettingsOpen} onCloseSettings={() => setDialerSettingsOpen(false)} onDirtyChange={setDialerDirty} onResumeSession={resumeDialer} /></div>}
+        {activeView === 'dialer' && dialerEnabled && <div className="min-h-0 flex-1 overflow-y-auto"><SavedDialerWorkspace key={launch} isLight={isLight} contacts={dialerContacts} label={dialerLabel} sessionId={savedId} settingsOpen={dialerSettingsOpen} onCloseSettings={() => setDialerSettingsOpen(false)} onDirtyChange={setDialerDirty} onResumeSession={resumeDialer} /></div>}
       </div>
     </div>
   );

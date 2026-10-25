@@ -107,3 +107,7 @@ temp-images/
 /npmcheck/
 __pycache__/
 *.pyc
+
+# Raw MLS pool snapshots — public-record rows, but this repo is public and
+# bulk MLS output does not belong in it. Keep them local.
+scripts/data/pool-snapshots/

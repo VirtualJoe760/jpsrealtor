@@ -2,7 +2,7 @@
 title: CRM Dialer Build Plan
 authority: product scope and implementation entry point
 status: partial
-last_verified: 2026-10-18
+last_verified: 2026-10-24
 related: [../README.md, ../../ARCHITECTURE.md, ../../integrations/README.md]
 ---
 
@@ -11,6 +11,25 @@ related: [../README.md, ../../ARCHITECTURE.md, ../../integrations/README.md]
 ## TL;DR
 
 Build a Twilio-first calling workspace launched from selected Contacts or a tag/filter set. The target includes saved sessions, single/triple-line dialing, verified callback number, voicemail drops, simultaneous-answer handling, email follow-ups, newsletter invitations, and optional Retell AI overflow. The current implementation saves simulation queues, attempts and explicit note/outcome checkpoints, with recent-session resume and one agent slot held through wrap-up. Calls remain simulated; credit reservation primitives and paid-only purchase fulfillment are implemented behind disabled live-voice readiness. Production telephony, live recovery, usage collection and auto-top-up are not implemented.
+
+## Access: admin-only
+
+The dialer is **gated to admins** while calls are simulated and live voice
+dispatch is hard-disabled. Shipping a half-built calling surface to every agent
+invites real dials against other brokerages' contacts.
+
+The gate that matters is `dialerOwner()` in `src/lib/dialer/session-server.ts`:
+all four session-scoped routes (`sessions`, `sessions/[id]`,
+`sessions/[id]/commands`, `billing`) funnel through it, so a new dialer route
+cannot forget the check. It reads `isAdmin` from the database rather than the
+JWT, because the token is minted at sign-in and would outlive revoked rights.
+Non-admins get the callers' existing `401` rather than a `403` — a deliberate
+trade for keeping one chokepoint. The Twilio status webhook is deliberately
+exempt: it has no session and verifies its own signature.
+
+`/agent/contacts` hides the entry points (`Open in dialer`, the saved-queue
+strip, the workspace) for non-admins, but that is navigation UX only — a client
+check protects nothing.
 
 ## Start here
 

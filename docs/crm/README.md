@@ -1,7 +1,7 @@
 ---
 title: CRM
 status: current
-last_verified: 2026-10-18
+last_verified: 2026-10-24
 related:
   - ../auth/README.md
   - ../multi-tenant/README.md
@@ -76,7 +76,12 @@ CSV imports run async through Next's `after()` while the UI polls a status route
   (`src/server/socket.ts`) silently no-ops when no socket server exists, and the
   UI has no refetch fallback.
 
-## Dialer (calls are still simulated)
+## Dialer (admin-only; calls are still simulated)
+
+**Admin-gated** at `dialerOwner()` (`src/lib/dialer/session-server.ts`), the one
+chokepoint every session-scoped dialer route goes through; `/agent/contacts`
+additionally hides the entry points. See [dialer/README.md](./dialer/README.md)
+→ Access.
 
 [Full dialer build plan](./dialer/build-plan.md): browser calling with a verified
 callback number, durable call history and a single-line queue, with a later Telnyx
