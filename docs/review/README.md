@@ -132,6 +132,28 @@ don't push them; move the snapshots out of the repo (Cloudinary or the
 content-storage path) and reset local `main` to `origin/main` once anything
 worth keeping is saved elsewhere.
 
+**Update 2026-10-24 — "don't push them" is already too late, on a different
+branch.** Local `main` is now clean (it is `origin/main` plus one docs commit),
+so the five-commit divergence is resolved and no snapshot is tracked in the
+working tree — `scripts/data/pool-snapshots/` is gitignored at `.gitignore:113`,
+so today's run wrote `2026-10-25.json` untracked and it was not staged. But four
+snapshot files **are** on `origin/feat/mls-feed-key`, which is on the public
+GitHub repo:
+
+```
+scripts/data/pool-snapshots/{2026-09-17,2026-09-18,2026-09-19,2026-10-17}.json
+```
+
+carried by commits `283092411`, `589467ff2`, `81a7d6d48` and `d8062b788`. Each
+holds the pool as listing key, address, price, photo count and property type
+per row — other brokerages' MLS data, published. The `.gitignore` entry stops
+new ones but does nothing about history.
+**Suggested fix:** decide whether this needs scrubbing from
+`feat/mls-feed-key`'s history (a force-push and a re-clone for anyone holding
+the branch) or whether the exposure is acceptable; note a force-push does not
+unpublish anything already fetched or indexed. Not actioned here — rewriting a
+pushed branch's history is the owner's call.
+
 ### R7 · HIGH · The Gemini project is denied access — the carousel pipeline cannot run at all
 Every `generateContent` call on `GEMINI_API_KEY` (`.env.local`) returns
 `403 PERMISSION_DENIED — "Your project has been denied access. Please contact
