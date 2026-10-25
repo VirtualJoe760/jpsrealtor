@@ -1,8 +1,8 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-17
-last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
+last_verified: 2026-10-24
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
@@ -1706,6 +1706,135 @@ it, which is the Ridge Road failure.
 consecutive clean run — of which **18 are publishable**, still **0 approved**,
 and still one listing ever posted (53806 Ridge Road, two `posted` records).
 Code **G6**, id `6ad40e450b45e02118b579e5`, 8 slides.
+
+### Blocked 2026-10-24 — the Gemini project is denied access, and the selector cannot tell you that
+
+**No build. The blocker is not the pool, the queue or the photographs — every
+`generateContent` call on `GEMINI_API_KEY` returns 403.**
+
+```
+403 {"error":{"code":403,"message":"Your project has been denied access.
+     Please contact support.","status":"PERMISSION_DENIED"}}
+```
+
+Confirmed against `gemini-2.5-flash` and `gemini-flash-latest`, on vision calls
+and on a bare text prompt, repeatedly over ~20 minutes. It is not a rate limit
+and not image-specific: **all inference on this project is blocked.** The key
+itself still authenticates — `GET /v1beta/models` returns the full catalogue —
+so the failure is project-level authorisation, not a bad or expired key.
+
+Every stage of the pipeline that matters is Gemini: the photo reader, the
+selector, the stager's placement choice and the verification pass. So there is
+no partial build available and nothing to queue.
+
+**There is no second key to fall back to.** Checked all three Vercel
+environments with the stored `VERCEL_API_TOKEN` (the CLI itself has no
+credentials on this machine — `vercel env pull` fails with
+`No existing credentials found` until given `--token`):
+
+| Environment | `GEMINI_API_KEY` |
+|---|---|
+| production | absent |
+| preview | present but **empty string** |
+| development | absent |
+
+Production has never had one, which is consistent with staging being a local
+scripted pipeline rather than a deployed route.
+
+#### THE SELECTOR REPORTS AN OUTAGE AS "NOT STAGEABLE", AND IT NEARLY COST A GOOD LISTING
+
+This is the part worth keeping. `assessOne` in
+`src/lib/content/select-staging-photos.ts` ends `catch { return null }`, and
+`selectStagingPhotos` then does `.filter(Boolean)`. **A frame that failed to
+assess and a frame the model refused are the same value by the time anything
+can see it** — the first is dropped from `assessed` entirely, the second
+appears with `stageable: false`.
+
+`tmp-selector-dump.ts` prints only `selected` and the stageable subset, so it
+cannot show the difference either. Today's first dump of 17 Lugo Drive read:
+
+```
+ALL STAGEABLE: #10:dining #15:kitchen #18:office #34:other
+```
+
+Four frames out of 35, one of them the empty garage — which reads exactly like
+a thin listing worth striking. It was not. Minutes later the same call returned
+`urls=35 assessed=0 stageable=0`: every frame was 403ing and the earlier run had
+simply caught the block as it landed. **The "4 stageable" number is an artefact
+of the outage, not a verdict on the photographs**, and a run that trusted it
+would have struck a listing whose contact sheet is the best this pool has
+offered since Azzura Way.
+
+`scripts/tmp-dump-why.ts` is added for this: it prints `urls=`, `assessed=` and
+`stageable=` counts before the per-frame lines, so a gap between `urls` and
+`assessed` names an API failure instead of hiding inside a low stageable count.
+`scripts/tmp-gemini-probe.ts` calls one photo with the error surfaced, which is
+what turned "these photos are thin" into the 403 above in one command.
+
+> **Before striking a listing on a thin shortlist, check `assessed` against
+> `urls`.** A strike is durable — §"Rules" says a struck listing stays struck
+> unless its photo set changes — so a strike written during an outage is a
+> permanent loss of a good listing for a transient reason.
+
+The real fix is in `select-staging-photos.ts` (distinguish refusal from error,
+and surface the error), which is outside this run's blast radius and is logged
+in `docs/review/README.md` instead.
+
+#### The listing this run would have built: 17 Lugo Drive, Rancho Mirage, $529,000
+
+Recorded so the next run does not re-derive it. `tmp-pool4.js` returns **39
+broad actives against 32 key-matched**, eleven FRESH stageable, of which six are
+disqualified before any spend:
+
+| Disqualified | Why |
+|---|---|
+| 3010 Chuperosa, 7798 Acoma, 5803 Los Santos | relists of queued houses — caught by `scripts/data/pending/{chuperosa-road,acoma-trail,los-santos}.ts` |
+| 56616 Mountain View (44 ph), 58540 Barron (29 ph), 2502 Harbor (17 ph) | standing strikes, photo counts unmoved |
+
+That leaves five never-built rows, and the `furnished` field separates them at
+no cost:
+
+| Candidate | Photos | `furnished` | Read |
+|---|---|---|---|
+| **17 Lugo Drive, Rancho Mirage, $529k** | 35 | **Furnished** | **Chosen.** Contact sheet confirms it: every room styled, professionally lit, undistorted, golf-course frontage |
+| 68148 Madrid, Cathedral City, $675k | 57 | Unfurnished | deepest set in the pool and the fallback, but unverified — no sheet paid for |
+| 54160 Avenida Rubio, La Quinta, $560k | 40 | Unfurnished | unchecked |
+| 69771 Willow, Cathedral City, $529,900 | 27 | Unfurnished | unchecked; remarks describe a just-completed remodel, which usually means vacant |
+| 60644 Latham, Joshua Tree, $452k | 34 | Partially | unchecked |
+
+**`furnished` is worth reading before paying for a contact sheet.** Vacancy is
+the single most common strike in this log — Barron, Mountain View, Encanto,
+Calle San Antonio, Evans Lane — and the field is on the record for free. It is a
+prior and not a guarantee (it states whether furniture conveys, not what the
+photographer shot), but it ranked five candidates correctly here for nothing.
+
+Lugo's sheet, for the next run: exteriors/aerials #0–#3, #28–#31; living end
+#4–#9; dining #10–#11; kitchen #12–#16; hall #17; office/den #18; bedrooms
+#19–#20, #22–#25; baths #21, #26; laundry #27; patio #32–#33; empty garage #34.
+Not a strike — the opposite. The exclusion list, when it can be built against a
+working selector, aims at #0–#3, #17, #20, #21, #26, #27, #28–#31 and #34.
+
+Copy material from the remarks is unusually concrete for this pool: a Heavenly
+Heat sauna included, a Tesla charger already in the garage, interior repainted
+within the week, guard-gated Sunrise Country Club, clubhouse restaurant, a
+semi-private pool and hot tub across the street, HOA $1,151 covering exterior
+and landscaping. Note the home is a **condominium with a community pool** — the
+`pool: true Community` flag is not a private pool and no caption may imply one.
+
+#### Where the queue stands
+
+**29 `awaiting_review` against 29 distinct listings** — no duplicates, ninth
+consecutive clean run — **0 approved**, two `posted` records, both 53806 Ridge
+Road. Twelve of the 29 have left `unifiedlistings`, so **17 are publishable**.
+
+`tmp-relist-check.js` re-run in full: **no queued post is publishable as built
+after a relist.** Three have relisted under new keys and all three moved the
+price away from what their slides print — K6 3010 N Chuperosa $749,000 →
+$699,000, E4 7798 Acoma $299,000 → $294,000, and **A8 5803 Los Santos
+$414,999 → $399,000, which is new today** (same agent, sqft match). The
+remaining nine have no live row at all, or live rows that are other doors in the
+same building (U5, L7) or another brokerage's listing (V9). Repointing a queued
+record at a new key stays the agent's call, not a scheduled run's.
 
 ## Implementation map
 

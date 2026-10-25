@@ -1,7 +1,7 @@
 ---
 title: Review queue — bugs and inconsistencies awaiting Joseph's decision
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-24
 related: [../tech-debt.md, ../AGENTS.md, ../chatrealty-api/external-site.md]
 ---
 
@@ -131,6 +131,44 @@ snapshots — raw listing data. The GitHub repo is public. **Suggested fix:**
 don't push them; move the snapshots out of the repo (Cloudinary or the
 content-storage path) and reset local `main` to `origin/main` once anything
 worth keeping is saved elsewhere.
+
+### R7 · HIGH · The Gemini project is denied access — the carousel pipeline cannot run at all
+Every `generateContent` call on `GEMINI_API_KEY` (`.env.local`) returns
+`403 PERMISSION_DENIED — "Your project has been denied access. Please contact
+support."` Reproduced on `gemini-2.5-flash` and `gemini-flash-latest`, on a
+vision call and on a bare text prompt, repeatedly on 2026-10-24. The key still
+authenticates (`GET /v1beta/models` returns the full catalogue), so this is
+project-level authorisation, not an expired key. No fallback key exists:
+production and development have no `GEMINI_API_KEY` and preview's is an empty
+string (checked with the stored `VERCEL_API_TOKEN`).
+
+Photo reading, selection, staging and verification are all Gemini, so the daily
+carousel produced **no build on 2026-10-24** and will keep producing none.
+**Suggested fix:** Joseph to appeal/restore the blocked project in Google AI
+Studio, or mint a key on a different project and set it with
+`~/.claude/tools/ask-secret.sh "Gemini API key" --env GEMINI_API_KEY
+/f/web-clients/joseph-sardella/jpsrealtor/.env.local`. Only the account owner
+can do this; it is not fixable from here.
+
+### R8 · med · `selectStagingPhotos` reports an API outage as "not stageable"
+`assessOne` ends `catch { return null }`
+(`src/lib/content/select-staging-photos.ts:189`) and `selectStagingPhotos`
+`.filter(Boolean)`s the results (line 216), so a frame that **failed to assess**
+disappears from `assessed` entirely while a frame the model **refused** appears
+with `stageable: false`. Nothing downstream can tell them apart, and
+`tmp-selector-dump.ts` prints only the stageable subset.
+
+This is not theoretical: on 2026-10-24 the first dump of 17 Lugo Drive returned
+4 stageable frames out of 35 — which reads as a thin listing worth striking —
+and the next call returned `assessed=0` because R7 had landed mid-run. Strikes
+are durable by policy (`auto-posting.md` §"Rules"), so an outage during a run
+can permanently strike a good listing for a transient reason.
+**Suggested fix:** have `assessOne` return a distinct error marker rather than
+`null`, count and log failures in `selectStagingPhotos`, and fail loudly when
+the failure rate is high instead of returning a short shortlist. Interim
+mitigation is committed: `scripts/tmp-dump-why.ts` prints
+`urls= / assessed= / stageable=` so the gap is visible, and
+`scripts/tmp-gemini-probe.ts` surfaces the swallowed error for one photo.
 
 <!-- Documentation-verification findings are appended below by area. -->
 
