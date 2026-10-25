@@ -516,6 +516,9 @@ export interface CellSale {
   listAgentName: string | null
   listAgentMlsId: string | null
   listOfficeName: string | null
+  buyerAgentName: string | null
+  buyerAgentMlsId: string | null
+  buyerOfficeName: string | null
   address: string | null
   slugAddress: string | null
   beds: number | null
@@ -590,6 +593,15 @@ export async function getCellSales(opts: {
         listAgentName: 1,
         listAgentMlsId: 1,
         listOfficeName: 1,
+        // Buyer side uses *ViewName*, NOT *MarketingName*. Measured 2026-10-25
+        // on trailing-12mo type-A: buyerAgentViewName is 99.8% populated
+        // (99.3% in the valley) while buyerAgentMarketingName is 7.5% (67.7%
+        // in the valley) — it is an optional vanity field. Reading
+        // MarketingName would have shown "no buyer agent" on nine sales in ten
+        // and looked like missing data rather than the wrong field.
+        buyerAgentViewName: 1,
+        buyerAgentMlsId: 1,
+        buyerOfficeViewName: 1,
         unparsedAddress: 1,
         slugAddress: 1,
         bedsTotal: 1,
@@ -613,6 +625,9 @@ export async function getCellSales(opts: {
     // ("Sarah Benson" / "SARAH BENSON"). Grouping in the UI keys on this.
     listAgentMlsId: r.listAgentMlsId ? String(r.listAgentMlsId).trim().toUpperCase() : null,
     listOfficeName: r.listOfficeName ?? null,
+    buyerAgentName: r.buyerAgentViewName ?? null,
+    buyerAgentMlsId: r.buyerAgentMlsId ? String(r.buyerAgentMlsId).trim().toUpperCase() : null,
+    buyerOfficeName: r.buyerOfficeViewName ?? null,
     address: r.unparsedAddress ?? null,
     slugAddress: r.slugAddress ?? null,
     beds: r.bedsTotal ?? null,

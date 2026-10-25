@@ -91,6 +91,9 @@ export interface CellSale {
   listAgentName: string | null
   listAgentMlsId: string | null
   listOfficeName: string | null
+  buyerAgentName: string | null
+  buyerAgentMlsId: string | null
+  buyerOfficeName: string | null
   address: string | null
   slugAddress: string | null
   beds: number | null
@@ -538,27 +541,47 @@ function DetailPanel({
  * cannot be derived from a truncated list.
  */
 function CellSalesList({ sales }: { sales: CellSale[] }) {
-  const { textMuted, border } = useThemeClasses()
+  const { textMuted, border, textSecondary } = useThemeClasses()
+  const [side, setSide] = useState<'list' | 'buy'>('list')
 
+  // Group on the MlsId, never the name. One agent carries several spellings in
+  // the feed — "Sarah Benson" / "SARAH BENSON", "Chris Tebbutt" /
+  // "Christopher Tebbutt" — so name-grouping splits one agent into two rows
+  // and understates them.
   const byAgent = new Map<string, { name: string; office: string | null; rows: CellSale[] }>()
   for (const s of sales) {
-    const key = s.listAgentMlsId ?? s.listAgentName ?? 'unknown'
+    const id = side === 'list' ? s.listAgentMlsId : s.buyerAgentMlsId
+    const nm = side === 'list' ? s.listAgentName : s.buyerAgentName
+    const off = side === 'list' ? s.listOfficeName : s.buyerOfficeName
+    const key = id ?? nm ?? 'unknown'
     const existing = byAgent.get(key)
     if (existing) existing.rows.push(s)
-    else
-      byAgent.set(key, {
-        name: s.listAgentName ?? 'Unknown agent',
-        office: s.listOfficeName,
-        rows: [s],
-      })
+    else byAgent.set(key, { name: nm ?? 'Unknown agent', office: off, rows: [s] })
   }
   const groups = [...byAgent.values()].sort((a, b) => b.rows.length - a.rows.length)
 
+  const tab = (v: 'list' | 'buy', label: string) => (
+    <button
+      onClick={() => setSide(v)}
+      className={`rounded px-2 py-0.5 text-[11px] ${
+        side === v ? `border ${border} font-medium` : textMuted
+      }`}
+    >
+      {label}
+    </button>
+  )
+
   return (
     <div className="space-y-3">
-      <div className="text-xs font-medium">
-        {sales.length} {sales.length === 1 ? 'sale' : 'sales'} ·{' '}
-        {groups.length} {groups.length === 1 ? 'agent' : 'agents'}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium">
+          {sales.length} {sales.length === 1 ? 'sale' : 'sales'} · {groups.length}{' '}
+          {groups.length === 1 ? 'agent' : 'agents'}
+        </span>
+        <span className="flex items-center gap-1">
+          {tab('list', 'Listing')}
+          {tab('buy', 'Buying')}
+        </span>
       </div>
 
       {groups.map((g, gi) => (
@@ -587,11 +610,22 @@ function CellSalesList({ sales }: { sales: CellSale[] }) {
                     .filter(Boolean)
                     .join(' · ')}
                 </div>
+                {/* The other side of the same transaction, so a row is never
+                    half a story regardless of which grouping is active. */}
+                <div className={textMuted}>
+                  {side === 'list'
+                    ? `Buyer: ${r.buyerAgentName ?? '—'}`
+                    : `Listed: ${r.listAgentName ?? '—'}`}
+                </div>
               </li>
             ))}
           </ul>
         </div>
       ))}
+
+      <p className={`text-[11px] ${textSecondary}`}>
+        Counts describe the list above, not a market statistic.
+      </p>
     </div>
   )
 }
