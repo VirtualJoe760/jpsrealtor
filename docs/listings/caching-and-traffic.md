@@ -116,10 +116,19 @@ update at 06:00, status at 07:00 and photos at 09:00–09:30, once a day.
   low-cardinality tenant header set by middleware or split routes per host.
   See `docs/tech-debt.md`.
 
-## Bots and rate limits — recommended Vercel settings (NOT applied)
+## Bots and rate limits — Vercel Firewall
 
-Nothing below has been applied; the code change didn't touch the dashboard.
-Project: Vercel `virtualjoe760` / `jpsrealtor` → **Firewall**.
+Project: Vercel team `joes-projects-e3fd5dcd` / `jpsrealtor` → **Firewall**
+(the team slug is not `virtualjoe760`; dashboard URLs 404 with that).
+
+**Applied 2026-10-25:** custom rule **"Rate-limit AI/SEO crawlers"** —
+User Agent *matches expression* `meta-externalagent|Meta-ExternalAgent|AhrefsBot`
+→ fixed window 60 s, 30 requests per IP → 429. This merges items 2 and 3 below
+into one rule at 30/min. Verified on prod: 35 AhrefsBot-UA requests returned
+200 ×30 then 429 ×5; 35 Googlebot-UA requests all returned 200. Pricing:
+$0.50 per 1M requests the rule allows, blocked requests free.
+
+Items 1, 4 and 5 below are still **not applied**.
 
 1. **Bot Protection → turn on Bot Filter in "Log" mode for 48 h first, then
    "Challenge".** Bot Filter challenges non-browser traffic that isn't a
