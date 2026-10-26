@@ -1,6 +1,10 @@
 import { ImageResponse } from 'next/og'
+import { getEnrichedListing } from '@/lib/listings/listing-detail'
 
-export const runtime = 'edge'
+// Node runtime (was edge) so the image reads the listing in-process. On edge it
+// had to fetch our own /api/mls-listings over HTTP — an extra invocation per
+// crawler preview (Meta, Slack, iMessage), on top of the image render itself.
+export const runtime = 'nodejs'
 export const alt = 'Property Listing'
 export const size = {
   width: 1200,
@@ -10,13 +14,7 @@ export const contentType = 'image/png'
 
 async function getListingData(slugAddress: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatrealty.io'
-    const res = await fetch(`${baseUrl}/api/mls-listings/${slugAddress}`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data?.listing ?? null
+    return await getEnrichedListing(slugAddress)
   } catch {
     return null
   }
@@ -73,7 +71,12 @@ export default async function OGImage({
   const beds = listing.bedroomsTotal || listing.beds || 0
   const baths = listing.bathroomsTotalInteger || listing.bathroomsFull || 0
   const sqft = listing.livingArea || listing.buildingAreaTotal || 0
-  const photoUrl = listing.primaryPhotoUrl || 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png'
+  // Absolute URLs only: on the nodejs runtime ImageResponse throws ("Image
+  // source must be an absolute URL") on the relative "/images/no-photo.png"
+  // that getEnrichedListing returns for photo-less listings.
+  const photoUrl = listing.primaryPhotoUrl?.startsWith('http')
+    ? listing.primaryPhotoUrl
+    : 'https://res.cloudinary.com/duqgao9h8/image/upload/f_auto,q_auto/jpsrealtor/joey/about.png'
 
   return new ImageResponse(
     (
@@ -166,7 +169,9 @@ export default async function OGImage({
               marginBottom: '32px',
             }}
           >
-            {city}, {state}
+            {/* One string: `{city}, {state}` is three child nodes, which
+                ImageResponse rejects in a non-flex div. */}
+            {`${city}, ${state}`}
           </div>
 
           {/* Property Stats */}
@@ -189,10 +194,10 @@ export default async function OGImage({
                   borderRadius: '12px',
                 }}
               >
-                <div style={{ fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
+                <div style={{ display: 'flex', fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
                   {beds}
                 </div>
-                <div style={{ fontSize: 14, color: '#a1a1aa' }}>Beds</div>
+                <div style={{ display: 'flex', fontSize: 14, color: '#a1a1aa' }}>Beds</div>
               </div>
             )}
             {baths > 0 && (
@@ -206,10 +211,10 @@ export default async function OGImage({
                   borderRadius: '12px',
                 }}
               >
-                <div style={{ fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
+                <div style={{ display: 'flex', fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
                   {baths}
                 </div>
-                <div style={{ fontSize: 14, color: '#a1a1aa' }}>Baths</div>
+                <div style={{ display: 'flex', fontSize: 14, color: '#a1a1aa' }}>Baths</div>
               </div>
             )}
             {sqft > 0 && (
@@ -223,10 +228,10 @@ export default async function OGImage({
                   borderRadius: '12px',
                 }}
               >
-                <div style={{ fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
+                <div style={{ display: 'flex', fontSize: 32, fontWeight: 700, color: '#ffffff' }}>
                   {sqft.toLocaleString()}
                 </div>
-                <div style={{ fontSize: 14, color: '#a1a1aa' }}>Sq Ft</div>
+                <div style={{ display: 'flex', fontSize: 14, color: '#a1a1aa' }}>Sq Ft</div>
               </div>
             )}
           </div>
@@ -257,10 +262,10 @@ export default async function OGImage({
               JS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#ffffff' }}>
+              <div style={{ display: 'flex', fontSize: 16, fontWeight: 600, color: '#ffffff' }}>
                 Joseph Sardella
               </div>
-              <div style={{ fontSize: 14, color: '#71717a' }}>jpsrealtor.com</div>
+              <div style={{ display: 'flex', fontSize: 14, color: '#71717a' }}>jpsrealtor.com</div>
             </div>
           </div>
         </div>

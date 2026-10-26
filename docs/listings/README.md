@@ -1,8 +1,8 @@
 ---
 title: Listings / MLS
 status: partial
-last_verified: 2026-10-17
-related: [../multi-tenant/README.md, ../chat/README.md, ../chatrealty-api/data-tiers.md, ../mcp/tools.md]
+last_verified: 2026-10-25
+related: [caching-and-traffic.md, ../multi-tenant/README.md, ../chat/README.md, ../chatrealty-api/data-tiers.md, ../mcp/tools.md]
 ---
 
 # Listings / MLS
@@ -33,7 +33,8 @@ from Settings — see [Hosted MLS seeding](#hosted-mls-seeding-tenant-databases)
 | `src/models/subdivisions.ts` | Neighborhoods + `cmaStats`, `rentStats`, `cashflowProfile`, `communityFacts` |
 | `src/models/cities.ts` | City stats (+ `cashflowProfile`; **no** `cmaStats`) |
 | `src/app/api/mls-listings/route.ts` | Canonical public search: `listingType`→`propertyType`, price/beds/baths/sqft/lot/year/amenity/HOA/city/subdivision/`mlsSource`/`excludeKeys` filters, radius overrides the bounding box, `openhouses` `$lookup`, `s-maxage=3600, stale-while-revalidate=604800` |
-| `src/app/api/mls-listings/[slugAddress]/route.ts` | Detail-page fetch |
+| `src/app/api/mls-listings/[slugAddress]/route.ts` | Single-listing JSON for browser callers (map, chat cards); CDN `s-maxage=600` |
+| `src/lib/listings/listing-detail.ts` | Shared in-process reads (`getEnrichedListing`, `getListingPhotos`) used by the detail page, its OG image and both API routes — see [caching-and-traffic.md](caching-and-traffic.md) |
 | `src/app/api/unified-listings/route.ts` | Lookup by `listingKey`/`slugAddress`, true `$near` radius (meters) |
 | `src/app/api/listings/[listingKey]/photos/route.ts` | Per-listing photos, DB-first (siblings: `listings/{nearby,related,quick-search}`) |
 | `src/lib/listings/fetch-primary-photos.ts` | Batched Spark photo fetch (50 keys/request per `mlsId`, 1h cache) |
@@ -144,7 +145,7 @@ listing goes off-market and leaves the live Spark feed.
 
 ## Frontend routes
 
-- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that fetches `/api/mls-listings/{slug}` and the photos route (`no-store`); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` falls back to `/api/cma/subdivision/{slug}` then `/api/cma/generate`. `/mls-listings/[slugAddress]/map` — listing-scoped map.
+- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that reads the listing and photos in-process via `src/lib/listings/listing-detail.ts` (10-min data cache; it no longer fetches its own API over HTTP — [caching-and-traffic.md](caching-and-traffic.md)); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` falls back to `/api/cma/subdivision/{slug}` then `/api/cma/generate`. `/mls-listings/[slugAddress]/map` — listing-scoped map.
 - `/neighborhoods/[cityId]` — city page (reads `cities`) with `events`, `hoa-contact-info`, `local-business`, `school-district` sub-pages. `/neighborhoods/[cityId]/[slug]` — subdivision page (reads `subdivisions`, embeds `SubdivisionCmaSection`). The old `…/buy` and `…/sell` variants are gone.
 - `/chap` — chat + full-screen map ([../chat/README.md](../chat/README.md)). `/map` has only a metadata layout (`page.tsx.disabled`), so it serves no page.
 

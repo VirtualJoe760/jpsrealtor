@@ -26,10 +26,10 @@ const MapView = dynamic(
 
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings/${slugAddress}`,
-      { cache: "no-store" }
-    );
+    // Same-origin + default caching: this runs in the browser, so an absolute
+    // NEXT_PUBLIC_BASE_URL was a cross-origin call from every other tenant
+    // domain, and no-store bypassed the API's CDN cache.
+    const res = await fetch(`/api/mls-listings/${slugAddress}`);
     if (!res.ok) return null;
     const data = await res.json();
     return data?.listing ?? null;

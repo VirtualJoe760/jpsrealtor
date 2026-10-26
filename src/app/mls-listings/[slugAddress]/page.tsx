@@ -7,16 +7,17 @@ import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
 import { BreadcrumbJsonLd, PropertyListingJsonLd } from "@/app/components/seo/JsonLd";
 import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import {
+  getEnrichedListing as readListing,
+  getListingPhotosFromListing,
+} from "@/lib/listings/listing-detail";
 
+// Reads Mongo in-process. This used to fetch our own /api/mls-listings and
+// /api/listings/…/photos over HTTP — three invocations per render, sent with
+// User-Agent "node". See src/lib/listings/listing-detail.ts.
 async function getEnrichedListing(slugAddress: string): Promise<IUnifiedListing | null> {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mls-listings/${slugAddress}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.listing ?? null;
+    return await readListing(slugAddress);
   } catch (err) {
     console.error("❌ Failed to fetch enriched listing:", err);
     return null;
@@ -130,31 +131,22 @@ export default async function ListingPage({
 
   let rawPhotos: SparkPhoto[] = [];
 
-  // Fetch photos from Spark API via our photo endpoint (works for all 8 MLS networks)
+  // Photos straight from the row we already hold (DB-first, Spark backup —
+  // same logic the /api/listings/[listingKey]/photos route serves).
   try {
-    const photosRes = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/listings/${listing.listingKey}/photos`,
-      {
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      }
-    );
-    if (photosRes.ok) {
-      const photosData = await photosRes.json();
-      // Convert from photo API format to SparkPhoto format
-      rawPhotos = (photosData.photos || []).map((p: any) => ({
-        Uri2048: p.uri2048 || p.uriLarge || "",
-        Uri1600: p.uri1600 || p.uri1280 || "",
-        Uri1280: p.uri1280 || p.uri1024 || "",
-        Uri1024: p.uri1024 || p.uri800 || "",
-        Uri800: p.uri800 || p.uri640 || "",
-        UriLarge: p.uriLarge || p.uri2048 || "",
-        UriThumb: p.uriThumb || p.uri300 || "",
-        Caption: p.caption || p.shortDescription || "",
-      }));
-    }
+    const photosData = await getListingPhotosFromListing(listing);
+    // Convert from photo API format to SparkPhoto format
+    rawPhotos = (photosData.photos || []).map((p: any) => ({
+      Id: p.mediaKey,
+      Uri2048: p.uri2048 || p.uriLarge || "",
+      Uri1600: p.uri1600 || p.uri1280 || "",
+      Uri1280: p.uri1280 || p.uri1024 || "",
+      Uri1024: p.uri1024 || p.uri800 || "",
+      Uri800: p.uri800 || p.uri640 || "",
+      UriLarge: p.uriLarge || p.uri2048 || "",
+      UriThumb: p.uriThumb || p.uri300 || "",
+      Caption: p.caption || p.shortDescription || "",
+    }));
   } catch (err) {
     console.error(`Failed to fetch photos for ${listing.listingKey}:`, err);
     rawPhotos = [];
