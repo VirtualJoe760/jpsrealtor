@@ -8,6 +8,7 @@ import type { AgentProfile } from "@/app/hooks/useAgentProfile";
 import { formatPhone, toE164US, formatPrice, parsePrice } from "@/lib/format-input";
 import { trackLead, trackEvent } from "@/lib/meta-pixel";
 import { trackGenerateLead, trackClickToCall } from "@/lib/google-ads";
+import { trackInquirySubmitted } from "@/lib/vercel-analytics";
 import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 interface Props {
@@ -92,6 +93,7 @@ export default function BuyIntakeCTA({ agent, cityName, cityId }: Props) {
       setSuccess(true);
       trackLead({ contactType: "buy_inquiry", address: cityName });
       trackGenerateLead({ source: "buy_inquiry" });
+      trackInquirySubmitted("buy_intake");
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
       turnstileRef.current?.reset();

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackInquirySubmitted } from "@/lib/vercel-analytics";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import ContactInfo from "./ContactInfo";
 import NameInput from "./NameInput";
@@ -81,6 +82,7 @@ export default function Contact({ campaign = "jpsrealtor" }: ContactProps) {
       });
 
       if (!res.ok) throw new Error("Failed to send message");
+      trackInquirySubmitted("contact_form");
 
       // Redirect to the success page
       router.push("/success");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { trackAppointmentBooked } from "@/lib/vercel-analytics";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
   ChevronLeft,
@@ -213,6 +214,7 @@ export default function BookAppointmentPage() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Booking failed"); }
       setBooked(true);
       setStep("confirm");
+      trackAppointmentBooked(appointmentType);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
     finally { setSubmitting(false); }
   };

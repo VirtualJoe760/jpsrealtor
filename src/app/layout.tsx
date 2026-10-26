@@ -24,6 +24,7 @@ import Navbar from "./components/navbar/Navbar";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper";
 import { OrganizationJsonLd, PersonJsonLd, WebSiteJsonLd } from "./components/seo/JsonLd";
 import GoogleTags from "@/app/components/seo/GoogleTags";
+import VercelAnalytics from "@/app/components/analytics/VercelAnalytics";
 import { getDomainConfigFromHeaders } from "@/lib/domain-utils";
 import { getServerTenantConfig } from "@/lib/nav-layout";
 
@@ -292,6 +293,7 @@ export default async function RootLayout({
               resolution; restoring it is one line here. */}
           {children}
         </ClientLayoutWrapper>
+        <VercelAnalytics />
       </body>
     </html>
   );

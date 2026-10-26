@@ -7,6 +7,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { trackLead, trackViewContent } from "@/lib/meta-pixel";
 import { trackGenerateLead } from "@/lib/google-ads";
+import { trackInquirySubmitted } from "@/lib/vercel-analytics";
 
 interface LandingPageClientProps {
   post: Post;
@@ -233,6 +234,7 @@ export default function LandingPageClient({ post, mdxContent }: LandingPageClien
                     setFormSubmitted(true);
                     trackLead({ contactType: `campaign_${post.slugId}` });
                     trackGenerateLead({ source: `campaign_${post.slugId}` });
+                    trackInquirySubmitted("campaign_form");
                   } else {
                     setFormError(data.error || "Something went wrong");
                   }

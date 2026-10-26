@@ -17,6 +17,7 @@ import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWi
 import AddressAutocomplete from "@/app/components/common/AddressAutocomplete";
 import { trackLead, trackEvent } from "@/lib/meta-pixel";
 import { trackGenerateLead, trackClickToCall } from "@/lib/google-ads";
+import { trackInquirySubmitted } from "@/lib/vercel-analytics";
 
 interface Props {
   agent: AgentProfile;
@@ -125,6 +126,7 @@ export default function SellIntakeCTA({ agent, cityName, cityId }: Props) {
       setSuccess(true);
       trackLead({ contactType: "sell_inquiry", address: fullAddress });
       trackGenerateLead({ source: "sell_inquiry" });
+      trackInquirySubmitted("sell_intake");
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
       turnstileRef.current?.reset();

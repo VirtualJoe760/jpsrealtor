@@ -702,6 +702,10 @@ function portalGates(request: NextRequest, pathname: string, token: any): NextRe
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|webmanifest)$).*)",
+    // _vercel: Web Analytics serves its script and takes beacons at
+    // /_vercel/insights/*. Through here, agent subdomains would reverse-proxy
+    // them to the agent's external deployment and every page view would cost
+    // a middleware invocation.
+    "/((?!_next/static|_next/image|_vercel|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|webmanifest)$).*)",
   ],
 };

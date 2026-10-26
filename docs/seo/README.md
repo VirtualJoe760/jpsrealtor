@@ -1,7 +1,7 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-25
 related: [../multi-tenant/README.md, ../routing/README.md, ../cms/README.md]
 ---
 
@@ -432,6 +432,44 @@ through it files them as homes that no product catalog can ever match.
 the `listingKey`. It works for a plain "viewed content" audience but will not
 match a catalog feed. Left as-is deliberately — changing the event shape would
 break any audience already built on it. Revisit when a catalog is connected.
+
+### Vercel Web Analytics (platform-wide, not per tenant)
+
+Added 2026-10-25. `src/app/components/analytics/VercelAnalytics.tsx` renders
+`<Analytics />` from `@vercel/analytics/next` at the end of the root layout's
+`<body>`, so every host this deployment serves reports into the one
+`jpsrealtor` Vercel project. Unlike GA4/Pixel it is not per-agent: it is the
+platform's own traffic view.
+
+- **Per-domain filtering is built in.** The beacon carries the full page URL;
+  the dashboard's **Hostnames** panel (Analytics tab → click a hostname to
+  filter) splits jpsrealtor.com / josephsardella.com / chatrealty.io /
+  agent subdomains. Agent sites on **external deployments** (subdomains
+  reverse-proxied by `proxy.ts` `rewriteToExternal`) render their own layout
+  and are *not* counted here.
+- **`/_vercel` is excluded from the `proxy.ts` matcher.** The script and
+  beacons live at `/_vercel/insights/*`; through the proxy, external-site
+  subdomains would forward them to the agent's deployment, and every page view
+  would cost a middleware invocation.
+- **URLs are redacted in `beforeSend`.** Any `/auth/*` query string is dropped
+  (reset/welcome links carry `?token=`), and token/code/email/phone-shaped
+  params are stripped everywhere else. UTM params survive.
+- **Custom events** (`src/lib/vercel-analytics.ts`), fired only after the API
+  returns success, with no personal data — only a form id and the hostname:
+
+  | Event | Property `form` / `appointmentType` | Fired from |
+  |---|---|---|
+  | `Inquiry Submitted` | `buy_intake` | `components/buy/BuyIntakeCTA.tsx` |
+  | `Inquiry Submitted` | `sell_intake` | `components/sell/SellIntakeCTA.tsx` |
+  | `Inquiry Submitted` | `contact_form` | `components/contact/Contact.tsx` |
+  | `Inquiry Submitted` | `campaign_form` | `lp/[slug]/LandingPageClient.tsx` |
+  | `Appointment Booked` | booking-page type enum | `book-appointment/page.tsx` |
+
+  `/contact` (the marketing-consent form) and `/text-opt-in` are opt-ins, not
+  inquiries, and are deliberately not counted. Custom events require a
+  Pro/Enterprise plan; on Hobby `track()` silently does nothing.
+- In `next dev` the component runs in debug mode: it logs each page view and
+  event to the browser console and sends nothing.
 
 ## Pending (dashboard/user actions, not code)
 
