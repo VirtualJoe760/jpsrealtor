@@ -8,7 +8,6 @@ import { Sun, Moon, Map, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useMapControl } from "@/app/hooks/useMapControl";
-import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { useMapState } from "@/app/contexts/MapStateContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +17,7 @@ import { useChatTutorial } from "./tutorial";
 
 export default function TopToggles() {
   const { currentTheme, toggleTheme, themeLocked } = useTheme();
-  const { isMapVisible, setMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const { isMapVisible, setMapVisible, showMapAtSpawnPoint, hideMap } = useMapControl();
   const { viewState } = useMapState();
   const { hasUnreadMessage, setUnreadMessage } = useChatContext();
   const tutorial = useChatTutorial();
@@ -107,10 +106,9 @@ export default function TopToggles() {
           // User has searched - reveal the pre-positioned map
           setMapVisible(true);
         } else {
-          // No persisted view → resolve spawn point (geolocation or Palm Desert)
-          resolveSpawnPoint().then((spawn) => {
-            showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
-          });
+          // No persisted view → reveal now, re-centre on the spawn point
+          // (geolocation or Palm Desert) when it resolves
+          showMapAtSpawnPoint();
         }
       }
     } else {

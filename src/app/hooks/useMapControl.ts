@@ -1,5 +1,6 @@
 import { useMapState } from "@/app/contexts/MapStateContext";
 import type { MapListing } from "@/types/types";
+import { resolveSpawnPoint, PALM_DESERT } from "@/lib/map/resolve-spawn-point";
 
 /**
  * useMapControl Hook
@@ -91,6 +92,25 @@ export function useMapControl() {
   };
 
   /**
+   * Open the map for a fresh chat session (no persisted viewState).
+   *
+   * Reveals the map NOW at Palm Desert, then re-centres once
+   * resolveSpawnPoint() answers. Awaiting the resolver before revealing
+   * left the chat on screen for the whole geolocation round-trip — ~1s
+   * even when permission is denied, up to 8s while the prompt is open —
+   * so a map click read as "chat, then the map switches in on its own".
+   * The re-centre uses setViewState, which moves the map without
+   * touching visibility, so toggling back to chat mid-resolve sticks.
+   */
+  const showMapAtSpawnPoint = () => {
+    showMapAtLocation(PALM_DESERT.lat, PALM_DESERT.lng, PALM_DESERT.zoom);
+    resolveSpawnPoint().then((spawn) => {
+      if (spawn === PALM_DESERT) return;
+      setViewState({ centerLat: spawn.lat, centerLng: spawn.lng, zoom: spawn.zoom });
+    });
+  };
+
+  /**
    * Hide the map background
    */
   const hideMap = () => {
@@ -171,6 +191,7 @@ export function useMapControl() {
   return {
     showMapWithListings,
     showMapAtLocation,
+    showMapAtSpawnPoint,
     hideMap,
     selectListing,
     setOpacity,

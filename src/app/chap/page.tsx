@@ -17,7 +17,6 @@ import MapSearchBar from "@/app/components/map/MapSearchBar";
 import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import { useMapControl } from "@/app/hooks/useMapControl";
-import { resolveSpawnPoint } from "@/lib/map/resolve-spawn-point";
 import { Map, Satellite, Globe, SlidersHorizontal, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import type { Filters } from "@/types/types";
 import { useChatTutorial } from "@/app/components/tutorial";
@@ -36,7 +35,7 @@ const FavoritesPannel = dynamic(
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isMapVisible, showMapAtLocation, hideMap } = useMapControl();
+  const { isMapVisible, showMapAtLocation, showMapAtSpawnPoint, hideMap } = useMapControl();
   // Captured ?aiQuery= param. ListingBottomPanel's AI button (and any
   // future "ask AI" affordance from another page or the map) navigates
   // here with the query in the URL. We snapshot it on mount, hide the
@@ -140,13 +139,12 @@ function HomeContent() {
         console.log('🗺️ [CHAP] URL wants map, restoring persisted viewState');
         showMapAtLocation(viewState.centerLat, viewState.centerLng, viewState.zoom);
       } else {
-        // Fresh chat session, no persisted view → resolve spawn point.
-        // Browser will prompt for geolocation on first call; outside
-        // CA / denied / timed out all collapse to Palm Desert.
+        // Fresh chat session, no persisted view → reveal now and
+        // re-centre on the spawn point when it resolves. Browser will
+        // prompt for geolocation on first call; outside CA / denied /
+        // timed out all collapse to Palm Desert.
         console.log('🗺️ [CHAP] URL wants map, resolving spawn point');
-        resolveSpawnPoint().then((spawn) => {
-          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
-        });
+        showMapAtSpawnPoint();
       }
     } else if (isMapVisible) {
       // URL says "no map" but state says map is open. URL wins —
@@ -335,12 +333,10 @@ function HomeContent() {
           viewState.zoom
         );
       } else {
-        // No pre-positioned location → resolve spawn point
-        // (geolocation prompt or Palm Desert fallback).
+        // No pre-positioned location → reveal now, re-centre on the
+        // spawn point (geolocation or Palm Desert) when it resolves.
         console.log('🗺️ [handleToggleMap] No pre-positioned location, resolving spawn point');
-        resolveSpawnPoint().then((spawn) => {
-          showMapAtLocation(spawn.lat, spawn.lng, spawn.zoom);
-        });
+        showMapAtSpawnPoint();
       }
     }
   };

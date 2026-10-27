@@ -1,7 +1,7 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-26
 related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md, ../routing/README.md, ../chatrealty-api/chap-search-pg.md]
 supersedes: docs/archive/chat-production/CHAT_V3.md
 ---
@@ -40,7 +40,7 @@ the agent-loop-first chat-v2; the agent loop survives only as the fallback.
 | `src/app/components/chat/ChatProvider.tsx` | Message state + `sessionStorage` persistence |
 | `src/app/components/chat-v3/PreviewRenderer.tsx` | `PreviewResult.component` → production component |
 | `src/app/components/chat/SnapshotCard.tsx` | Card above the snapshot text (hero photo, stat tiles, CTA) |
-| `src/lib/map/resolve-spawn-point.ts` | Geolocation → Palm Desert fallback for map spawn |
+| `src/lib/map/resolve-spawn-point.ts` | Geolocation → Palm Desert fallback for map spawn (open via `useMapControl().showMapAtSpawnPoint()`) |
 | `docs/chat/TOOLS_INDEX.md` | **Tools registry — source of truth** |
 
 ## The pipeline
@@ -123,8 +123,14 @@ loaded through `MapLayer`), co-located with the chat on `/chap` and revealed by 
 clip-path wipe. State lives in `MapStateContext` (`mapVisible` and `mapViewState`
 in `sessionStorage`). When a search-first result carries coordinates, `ChatWidget`
 calls `prePositionMap` with the listings' bounds so the map opens on them. A
-manual toggle with no target runs `resolveSpawnPoint()`: browser geolocation if
-inside California, else Palm Desert (zoom 10).
+manual toggle with no target calls `useMapControl().showMapAtSpawnPoint()`: the
+map is revealed at once at Palm Desert (zoom 10), then re-centred by
+`resolveSpawnPoint()` (browser geolocation if inside California). Never await the
+resolver before revealing: the geolocation round-trip (~1s even when denied, up to
+8s while the prompt is open) left the chat on screen, so a map click read as
+"chat, then the map switches in on its own". The `/chap` toggle (`TopToggles`) and
+a fresh `?view=map` deep link both go through it; the navbar, sidebar,
+`MapToggleButton` and `MobileBottomNav` entry points still await the resolver.
 
 URL contract on `/chap` (the URL always wins over saved state):
 
