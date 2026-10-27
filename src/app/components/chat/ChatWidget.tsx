@@ -1513,7 +1513,9 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
               <div className="flex w-full min-w-0 flex-col items-center justify-center gap-3 sm:flex-row [container-type:inline-size]">
                 {/* No mark → no badge box and no divider. Rendering both empty
                     left a stray rule and pushed the title off-centre. */}
-                {hasCornerMark && (
+                {/* The brand wordmark already says what the badge says
+                    ("JPS | JPSREALTOR"), so it stands alone. */}
+                {hasCornerMark && !heroBrandMark && (
                 <>
                 <motion.div
                   whileHover={{ scale: 1.1, rotateY: 15, rotateX: 5 }}

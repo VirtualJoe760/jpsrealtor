@@ -80,7 +80,7 @@ the default; nothing falls back to ChatRealty while the agent has a name.
 | Slot | Component | Order on an agent site |
 |---|---|---|
 | Nav brand | `NavBrandMark` | Brand → **Nav Wordmark** text → **Navigation Bar Logo** → agent's name |
-| Chat hero title | `ChatWidget` | Identity → **Site Name** → agent's name. A Site Name that spells the Brand → **Nav Wordmark** (`JPSREALTOR`, spaces/case ignored) renders as that two-weight wordmark; any other text renders plain. Typing `chatRealty` opts back into CHATREALTY. The wordmark is sized to its character count so any name fits a 320px phone |
+| Chat hero title | `ChatWidget` | Identity → **Site Name** → agent's name. A Site Name that spells the Brand → **Nav Wordmark** (`JPSREALTOR`, spaces/case ignored) renders as that two-weight wordmark, with no corner badge beside it (it would repeat the brand); any other text renders plain. Typing `chatRealty` opts back into CHATREALTY. The wordmark is sized to its character count so any name fits a 320px phone |
 | Corner badge (hero / chat) | `BrandCornerMark` | Brand → **Brand Mark** text → brokerage logo → nothing. **Never on a platform host** |
 
 Why the corner badge is hidden on platform hosts: `/api/agent-branding` falls
