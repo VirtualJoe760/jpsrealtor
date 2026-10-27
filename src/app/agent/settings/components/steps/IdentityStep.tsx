@@ -149,7 +149,8 @@ export default function IdentityStep({
             className={inputClass}
           />
           <p className={`text-xs mt-1 ${isLight ? "text-gray-400" : "text-gray-500"}`}>
-            Displayed on your chat page. Defaults to your name if left blank.
+            Displayed on your chat page. Defaults to your name if left blank. Type your
+            Nav Wordmark (e.g. JPSREALTOR) to show your brand wordmark there instead.
           </p>
         </div>
 

@@ -58,6 +58,17 @@ interface ChatWidgetProps {
   autoSendMessage?: string;
 }
 
+// The hero wordmark is nowrap with 0.3em tracking, so a fixed text-4xl only
+// fits short names. Size it as (available width ÷ character count), capped at
+// the old text-4xl / md:text-5xl. --hero-fit is set on the <h1>; ~1em per
+// character covers Jost caps plus tracking. Available width = the brand row
+// (a size container, so the desktop sidebar is accounted for — 100vw was not),
+// and above sm: minus the badge + divider beside it.
+const HERO_WORDMARK_FIT =
+  "text-[length:min(2.25rem,calc(100cqw/var(--hero-fit)))] " +
+  "sm:text-[length:min(2.25rem,calc((100cqw_-_8rem)/var(--hero-fit)))] " +
+  "md:text-[length:min(3rem,calc((100cqw_-_8rem)/var(--hero-fit)))]";
+
 export default function ChatWidget({ mode = 'general', initialContext, autoSendMessage }: ChatWidgetProps = {}) {
   const { data: session } = useSession();
   const { currentTheme } = useTheme();
@@ -83,7 +94,24 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   // only for platform hosts, or an agent who typed "chatRealty" on purpose.
   const explicitSiteName = sharedBranding?.siteName?.trim() || "";
   const heroNameMark = !isPlatform ? nameWordmark(sharedBranding?.agentName) : null;
+  // A Site Name that spells the agent's Nav Wordmark ("JPSREALTOR", "JPS Realtor")
+  // is the brand, so render it as the brand: the two-weight wordmark, not the
+  // plain thin text a free-form Site Name gets.
+  const navMark = sharedBranding?.navWordmark;
+  const squash = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+  const heroBrandMark =
+    explicitSiteName && (navMark?.thin || navMark?.bold) &&
+    squash(explicitSiteName) === squash(`${navMark?.thin || ""}${navMark?.bold || ""}`)
+      ? { thin: navMark?.thin || "", bold: navMark?.bold || "" }
+      : null;
   const hasCornerMark = useHasCornerMark(isLight);
+  // Character count of whichever wordmark the hero renders, so its font size
+  // can be fitted to the viewport (HERO_WORDMARK_FIT) for any tenant's name.
+  const heroWordmarkChars = heroBrandMark
+    ? `${heroBrandMark.thin}${heroBrandMark.bold}`.length
+    : heroNameMark
+    ? `${heroNameMark.thin} ${heroNameMark.bold}`.trim().length
+    : "ChatRealty".length;
 
   // Cycling placeholder text (conditional based on mode)
   const placeholders = mode === 'contact_import'
@@ -1479,7 +1507,10 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
           >
             <div className="w-full max-w-2xl md:max-w-4xl flex flex-col items-center gap-2 md:gap-8 px-4">
               {/* Logo & Brand */}
-              <div className="flex items-center justify-center gap-3">
+              {/* Stacked below sm:, side by side above. A badge beside a
+                  15-letter tracked name ("JPS | JOSEPH SARDELLA") was ~630px
+                  wide and scrolled every phone sideways. */}
+              <div className="flex w-full min-w-0 flex-col items-center justify-center gap-3 sm:flex-row [container-type:inline-size]">
                 {/* No mark → no badge box and no divider. Rendering both empty
                     left a stray rule and pushed the title off-centre. */}
                 {hasCornerMark && (
@@ -1500,25 +1531,29 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
                 </motion.div>
 
                 <div
-                  className={`h-12 w-px ${
-                    isLight
-                      ? "bg-gradient-to-b from-transparent via-gray-400/50 to-transparent"
-                      : "bg-gradient-to-b from-transparent via-purple-400/50 to-transparent"
+                  className={`h-px w-12 bg-gradient-to-r sm:h-12 sm:w-px sm:bg-gradient-to-b from-transparent to-transparent ${
+                    isLight ? "via-gray-400/50" : "via-purple-400/50"
                   }`}
                 />
                 </>
                 )}
 
-                <h1 className={`text-4xl md:text-5xl ${isLight ? "text-gray-900" : "text-white"}`}>
-                  {explicitSiteName && explicitSiteName !== "chatRealty" ? (
-                    <span className="font-light tracking-wider">{explicitSiteName}</span>
+                <h1
+                  className={`min-w-0 max-w-full text-center text-4xl md:text-5xl ${isLight ? "text-gray-900" : "text-white"}`}
+                  style={{ "--hero-fit": heroWordmarkChars } as React.CSSProperties}
+                >
+                  {heroBrandMark ? (
+                    <Wordmark thin={heroBrandMark.thin} bold={heroBrandMark.bold} className={HERO_WORDMARK_FIT} />
+                  ) : explicitSiteName && explicitSiteName !== "chatRealty" ? (
+                    // Free text the agent typed: let it wrap rather than overflow.
+                    <span className="inline-block max-w-full font-light tracking-wider text-balance [overflow-wrap:anywhere]">{explicitSiteName}</span>
                   ) : !isPlatform && !brandingResolved ? (
                     // Don't flash CHATREALTY while the agent's name is loading.
                     <BrandSlotPlaceholder className="h-[1em] w-64" />
                   ) : heroNameMark && explicitSiteName !== "chatRealty" ? (
-                    <Wordmark thin={heroNameMark.thin} bold={heroNameMark.bold} spaced />
+                    <Wordmark thin={heroNameMark.thin} bold={heroNameMark.bold} spaced className={HERO_WORDMARK_FIT} />
                   ) : (
-                    <Wordmark />
+                    <Wordmark className={HERO_WORDMARK_FIT} />
                   )}
                 </h1>
               </div>
