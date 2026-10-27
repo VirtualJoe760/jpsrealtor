@@ -116,6 +116,28 @@ snapshot system prompt quotes 2–3 real POIs by name, and the agent-loop engine
 streams `token` events after a leading `{snapshotMeta}` event that mounts
 `SnapshotCard`. Payload tables are in TOOLS_INDEX.
 
+### Map search bar (`/chap` map view)
+
+`src/app/components/map/MapSearchBar.tsx` autocompletes from `GET /api/search`
+(cities, subdivisions, counties, regions, listings). A pick with coordinates
+goes through `POST /api/map/flyover` and `showMapAtLocation`; a pick at `0,0`
+falls back to `GET /api/geocode` (OpenCage). Two things broke it, both fixed
+2026-10-26:
+
+- **Place coordinates live under `coordinates.{latitude,longitude}`** on
+  cities, subdivisions, counties and regions. `/api/search` projected top-level
+  `latitude`/`longitude`, so every place came back at `0,0` and every pick hit
+  the geocode fallback (whose key was dead, see `docs/integrations/README.md`).
+  The city count field is `listingCount`, not `totalListings`.
+- **The listing sub-query matches `slugAddress` only**, with the query
+  slugified (`PGA West` → `pga-west`). The old `$or` of case-insensitive
+  regexes on `unparsedAddress`/`address`/`slugAddress` scanned all ~85k
+  listings: ~42s whenever nothing matched, holding the whole `Promise.all`, so
+  most subdivision and region names never got suggestions.
+
+Parent subdivisions built by the shadow merge (e.g. "PGA West") still have no
+coordinates, so picking one still depends on the geocode fallback.
+
 ## Map integration
 
 The map is **MapLibre** (`@vis.gl/react-maplibre`, `src/app/components/mls/map/MapView.tsx`,

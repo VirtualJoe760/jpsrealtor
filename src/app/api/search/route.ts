@@ -18,17 +18,19 @@ export async function GET(req: Request) {
 
     await dbConnect();
 
+    // Slug alphabet is [a-z0-9-], so the result is regex-safe as-is.
+    const qSlug = q.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
   // Search all data sources in parallel with smaller limits for better UX
   const [listings, cities, subdivisions, counties, regions] = await Promise.all([
-    // Listings search - regex with indexes for autocomplete
+    // Listings search. Match on the indexed slugAddress only, with the query slugified the
+    // same way ("PGA West" → "pga-west"). The old $or of case-insensitive
+    // regexes on unparsedAddress/address/slugAddress forced a collection
+    // scan of ~85k listings: ~42s whenever nothing matched (any subdivision
+    // or region name), and Promise.all held the whole response for it, so
+    // the map search looked dead. No listing has an `address` field.
     UnifiedListing.find(
-      {
-        $or: [
-          { unparsedAddress: { $regex: q, $options: "i" } },
-          { address: { $regex: q, $options: "i" } },
-          { slugAddress: { $regex: q, $options: "i" } },
-        ],
-      },
+      { slugAddress: { $regex: qSlug || "^$" } },
       {
         listingKey: 1,
         slugAddress: 1,
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
     // Cities search - limit to 3
     City.find(
       { name: { $regex: q, $options: "i" } },
-      { name: 1, latitude: 1, longitude: 1, totalListings: 1 }
+      { name: 1, coordinates: 1, listingCount: 1 }
     )
       .limit(3)
       .lean(),
@@ -59,7 +61,7 @@ export async function GET(req: Request) {
     // Subdivisions search - limit to 3
     Subdivision.find(
       { name: { $regex: q, $options: "i" } },
-      { name: 1, latitude: 1, longitude: 1, city: 1 }
+      { name: 1, coordinates: 1, city: 1 }
     )
       .limit(3)
       .lean(),
@@ -67,7 +69,7 @@ export async function GET(req: Request) {
     // Counties search - limit to 2
     County.find(
       { name: { $regex: q, $options: "i" } },
-      { name: 1, latitude: 1, longitude: 1 }
+      { name: 1, coordinates: 1 }
     )
       .limit(2)
       .lean(),
@@ -75,7 +77,7 @@ export async function GET(req: Request) {
     // Regions search - limit to 2
     Region.find(
       { name: { $regex: q, $options: "i" } },
-      { name: 1, latitude: 1, longitude: 1 }
+      { name: 1, coordinates: 1 }
     )
       .limit(2)
       .lean(),
@@ -106,13 +108,16 @@ export async function GET(req: Request) {
     };
   });
 
-  // Map cities to results
+  // Map cities to results. Cities, subdivisions, counties and regions keep
+  // their centre under `coordinates.{latitude,longitude}`; projecting the
+  // top-level fields (as this route used to) returned 0,0 for every place,
+  // which pushed the map search onto the /api/geocode fallback.
   const cityResults = cities.map((c: any) => ({
     type: "city" as const,
     label: c.name,
-    latitude: parseFloat(c.latitude) || 0,
-    longitude: parseFloat(c.longitude) || 0,
-    totalListings: c.totalListings || 0,
+    latitude: parseFloat(c.coordinates?.latitude) || 0,
+    longitude: parseFloat(c.coordinates?.longitude) || 0,
+    totalListings: c.listingCount || 0,
   }));
 
   // Map subdivisions to results
@@ -120,24 +125,24 @@ export async function GET(req: Request) {
     type: "subdivision" as const,
     label: s.name,
     city: s.city,
-    latitude: parseFloat(s.latitude) || 0,
-    longitude: parseFloat(s.longitude) || 0,
+    latitude: parseFloat(s.coordinates?.latitude) || 0,
+    longitude: parseFloat(s.coordinates?.longitude) || 0,
   }));
 
   // Map counties to results
   const countyResults = counties.map((c: any) => ({
     type: "county" as const,
     label: c.name,
-    latitude: parseFloat(c.latitude) || 0,
-    longitude: parseFloat(c.longitude) || 0,
+    latitude: parseFloat(c.coordinates?.latitude) || 0,
+    longitude: parseFloat(c.coordinates?.longitude) || 0,
   }));
 
   // Map regions to results
   const regionResults = regions.map((r: any) => ({
     type: "region" as const,
     label: r.name,
-    latitude: parseFloat(r.latitude) || 0,
-    longitude: parseFloat(r.longitude) || 0,
+    latitude: parseFloat(r.coordinates?.latitude) || 0,
+    longitude: parseFloat(r.coordinates?.longitude) || 0,
   }));
 
   const normalizedQuery = q.trim().toLowerCase();

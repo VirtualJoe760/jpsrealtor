@@ -148,8 +148,12 @@ export default function MapSearchBar({
   const handleSuggestionClick = async (suggestion: AutocompleteSuggestion) => {
     console.log('🗺️ [MapSearchBar] Suggestion clicked:', suggestion);
 
-    // Mark as selection to prevent autocomplete from triggering
-    isSelectionRef.current = true;
+    // Mark as selection to prevent autocomplete from triggering. Only when
+    // the text actually changes: setQuery with the same value never re-runs
+    // the effect that clears the flag, so a stale flag swallowed the NEXT
+    // search (e.g. pick "Indian Wells" after typing "Indian Wells", then
+    // paste a new place → no request at all).
+    isSelectionRef.current = suggestion.name !== query;
 
     setQuery(suggestion.name);
     setShowSuggestions(false);

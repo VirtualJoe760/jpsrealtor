@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-10-18
+last_verified: 2026-10-26
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -83,7 +83,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
 | **Google Maps Geocoding** | `F:\web-clients\joseph-sardella\jpsrealtor\src\lib\geocoding.ts` | Address → lat/lng | `GOOGLE_MAPS_API_KEY` (or `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) | Search/geocode endpoints, listing intake, CMA | `batchGeocodeAddresses()` rate-limits with 200ms delay. |
-| **OpenCage** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\geocode\route.ts` and `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\search\route.ts` | Fallback / alternative geocoding | `OPENCAGE_API_KEY` | Search resolver, geocode API | No shared lib wrapper — called directly from the two route handlers. |
+| **OpenCage** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\geocode\route.ts` and `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\search\route.ts` | Fallback / alternative geocoding | `OPENCAGE_API_KEY` | Geocode API (map search bar fallback for places with no stored coordinates) | No shared lib wrapper. Only `/api/geocode` actually calls it; `/api/search` declares the constants but skips the call. **The key in local `.env.local` returns `401 unknown API key` (checked 2026-10-26)**; the production value was not checked. |
 | **Yelp Fusion** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\yelp-search\route.ts` | Nearby businesses for neighborhood POIs | `YELP_API_KEY` | Map/insights POI panel | No shared wrapper. |
 
 ### Market data
