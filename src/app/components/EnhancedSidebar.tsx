@@ -496,7 +496,7 @@ export default function SimpleSidebar({ onClose }: SidebarProps) {
         {/* Legal links — moved here from the page footer, which is hidden
             (2026-10-17). Sits just above the quick-action icons. */}
         {!effectivelyCollapsed && (
-          <LegalLinks variant="sidebar" isLight={isLight} className="px-4 pt-1 pb-3 mx-3" />
+          <LegalLinks variant="sidebar" isLight={isLight} showCompany={isPlatformHost} className="px-4 pt-1 pb-3 mx-3" />
         )}
 
         {/* Quick Action Icons */}

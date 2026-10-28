@@ -1477,3 +1477,93 @@ export async function sendPartnerRejectionEmail(
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Investor interest (/invest) — admin notification
+// ---------------------------------------------------------------------------
+
+/** Tell the admin someone registered (or changed) a non-binding interest. */
+export async function sendInvestorInterestNotification(opts: {
+  name: string;
+  email: string;
+  amount: number;
+  note?: string;
+  updated: boolean;
+}) {
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const amount = `$${opts.amount.toLocaleString('en-US')}`;
+  try {
+    const resend = getResendClient();
+    const { error } = await resend.emails.send({
+      from: platformFrom(),
+      replyTo: opts.email,
+      to: ADMIN_EMAIL,
+      subject: `[Invest] ${opts.updated ? 'Updated' : 'New'} interest: ${amount} from ${opts.name || opts.email}`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#334155;">
+          <h2 style="margin:0 0 12px;color:#0f172a;">${opts.updated ? 'Updated' : 'New'} investor interest</h2>
+          <p style="margin:0 0 4px;"><strong>${esc(opts.name || 'N/A')}</strong> &lt;${esc(opts.email)}&gt;</p>
+          <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#1d4ed8;">${amount}</p>
+          ${opts.note ? `<p style="white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px;">${esc(opts.note)}</p>` : ''}
+          <p style="font-size:12px;color:#94a3b8;">Non-binding indication of interest. Reply to reach them directly.</p>
+        </div>
+      `,
+    });
+    if (error) console.error('[invest] interest notification error:', error);
+  } catch (error) {
+    console.error('[invest] interest notification failed:', error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Job applications (/join) — admin notification with the files attached
+// ---------------------------------------------------------------------------
+
+export async function sendJobApplicationNotification(opts: {
+  roleTitle: string;
+  name: string;
+  email: string;
+  phone?: string;
+  linkedin?: string;
+  answers: { question: string; answer: string }[];
+  coverLetterText?: string;
+  attachments: { filename: string; content: Buffer }[];
+}) {
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const qa = opts.answers
+    .map(
+      (a, i) => `
+        <p style="margin:16px 0 4px;font-weight:600;color:#0f172a;">${i + 1}. ${esc(a.question)}</p>
+        <p style="margin:0;white-space:pre-wrap;">${esc(a.answer)}</p>`
+    )
+    .join('');
+  try {
+    const resend = getResendClient();
+    const { error } = await resend.emails.send({
+      from: platformFrom(),
+      replyTo: opts.email,
+      to: ADMIN_EMAIL,
+      subject: `[Careers] ${opts.roleTitle}: ${opts.name}`,
+      attachments: opts.attachments,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#334155;line-height:1.5;">
+          <p style="margin:0;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#2563eb;">New application</p>
+          <h2 style="margin:4px 0 12px;color:#0f172a;">${esc(opts.roleTitle)}</h2>
+          <p style="margin:0;"><strong>${esc(opts.name)}</strong> &lt;${esc(opts.email)}&gt;</p>
+          ${opts.phone ? `<p style="margin:0;">${esc(opts.phone)}</p>` : ''}
+          ${opts.linkedin ? `<p style="margin:0;">${esc(opts.linkedin)}</p>` : ''}
+          <p style="margin:12px 0 0;font-size:13px;color:#64748b;">Résumé${opts.attachments.length > 1 ? ' and cover letter' : ''} attached.</p>
+          <h3 style="margin:24px 0 0;color:#0f172a;">Screening answers</h3>
+          ${qa}
+          ${opts.coverLetterText ? `<h3 style="margin:24px 0 8px;color:#0f172a;">Cover letter</h3><p style="white-space:pre-wrap;margin:0;">${esc(opts.coverLetterText)}</p>` : ''}
+          <p style="margin-top:24px;font-size:12px;color:#94a3b8;">Reply to this email to contact the applicant. The application is also saved in the job_applications collection.</p>
+        </div>
+      `,
+    });
+    if (error) console.error('[careers] application notification error:', error);
+  } catch (error) {
+    console.error('[careers] application notification failed:', error);
+  }
+}
