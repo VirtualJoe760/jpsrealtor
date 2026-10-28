@@ -92,7 +92,12 @@ export default function ChatWidget({ mode = 'general', initialContext, autoSendM
   // it used to be "chatRealty" for everyone (getDefaultSiteName), which put
   // the platform brand on top of every agent's chat page. CHATREALTY is now
   // only for platform hosts, or an agent who typed "chatRealty" on purpose.
-  const explicitSiteName = sharedBranding?.siteName?.trim() || "";
+  //
+  // The platform host ignores the agent's Site Name too. chatrealty.io falls
+  // back to the PRIMARY agent's branding (owner resolution), so reading
+  // siteName there put "JPSREALTOR" on the ChatRealty /chap page (2026-10-28).
+  // Every agent-branded value below must be gated on !isPlatform.
+  const explicitSiteName = !isPlatform ? sharedBranding?.siteName?.trim() || "" : "";
   const heroNameMark = !isPlatform ? nameWordmark(sharedBranding?.agentName) : null;
   // A Site Name that spells the agent's Nav Wordmark ("JPSREALTOR", "JPS Realtor")
   // is the brand, so render it as the brand: the two-weight wordmark, not the

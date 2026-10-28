@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { resolveDomainOwner } from "@/lib/resolveDomainOwner";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import { isPlatformDomain } from "@/lib/domain-classify";
 
 export type NavLayout = "sidebar" | "navbar";
 export type ThemeMode = "both" | "light" | "dark";
@@ -75,6 +76,11 @@ export async function getServerTenantConfig(): Promise<TenantConfig> {
   try {
     const h = await headers();
     const host = h.get("host") || "localhost";
+    // The platform is not a tenant. Owner resolution falls back to the PRIMARY
+    // agent on chatrealty.io, which handed the platform that agent's nav
+    // layout, theme and tracking IDs (2026-10-28: "chatrealty.io must be
+    // separated from JPSREALTOR or any agent-branded website").
+    if (isPlatformDomain(host)) return DEFAULTS;
     // resolveDomainOwner takes a Request — build a minimal one from the
     // incoming headers (it only reads request.url's ?subdomain and the host header).
     const req = new Request(`http://${host}/`, { headers: h as unknown as HeadersInit });

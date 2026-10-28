@@ -52,7 +52,7 @@ export default function EnhancedNavbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Shared provider, not a private fetch — see BrandingContext.
-  const { branding: brandingValue } = useBranding();
+  const { branding: brandingValue, isPlatform } = useBranding();
   const branding = brandingValue || {};
 
   useEffect(() => {
@@ -238,8 +238,10 @@ export default function EnhancedNavbar() {
 
       {/* Right cluster */}
       <div className="ml-auto flex items-center gap-2 shrink-0">
-        {/* Agent branding (required agency treatment) — lg+ only for space */}
-        {branding.agentName && (
+        {/* Agent branding (required agency treatment) — lg+ only for space.
+            Agent sites only: chatrealty.io resolves to the primary agent's
+            branding, and the platform must not wear an agent's identity. */}
+        {!isPlatform && branding.agentName && (
           <span className={`hidden lg:block text-[11px] text-right leading-tight ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
             {branding.agentName}
             {branding.licenseNumber && <> · DRE# {branding.licenseNumber}</>}

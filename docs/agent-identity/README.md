@@ -1,7 +1,7 @@
 ---
 title: Agent identity — affiliation, brokerage, team
 status: current
-last_verified: 2026-10-26
+last_verified: 2026-10-28
 owner: platform
 related: [./agent-profile.md, ../multi-tenant/README.md, ../agent-onboarding/README.md, ../ARCHITECTURE.md]
 ---
@@ -80,7 +80,7 @@ the default; nothing falls back to ChatRealty while the agent has a name.
 | Slot | Component | Order on an agent site |
 |---|---|---|
 | Nav brand | `NavBrandMark` | Brand → **Nav Wordmark** text → **Navigation Bar Logo** → agent's name |
-| Chat hero title | `ChatWidget` | Identity → **Site Name** → agent's name. A Site Name that spells the Brand → **Nav Wordmark** (`JPSREALTOR`, spaces/case ignored) renders as that two-weight wordmark, with no corner badge beside it (it would repeat the brand); any other text renders plain. Typing `chatRealty` opts back into CHATREALTY. The wordmark is sized to its character count so any name fits a 320px phone |
+| Chat hero title | `ChatWidget` | **Platform host: always CHATREALTY** (Site Name and agent name are ignored there). Agent site: Identity → **Site Name** → agent's name. A Site Name that spells the Brand → **Nav Wordmark** (`JPSREALTOR`, spaces/case ignored) renders as that two-weight wordmark, with no corner badge beside it (it would repeat the brand); any other text renders plain. Typing `chatRealty` opts back into CHATREALTY. The wordmark is sized to its character count so any name fits a 320px phone |
 | Corner badge (hero / chat) | `BrandCornerMark` | Brand → **Brand Mark** text → brokerage logo → nothing. **Never on a platform host** |
 
 Why the corner badge is hidden on platform hosts: `/api/agent-branding` falls
@@ -89,6 +89,12 @@ page used to wear Joseph's "JPS" badge — for every visitor, including an admin
 impersonating another agent. When the badge renders nothing, the chat hero also
 drops its frame and divider (`useHasCornerMark`), which used to leave a stray
 rule before the title.
+
+On 2026-10-28 chatrealty.io/chap showed JPSREALTOR: the hero read the
+primary agent's Site Name, which owner resolution hands the platform host.
+The Site Name, the navbar's agent/DRE line and `getServerTenantConfig()`
+(layout, theme, tracking) are now all ignored on platform hosts — the
+platform uses platform defaults, never an agent's.
 
 Until 2026-10-16 the nav and the chat hero fell back to CHATREALTY instead of
 the name (`getDefaultSiteName()` returned `"chatRealty"` for every host), so an
