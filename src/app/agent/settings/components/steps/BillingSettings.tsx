@@ -1,7 +1,7 @@
 "use client";
 
 import { CreditCard, Check } from "lucide-react";
-import { TIER_DETAILS } from "@/config/stripe-prices";
+import { TIER_DETAILS, SELLABLE_TIERS } from "@/config/stripe-prices";
 import type { SubscriptionTier } from "@/models/AgentSubscription";
 
 interface StepProps {
@@ -12,12 +12,8 @@ interface StepProps {
   isSaving: boolean;
 }
 
-const TIER_ORDER: SubscriptionTier[] = [
-  "free",
-  "beginner",
-  "experienced",
-  "topagent",
-];
+// Free + the plans currently for sale (see SELLABLE_TIERS).
+const TIER_ORDER: SubscriptionTier[] = ["free", ...SELLABLE_TIERS];
 
 /**
  * Billing / plan panel. Shown both as the onboarding wizard's plan step and as

@@ -3,7 +3,7 @@ import InvestClient from "./InvestClient";
 
 export const metadata: Metadata = {
   title: { absolute: "Invest in ChatRealty" },
-  description: "ChatRealty's planned pre-seed community round: $3M for 15%. Reserve a non-binding place.",
+  description: "ChatRealty's planned pre-seed community round: $3M for 15%. Book an investment consultation.",
 };
 
 export default function InvestPage() {

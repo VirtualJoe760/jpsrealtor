@@ -15,6 +15,7 @@ import type { SubscriptionTier, BillingInterval } from "@/models/AgentSubscripti
 import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
 import type { PointsTier } from "@/models/PointsLedger";
 import { sendSubscriptionEmail } from "@/lib/email-resend";
+import { SELLABLE_TIERS, SELLABLE_INTERVALS } from "@/config/stripe-prices";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,16 +47,20 @@ export async function POST(request: NextRequest) {
       cancelUrl?: string;
     };
 
-    // Validate tier
-    if (!tier || !["beginner", "experienced", "topagent"].includes(tier)) {
+    // Validate tier — only plans currently for sale (Basic, monthly). The other
+    // tiers have no LIVE Stripe price, so letting them through would send the
+    // buyer to a broken checkout.
+    if (!tier || !(SELLABLE_TIERS as string[]).includes(tier)) {
       return NextResponse.json(
-        { error: "Invalid tier. Must be beginner, experienced, or topagent." },
+        { error: "That plan isn't available. ChatRealty currently offers the Basic plan." },
         { status: 400 }
       );
     }
 
-    // Validate billing interval
-    const interval = billingInterval === "annual" ? "annual" : "monthly";
+    // Validate billing interval — monthly only for now (no annual price exists).
+    const interval: BillingInterval = SELLABLE_INTERVALS.includes(billingInterval as BillingInterval)
+      ? (billingInterval as BillingInterval)
+      : "monthly";
 
     // Check for existing active subscription
     const existingSub = await AgentSubscription.findOne({

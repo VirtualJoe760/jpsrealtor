@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { SELLABLE_TIERS, TIER_DETAILS } from "@/config/stripe-prices";
 
 export interface TierConfig {
   id: string;
@@ -12,6 +13,9 @@ export interface TierConfig {
   isPopular?: boolean;
 }
 
+// Free + the plans for sale (SELLABLE_TIERS). Ids are the real subscription
+// tier keys — the old Starter/Professional/Enterprise ids here were never
+// accepted by /api/stripe/checkout, so those buttons silently failed.
 export const TIERS: TierConfig[] = [
   {
     id: "free",
@@ -26,57 +30,15 @@ export const TIERS: TierConfig[] = [
     ],
     cta: "Get Started",
   },
-  {
-    id: "starter",
-    name: "Starter",
-    monthlyPrice: 49,
-    annualPrice: 490,
-    features: [
-      "Everything in Free, plus:",
-      "Custom domain",
-      "50 listing photos",
-      "3 video tours",
-      "Email support",
-      "Lead capture forms",
-      "Representation agreements",
-    ],
-    cta: "Subscribe",
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    monthlyPrice: 99,
-    annualPrice: 990,
-    features: [
-      "Everything in Starter, plus:",
-      "200 listing photos",
-      "10 video tours",
-      "Priority support",
-      "Analytics dashboard",
-      "Data export",
-      "API access",
-      "Custom backgrounds",
-      "Blog / content pages",
-    ],
+  ...SELLABLE_TIERS.map((id) => ({
+    id,
+    name: TIER_DETAILS[id].name,
+    monthlyPrice: TIER_DETAILS[id].monthlyPrice,
+    annualPrice: TIER_DETAILS[id].annualPrice,
+    features: TIER_DETAILS[id].features,
     cta: "Subscribe",
     isPopular: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    monthlyPrice: 299,
-    annualPrice: 2990,
-    features: [
-      "Everything in Professional, plus:",
-      "999 listing photos",
-      "50 video tours",
-      "Dedicated support",
-      "Webhooks & integrations",
-      "Agent matching",
-      "100 custom pages",
-    ],
-    cta: "Subscribe",
-  },
+  })),
 ];
 
 interface PricingCardProps {

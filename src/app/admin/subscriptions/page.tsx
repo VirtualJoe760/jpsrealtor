@@ -179,7 +179,7 @@ export default function AdminSubscriptionsPage() {
     };
     const labels: Record<string, string> = {
       free: "Free",
-      beginner: "Beginner",
+      beginner: "Basic",
       experienced: "Experienced",
       topagent: "Top Agent",
     };

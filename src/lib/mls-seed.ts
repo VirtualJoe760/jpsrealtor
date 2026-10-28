@@ -61,7 +61,7 @@ const UPDATE_OVERLAP_MS = 26 * 60 * 60 * 1000;
 /** A saved nextLink older than this is treated as expired. */
 const CURSOR_TTL_MS = 20 * 60 * 1000;
 const TIER_ORDER: SubscriptionTier[] = ["free", "beginner", "experienced", "topagent"];
-const TIER_NAME: Record<SubscriptionTier, string> = { free: "Free", beginner: "Beginner", experienced: "Experienced", topagent: "Top Agent" };
+const TIER_NAME: Record<SubscriptionTier, string> = { free: "Free", beginner: "Basic", experienced: "Experienced", topagent: "Top Agent" };
 const MEASURE_FLOOR_ROWS = 500;
 
 const oid = (id: string) => new mongoose.Types.ObjectId(id);

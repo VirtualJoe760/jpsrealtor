@@ -3,16 +3,15 @@
 // Investor summary for the planned pre-seed community round.
 //
 // Everything on this page must stay inside Reg CF "testing the waters"
-// (17 CFR 227.206): describe the plan, collect NON-BINDING interest, take no
-// money. That is why the page has no payment button and why the contribution
+// (17 CFR 227.206): describe the plan and talk with prospective investors, take no
+// money and ask for no amounts. That is why the page has no payment button and why the contribution
 // checkout lives on its own page (/support). Do not add "invest now" payment
 // flows here — real investments go through a registered funding portal once a
 // Form C is filed.
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { AccountGate, CompanyShell, Section, useCompanyTheme } from "@/app/components/company/CompanyShell";
+import ConsultationBooker from "./ConsultationBooker";
 
 const RAISE = 3_000_000;
 const EQUITY = 0.15;
@@ -26,107 +25,6 @@ const BUILT = [
   "AI market tools: on-demand CMAs, cash-flow analysis, historical sales data",
   "A public API and MCP server so agents can build on the platform",
 ];
-
-const PRESETS = [500, 1_000, 5_000, 10_000, 25_000];
-
-function InterestForm() {
-  const t = useCompanyTheme();
-  const { status } = useSession();
-  const [amount, setAmount] = useState<string>("1000");
-  const [note, setNote] = useState("");
-  const [saved, setSaved] = useState<{ amount: number } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/invest/interest")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.interest) {
-          setSaved({ amount: d.interest.amount });
-          setAmount(String(d.interest.amount));
-          setNote(d.interest.note || "");
-        }
-      })
-      .catch(() => {});
-  }, [status]);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/invest/interest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount), note }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Could not save");
-      setSaved({ amount: d.interest.amount });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      {saved && (
-        <p className={`rounded-lg p-3 text-sm ${t.isLight ? "bg-emerald-50 text-emerald-800" : "bg-emerald-950/50 text-emerald-300"}`}>
-          You&apos;re on the list at {usd(saved.amount)}. We&apos;ll email you when the offering opens. You can change it any time.
-        </p>
-      )}
-      <div>
-        <label className={`block text-sm font-medium mb-2 ${t.heading}`}>How much might you invest?</label>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setAmount(String(p))}
-              className={`rounded-lg px-3 py-1.5 text-sm border ${
-                Number(amount) === p ? "border-blue-500 bg-blue-600 text-white" : t.secondaryBtn
-              }`}
-            >
-              {usd(p)}
-            </button>
-          ))}
-        </div>
-        <input
-          type="number"
-          min={100}
-          max={RAISE}
-          step={1}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className={`w-full rounded-lg border px-3 py-2 ${t.input}`}
-          aria-label="Amount in US dollars"
-        />
-      </div>
-      <div>
-        <label className={`block text-sm font-medium mb-2 ${t.heading}`}>Anything we should know? (optional)</label>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={1000}
-          rows={3}
-          placeholder="e.g. I'm an agent in San Diego and would use the platform"
-          className={`w-full rounded-lg border px-3 py-2 ${t.input}`}
-        />
-      </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      <button type="submit" disabled={busy} className={`rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-60 ${t.primaryBtn}`}>
-        {busy ? "Saving…" : saved ? "Update my interest" : "Reserve my interest"}
-      </button>
-      <p className={`text-xs ${t.muted}`}>
-        This is not an investment and costs nothing. It only tells us you may want to participate.
-      </p>
-    </form>
-  );
-}
 
 export default function InvestClient() {
   const t = useCompanyTheme();
@@ -188,9 +86,13 @@ export default function InvestClient() {
         </ul>
       </Section>
 
-      <Section title="Reserve your interest">
-        <AccountGate action="reserve your place in the round">
-          <InterestForm />
+      <Section title="Book an investment consultation">
+        <p>
+          Talk through the round, the business and the plan one-on-one with our founder. Pick a
+          30-minute slot below.
+        </p>
+        <AccountGate action="book an investment consultation">
+          <ConsultationBooker />
         </AccountGate>
       </Section>
 

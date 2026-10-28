@@ -1479,44 +1479,6 @@ export async function sendPartnerRejectionEmail(
 }
 
 // ---------------------------------------------------------------------------
-// Investor interest (/invest) — admin notification
-// ---------------------------------------------------------------------------
-
-/** Tell the admin someone registered (or changed) a non-binding interest. */
-export async function sendInvestorInterestNotification(opts: {
-  name: string;
-  email: string;
-  amount: number;
-  note?: string;
-  updated: boolean;
-}) {
-  const esc = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const amount = `$${opts.amount.toLocaleString('en-US')}`;
-  try {
-    const resend = getResendClient();
-    const { error } = await resend.emails.send({
-      from: platformFrom(),
-      replyTo: opts.email,
-      to: ADMIN_EMAIL,
-      subject: `[Invest] ${opts.updated ? 'Updated' : 'New'} interest: ${amount} from ${opts.name || opts.email}`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#334155;">
-          <h2 style="margin:0 0 12px;color:#0f172a;">${opts.updated ? 'Updated' : 'New'} investor interest</h2>
-          <p style="margin:0 0 4px;"><strong>${esc(opts.name || 'N/A')}</strong> &lt;${esc(opts.email)}&gt;</p>
-          <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#1d4ed8;">${amount}</p>
-          ${opts.note ? `<p style="white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px;">${esc(opts.note)}</p>` : ''}
-          <p style="font-size:12px;color:#94a3b8;">Non-binding indication of interest. Reply to reach them directly.</p>
-        </div>
-      `,
-    });
-    if (error) console.error('[invest] interest notification error:', error);
-  } catch (error) {
-    console.error('[invest] interest notification failed:', error);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Job applications (/join) — admin notification with the files attached
 // ---------------------------------------------------------------------------
 

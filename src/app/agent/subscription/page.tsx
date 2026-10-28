@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import AgentNav from "@/app/components/AgentNav";
+import { SELLABLE_TIERS } from "@/config/stripe-prices";
 import {
   Crown,
   Coins,
@@ -62,7 +63,7 @@ const PLANS = [
   },
   {
     tier: "beginner",
-    name: "Beginner",
+    name: "Basic",
     price: 125,
     credits: 750,
     description:
@@ -623,7 +624,7 @@ export default function AgentSubscriptionPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                {PLANS.map((plan) => {
+                {PLANS.filter((p) => p.tier === "free" || (SELLABLE_TIERS as string[]).includes(p.tier)).map((plan) => {
                   const isCurrent = currentTier === plan.tier;
                   const isUpgrade =
                     PLANS.findIndex((p) => p.tier === plan.tier) > tierIndex;

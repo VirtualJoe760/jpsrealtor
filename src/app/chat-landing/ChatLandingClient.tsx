@@ -48,9 +48,10 @@ export default function ChatLandingPage() {
               isLight ? "text-slate-600" : "text-gray-400"
             }`}
           >
-            Find your dream home in the Coachella Valley. Describe what you want
-            in plain English and let our AI search thousands of listings to find
-            the perfect match.
+            Describe the home you want in plain English and let AI search live
+            MLS listings — then go deeper with on-demand CMAs, cash-flow analysis
+            and market history, on one platform built for agents and the clients
+            they serve.
           </p>
         </div>
 

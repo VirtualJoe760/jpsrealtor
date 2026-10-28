@@ -67,7 +67,7 @@ export type SeedFeedSlice = {
 const mb = (b: number | null | undefined) =>
   b == null ? "—" : b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1024 ** 2))} MB`;
 const n = (x: number | null | undefined) => (x == null ? "—" : x.toLocaleString());
-const TIER_NAMES: Record<string, string> = { free: "Free", beginner: "Beginner", experienced: "Experienced", topagent: "Top Agent" };
+const TIER_NAMES: Record<string, string> = { free: "Free", beginner: "Basic", experienced: "Experienced", topagent: "Top Agent" };
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
 export default function MlsSeedPanel({

@@ -59,7 +59,7 @@ const tier = (name: string, t: CreditTier, monthlyPrice: number, markup: number,
 });
 
 export const CREDIT_TIERS: Record<CreditTier, CreditTierConfig> = {
-  beginner:    tier("Beginner",    "beginner",    125,  0.25, 1000),
+  beginner:    tier("Basic",       "beginner",    125,  0.25, 1000),
   experienced: tier("Experienced", "experienced", 500,  0.20, 4167),
   topagent:    tier("Top Agent",   "topagent",    1000, 0.15, 8696),
 };

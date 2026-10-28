@@ -41,6 +41,14 @@ export const STRIPE_PRICES: Record<
   },
 };
 
+// Plans currently for sale. Since 2026-10-28 ChatRealty sells ONE plan —
+// Basic, $125/month (internal tier key "beginner", kept so existing
+// subscriptions, ledgers and credit math are untouched). Experienced and Top
+// Agent stay defined so old records still resolve, but every plan picker and
+// /api/stripe/checkout read this list, and only a monthly LIVE price exists.
+export const SELLABLE_TIERS: Exclude<SubscriptionTier, "free">[] = ["beginner"];
+export const SELLABLE_INTERVALS: BillingInterval[] = ["monthly"];
+
 // General user Pro subscription (no points, just premium features)
 export const USER_PRO_PRICE_ID = process.env.USER_PRO_STRIPE_PRICE_ID || "price_1SW75eGI9m3f5P10p8Ht99dn";
 
@@ -100,7 +108,7 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     ],
   },
   beginner: {
-    name: "Beginner",
+    name: "Basic",
     tier: "beginner",
     monthlyPrice: 125,
     annualPrice: 1200,

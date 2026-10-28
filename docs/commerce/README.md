@@ -1,7 +1,7 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-10-18
+last_verified: 2026-10-28
 related: [./stripe-billing.md, ./free-tier-gating.md, ../agent-onboarding/README.md, ../admin/README.md, ../multi-tenant/README.md]
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 ---
@@ -11,9 +11,10 @@ supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 ## TL;DR
 
 Two live systems run through Stripe:
-(1) **`AgentSubscription`** — monthly recurring tier (Beginner $125 / Experienced
-$500 / Top Agent $1000) gating features and seeding marketing credits — though
-**only Free is purchasable today** (see `free-tier-gating.md`);
+(1) **`AgentSubscription`** — monthly recurring tier gating features and seeding
+marketing credits. Since 2026-10-28 the only paid plan for sale is **Basic,
+$125/month** (internal tier `beginner`); Experienced $500 / Top Agent $1000 stay
+defined for old records but cannot be bought (see "One plan for sale" below);
 (2) **`CreditLedger`** — in-app credit balance (1 credit = $0.10 of platform
 spend value) used to pay for ads, direct mail, voicemail drops, SMS and email,
 with markup baked in at purchase time (25% / 20% / 15% by tier).
@@ -63,8 +64,35 @@ Tier pricing, feature limits, and credit allocation are all set by the
 | Experienced | $500 | 4,167 | 20% | yes | 200 | 10 | 20 | yes | no | priority |
 | Top Agent | $1,000 | 8,696 | 15% | yes | 999 | 50 | 100 | yes | yes | dedicated |
 
-Annual pricing is defined (`monthlyPrice * ~9.6`) but Stripe annual price IDs
-are still placeholders — `STRIPE_PRICES.beginner.annual` etc. are `price_PLACEHOLDER_...`.
+### One plan for sale: Basic (2026-10-28)
+
+ChatRealty currently sells **one** plan: **Basic, $125/month** — the internal
+`beginner` tier, renamed for display only (the tier key, existing records and
+credit math are unchanged). `SELLABLE_TIERS` / `SELLABLE_INTERVALS` in
+`src/config/stripe-prices.ts` drive every plan picker (`/pricing`,
+`/agent/subscription`, Settings → Billing) and `/api/stripe/checkout`, which
+now rejects Experienced, Top Agent and annual billing. Experienced and Top
+Agent stay defined so old records still resolve. `/pricing` previously sold
+Starter/Professional/Enterprise ids the checkout never accepted; it now shows
+Free + Basic, monthly only.
+
+**Live Stripe objects** (account `acct_1Q5X8KGI9m3f5P10`, "chatRealty"):
+
+| Object | ID |
+|---|---|
+| Product "ChatRealty Basic" | `prod_VWjtiTAR54bh2a` |
+| Price $125/month (`lookup_key: chatrealty_basic_monthly`) | `price_1UVgPHGI9m3f5P10C3sxgw4D` |
+| Webhook → `https://www.chatrealty.io/api/webhooks/stripe` (7 events: checkout completed / async succeeded, subscription updated / deleted, invoice succeeded / failed, charge refunded) | `we_1UVgPHGI9m3f5P10ZtwO8a8Z` |
+
+Production needs `STRIPE_SECRET_KEY` (live), `STRIPE_WEBHOOK_SECRET` (that
+endpoint's `whsec_`), `STRIPE_PRICE_BEGINNER_MONTHLY` (the live price) and **no**
+test publishable key — `stripeConfiguration()` refuses checkout when a test
+publishable key sits beside a live secret. Nothing in the client uses the
+publishable key. Development and preview keep the test keys. The webhook must
+use the `www` host: `chatrealty.io` 308-redirects and Stripe does not follow.
+
+No live price exists for the consumer **Pro** plan ($9.99) or the annual
+prices, so those checkouts fail in live mode until one is created.
 
 **Feature gating by tier:** only the **Free** tier is purchasable today; paid tiers are shown
 "Coming soon". New agents are forced through the setup wizard (with a plan step) on first run, and

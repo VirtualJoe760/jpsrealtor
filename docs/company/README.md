@@ -13,7 +13,7 @@ ChatRealty-the-company pages, added 2026-10-28.
 |---|---|---|
 | `/mission` | Mission statement | nothing (public read) |
 | `/join` | Open roles + application form, then the agent pitch → `/agent/settings` | applying; the agent "get started" step |
-| `/invest` | Investor summary for the planned pre-seed round: **$3M for 15%** (implied $20M post-money) | reserving interest |
+| `/invest` | Investor summary for the planned pre-seed round: **$3M for 15%** (implied $20M post-money) | booking a consultation |
 | `/support` | One-time Stripe contribution (gift) | contributing |
 
 The sidebar shows **Mission · Join Us · Invest** above Privacy · Terms, on the
@@ -24,17 +24,26 @@ resolve on any host. `/support` is linked from `/mission`, not the sidebar.
 Shared frame + signed-out prompt: `src/app/components/company/CompanyShell.tsx`
 (`AccountGate` shows "Create an account" / "Sign in" and returns via `?from=`).
 
-## Investor interest — no money, by design
+## Investment consultations — no money, by design
 
 `/invest` operates under Reg CF **testing the waters** (17 CFR 227.206): the
-company may describe a planned offering and collect **non-binding** interest,
+company may describe a planned offering and talk with prospective investors,
 but may not accept money or commitments until a Form C is filed and the round
 runs through a registered funding portal. So:
 
-- `POST /api/invest/interest` stores `{ amount, note }` in `investor_interest`
-  (`src/models/InvestorInterest.ts`, one doc per user, upserted) and emails the
-  admin (`sendInvestorInterestNotification`). Nothing is charged.
-- The page carries the required legend. Do not add a payment button to `/invest`.
+- The page books a **30-minute investment consultation** instead of asking how
+  much someone would invest (`src/app/invest/ConsultationBooker.tsx`). It
+  reuses the public booking pipeline — `/api/agent/public` (resolves to the
+  platform owner on chatrealty.io) → `/api/appointments/available-slots` →
+  `/api/appointments/book` — so the meeting lands on the owner's Google
+  Calendar, creates a CRM contact and sends the normal booking notification.
+  Type is `consultation` (the Appointment enum has no investor type); the
+  message starts with `[Investment consultation]` to mark it.
+- An earlier amount-based interest form (`/api/invest/interest`,
+  `investor_interest`) was removed 2026-10-28 at Joseph's request; it had no
+  submissions.
+- The page carries the required legend. Do not add a payment button or an
+  amount field to `/invest`.
 
 ## Contributions (`/support`)
 

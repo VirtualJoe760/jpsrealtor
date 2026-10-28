@@ -11,7 +11,8 @@ export default function PricingClient() {
   const isLight = currentTheme === "lightgradient";
   const router = useRouter();
 
-  const [isAnnual, setIsAnnual] = useState(false);
+  // Monthly only while Basic is the one plan for sale (no annual Stripe price).
+  const isAnnual = false;
   const [currentTier, setCurrentTier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -99,68 +100,8 @@ export default function PricingClient() {
           </p>
         </div>
 
-        {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <span
-            className={`text-sm font-medium ${
-              !isAnnual
-                ? isLight
-                  ? "text-gray-900"
-                  : "text-white"
-                : isLight
-                ? "text-gray-500"
-                : "text-gray-400"
-            }`}
-          >
-            Monthly
-          </span>
-          <button
-            onClick={() => setIsAnnual(!isAnnual)}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
-              isAnnual
-                ? isLight
-                  ? "bg-blue-600"
-                  : "bg-emerald-600"
-                : isLight
-                ? "bg-gray-300"
-                : "bg-gray-600"
-            }`}
-            aria-label="Toggle annual billing"
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
-                isAnnual ? "translate-x-7" : "translate-x-0"
-              }`}
-            />
-          </button>
-          <span
-            className={`text-sm font-medium ${
-              isAnnual
-                ? isLight
-                  ? "text-gray-900"
-                  : "text-white"
-                : isLight
-                ? "text-gray-500"
-                : "text-gray-400"
-            }`}
-          >
-            Annual
-          </span>
-          {isAnnual && (
-            <span
-              className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                isLight
-                  ? "bg-green-100 text-green-700"
-                  : "bg-green-900/30 text-green-400"
-              }`}
-            >
-              2 months free
-            </span>
-          )}
-        </div>
-
         {/* Tier cards */}
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
           {TIERS.map((tier) => (
             <PricingCard
               key={tier.id}
