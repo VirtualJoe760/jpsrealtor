@@ -91,6 +91,8 @@ publishable key sits beside a live secret. Nothing in the client uses the
 publishable key. Development and preview keep the test keys. The webhook must
 use the `www` host: `chatrealty.io` 308-redirects and Stripe does not follow.
 
+**Credits are not for sale yet (2026-10-28).** `CREDITS_FOR_SALE = false` in `src/config/credits.ts` makes `/api/points/topup` return 403 and hides "Buy More Credits" on the dashboard and subscription page — credits only pay for campaigns, which aren't live. Flip it when campaigns launch. Domains are no longer paid with credits; they're charged by card (see [custom domains](../multi-tenant/custom-domains.md)).
+
 **Subscription and credits are separate purchases (2026-10-28).** Basic buys
 platform access only; marketing credits are bought through top-ups
 (`/api/points/topup`) at the tier's rate ($0.125/credit for Basic).

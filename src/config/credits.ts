@@ -22,6 +22,16 @@
 
 import type { MailType } from "@/lib/thanksio";
 
+/**
+ * Whether agents can BUY marketing credits right now. Off since 2026-10-28:
+ * credits only pay for campaigns (ads, direct mail, voicemail), and the
+ * campaigns section isn't live yet — selling credits now would take real money
+ * for something agents can't use. Gates /api/points/topup (server) and the
+ * "Buy More Credits" UI on the dashboard and subscription page. Flip to true
+ * when campaigns launch.
+ */
+export const CREDITS_FOR_SALE = false;
+
 // ---------------------------------------------------------------------------
 // Core constants
 // ---------------------------------------------------------------------------

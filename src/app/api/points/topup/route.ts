@@ -12,6 +12,7 @@ import CreditBillingCustomer from '@/models/CreditBillingCustomer';
 import { creditWalletForMode } from '@/lib/credit-wallet-mode';
 import { stripeConfiguration, requireStripeMode } from '@/lib/stripe-mode';
 import { quoteCreditTopup } from "@/lib/credit-topup-quote";
+import { CREDITS_FOR_SALE } from "@/config/credits";
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,11 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Credits aren't on sale until campaigns launch (see CREDITS_FOR_SALE).
+    if (!CREDITS_FOR_SALE) {
+      return NextResponse.json({ error: "Marketing credits aren't on sale yet." }, { status: 403 });
     }
 
     const config = stripeConfiguration();

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { dollarsToCredits } from "@/config/credits";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Save,
   Loader2,
@@ -11,7 +11,8 @@ import {
   Search,
   Trash2,
   ExternalLink,
-  Coins,
+  CreditCard,
+  RefreshCw,
   ShieldCheck,
   XCircle,
   ChevronDown,
@@ -38,15 +39,30 @@ interface DomainRecord {
   cityId?: string;
   subdivisionSlug?: string;
   rejectionReason?: string;
+  purchasedViaVercel?: boolean;
+  dnsRecords?: { type: string; name: string; value: string }[];
   createdAt: string;
 }
 
+// /api/domains/check — what the agent pays: registrar price + $10, yearly.
 interface DomainCheckResult {
   domain: string;
   available: boolean;
-  price: number | null;
-  period: number | null;
+  reason?: string;
+  firstYearCharge?: number;
+  yearlyCharge?: number;
 }
+
+// /api/domains/orders — paid registrations (Vercel's buy is asynchronous).
+interface DomainOrderRecord {
+  id: string;
+  domain: string;
+  status: "paid" | "purchasing" | "active" | "refunded" | "needs_attention" | "cancelled";
+  yearlyChargeUsd: number;
+  message?: string;
+}
+
+const usd = (n?: number) => (n == null ? "" : `$${n.toFixed(2).replace(/\.00$/, "")}`);
 
 interface CityOption {
   name: string;
@@ -109,7 +125,12 @@ export default function DomainSeoStep({
   const [searchLoading, setSearchLoading] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseResult, setPurchaseResult] = useState("");
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [orders, setOrders] = useState<DomainOrderRecord[]>([]);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [checkMessage, setCheckMessage] = useState<Record<string, string>>({});
+  // Set when Stripe Checkout sends the agent back (?domainOrder=cs_…).
+  const returnedFromCheckout = !!useSearchParams().get("domainOrder");
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Section 3: Point a Domain ──
   const [pointDomain, setPointDomain] = useState("");
@@ -142,17 +163,27 @@ export default function DomainSeoStep({
     }
   }, []);
 
-  const fetchCredits = useCallback(async () => {
+  // Paid domain orders. While one is still registering, poll so the agent sees
+  // it go live (or refunded) without reloading; refresh the domain list after.
+  const fetchOrders = useCallback(async (attempt = 0) => {
     try {
-      const res = await fetch("/api/points?limit=0");
-      if (res.ok) {
-        const data = await res.json();
-        setCreditBalance(data.balance ?? 0);
+      const res = await fetch("/api/domains/orders");
+      if (!res.ok) return;
+      const data = await res.json();
+      const list: DomainOrderRecord[] = data.orders || [];
+      setOrders(list);
+      const pending = list.some((o) => o.status === "paid" || o.status === "purchasing");
+      if (pending && attempt < 45) {
+        pollTimer.current = setTimeout(() => fetchOrders(attempt + 1), 4000);
+      } else if (attempt > 0) {
+        fetchDomains();
       }
     } catch {
       // silent
     }
-  }, []);
+  }, [fetchDomains]);
+
+  useEffect(() => () => { if (pollTimer.current) clearTimeout(pollTimer.current); }, []);
 
   const fetchCities = useCallback(async () => {
     try {
@@ -178,9 +209,9 @@ export default function DomainSeoStep({
 
   useEffect(() => {
     fetchDomains();
-    fetchCredits();
+    fetchOrders();
     fetchCities();
-  }, [fetchDomains, fetchCredits, fetchCities]);
+  }, [fetchDomains, fetchOrders, fetchCities]);
 
   // Fetch subdivisions when city changes
   useEffect(() => {
@@ -217,6 +248,9 @@ export default function DomainSeoStep({
       const res = await fetch(`/api/agent/domains/${id}`, { method: "DELETE" });
       if (res.ok) {
         setDomains((prev) => prev.filter((d) => d._id !== id));
+      } else {
+        // e.g. a purchased domain: it's cancelled from Billing, not removed here.
+        alert((await res.json().catch(() => ({}))).error || "Couldn't remove that domain.");
       }
     } catch {
       // silent
@@ -249,48 +283,44 @@ export default function DomainSeoStep({
     }
   };
 
+  // Card payment via Stripe Checkout. The domain is registered and pointed at
+  // the agent's site only after payment clears (webhook); a failed
+  // registration is refunded automatically. Renews yearly.
   const handlePurchase = async () => {
-    if (!searchResult?.available || !searchResult.price) return;
-    const priceInCredits = dollarsToCredits(searchResult.price);
-    if (creditBalance !== null && creditBalance < priceInCredits) {
-      setPurchaseResult("Insufficient credits. Buy more from your subscription page.");
-      return;
-    }
+    if (!searchResult?.available) return;
     setPurchaseLoading(true);
     setPurchaseResult("");
     try {
-      const spendRes = await fetch("/api/points", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          points: priceInCredits,
-          channel: "direct_mail",
-          description: `Domain purchase: ${searchResult.domain}`,
-        }),
-      });
-      if (!spendRes.ok) {
-        setPurchaseResult((await spendRes.json()).error || "Failed to deduct credits");
-        return;
-      }
-      const purchaseRes = await fetch("/api/domains/purchase", {
+      const res = await fetch("/api/domains/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: searchResult.domain }),
       });
-      if (purchaseRes.ok) {
-        setPurchaseResult(`${searchResult.domain} purchased! Now point it to your page below.`);
-        // Pre-fill the "Point a Domain" section
-        setPointDomain(searchResult.domain);
-        setSearchResult(null);
-        setSearchQuery("");
-        await fetchCredits();
-      } else {
-        setPurchaseResult((await purchaseRes.json()).error || "Purchase failed");
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
       }
+      setPurchaseResult(data.error || "Couldn't start checkout");
     } catch {
-      setPurchaseResult("Purchase failed");
+      setPurchaseResult("Couldn't start checkout");
+    }
+    setPurchaseLoading(false);
+  };
+
+  const handleCheckDns = async (id: string) => {
+    setCheckingId(id);
+    try {
+      const res = await fetch("/api/agent/domains/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domainId: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setCheckMessage((m) => ({ ...m, [id]: data.message || data.error || "" }));
+      await fetchDomains();
     } finally {
-      setPurchaseLoading(false);
+      setCheckingId(null);
     }
   };
 
@@ -331,7 +361,13 @@ export default function DomainSeoStep({
       });
 
       if (res.ok) {
-        setPointSuccess("Submitted! Admin will review shortly.");
+        const data = await res.json().catch(() => ({}));
+        setPointSuccess(
+          data.message ||
+            (pointTargetType === "agent_landing"
+              ? "Connected. Add the DNS records shown under My Domains."
+              : "Submitted! Admin will review shortly.")
+        );
         setPointDomain("");
         setPointTargetType("agent_landing");
         setPointCitySlug("");
@@ -401,6 +437,38 @@ export default function DomainSeoStep({
           <h3 className={`text-lg font-semibold ${tc.textPrimary}`}>My Domains</h3>
         </div>
 
+        {/* Paid registrations still in flight, or that didn't go through. */}
+        {returnedFromCheckout && orders.length === 0 && (
+          <div className={`mb-3 flex items-center gap-2 p-3 rounded-lg text-sm ${isLight ? "bg-blue-50 text-blue-800" : "bg-blue-900/20 text-blue-300"}`}>
+            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            Payment received — registering your domain…
+          </div>
+        )}
+        {orders
+          .filter((o) => o.status !== "active" && o.status !== "cancelled")
+          .map((o) => (
+            <div
+              key={o.id}
+              className={`mb-3 flex items-start gap-2 p-3 rounded-lg text-sm ${
+                o.status === "refunded" || o.status === "needs_attention"
+                  ? isLight ? "bg-red-50 text-red-800" : "bg-red-900/20 text-red-300"
+                  : isLight ? "bg-blue-50 text-blue-800" : "bg-blue-900/20 text-blue-300"
+              }`}
+            >
+              {o.status === "paid" || o.status === "purchasing" ? (
+                <Loader2 className="w-4 h-4 mt-0.5 animate-spin shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              )}
+              <span>
+                <strong>{o.domain}</strong>{" "}
+                {o.status === "paid" || o.status === "purchasing"
+                  ? "— registering. This usually takes about a minute; it will appear below when it's live."
+                  : `— ${o.message}`}
+              </span>
+            </div>
+          ))}
+
         {domainsLoading ? (
           <div className="flex justify-center py-6">
             <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
@@ -458,15 +526,50 @@ export default function DomainSeoStep({
                         >
                           <div className="flex items-start gap-1.5">
                             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="font-medium mb-0.5">DNS Setup Required</p>
-                              <p>
-                                Add a <code className="font-mono font-semibold">CNAME</code> record
-                                pointing to{" "}
-                                <code className="font-mono font-semibold">
-                                  cname.vercel-dns.com
-                                </code>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium mb-1">
+                                Add {d.dnsRecords && d.dnsRecords.length > 1 ? "these records" : "this record"} where you bought the domain
                               </p>
+                              {d.dnsRecords && d.dnsRecords.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className="text-left font-mono">
+                                    <thead>
+                                      <tr className="opacity-70">
+                                        <th className="pr-4 font-normal">Type</th>
+                                        <th className="pr-4 font-normal">Name</th>
+                                        <th className="font-normal">Value</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {d.dnsRecords.map((r) => (
+                                        <tr key={`${r.type}-${r.name}-${r.value}`}>
+                                          <td className="pr-4 font-semibold">{r.type}</td>
+                                          <td className="pr-4">{r.name}</td>
+                                          <td className="break-all">{r.value}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <p>Click “Check DNS” to see the records to add.</p>
+                              )}
+                              <p className="mt-1.5 opacity-80">
+                                Remove any other A or CNAME records for the same names. Your domain goes live
+                                automatically once these are in place — usually within minutes.
+                              </p>
+                              {d.mappingType === "agent_landing" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCheckDns(d._id)}
+                                  disabled={checkingId === d._id}
+                                  className="mt-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                                >
+                                  {checkingId === d._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                  Check DNS
+                                </button>
+                              )}
+                              {checkMessage[d._id] && <p className="mt-1.5">{checkMessage[d._id]}</p>}
                             </div>
                           </div>
                         </div>
@@ -520,6 +623,11 @@ export default function DomainSeoStep({
             Search &amp; Buy a Domain
           </h3>
         </div>
+        <p className={`text-sm mb-4 ${tc.textMuted}`}>
+          We register it in your name, set it up and point it at your site. Price is the registrar&apos;s
+          price plus $10/year for setup and hosting, billed yearly to your card. Cancel anytime under
+          Billing.
+        </p>
 
         <div className="flex gap-2 mb-3">
           <input
@@ -574,12 +682,14 @@ export default function DomainSeoStep({
                     }`}
                   >
                     {searchResult.available
-                      ? `Available — $${searchResult.price}/yr`
-                      : "Not available"}
+                      ? searchResult.firstYearCharge === searchResult.yearlyCharge
+                        ? `Available — ${usd(searchResult.yearlyCharge)}/year`
+                        : `Available — ${usd(searchResult.firstYearCharge)} the first year, then ${usd(searchResult.yearlyCharge)}/year`
+                      : searchResult.reason || "Not available"}
                   </p>
                 </div>
               </div>
-              {searchResult.available && searchResult.price && (
+              {searchResult.available && searchResult.firstYearCharge != null && (
                 <button
                   onClick={handlePurchase}
                   disabled={purchaseLoading}
@@ -591,9 +701,8 @@ export default function DomainSeoStep({
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Coins className="w-4 h-4" />
-                      Buy with Credits (
-                      {dollarsToCredits(searchResult.price).toLocaleString()} credits)
+                      <CreditCard className="w-4 h-4" />
+                      Buy for {usd(searchResult.firstYearCharge)}
                     </>
                   )}
                 </button>
@@ -611,22 +720,18 @@ export default function DomainSeoStep({
             {purchaseResult}
           </p>
         )}
-        {creditBalance !== null && (
-          <p className={`text-xs mt-2 ${tc.textMuted}`}>
-            Your balance: {creditBalance.toLocaleString()} credits
-          </p>
-        )}
       </div>
 
       {/* ═══ Section 3: Point a Domain ═══ */}
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-4">
           <Send className={`w-5 h-5 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} />
-          <h3 className={`text-lg font-semibold ${tc.textPrimary}`}>Point a Domain</h3>
+          <h3 className={`text-lg font-semibold ${tc.textPrimary}`}>Connect a Domain You Own</h3>
         </div>
         <p className={`text-sm mb-4 ${tc.textMuted}`}>
-          Submit a domain you own (or just purchased) to be pointed to your agent page or a
-          community page. An admin will review your request.
+          Already have a domain from GoDaddy, Namecheap, Squarespace or anywhere else? Connect it for free.
+          We&apos;ll show you two DNS records to add where you bought it, and your site goes live on
+          it automatically. City and subdivision pages are reviewed by our team first.
         </p>
 
         <div className="space-y-4">
@@ -746,7 +851,7 @@ export default function DomainSeoStep({
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Submit for Approval
+            {pointTargetType === "agent_landing" ? "Connect Domain" : "Submit for Approval"}
           </button>
 
           {pointError && <p className="text-sm text-red-500">{pointError}</p>}

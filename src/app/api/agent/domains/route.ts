@@ -10,6 +10,7 @@ import Subdivision from "@/models/subdivisions";
 import User from "@/models/User";
 import { getDomainPurchaseUrl } from "@/services/vercel-domains";
 import { isFreeTier } from "@/lib/subscription-helpers";
+import { connectExistingDomain, ConnectError } from "@/lib/domains/connect";
 
 /**
  * GET /api/agent/domains
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
   // Creating a custom domain mapping is a paid-plan feature; block free-tier agents (admins exempt).
   if (!user.isAdmin && (await isFreeTier(String(user._id)))) {
     return NextResponse.json(
-      { error: "Custom domains require a paid plan." },
+      { error: "Connecting your own domain comes with the Basic plan." },
       { status: 403 }
     );
   }
@@ -121,6 +122,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Homepage domain the agent already owns: self-serve, no admin approval.
+  // Attach it, hand back the DNS records, and it goes live as soon as DNS
+  // points here (src/lib/domains/connect.ts). Free with Basic.
+  if (targetType === "agent_landing") {
+    try {
+      const { mapping, records, live } = await connectExistingDomain(cleanDomain, {
+        _id: user._id,
+        email: session.user.email,
+      });
+      return NextResponse.json(
+        {
+          mapping,
+          records,
+          live,
+          message: live
+            ? `${cleanDomain} is live on your site.`
+            : `Add these DNS records where you bought ${cleanDomain}. It goes live automatically once they're in place.`,
+        },
+        { status: 201 }
+      );
+    } catch (error) {
+      if (error instanceof ConnectError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      console.error("[agent/domains] connect failed:", (error as Error).message);
+      return NextResponse.json({ error: "Couldn't connect that domain right now" }, { status: 502 });
+    }
+  }
+
+  // City / subdivision pages: request → admin approval (unchanged).
   // Check if domain is already mapped
   const existing = await DomainMapping.findOne({ domain: cleanDomain });
   if (existing) {

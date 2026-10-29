@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { CREDITS_FOR_SALE } from "@/config/credits";
 import {
   Coins,
   TrendingUp,
@@ -280,7 +281,8 @@ export default function PointsSection() {
         </div>
       </div>
 
-      {/* Top-Up Section */}
+      {/* Top-Up Section — hidden while credits aren't for sale (CREDITS_FOR_SALE) */}
+      {CREDITS_FOR_SALE && (
       <div className="mb-5">
         <button
           onClick={() => setShowTopUp(!showTopUp)}
@@ -359,6 +361,7 @@ export default function PointsSection() {
           </div>
         )}
       </div>
+      )}
 
       {/* Transaction History */}
       <div>

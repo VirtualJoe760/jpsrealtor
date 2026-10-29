@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import DomainMapping from "@/models/DomainMapping";
 import User from "@/models/User";
+import { unpointDomain } from "@/lib/domains/point";
 import {
   removeDomainFromProject,
   checkDomainConfig,
@@ -80,12 +81,27 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  // Remove from Vercel
-  try {
-    await removeDomainFromProject(mapping.domain);
-  } catch (error: any) {
-    console.error("[Domain Remove] Vercel API error:", error.message);
-    // Continue with deletion even if Vercel removal fails
+  // A domain bought through ChatRealty is a yearly paid subscription: removing
+  // it here would take the site down while the agent keeps paying. Cancelling
+  // happens in the billing portal, which stops the renewal (fulfill.ts).
+  if (mapping.purchasedViaVercel) {
+    return NextResponse.json(
+      { error: "This domain was purchased through ChatRealty. To stop it, cancel it under Billing → Manage billing." },
+      { status: 409 }
+    );
+  }
+
+  // Stop resolving it to this agent (the legacy registry + customDomain).
+  await unpointDomain(mapping.domain, String(user._id));
+
+  // Remove from Vercel — apex and the www we attached alongside it.
+  for (const host of [mapping.domain, `www.${mapping.domain}`]) {
+    try {
+      await removeDomainFromProject(host);
+    } catch (error: any) {
+      console.error("[Domain Remove] Vercel API error:", host, error.message);
+      // Continue with deletion even if Vercel removal fails
+    }
   }
 
   // Delete the mapping

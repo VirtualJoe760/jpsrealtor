@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import AgentNav from "@/app/components/AgentNav";
 import { SELLABLE_TIERS, TIER_DETAILS } from "@/config/stripe-prices";
+import { CREDITS_FOR_SALE } from "@/config/credits";
 import {
   Crown,
   Coins,
@@ -587,7 +588,7 @@ export default function AgentSubscriptionPage() {
               </div>
 
               {/* Buy More Credits */}
-              {currentTier !== "free" && (
+              {CREDITS_FOR_SALE && currentTier !== "free" && (
                 <BuyCreditsSection isLight={isLight} />
               )}
             </div>

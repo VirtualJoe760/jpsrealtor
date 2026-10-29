@@ -19,6 +19,7 @@ import { fulfillCreditTopup } from "@/lib/credit-topup-fulfillment";
 import { requireStripeMode } from '@/lib/stripe-mode';
 import { creditWalletForMode } from '@/lib/credit-wallet-mode';
 import { sendSubscriptionEmail } from "@/lib/email-resend";
+import { isDomainCheckout, startDomainOrder, endDomainRenewal } from "@/lib/domains/fulfill";
 
 // ---------------------------------------------------------------------------
 // Stripe SDK — lazy init (same pattern as stripe-identity webhook)
@@ -100,6 +101,37 @@ export async function POST(request: NextRequest) {
         await fulfillCreditTopup(checkout);
       }
       catch { return NextResponse.json({ error: 'Credit fulfillment failed; retry required' }, { status: 500 }); }
+      return NextResponse.json({ received: true });
+    }
+  }
+
+  // Domain registrations (src/lib/domains/fulfill.ts). Handled HERE, before the
+  // plan handlers below: a domain's yearly subscription must never be read as
+  // a Basic plan — the subscription.deleted handler drops a user to Free. Has
+  // its own idempotency (DomainOrder.checkoutSessionId is unique), so it skips
+  // the event claim like the top-up path above.
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const checkout = event.data.object as Stripe.Checkout.Session;
+    if (isDomainCheckout(checkout.metadata)) {
+      try {
+        if (checkout.livemode !== event.livemode) {
+          return NextResponse.json({ error: 'Stripe payment mode mismatch' }, { status: 400 });
+        }
+        await startDomainOrder(checkout, event.livemode);
+      } catch (error) {
+        console.error('[stripe-webhook] Domain order failed:', (error as Error).message);
+        return NextResponse.json({ error: 'Domain fulfillment failed; retry required' }, { status: 500 });
+      }
+      return NextResponse.json({ received: true });
+    }
+  }
+  if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
+    const sub = event.data.object as Stripe.Subscription;
+    if (isDomainCheckout(sub.metadata)) {
+      if (event.type === 'customer.subscription.deleted') {
+        try { await endDomainRenewal(sub); }
+        catch { return NextResponse.json({ error: 'Domain renewal stop failed; retry required' }, { status: 500 }); }
+      }
       return NextResponse.json({ received: true });
     }
   }
