@@ -138,8 +138,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // The editor sends the slug the publish flow uses. If that article already
+    // exists, refuse rather than insert a copy under a title-derived slug —
+    // 2026-10-29: Save Draft after a failed publish did exactly that and the
+    // article showed twice on jpsrealtor.com.
+    const slug = typeof body.slug === "string" && body.slug.trim() ? body.slug.trim().toLowerCase() : undefined;
+    if (slug && (await Article.exists({ slug }))) {
+      return NextResponse.json(
+        { error: "This article is already saved. Open it from the CMS list to edit it." },
+        { status: 409 }
+      );
+    }
+
     // Create article
     const article = await Article.create({
+      ...(slug ? { slug } : {}),
       title,
       excerpt,
       content,

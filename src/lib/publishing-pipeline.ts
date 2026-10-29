@@ -207,7 +207,10 @@ export async function publishArticle(
     userName?: string;
     userEmail?: string;
   } = {}
-): Promise<void> {
+): Promise<{ warnings: string[] }> {
+  // Problems after the database write. Reported back, never thrown.
+  const warnings: string[] = [];
+
   // Validate before publishing
   const validation = await validateForPublish(article);
   if (!validation.isValid) {
@@ -235,17 +238,37 @@ export async function publishArticle(
 
   if (IS_PRODUCTION) {
     // PRODUCTION: Use GitHub Contents API (Vercel's filesystem is read-only)
+    //
+    // The article is already saved and live (the home feed and article page
+    // read Mongo). The MDX mirror only feeds the category index and RSS, so a
+    // failure here is a warning, never a failed publish. 2026-10-29: a dead
+    // GITHUB_TOKEN 500'd a publish whose Mongo write had succeeded, and the
+    // editor's Save Draft then created a duplicate article.
     console.log('[PUBLISH] Step 2/4: Pushing MDX to GitHub via API...');
-    await publishMDXViaGitHub(article, slugId);
+    let mirrored = false;
+    try {
+      await publishMDXViaGitHub(article, slugId);
+      mirrored = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[PUBLISH] MDX mirror failed (article is saved and live): ${msg}`);
+      warnings.push(
+        `Saved and live, but the MDX copy didn't reach GitHub (${msg}). ` +
+          'It won\'t appear on the category page or RSS feed until that is fixed.'
+      );
+    }
 
-    // STEP 3: Trigger Vercel rebuild via deploy hook (same as before)
-    console.log('[PUBLISH] Step 3/4: Triggering Vercel rebuild...');
-    const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
-    if (deployResult.success) {
-      console.log(`✅ Article published to production! ${deployResult.message}`);
-    } else {
-      // Deploy hook failed but the GitHub commit will still trigger auto-deploy
-      console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
+    // STEP 3: Trigger Vercel rebuild via deploy hook. Without a new MDX file a
+    // rebuild changes nothing, so skip it when the mirror failed.
+    if (mirrored) {
+      console.log('[PUBLISH] Step 3/4: Triggering Vercel rebuild...');
+      const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
+      if (deployResult.success) {
+        console.log(`✅ Article published to production! ${deployResult.message}`);
+      } else {
+        // Deploy hook failed but the GitHub commit will still trigger auto-deploy
+        console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
+      }
     }
     console.log(`✅ Article published! (${dbResult._id})`);
   } else {
@@ -275,6 +298,8 @@ export async function publishArticle(
   // by this point; a search-engine ping that 503s must not surface as "publish
   // failed" and send someone re-running the pipeline.
   await pingIndexNowForArticle(article, slugId, options.userId);
+
+  return { warnings };
 }
 
 /**

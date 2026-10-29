@@ -293,6 +293,8 @@ export default function NewArticlePage() {
         ...formData,
         status: publishNow ? "published" : formData.status,
         publishedAt: publishNow ? new Date().toISOString() : undefined,
+        // Same slug the publish flow uses, so the server refuses a second copy.
+        ...(slugId ? { slug: slugId } : {}),
       };
 
       const response = await fetch("/api/articles", {
@@ -301,7 +303,10 @@ export default function NewArticlePage() {
         body: JSON.stringify(articleData),
       });
 
-      if (!response.ok) throw new Error("Failed to save article");
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || "Failed to save article");
+      }
 
       const data = await response.json();
 
@@ -397,7 +402,7 @@ export default function NewArticlePage() {
           router.push("/agent/cms");
         }, 3000);
       } else {
-        const errors = data.errors?.join("\n") || "Unknown error";
+        const errors = data.errors?.join("\n") || data.error || "Unknown error";
         setModal({
           isOpen: true,
           type: 'error',

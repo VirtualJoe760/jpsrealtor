@@ -81,6 +81,10 @@ export async function GET(request: Request) {
           return NextResponse.json({ success: true, articles: [], total: 0 });
         }
         filters.authorId = ownerId;
+        // Visitors see published articles only. Without this a draft showed on
+        // the live home page (2026-10-29: a failed publish left a draft copy,
+        // and jpsrealtor.com listed the article twice).
+        filters.status = 'published';
       }
 
       // Exclude landing pages from insights feed

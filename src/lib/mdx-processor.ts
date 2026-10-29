@@ -95,8 +95,13 @@ export async function htmlToMdx(html: string): Promise<ProcessedMDX> {
 }
 
 /**
- * Validate MDX structure
- * Ensures MDX can be parsed without errors
+ * Validate MDX by compiling it the way the article page does.
+ *
+ * The page renders with `next-mdx-remote/rsc` (`@mdx-js/mdx` compile). This
+ * used to run a plain remark parse instead, which accepts anything — so
+ * `<josephsardella@gmail.com>` (a Markdown autolink, but an invalid JSX tag in
+ * MDX) passed validation and then crashed the live article page on 2026-10-29.
+ * `serialize` runs the same compile, so what passes here renders there.
  *
  * @param mdx - MDX content to validate
  * @returns Validation result
@@ -105,19 +110,17 @@ export async function validateMDX(mdx: string): Promise<{
   isValid: boolean;
   errors: string[];
 }> {
-  const errors: string[] = [];
-
   try {
-    // Try to parse the MDX
-    await unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .parse(mdx);
-
+    // Server-only import; keeps the MDX compiler out of any client bundle.
+    const { serialize } = await import('next-mdx-remote/serialize');
+    await serialize(mdx, {}, true);
     return { isValid: true, errors: [] };
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : 'Invalid MDX structure');
-    return { isValid: false, errors };
+    const msg = error instanceof Error ? error.message : 'Invalid MDX structure';
+    const hint = /U\+0040|`@`/.test(msg)
+      ? ' Tip: write email links as [name@example.com](mailto:name@example.com), not <name@example.com>.'
+      : '';
+    return { isValid: false, errors: [`MDX won't render: ${msg}${hint}`] };
   }
 }
 

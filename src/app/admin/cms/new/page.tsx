@@ -207,6 +207,8 @@ export default function NewArticlePage() {
         ...formData,
         status: publishNow ? "published" : formData.status,
         publishedAt: publishNow ? new Date().toISOString() : undefined,
+        // Same slug the publish flow uses, so the server refuses a second copy.
+        ...(slugId ? { slug: slugId } : {}),
       };
 
       const response = await fetch("/api/articles", {
@@ -215,7 +217,10 @@ export default function NewArticlePage() {
         body: JSON.stringify(articleData),
       });
 
-      if (!response.ok) throw new Error("Failed to save article");
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || "Failed to save article");
+      }
 
       const data = await response.json();
       alert(publishNow ? "Article saved to database!" : "Article saved as draft!");
@@ -269,7 +274,7 @@ export default function NewArticlePage() {
       if (data.success) {
         alert(`Article published to website!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
       } else {
-        const errors = data.errors?.join("\n") || "Unknown error";
+        const errors = data.errors?.join("\n") || data.error || "Unknown error";
         alert(`Failed to publish:\n\n${errors}`);
       }
     } catch (error) {

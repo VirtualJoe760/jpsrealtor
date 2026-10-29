@@ -347,7 +347,7 @@ export default function EditArticlePage() {
           router.push("/agent/cms");
         }, 3000);
       } else {
-        const errors = data.errors?.join("\n") || "Unknown error";
+        const errors = data.errors?.join("\n") || data.error || "Unknown error";
         setModal({
           isOpen: true,
           type: 'error',
@@ -376,45 +376,13 @@ export default function EditArticlePage() {
   };
 
   // Handle save to database
+  // This article already exists, so saving goes through the publish route,
+  // which upserts by slug. It used to POST /api/articles, which inserted a
+  // second, published copy under a title-derived slug.
   const handleSaveToDatabase = async () => {
     setIsSavingToDB(true);
-
     try {
-      const articleData = {
-        ...formData,
-        status: "published",
-        publishedAt: new Date().toISOString(),
-      };
-
-      const response = await fetch("/api/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(articleData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save article");
-
-      setModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Article Saved',
-        message: 'Article saved to database successfully!',
-        autoCloseMs: 2000,
-      });
-
-      // Redirect to CMS after brief delay
-      setTimeout(() => {
-        router.push("/agent/cms");
-      }, 2000);
-    } catch (error) {
-      console.error("Save to DB error:", error);
-      setModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Save Failed',
-        message: 'Failed to save to database',
-        details: error instanceof Error ? error.message : undefined,
-      });
+      await handleRepublish(false);
     } finally {
       setIsSavingToDB(false);
     }
