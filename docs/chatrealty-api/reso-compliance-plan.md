@@ -327,6 +327,17 @@ Fixed on the way:
   tiebreaker turned an indexed read into an in-memory sort of 83k docs. It is
   now dropped when the single sort field has its own index (0.25 s a page).
 
+### 8b. Production run (2026-10-29, `https://www.chatrealty.io/api/skill/reso`)
+
+PR #6 deployed. `reso-cert core` against production: **43 passed, 1 failed,
+13 skipped**. The one failure: `/Lookup` returned 504
+(`FUNCTION_INVOCATION_TIMEOUT`). Its first build per instance runs `distinct()`
+on `stateOrProvince`, which has no index (16 s over 85k listings, past
+Vercel's 15 s default). PR #8 sets `maxDuration = 60` and shares one build
+across concurrent requests. Backend follow-up: index
+`unified_listings.stateOrProvince` (build drops to ~100 ms). The DD run
+against production waits on PR #8, since it reads `/Lookup` too.
+
 ## Sources
 
 - [RESO certification fee schedule](https://www.reso.org/certification-fee-schedule/)
