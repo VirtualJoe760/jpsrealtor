@@ -273,8 +273,65 @@ Live-site safety: everything is additive. It's a new route, new `src/lib/reso/we
 modules, and one new rate tier. `src/proxy.ts` and the existing `/api/skill/*`
 routes are unchanged, and nothing is written to the database.
 
+## 8. Certification readiness review (2026-10-29)
+
+What RESO actually requires before you pay, checked against the spec, the
+fee schedule and the certification FAQ.
+
+| Requirement | Source | Us |
+|---|---|---|
+| At least one of Property/Member/Office/Media/InternetTracking | Core spec §2.7, §3.2 | ✅ Property |
+| Lookup resource (2.1.0 "Required" scenario) | Core scenario catalog | ✅ |
+| OAuth2 Bearer token or Client Credentials (OpenID Connect not accepted) | Core spec | ✅ `crt_live_` bearer |
+| `$select $top $skip $count $orderby $filter`, `@odata.nextLink` paging | Core spec | ✅ passes `reso-cert core` |
+| Valid metadata (XSD + semantics); payloads match JSON Schema from it | Core spec §3 | ✅ |
+| Data Dictionary run: metadata, variations, replication | `reso-cert dd` | see §8a |
+| Applicant gives RESO access credentials; RESO staff run the tests | Certification FAQ | a dedicated `listings:read` token |
+| Production data, **except** tech providers may certify on their own development data | reso-certification README | lets us avoid exposing licensed MLS data |
+| Endorsement lasts 2 years, per version; RESO may retest any time | Certification FAQ | — |
+
+**Money.** Members certify free. Technology vendors under $1M revenue pay
+**$550/yr membership** vs a **$625 one-time nonmember fee**. Membership is the
+cheaper path and adds conference/tool discounts. A failed run can be resubmitted
+free within a year. Web API and DD are described as certifying "as a pair".
+
+**Which version.** RESO's May 2026 newsletter said the new suite (DD 2.1, Web
+API Core 2.0.0/2.1.0) was "in final testing" and told applicants to use the
+older Commander (Core 2.0.0) and Cert Utils (DD 2.0) until notified. Ask
+dev@reso.org which suite they will run before submitting.
+
+**Process.** Email dev@reso.org (technology provider). RESO issues a UOI
+(organization ID) and the credentials file the DD variations step needs, then
+runs the tests; each round takes days.
+
+### 8a. Data Dictionary 2.0 survey (local, `--no-strict --skip-variations`)
+
+**Passes: 6 passed, 0 failed, 1 skipped (67 min).** Metadata valid, 0 errors;
+all three replication strategies read all 85,346 records (Timestamp
+Descending, NextLink, NextLink modified-since). Not certification-eligible
+only because of the two flags: variations need RESO's credentials file
+(issued on application), and `--no-strict` must be dropped for the real run.
+
+Left as warnings (SHOULD, not MUST): 12 string fields have no `MaxLength`
+facet (DD suggested maxima). The 10 `StateOrProvince` "standard value without
+StandardLookupValue" warnings are fixed (two-letter codes are now marked
+standard).
+
+Core re-run after these fixes: **47 passed, 0 failed, 10 skipped** (City as
+a lookup made `ne`/`in` string-enum tests testable).
+
+Fixed on the way:
+- `City`, `StateOrProvince`, Media `ResourceName`, `MediaCategory` are DD
+  lookup fields and MUST carry `LookupName`; they now do, with Lookup rows.
+- Paging by `ModificationTimestamp` took 26–33 s a page: the `listingKey`
+  tiebreaker turned an indexed read into an in-memory sort of 83k docs. It is
+  now dropped when the single sort field has its own index (0.25 s a page).
+
 ## Sources
 
+- [RESO certification fee schedule](https://www.reso.org/certification-fee-schedule/)
+- [RESO certification FAQ](https://www.reso.org/knowledge-base/certification-faq/)
+- [RESO Monthly, May 2026](https://www.reso.org/blog/reso-monthly-05-2026/)
 - [RESOStandards/reso-tools](https://github.com/RESOStandards/reso-tools): `reso-certification/src/web-api-core/README.md` and `scenarios.ts` (scenario list and gating above)
 - [RESO Web API Core spec](https://transport.reso.org/proposals/web-api-core)
 - [RESO certification](https://www.reso.org/certification/)
