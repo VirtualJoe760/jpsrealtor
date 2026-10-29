@@ -212,7 +212,7 @@ export default function EditArticlePage() {
         const draftMsg = isDraft ? ' (saved as draft)' : '';
         alert(`Article updated on website${draftMsg}!\n\nView at: ${data.url}\n\n${data.warnings?.length ? 'Warnings:\n' + data.warnings.join('\n') : ''}`);
       } else {
-        const errors = data.errors?.join("\n") || "Unknown error";
+        const errors = data.errors?.join("\n") || data.error || "Unknown error";
         alert(`Failed to update:\n\n${errors}`);
       }
     } catch (error) {
@@ -229,28 +229,13 @@ export default function EditArticlePage() {
   };
 
   // Handle save to database
+  // This article already exists, so saving goes through the publish route,
+  // which upserts by slug. It used to POST /api/articles, which inserted a
+  // second, published copy under a title-derived slug.
   const handleSaveToDatabase = async () => {
     setIsSavingToDB(true);
-
     try {
-      const articleData = {
-        ...formData,
-        status: "published",
-        publishedAt: new Date().toISOString(),
-      };
-
-      const response = await fetch("/api/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(articleData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save article");
-
-      alert("Article saved to database successfully!");
-    } catch (error) {
-      console.error("Save to DB error:", error);
-      alert("Failed to save to database");
+      await handleRepublish(false);
     } finally {
       setIsSavingToDB(false);
     }

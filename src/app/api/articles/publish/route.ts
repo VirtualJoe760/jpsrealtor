@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     // Publish article with environment-aware logic
-    await publishArticle(article as ArticleFormData, slugId, {
+    const { warnings: publishWarnings } = await publishArticle(article as ArticleFormData, slugId, {
       autoDeploy,
       userId: session.user.id,
       userName: session.user.name || session.user.email || 'Unknown',
@@ -90,15 +90,17 @@ export async function POST(req: Request) {
     }
 
     // Unified workflow response messages
-    const message = IS_PRODUCTION
-      ? `Article saved to MongoDB and pushed to main branch! Vercel is rebuilding - your article will be live in 2-3 minutes.`
-      : `Article saved to MongoDB and pushed to main branch! Vercel will auto-deploy in ~2 minutes.`;
+    const message = publishWarnings.length
+      ? `Article saved and live on your site. Some follow-up steps didn't finish — see warnings.`
+      : IS_PRODUCTION
+        ? `Article saved to MongoDB and pushed to main branch! Vercel is rebuilding - your article will be live in 2-3 minutes.`
+        : `Article saved to MongoDB and pushed to main branch! Vercel will auto-deploy in ~2 minutes.`;
 
     return NextResponse.json({
       success: true,
       slugId,
       url: `/insights/${slugId}`,
-      warnings: validation.warnings,
+      warnings: [...(validation.warnings || []), ...publishWarnings],
       message,
       deployed: true,
       environment: IS_PRODUCTION ? 'production' : 'localhost',
