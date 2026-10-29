@@ -18,8 +18,8 @@ still reads it in a few places** (category index pages, the RSS feed — see
 "Where each surface reads from"), so it is not purely archival. The public feed
 is **domain-scoped** via `resolveDomainOwner`.
 
-**Multi-tenant target:** only jpsrealtor.com / chatrealty.io stay on Mongo;
-every other agent's articles belong in their own Neon tenant DB. None of that
+**Multi-tenant target:** admins (jpsrealtor.com / chatrealty.io) stay on Mongo;
+every non-admin agent's articles move to their own Neon tenant DB. None of that
 is built yet — see [multi-tenant-articles.md](./multi-tenant-articles.md).
 
 ## Files

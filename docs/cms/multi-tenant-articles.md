@@ -13,9 +13,11 @@ related: [./README.md, ../multi-tenant/README.md, ../multi-tenant/domain-owner-s
 assigned database** → it shows on **that agent's home page**. Nothing else is
 required for an article to be live.
 
-**Assignment rule:** `jpsrealtor.com` and `chatrealty.io` (Joseph / the platform
-owner) keep using the shared MongoDB `articles` collection. **Every other agent
-stores articles in their own Neon Postgres tenant database.**
+**Assignment rule (decided 2026-10-29):** **admins** (which covers
+`jpsrealtor.com` and `chatrealty.io`) keep using the shared MongoDB `articles`
+collection. **Every non-admin agent stores articles in their own Neon Postgres
+tenant database**, and their existing Mongo articles migrate there. A
+non-admin without a Neon DB is a test account, not a customer.
 
 **Today none of that is true.** Every article from every agent goes to the
 shared Mongo collection, then is committed as MDX to the public
@@ -62,26 +64,28 @@ Nothing else decides where articles live.
 
 ```
 resolveArticleStore(ownerUserId):
-  if ownerUserId is a platform-owner account      → { kind: "mongo" }
+  if User(ownerUserId).isAdmin                    → { kind: "mongo" }
   tenant = Tenant.findOne({ ownerUserId, status: "active" })
   if tenant                                       → { kind: "neon", tenantId }
   else                                            → throw ArticleStoreUnavailable (409)
 ```
 
-- **Platform-owner accounts** = the owners of `jpsrealtor.com` and
-  `chatrealty.io`. Store this as an explicit list (config / `PlatformConfig`),
-  not "is admin": an admin flag is a permission, not a storage assignment, so
-  granting someone admin must not silently move their articles into Mongo.
+- **Admins stay on Mongo** (Joseph's decision, 2026-10-29). Read `isAdmin` from
+  the **owner's** `User` record, not from the session: an admin impersonating an
+  agent, or an admin editing an agent's article, must still write to that
+  agent's Neon DB.
+- **Caveat:** making someone admin later moves where *new* reads look. Their
+  Neon articles would stop showing on their site. Granting admin to an agent
+  with a tenant needs a migration to go with it.
 - **Lookup key is `ownerUserId`**, which `Tenant` already carries with a unique
   index (`src/models/control/Tenant.ts`). Session-authed CMS requests have a user
   id but no API token, so the token-hash lookup in `skill-auth.ts` does not apply.
   Token-authed `/api/skill/articles*` requests already carry `auth.tenantId` and
   should use it directly.
-- **No fallback to Mongo for a non-owner without a tenant.** Same reasoning as
-  the listings BYOD gate (connection-resolver.md, step 2): falling back would mix
-  an agent's content into Joseph's store and it would vanish from their site the
-  day their tenant is provisioned. The CMS should show "your site database isn't
-  set up yet" instead.
+- **No fallback to Mongo for a non-admin without a tenant.** Those are test
+  accounts. Same reasoning as the listings BYOD gate (connection-resolver.md,
+  step 2): falling back would mix their content into the admin store. The CMS
+  shows "your site database isn't set up yet" instead.
 - Cache the result per request; the Tenant lookup is one indexed read.
 
 ### 2. One repository interface, two implementations
@@ -180,13 +184,12 @@ retired.
 5. Move category index, RSS and sitemap off MDX; remove the GitHub/MDX step and
    `src/posts/`.
 
-## Open decisions
+## Decisions (Joseph, 2026-10-29)
 
-- **Existing non-owner articles in Mongo.** Agents other than Joseph may already
-  have articles in the shared collection. Migrate them into each agent's tenant
-  DB at step 4, or leave them readable from Mongo until migrated?
-- **Agents with no tenant yet.** This design refuses to publish (409). The
-  alternative is to hold the article as a draft and publish it when the tenant
-  goes active.
-- **Platform-owner list.** Joseph's account only, or also a separate
-  chatrealty.io platform account?
+- **Admins stay on Mongo.** That covers jpsrealtor.com and chatrealty.io.
+- **Non-admin agents migrate.** At step 4, a one-off script copies each
+  non-admin author's Mongo articles into their tenant DB (upsert by slug), checks
+  the counts match, then deletes the Mongo copies. Routing for that agent flips
+  only after their copy is verified, so their home page never goes empty.
+- **No Neon DB means admin or test account.** A non-admin without a tenant is a
+  test account. Publishing refuses with 409, and nothing falls back to Mongo.
