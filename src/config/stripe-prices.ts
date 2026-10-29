@@ -5,7 +5,8 @@
 // Markup is applied at PURCHASE time, not at spend.
 //
 // Agent tiers (with marketing credits):
-//   Beginner     $125/mo  → 1,000 credits → $100 ad spend  (25% markup)
+//   Basic        $125/mo  → platform access only; credits bought separately
+//                          via top-up at $0.125/credit (25% markup)
 //   Experienced  $500/mo  → 4,167 credits → $416.70 ad spend (20% markup)
 //   Top Agent  $1,000/mo  → 8,696 credits → $869.60 ad spend (15% markup)
 //
@@ -112,20 +113,21 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     tier: "beginner",
     monthlyPrice: 125,
     annualPrice: 1200,
-    description: "Launch your real estate marketing with 1,000 credits/month for Google Ads, Meta Ads, direct mail, and voicemail drops",
-    monthlyPoints: 1000,
-    adSpendValue: 100,
+    description: "Full access to the ChatRealty platform — your website, CRM and AI tools. Marketing credits are purchased separately.",
+    // Platform access only (2026-10-28). Credits are a separate purchase; the
+    // grant paths read CREDIT_TIERS.beginner.monthlyCredits, which is 0.
+    monthlyPoints: 0,
+    adSpendValue: 0,
     marginPercent: 25,
     features: [
-      "1,000 marketing credits/month",
-      "Google & Meta Ads campaigns",
-      "Direct mail campaigns",
-      "Voicemail drops",
-      "Partner cost-splitting",
-      "Basic analytics",
-      "50 gallery photos",
-      "5 custom pages",
+      "Your own agent website with live MLS search",
+      "CRM: contacts, inbox and follow-up",
+      "AI tools: on-demand CMAs and cash-flow analysis",
+      "Lead capture",
+      "Analytics",
+      "50 gallery photos · 5 custom pages",
       "Email support",
+      "Marketing credits sold separately — ads, direct mail, voicemail",
     ],
   },
   experienced: {

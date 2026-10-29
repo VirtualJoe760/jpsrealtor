@@ -5,8 +5,14 @@
 //   1 credit = $0.10 of platform-side spend value (universal — ads, mail, voicemail).
 //   Markup happens at PURCHASE (subscription / top-up), not at SPEND.
 //
+//   Since 2026-10-28 the subscription and credits are SEPARATE purchases:
+//   Basic ($125/mo, tier "beginner") buys platform access only and includes
+//   0 credits; agents buy marketing credits through top-ups (/api/points/topup)
+//   at their tier's rate. Every grant path (checkout webhook, renewal, Stripe
+//   sync) skips a tier whose monthlyCredits is 0, so 0 here = no bundled credits.
+//
 //   Tier purchase rates (markup applied per tier):
-//     Beginner     25% → $0.125 per credit → $125  buys 1,000 credits
+//     Basic        25% → $0.125 per credit (top-ups only; no bundled credits)
 //     Experienced  20% → $0.120 per credit → $500  buys 4,167 credits
 //     Top Agent    15% → $0.115 per credit → $1000 buys 8,696 credits
 //     Custom top-ups (>$999): treated as Top Agent rate (15%).
@@ -59,7 +65,7 @@ const tier = (name: string, t: CreditTier, monthlyPrice: number, markup: number,
 });
 
 export const CREDIT_TIERS: Record<CreditTier, CreditTierConfig> = {
-  beginner:    tier("Basic",       "beginner",    125,  0.25, 1000),
+  beginner:    tier("Basic",       "beginner",    125,  0.25, 0),
   experienced: tier("Experienced", "experienced", 500,  0.20, 4167),
   topagent:    tier("Top Agent",   "topagent",    1000, 0.15, 8696),
 };

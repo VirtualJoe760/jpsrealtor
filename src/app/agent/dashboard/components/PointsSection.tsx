@@ -33,6 +33,7 @@ interface TierConfig {
   tier: string;
   monthlyPrice: number;
   monthlyPoints: number;
+  costPerPoint?: number; // $ per credit at this tier's top-up rate
   adSpendRate: number;
   adValuePerPoint: number;
 }
@@ -217,7 +218,7 @@ export default function PointsSection() {
           <div className="flex items-center gap-1 mt-1">
             <Coins className={`w-3 h-3 ${isLight ? "text-amber-500" : "text-amber-400"}`} />
             <p className={`text-xs ${isLight ? "text-amber-600" : "text-amber-400/70"}`}>
-              {tier ? `${tier.monthlyPoints.toLocaleString()} credits/month` : "Subscribe to earn credits"}
+              {tier && tier.monthlyPoints > 0 ? `${tier.monthlyPoints.toLocaleString()} credits/month` : "Buy credits as you need them"}
             </p>
           </div>
         </div>
@@ -315,7 +316,7 @@ export default function PointsSection() {
                       : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                   }`}
                 >
-                  ${amt} {tier ? `(${Math.floor(amt / (tier.monthlyPrice / tier.monthlyPoints)).toLocaleString()} cr)` : ''}
+                  ${amt} {tier?.costPerPoint ? `(${Math.floor(amt / tier.costPerPoint).toLocaleString()} cr)` : ''}
                 </button>
               ))}
             </div>

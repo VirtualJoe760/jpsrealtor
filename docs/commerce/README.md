@@ -60,7 +60,7 @@ Tier pricing, feature limits, and credit allocation are all set by the
 | Tier | $/mo | Credits/mo | Markup | Custom domain | Photos | Videos | Custom pages | Analytics | API | Support |
 |---|---:|---:|---:|---|---:|---:|---:|---|---|---|
 | Free | $0 | 0 | — | no | 10 | 1 | 1 | no | no | community |
-| Beginner | $125 | 1,000 | 25% | no | 50 | 3 | 5 | yes | no | email |
+| Basic (`beginner`) | $125 | **0** (credits sold separately) | 25% | no | 50 | 3 | 5 | yes | no | email |
 | Experienced | $500 | 4,167 | 20% | yes | 200 | 10 | 20 | yes | no | priority |
 | Top Agent | $1,000 | 8,696 | 15% | yes | 999 | 50 | 100 | yes | yes | dedicated |
 
@@ -90,6 +90,21 @@ test publishable key — `stripeConfiguration()` refuses checkout when a test
 publishable key sits beside a live secret. Nothing in the client uses the
 publishable key. Development and preview keep the test keys. The webhook must
 use the `www` host: `chatrealty.io` 308-redirects and Stripe does not follow.
+
+**Subscription and credits are separate purchases (2026-10-28).** Basic buys
+platform access only; marketing credits are bought through top-ups
+(`/api/points/topup`) at the tier's rate ($0.125/credit for Basic).
+`CREDIT_TIERS.beginner.monthlyCredits` is **0**, and every grant path — the
+checkout webhook, the `invoice.payment_succeeded` renewal and the
+`/api/stripe/subscription` sync — skips a tier whose allowance is 0, so no
+credits are bundled. Display copy reads `TIER_DETAILS.beginner`; the dashboard
+estimates top-up credits from `costPerPoint`, not monthlyPrice ÷ monthlyPoints
+(which divided by zero once the allowance was 0).
+
+**Live billing portal:** default configuration `bpc_1UVhClGI9m3f5P10qGIdwskg`
+— card updates, invoice history, name/email/address edits, and cancel at
+period end with a reason. Return URL `/agent/subscription`. Without a saved
+live configuration, `/api/stripe/portal` errors for every subscriber.
 
 No live price exists for the consumer **Pro** plan ($9.99) or the annual
 prices, so those checkouts fail in live mode until one is created.

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import AgentNav from "@/app/components/AgentNav";
-import { SELLABLE_TIERS } from "@/config/stripe-prices";
+import { SELLABLE_TIERS, TIER_DETAILS } from "@/config/stripe-prices";
 import {
   Crown,
   Coins,
@@ -65,20 +65,10 @@ const PLANS = [
     tier: "beginner",
     name: "Basic",
     price: 125,
-    credits: 750,
-    description:
-      "Launch your marketing with 750 credits/month for ads, direct mail, and voicemail",
-    features: [
-      "750 marketing credits/month",
-      "Use credits on any campaign type",
-      "Google & Meta Ads",
-      "Direct mail campaigns",
-      "Voicemail drops",
-      "Partner cost-splitting",
-      "Basic analytics",
-      "50 gallery photos",
-      "Email support",
-    ],
+    // Platform access only since 2026-10-28; credits are a separate purchase.
+    credits: TIER_DETAILS.beginner.monthlyPoints,
+    description: TIER_DETAILS.beginner.description,
+    features: TIER_DETAILS.beginner.features,
     highlighted: false,
   },
   {
@@ -543,16 +533,18 @@ export default function AgentSubscriptionPage() {
                         isLight ? "text-gray-900" : "text-white"
                       }`}
                     >
-                      {(
-                        PLANS.find((p) => p.tier === currentTier)?.credits ?? 0
-                      ).toLocaleString()}
+                      {(PLANS.find((p) => p.tier === currentTier)?.credits ?? 0) > 0
+                        ? (PLANS.find((p) => p.tier === currentTier)?.credits ?? 0).toLocaleString()
+                        : "—"}
                     </p>
                     <p
                       className={`text-xs ${
                         isLight ? "text-gray-400" : "text-gray-500"
                       }`}
                     >
-                      refreshes each billing cycle
+                      {(PLANS.find((p) => p.tier === currentTier)?.credits ?? 0) > 0
+                        ? "refreshes each billing cycle"
+                        : "credits are purchased separately"}
                     </p>
                   </div>
                 </div>
@@ -706,13 +698,16 @@ export default function AgentSubscriptionPage() {
                               isLight ? "text-gray-900" : "text-white"
                             }`}
                           >
-                            Free
+                            {plan.price > 0 ? `${plan.price}` : "Free"}
                           </span>
+                          {plan.price > 0 && (
+                            <span className={`text-sm ml-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}>/mo</span>
+                          )}
                         </div>
                       )}
 
-                      {/* Price — Secondary */}
-                      {plan.price > 0 && (
+                      {/* Price — Secondary (only under a credits headline) */}
+                      {plan.price > 0 && plan.credits > 0 && (
                         <p
                           className={`text-sm mb-3 ${
                             isLight ? "text-gray-500" : "text-gray-400"
@@ -819,9 +814,9 @@ export default function AgentSubscriptionPage() {
                   isLight ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                All plans are billed monthly. Cancel anytime. Credits refresh
-                each billing cycle. Need more credits? Buy additional credits
-                anytime from your dashboard.
+                Billed monthly. Cancel anytime. Your plan covers the platform;
+                marketing credits for ads, direct mail and voicemail are a
+                separate purchase — buy them anytime from your dashboard.
               </p>
             </div>
           )}
