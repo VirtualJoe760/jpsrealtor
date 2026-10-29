@@ -304,7 +304,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
 // In-memory; survives the lifetime of the serverless function instance only.
 // Switch to Upstash Redis when we need cross-instance counts.
 
-export type RateLimitTier = "identity" | "read" | "write" | "send" | "research";
+export type RateLimitTier = "identity" | "read" | "write" | "send" | "research" | "reso";
 
 const RATE_LIMIT_TIERS: Record<RateLimitTier, { max: number; windowMs: number }> = {
   identity: { max: 200, windowMs: 60_000 },
@@ -315,6 +315,11 @@ const RATE_LIMIT_TIERS: Record<RateLimitTier, { max: number; windowMs: number }>
   // write: research callers fan out a lot of read traffic but the saved-search
   // write is rare. Additive — no existing tier changed.
   research: { max: 60, windowMs: 60_000 },
+  // RESO Web API (/api/skill/reso). OData clients replicate by paging, and
+  // RESO's own conformance run (`reso-cert core`) issues several hundred
+  // requests a minute — at the 100/min `read` tier it 429s mid-run and reports
+  // false failures. Additive — no existing tier changed.
+  reso: { max: 600, windowMs: 60_000 },
 };
 
 /**

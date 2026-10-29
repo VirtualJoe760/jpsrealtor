@@ -119,6 +119,18 @@ support OAuth2 tokens OR client credentials**
 Built this way, certification later is a conformance run, not a rewrite — and it
 doubles as the published, versioned schema customers seed against.
 
+**Self-test (2026-10-29).** RESO's free CLI is `reso-cert`, from
+`@reso-standards/reso-certification` (v0.11.5, Node 22+; source in
+`RESOStandards/reso-tools`, which also ships a reference server). It runs the
+same suites RESO certifies with: `core`, `dd`, `add-edit`, `entity-event`
+against a server URL, and `rcf` against data files. Pointed at
+`localhost:3000/api/skill`, `core` and `dd` both fail at the first step:
+there is no `$metadata` document and no service root, so no query scenario
+runs. `/api/skill/*` is OData-*flavored* (envelope, `$filter`/`$select`) but is
+not yet a RESO Web API server. The minimum to get past step one is a
+`$metadata` CSDL/EDMX and a `/Property` resource using Data Dictionary field
+names (PascalCase), behind OAuth2 client credentials.
+
 ### 5. Monetization — managed hosting, predictable per-tenant pricing
 
 The BaaS market monetizes open/free frameworks via **managed hosting**, and the
