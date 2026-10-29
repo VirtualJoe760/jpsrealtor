@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import AgentNav from "@/app/components/AgentNav";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
@@ -22,6 +22,8 @@ import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
 import GoLiveBounties from "./components/GoLiveBounties";
+import MlsAssociationCard from "@/app/components/agent/MlsAssociationCard";
+import AgentOnboardingStatus from "@/app/components/agent/AgentOnboardingStatus";
 import RecentActivity from "./components/RecentActivity";
 
 export default function AgentDashboard() {
@@ -425,6 +427,18 @@ export default function AgentDashboard() {
               </div>
             </div>
           )}
+
+          {/* New-agent steps: verify ID, then wait for site review. */}
+          <div className="mb-6">
+            <Suspense fallback={null}>
+              <AgentOnboardingStatus isLight={isLight} />
+            </Suspense>
+          </div>
+
+          {/* MLS association — asked of every agent until it's on file. */}
+          <div className="mb-6">
+            <MlsAssociationCard isLight={isLight} variant="prompt" />
+          </div>
 
           {/* Go-live bounty board — the settings the agent must finish before
               their public {slug}.chatrealty.io site publishes. Drives off the

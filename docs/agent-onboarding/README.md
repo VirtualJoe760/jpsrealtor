@@ -1,7 +1,7 @@
 ---
-title: Agent Onboarding (product signup → manual approval)
+title: Agent Onboarding (apply → pay → verify ID → admin confirms site)
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-28
 related:
   - ../integrations/email.md
   - ../commerce/README.md
@@ -12,38 +12,52 @@ related:
 
 ## TL;DR
 
-Agents are **customers** buying into the ChatRealty framework, not recruits
-joining a team (pivoted 2026-07-23 away from the old "Join Our Team"
-resume/references flow). A signed-in user fills a one-minute license form
-(license number + state, MLS association, optional MLS agent ID, brokerage
-name), which sets `User.agentApplication.phase = "inquiry_pending"`. An admin
-**manually** approves or rejects at `/admin/applications/agents` (see
-[../admin/README.md](../admin/README.md)). Approval grants the
-`realEstateAgent` role, mints a subdomain and registers it on Vercel
-(`generateSubdomain` → `ensureSubdomainRegistered`), and emails the agent a
-setup CTA. The silent JWT permission refresh in `src/lib/auth.ts` (60s
-throttle) picks up the new role — **no re-login needed** after approval. Once
-signed in, an agent's portal runs on their own subdomain (`../auth/README.md`).
+**Rebuilt 2026-10-28: paying for Basic is how you become an agent.** A
+signed-in user fills the application at `/dashboard/settings/join-us`
+(license number + state, brokerage, MLS association **with the association's
+contact details**), then pays for Basic ($125/mo) in Stripe Checkout — promo
+codes accepted (`TOASTY13125` = first month free, once per new customer). The
+Stripe webhook's plan handler calls `activatePaidAgent()`
+(`src/lib/agent-onboarding.ts`): `realEstateAgent` role, subdomain, setup
+wizard forced, welcome email to them, "new paid agent" email to the admin. The
+agent then **verifies their ID** (Stripe Identity: photo ID + live selfie) from
+the dashboard card. Their **public site stays offline** until the admin clicks
+**Confirm & publish site** at `/admin/applications/agents`
+(`agentApplication.siteApprovedAt`); **Reject & refund** cancels the plan,
+refunds the payment and removes the role.
+
+The 9 agents who existed on 2026-10-28 are **grandfathered**
+(`agentProfile.grandfathered`, set by `scripts/grandfather-existing-agents.js`):
+Basic-level access free forever, old site-live rule. Admins are exempt
+everywhere.
 
 ## Phase machine (as used)
 
 ```
-(submit) → inquiry_pending → final_approved   (admin approve: role + subdomain + welcome email)
-                           → final_rejected   (admin reject: reason stored + rejection email)
+(apply) → awaiting_payment ──pay──▶ site_review ──admin confirm──▶ final_approved
+                     │                    └──admin reject (cancel+refund)──▶ final_rejected
+                     └──admin reject──▶ final_rejected
 ```
 
-The `agentApplication.phase` enum still contains `inquiry_approved`,
-`verification_*`, etc. — those belong to the **parked** Stripe Identity flow
-and are never set by live code.
+`inquiry_pending` (old manual-approval flow) and the `verification_*` /
+`inquiry_approved` values remain in the enum for old records only.
 
 ## Gotchas
 
-- **Parked Stripe Identity.** `src/app/api/agent/verify-identity/route.ts`,
-  `src/app/api/webhooks/stripe-identity/route.ts`, and
-  `src/lib/stripe-identity.ts` are unreachable by design: verify-identity
-  requires phase `inquiry_approved`, which nothing ever sets. Kept
-  deliberately (marked `PARKED (2026-07-23)` in their headers) for possible
-  future ID-verification. Don't delete; don't wire up without a decision.
+- **Stripe Identity must be enabled on the live account.** Until an account
+  admin completes the Identity application at
+  https://dashboard.stripe.com/identity/application, live sessions fail with
+  `identity_api_invalid_application`; `startIdentityVerification()` turns that
+  into "ID verification opens soon" and the agent can retry later. Test mode
+  works. Results arrive on the MAIN webhook (`identity.verification_session.*`
+  events, routed before the plan handlers) and are re-synced when the agent
+  returns (`GET /api/agent/verify-identity`). The old
+  `/api/webhooks/stripe-identity` route is still unused (its prod secret is a
+  test-mode value).
+- **Payment grants the role, not the admin.** `/api/stripe/checkout` accepts
+  applicants in `awaiting_payment`; approving no longer exists — the admin
+  confirms the SITE. A $0 first month (promo) still completes checkout and
+  activates the agent; Stripe keeps the card for month two.
 - **Sender env override.** Platform mail defaults to
   `ChatRealty <noreply@chatrealty.io>`, but `EMAIL_FROM_DOMAIN` overrides the
   default — a stale Vercel value of `jpsrealtor.com` silently wins over code.

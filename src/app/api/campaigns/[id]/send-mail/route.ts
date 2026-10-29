@@ -18,6 +18,7 @@ import {
 } from '@/lib/thanksio';
 import PointsLedger from '@/models/PointsLedger';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 import {
   estimateDirectMailCredits,
   DIRECT_MAIL_CREDITS,
@@ -39,7 +40,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier((session.user as any).id))) {
       return NextResponse.json({ success: false, error: 'Direct mail requires a paid plan.' }, { status: 403 });
     }
 

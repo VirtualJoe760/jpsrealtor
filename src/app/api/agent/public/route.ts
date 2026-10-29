@@ -7,7 +7,7 @@ import { parseOgSubdomain } from "@/lib/og-image-source";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AgentSubscription from "@/models/AgentSubscription";
-import { getSiteReadiness } from "@/lib/agent-site-readiness";
+import { getSiteReadiness, isAgentSiteLive } from "@/lib/agent-site-readiness";
 
 /**
  * GET /api/agent/public
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (subdomain) {
       // Agent subdomain — look up by subdomain
       agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-        .select("name email phone licenseNumber brokerageName agentProfile")
+        .select("name email phone licenseNumber brokerageName agentProfile agentApplication.siteApprovedAt")
         .lean();
     }
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       agent = await User.findOne({
         "agentProfile.customDomain": { $in: [host, bareHost, `www.${bareHost}`] },
       })
-        .select("name email phone licenseNumber brokerageName agentProfile")
+        .select("name email phone licenseNumber brokerageName agentProfile agentApplication.siteApprovedAt")
         .lean();
 
       // Also check DomainRegistry for mapped domains
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
             );
             if (domainEntry?.ownerId) {
               agent = await User.findById(domainEntry.ownerId)
-                .select("name email phone licenseNumber brokerageName agentProfile")
+                .select("name email phone licenseNumber brokerageName agentProfile agentApplication.siteApprovedAt")
                 .lean();
             }
           }
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       // Final fallback to primary agent
       const primaryAgentEmail = process.env.PRIMARY_AGENT_EMAIL || "josephsardella@gmail.com";
       agent = await User.findOne({ email: primaryAgentEmail })
-        .select("name email phone licenseNumber brokerageName agentProfile")
+        .select("name email phone licenseNumber brokerageName agentProfile agentApplication.siteApprovedAt")
         .lean();
     }
 
@@ -196,9 +196,10 @@ export async function GET(request: NextRequest) {
     // force-activated it. `getSiteReadiness` is the shared go-live checklist —
     // the same one the dashboard shows the agent. `hasActiveSubscription` keeps
     // its name for back-compat with existing consumers but now means "site live".
-    const isForceActive = !!(agent.agentProfile as any)?.siteForceActive;
+    // One rule for both public-site paths: src/lib/agent-site-readiness.ts
+    // (new agents also need an active plan + the admin's confirmation).
     const siteReadiness = getSiteReadiness(agent as any);
-    const hasActiveSubscription = siteReadiness.complete || !!subscription || isForceActive;
+    const hasActiveSubscription = isAgentSiteLive(agent as any, !!subscription);
 
     return NextResponse.json({
       profile: publicProfile,

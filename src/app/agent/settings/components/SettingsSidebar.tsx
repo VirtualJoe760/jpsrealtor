@@ -22,6 +22,8 @@ import AdAccountsSetup from "@/app/components/campaigns/AdAccountsSetup";
 import MessagingSetup from "@/app/components/messaging/MessagingSetup";
 import EmailSetup from "@/app/components/messaging/EmailSetup";
 import LegalSettings from "@/app/components/legal/LegalSettings";
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
+import MlsAssociationCard from "@/app/components/agent/MlsAssociationCard";
 
 interface SettingsSidebarProps {
   initialData: any;
@@ -93,7 +95,13 @@ export default function SettingsSidebar({
   const renderPanel = () => {
     switch (activeSection) {
       case "identity":
-        return <IdentityStep {...stepProps} />;
+        return (
+          <div className="space-y-6">
+            <IdentityStep {...stepProps} />
+            {/* MLS association intake — see src/lib/mls-membership.ts */}
+            <MlsAssociationCard isLight={isLight} variant="settings" />
+          </div>
+        );
       case "branding":
         return <BrandingStep {...stepProps} />;
       case "photos":
@@ -125,9 +133,10 @@ export default function SettingsSidebar({
             {/* AI Assistants — bring-your-own-key + desktop skill (free) */}
             <IntegrationsStep {...stepProps} />
 
-            {/* Paid integrations — hidden on the free tier (ad accounts, text
-                messaging, and email each require a paid plan). */}
-            {showPaid && (
+            {/* Outreach integrations (ad accounts, text messaging, email) —
+                admin-only for now, whatever the tier
+                (src/config/feature-access.ts). */}
+            {(isAdmin || (OUTREACH_FOR_AGENTS && showPaid)) && (
               <>
                 {/* Ad accounts — Google / Meta / GBP */}
                 <div className="pt-4">

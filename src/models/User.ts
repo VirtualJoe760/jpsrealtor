@@ -75,6 +75,25 @@ export interface IUser extends Document {
     // Drives the forced-wizard gate (src/proxy.ts) + wizard-vs-sidebar mode.
     onboardingComplete?: boolean;
 
+    // Existing agents when paid onboarding began (2026-10-28) keep Basic-level
+    // access free forever. getAgentTier() resolves them to "beginner".
+    grandfathered?: boolean;
+
+    // The agent's MLS association — collected so ChatRealty can call each
+    // association about IDX data access (we don't have feeds for all yet).
+    mlsMembership?: {
+      associationName?: string;
+      mlsId?: string; // the agent's MLS ID with that association
+      contactName?: string;
+      contactPhone?: string;
+      contactEmail?: string;
+      website?: string;
+      // Admin-only outreach tracking (/admin/mls-associations)
+      dataAccessStatus?: "not_contacted" | "contacted" | "in_progress" | "connected" | "declined";
+      adminNotes?: string;
+      updatedAt?: Date;
+    };
+
     // Photos & Media
     headshot?: string; // Primary profile photo (Cloudinary URL)
     headshotTransparent?: string; // Transparent background headshot for OG images (Cloudinary URL)
@@ -505,6 +524,8 @@ export interface IUser extends Document {
   agentApplication?: {
     // Application Phase
     phase:
+      | "awaiting_payment" // applied; must pay for Basic (2026-10-28 flow)
+      | "site_review" // paid → agent; public site waits for admin confirmation
       | "inquiry_pending"
       | "inquiry_approved"
       | "inquiry_rejected"
@@ -553,6 +574,10 @@ export interface IUser extends Document {
     finalReviewedAt?: Date;
     finalReviewNotes?: string;
     finalApprovedAt?: Date;
+
+    // Paid onboarding (2026-10-28)
+    paidAt?: Date; // first Basic payment (or $0 promo) cleared
+    siteApprovedAt?: Date; // admin confirmed the agent's info → public site may go live
 
     // Assignment
     assignedTeam?: mongoose.Types.ObjectId;
@@ -799,6 +824,26 @@ const UserSchema = new Schema<IUser>(
     agentProfile: {
       // Onboarding gate (see IUser interface): set true when the setup wizard finishes.
       onboardingComplete: { type: Boolean, default: false },
+
+      // Grandfathered free Basic access (see IUser.agentProfile.grandfathered)
+      grandfathered: { type: Boolean, default: false },
+
+      // MLS association intake (see IUser.agentProfile.mlsMembership)
+      mlsMembership: {
+        associationName: String,
+        mlsId: String,
+        contactName: String,
+        contactPhone: String,
+        contactEmail: String,
+        website: String,
+        dataAccessStatus: {
+          type: String,
+          enum: ["not_contacted", "contacted", "in_progress", "connected", "declined"],
+          default: "not_contacted",
+        },
+        adminNotes: String,
+        updatedAt: Date,
+      },
 
       // Photos & Media
       headshot: String,
@@ -1309,6 +1354,8 @@ const UserSchema = new Schema<IUser>(
       phase: {
         type: String,
         enum: [
+          "awaiting_payment",
+          "site_review",
           "inquiry_pending",
           "inquiry_approved",
           "inquiry_rejected",
@@ -1361,6 +1408,10 @@ const UserSchema = new Schema<IUser>(
       finalReviewedAt: Date,
       finalReviewNotes: String,
       finalApprovedAt: Date,
+
+      // Paid onboarding (2026-10-28)
+      paidAt: Date,
+      siteApprovedAt: Date,
 
       // Assignment
       assignedTeam: { type: Schema.Types.ObjectId, ref: "Team" },

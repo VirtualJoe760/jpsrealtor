@@ -113,7 +113,7 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
     tier: "beginner",
     monthlyPrice: 125,
     annualPrice: 1200,
-    description: "Full access to the ChatRealty platform — your website, CRM and AI tools. Marketing credits are purchased separately.",
+    description: "Full access to the ChatRealty platform — your website, CRM and AI tools.",
     // Platform access only (2026-10-28). Credits are a separate purchase; the
     // grant paths read CREDIT_TIERS.beginner.monthlyCredits, which is 0.
     monthlyPoints: 0,
@@ -127,7 +127,8 @@ export const TIER_DETAILS: Record<SubscriptionTier, TierDetail> = {
       "Analytics",
       "50 gallery photos · 5 custom pages",
       "Email support",
-      "Marketing credits sold separately — ads, direct mail, voicemail",
+      // Campaigns/credits are off for agents until they launch
+      // (src/config/feature-access.ts, CREDITS_FOR_SALE) — don't advertise them.
     ],
   },
   experienced: {

@@ -7,6 +7,7 @@ import { provisionAgentNumber, createAgentMessagingService } from '@/lib/twilio'
 import { debit, credit } from '@/lib/credits';
 import { MESSAGING_SETUP_CREDITS } from '@/config/credits';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 /**
  * POST /api/agent/messaging/provision  { phoneNumber }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     // Provisioning a number is a paid-plan feature; block free-tier agents (admins exempt).
-    if (!(session.user as any).isAdmin && (await isFreeTier(userId))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier(userId))) {
       return NextResponse.json(
         { success: false, error: 'Text messaging requires a paid plan.' },
         { status: 403 }

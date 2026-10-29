@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { NavItem } from '../types';
+import { OUTREACH_FOR_AGENTS } from '@/config/feature-access';
 
 /**
  * Base Navigation Items
@@ -28,6 +29,9 @@ export const getNavItems = (
   // agents on any paid tier; hidden for free-tier agents. Subscription moved
   // into Settings → Billing (so its own tab is hidden).
   const showPaid = isAdmin || tier !== 'free';
+  // Email / Messages / Campaigns are admin-only for now, whatever the tier
+  // (src/config/feature-access.ts).
+  const showOutreach = isAdmin || (OUTREACH_FOR_AGENTS && showPaid);
   return [
     {
       href: '/agent/dashboard',
@@ -48,21 +52,21 @@ export const getNavItems = (
       label: 'Email',
       icon: Mail,
       exact: false,
-      show: showPaid,
+      show: showOutreach,
     },
     {
       href: '/agent/messages',
       label: 'Messages',
       icon: MessageSquare,
       exact: false,
-      show: showPaid,
+      show: showOutreach,
     },
     {
       href: '/agent/campaigns',
       label: 'Campaigns',
       icon: Megaphone,
       exact: false,
-      show: showPaid,
+      show: showOutreach,
     },
     {
       href: '/agent/cms',

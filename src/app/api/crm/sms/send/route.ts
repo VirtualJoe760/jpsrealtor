@@ -17,6 +17,7 @@ import { estimateSmsCredits } from '@/config/credits';
 import mongoose from 'mongoose';
 import { emitNewMessage } from '@/server/socket';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 // ============================================================================
 // POST /api/crm/sms/send
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Text messaging is a paid-plan feature; block free-tier agents (admins exempt).
-    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier((session.user as any).id))) {
       return NextResponse.json(
         { success: false, error: 'Text messaging requires a paid plan.' },
         { status: 403 }

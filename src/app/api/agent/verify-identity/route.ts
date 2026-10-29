@@ -1,93 +1,65 @@
 // src/app/api/agent/verify-identity/route.ts
-// Initiate Stripe Identity verification (Phase 2)
+// Agent ID verification (Stripe Identity: photo ID + live selfie).
 //
-// PARKED (2026-07-23): unreachable by design — the live flow goes
-// inquiry_pending -> final_approved and never sets inquiry_approved.
-// Kept for possible future ID-verification.
-// See docs/agent-onboarding/README.md.
+// Un-parked 2026-10-28: paid agents verify their ID before the admin confirms
+// them and their public site goes live. See src/lib/agent-onboarding.ts.
+//   POST → { url } of Stripe's hosted check (resumes an unfinished one)
+//   GET  → re-reads the result from Stripe (agent returning from the check)
+// Results also arrive via the main Stripe webhook (identity.verification_session.*).
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import { createIdentityVerificationSession } from "@/lib/stripe-identity";
+import {
+  startIdentityVerification,
+  syncIdentityVerification,
+  IdentityUnavailableError,
+} from "@/lib/agent-onboarding";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
-  try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+async function currentAgent() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return null;
+  await dbConnect();
+  return User.findOne({ email: session.user.email }).select("_id roles agentApplication.identityStatus").lean<any>();
+}
 
-    await dbConnect();
-
-    // Get user
-    const user = await User.findOne({ email: session.user.email });
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if user has an application
-    if (!user.agentApplication) {
-      return NextResponse.json(
-        { error: "No application found. Please submit an application first." },
-        { status: 400 }
-      );
-    }
-
-    // Check if application is in the correct phase
-    if (user.agentApplication.phase !== "inquiry_approved") {
-      return NextResponse.json(
-        {
-          error: "Application is not ready for verification",
-          currentPhase: user.agentApplication.phase,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if already verified
-    if (user.agentApplication.identityVerified) {
-      return NextResponse.json(
-        { error: "Identity already verified" },
-        { status: 400 }
-      );
-    }
-
-    // Create Stripe Identity verification session
-    const verificationSession = await createIdentityVerificationSession(
-      user._id.toString(),
-      user.email
-    );
-
-    // Update user application with session info
-    user.agentApplication.phase = "verification_pending";
-    user.agentApplication.stripeIdentitySessionId = verificationSession.id;
-    user.agentApplication.identityStatus = "pending";
-
-    await user.save();
-
-    return NextResponse.json({
-      success: true,
-      clientSecret: verificationSession.client_secret,
-      sessionId: verificationSession.id,
-      url: verificationSession.url,
-    });
-  } catch (error: any) {
-    console.error("Identity verification error:", error);
-    return NextResponse.json(
-      { error: "Failed to create verification session", details: error.message },
-      { status: 500 }
-    );
+export async function POST() {
+  const user = await currentAgent();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user.roles?.includes("realEstateAgent")) {
+    return NextResponse.json({ error: "ID verification is for agents." }, { status: 403 });
   }
+  if (user.agentApplication?.identityStatus === "verified") {
+    return NextResponse.json({ error: "Your ID is already verified." }, { status: 400 });
+  }
+  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://www.chatrealty.io";
+  try {
+    const url = await startIdentityVerification(String(user._id), `${base}/agent/dashboard?identity=1`);
+    return NextResponse.json({ url });
+  } catch (error) {
+    if (error instanceof IdentityUnavailableError) {
+      return NextResponse.json({ error: "ID verification opens soon — we'll email you when it's ready.", unavailable: true }, { status: 503 });
+    }
+    console.error("[verify-identity] error:", (error as Error).message);
+    return NextResponse.json({ error: "Couldn't start ID verification" }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  const user = await currentAgent();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await syncIdentityVerification(String(user._id));
+  } catch (error) {
+    console.error("[verify-identity] sync error:", (error as Error).message);
+  }
+  const fresh = await User.findById(user._id).select("agentApplication.identityStatus").lean<any>();
+  return NextResponse.json(
+    { identityStatus: fresh?.agentApplication?.identityStatus || null },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

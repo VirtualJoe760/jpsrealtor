@@ -8,7 +8,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import AgentSubscription from "@/models/AgentSubscription";
 import { verifyAdmin } from "@/lib/admin-auth";
-import { getSiteReadiness } from "@/lib/agent-site-readiness";
+import { getSiteReadiness, isAgentSiteLive } from "@/lib/agent-site-readiness";
 import type { Metadata } from "next";
 import AgentSiteClient from "./AgentSiteClient";
 
@@ -119,7 +119,7 @@ export default async function AgentSitePage() {
   await dbConnect();
 
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("_id name email phone licenseNumber brokerageName agentProfile")
+    .select("_id name email phone licenseNumber brokerageName agentProfile agentApplication.siteApprovedAt")
     .lean<AgentData & { _id: string }>();
 
   if (!agent) notFound();
@@ -159,11 +159,8 @@ export default async function AgentSitePage() {
         brandColors: agent.agentProfile.brandColors,
       } : undefined}
       hasActiveSubscription={
-        // Site goes live once the agent completes setup (free tier — no paid
-        // sub needed), or has an active subscription, or admin force-activated.
-        getSiteReadiness(agent as any).complete ||
-        !!subscription ||
-        !!(agent.agentProfile as any)?.siteForceActive
+        // One rule for both public-site paths: src/lib/agent-site-readiness.ts
+        isAgentSiteLive(agent as any, !!subscription)
       }
       isAdmin={isAdmin}
       agentEmail={agent.email}

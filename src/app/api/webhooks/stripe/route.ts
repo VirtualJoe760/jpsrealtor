@@ -20,6 +20,7 @@ import { requireStripeMode } from '@/lib/stripe-mode';
 import { creditWalletForMode } from '@/lib/credit-wallet-mode';
 import { sendSubscriptionEmail } from "@/lib/email-resend";
 import { isDomainCheckout, startDomainOrder, endDomainRenewal } from "@/lib/domains/fulfill";
+import { activatePaidAgent, recordIdentityResult, IDENTITY_PURPOSE } from "@/lib/agent-onboarding";
 
 // ---------------------------------------------------------------------------
 // Stripe SDK — lazy init (same pattern as stripe-identity webhook)
@@ -125,6 +126,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
   }
+  // Agent ID verification (Stripe Identity). Writing the result is idempotent,
+  // so these skip the event claim too.
+  if (event.type.startsWith('identity.verification_session.')) {
+    const vs = event.data.object as Stripe.Identity.VerificationSession;
+    if (vs.metadata?.purpose === IDENTITY_PURPOSE) {
+      try { await recordIdentityResult(vs); }
+      catch { return NextResponse.json({ error: 'Identity update failed; retry required' }, { status: 500 }); }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
     const sub = event.data.object as Stripe.Subscription;
     if (isDomainCheckout(sub.metadata)) {
@@ -264,6 +276,11 @@ export async function POST(request: NextRequest) {
             stripeSubscriptionId,
           },
         });
+
+        // Paying for Basic is how an applicant becomes an agent (2026-10-28):
+        // grant the role + subdomain, start site review. No-op for existing
+        // agents. See src/lib/agent-onboarding.ts.
+        await activatePaidAgent(userId);
 
         // Credit monthly credits for the subscription tier
         const pointsTier = tier as string as PointsTier;

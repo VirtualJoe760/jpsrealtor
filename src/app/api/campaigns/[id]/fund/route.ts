@@ -13,6 +13,7 @@ import {
 import { sendCoMarketingApprovalEmails } from "@/lib/co-marketing/notify";
 import type { AllocationBasis } from "@/lib/co-marketing/allocation";
 import { isFreeTier } from "@/lib/subscription-helpers";
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 /**
  * POST /api/campaigns/[id]/fund
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
     const agentId = (session.user as any).id as string;
-    if (!(session.user as any).isAdmin && (await isFreeTier(agentId))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier(agentId))) {
       return NextResponse.json({ success: false, error: "Campaigns require a paid plan." }, { status: 403 });
     }
     const { id } = await params;

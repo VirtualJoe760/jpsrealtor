@@ -1,8 +1,20 @@
 "use client";
 
-import { CreditCard, Check } from "lucide-react";
-import { TIER_DETAILS, SELLABLE_TIERS } from "@/config/stripe-prices";
-import type { SubscriptionTier } from "@/models/AgentSubscription";
+// Plan & Billing — the onboarding wizard's plan step and Settings → Billing.
+//
+// Since 2026-10-28 being an agent requires the Basic plan, and the portal
+// paywall (src/proxy.ts) sends unpaid agents HERE — so this panel must be able
+// to sell Basic. States:
+//   admin          → everything included, no billing
+//   grandfathered  → Basic, free (agents who joined before paid onboarding)
+//   paying         → Basic, "Manage billing" (Stripe portal: card, invoices, cancel)
+//   unpaid/lapsed  → "Subscribe" (Stripe Checkout; promo codes accepted)
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import { CreditCard, Check, Loader2 } from "lucide-react";
+import { TIER_DETAILS } from "@/config/stripe-prices";
 
 interface StepProps {
   formData: any;
@@ -12,140 +24,121 @@ interface StepProps {
   isSaving: boolean;
 }
 
-// Free + the plans currently for sale (see SELLABLE_TIERS).
-const TIER_ORDER: SubscriptionTier[] = ["free", ...SELLABLE_TIERS];
+const BASIC = TIER_DETAILS.beginner;
 
-/**
- * Billing / plan panel. Shown both as the onboarding wizard's plan step and as
- * the Settings → Billing section. Only the Free plan is selectable right now;
- * paid tiers are shown greyed as "Coming soon".
- */
 export default function BillingSettings({ isLight }: StepProps) {
-  const currentTier: SubscriptionTier = "free"; // everyone is on Free for now
+  const { data: session, update } = useSession();
+  const params = useSearchParams();
+  const tier = (session?.user as any)?.agentTier as string | undefined;
+  const isAdmin = !!(session?.user as any)?.isAdmin;
+  const [grandfathered, setGrandfathered] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/agent/application-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setGrandfathered(!!d?.grandfathered))
+      .catch(() => setGrandfathered(false));
+  }, []);
+
+  // Back from Checkout: refresh the session so the portal unlocks right away.
+  useEffect(() => {
+    if (params.get("subscribed") === "1") update();
+  }, [params, update]);
+
+  const paying = !grandfathered && !!tier && tier !== "free";
+
+  async function go(path: "/api/stripe/checkout" | "/api/stripe/portal") {
+    setBusy(true);
+    setError("");
+    const back = `${window.location.origin}/agent/settings?section=billing`;
+    const body =
+      path === "/api/stripe/checkout"
+        ? { tier: "beginner", billingInterval: "monthly", successUrl: `${back}&subscribed=1`, cancelUrl: back }
+        : { returnUrl: back };
+    try {
+      const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.url) throw new Error(d.error || "Couldn't open billing");
+      window.location.href = d.url;
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  const text = isLight ? "text-gray-900" : "text-white";
+  const muted = isLight ? "text-gray-600" : "text-gray-400";
+  const status = isAdmin
+    ? "Admin account — everything is included, no billing."
+    : grandfathered
+    ? "You're a founding agent: the Basic plan is free for you, for good."
+    : paying
+    ? `You're on Basic — $${BASIC.monthlyPrice}/month.`
+    : `Your agent account needs the Basic plan — $${BASIC.monthlyPrice}/month.`;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2
-          className={`text-2xl font-semibold ${
-            isLight ? "text-gray-900" : "text-white"
-          }`}
-        >
-          Plan &amp; Billing
-        </h2>
-        <p
-          className={`text-sm mt-1 ${
-            isLight ? "text-gray-600" : "text-gray-400"
-          }`}
-        >
-          You&apos;re on the free plan. Paid tiers unlock email, messaging,
-          campaigns and more &mdash; coming soon.
-        </p>
+        <h2 className={`text-2xl font-semibold ${text}`}>Plan &amp; Billing</h2>
+        <p className={`text-sm mt-1 ${muted}`}>{grandfathered === null && !isAdmin ? " " : status}</p>
       </div>
 
-      {/* Current plan banner */}
       <div
-        className={`rounded-lg p-4 flex items-center gap-3 ${
-          isLight
-            ? "bg-gray-50 border border-gray-200"
-            : "bg-gray-800 border border-gray-700"
+        className={`rounded-xl border p-5 max-w-md ${
+          isLight ? "border-blue-500 bg-blue-50/50" : "border-emerald-600 bg-emerald-950/10"
         }`}
       >
-        <CreditCard
-          className={`w-8 h-8 ${isLight ? "text-blue-500" : "text-emerald-400"}`}
-        />
-        <div>
-          <p
-            className={`text-base font-semibold ${
-              isLight ? "text-gray-900" : "text-white"
-            }`}
-          >
-            {TIER_DETAILS[currentTier].name} Plan
-          </p>
-          <p className={`text-sm ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-            {TIER_DETAILS[currentTier].description || "Your current plan"}
-          </p>
+        <div className="flex items-center gap-3">
+          <CreditCard className={`w-7 h-7 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+          <div>
+            <h3 className={`text-lg font-bold ${text}`}>{BASIC.name}</h3>
+            <p className={`text-sm ${muted}`}>
+              {isAdmin || grandfathered ? "Included" : `$${BASIC.monthlyPrice}/month`}
+            </p>
+          </div>
         </div>
-      </div>
+        <p className={`text-sm mt-3 ${muted}`}>{BASIC.description}</p>
+        <ul className="space-y-1.5 mt-3">
+          {BASIC.features.map((f) => (
+            <li key={f} className="flex items-start gap-2">
+              <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isLight ? "text-blue-500" : "text-emerald-400"}`} />
+              <span className={`text-sm ${isLight ? "text-gray-700" : "text-gray-300"}`}>{f}</span>
+            </li>
+          ))}
+        </ul>
 
-      {/* Plan grid — Free is current; paid tiers are greyed "Coming soon" */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {TIER_ORDER.map((id) => {
-          const t = TIER_DETAILS[id];
-          const isCurrent = id === currentTier;
-          return (
-            <div
-              key={id}
-              className={`relative rounded-xl border p-4 flex flex-col ${
-                isCurrent
-                  ? isLight
-                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
-                    : "border-emerald-500 bg-emerald-950/20 ring-2 ring-emerald-800"
-                  : isLight
-                  ? "border-gray-200 bg-white opacity-60"
-                  : "border-gray-800 bg-gray-900/60 opacity-60"
-              }`}
-            >
-              <h3
-                className={`text-lg font-bold ${
-                  isLight ? "text-gray-900" : "text-white"
-                }`}
-              >
-                {t.name}
-              </h3>
-              <div className="mt-2 mb-3">
-                <span
-                  className={`text-3xl font-extrabold ${
-                    isLight ? "text-gray-900" : "text-white"
-                  }`}
-                >
-                  ${t.monthlyPrice}
-                </span>
-                {t.monthlyPrice > 0 && (
-                  <span
-                    className={`text-sm ml-1 ${
-                      isLight ? "text-gray-500" : "text-gray-400"
-                    }`}
-                  >
-                    /mo
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-1.5 flex-1 mb-4">
-                {t.features.slice(0, 5).map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <Check
-                      className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                        isLight ? "text-blue-500" : "text-emerald-400"
-                      }`}
-                    />
-                    <span
-                      className={`text-xs ${
-                        isLight ? "text-gray-600" : "text-gray-300"
-                      }`}
-                    >
-                      {f}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+        {!isAdmin && grandfathered === false && (
+          <div className="mt-5">
+            {paying ? (
               <button
-                disabled
-                className={`w-full py-2.5 rounded-lg text-sm font-bold cursor-default ${
-                  isCurrent
-                    ? isLight
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-emerald-900/30 text-emerald-400"
-                    : isLight
-                    ? "bg-gray-100 text-gray-400"
-                    : "bg-gray-800 text-gray-500"
+                type="button"
+                onClick={() => go("/api/stripe/portal")}
+                disabled={busy}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${
+                  isLight ? "bg-white border border-gray-300 text-gray-900 hover:bg-gray-50" : "bg-gray-800 border border-gray-700 text-white hover:bg-gray-700"
                 }`}
               >
-                {isCurrent ? "Current plan" : "Coming soon"}
+                {busy && <Loader2 className="w-4 h-4 animate-spin" />} Manage billing
               </button>
-            </div>
-          );
-        })}
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => go("/api/stripe/checkout")}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {busy && <Loader2 className="w-4 h-4 animate-spin" />} Subscribe — ${BASIC.monthlyPrice}/month
+                </button>
+                <p className={`text-xs mt-2 ${muted}`}>Have a promo code? Enter it on the payment page.</p>
+              </>
+            )}
+            {paying && <p className={`text-xs mt-2 ${muted}`}>Update your card, see invoices, or cancel.</p>}
+          </div>
+        )}
+        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
       </div>
     </div>
   );

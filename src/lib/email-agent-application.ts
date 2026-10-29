@@ -177,3 +177,78 @@ export async function sendAgentRejectionEmail(
     }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Paid onboarding (2026-10-28): apply → pay for Basic → agent → verify ID →
+// admin confirms → site live. See docs/agent-onboarding/README.md.
+// ---------------------------------------------------------------------------
+
+/** Sent when the applicant's Basic payment clears and they become an agent. */
+export async function sendAgentPaidWelcomeEmail(params: { name: string; email: string; subdomain: string }) {
+  const resend = getResend();
+  const firstName = escapeHtml(params.name.split(" ")[0] || "there");
+  const site = `${escapeHtml(params.subdomain)}.chatrealty.io`;
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [params.email],
+    replyTo: ADMIN_EMAIL,
+    subject: "Welcome to ChatRealty — your agent account is active",
+    html: renderBrandedEmail({
+      title: "You're in!",
+      preheader: `Your agent account is active. ${site} is reserved for you.`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName},</p>
+        <p style="margin:0 0 16px;">Thanks for joining ChatRealty. Your agent account is active and <strong>${site}</strong> is reserved for you.</p>
+        <p style="margin:0 0 8px;"><strong>Two quick steps before your site goes live:</strong></p>
+        <ol style="margin:0 0 16px;padding-left:20px;">
+          <li style="margin:0 0 6px;">Verify your identity — a photo of your ID and a selfie, about two minutes.</li>
+          <li>Finish your profile. Once we've confirmed your license and MLS details, we'll publish your site and let you know.</li>
+        </ol>
+      `,
+      cta: { label: "Set up your account", url: `${baseUrl()}/agent/settings?onboarding=true` },
+    }),
+  });
+}
+
+/** Tells the admin a paid agent is waiting for site review. */
+export async function sendAdminPaidAgentNotice(params: { name: string; email: string; licenseNumber?: string; licenseState?: string; mlsAssociation?: string }) {
+  const resend = getResend();
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [ADMIN_EMAIL],
+    replyTo: params.email,
+    subject: `New paid agent to review — ${params.name || params.email}`,
+    html: renderBrandedEmail({
+      title: "New paid agent",
+      preheader: "Review their details and publish their site.",
+      bodyHtml: `
+        <p style="margin:0 0 12px;"><strong>${escapeHtml(params.name || "")}</strong> &lt;${escapeHtml(params.email)}&gt; paid for Basic and is now an agent.</p>
+        <p style="margin:0 0 12px;">License: ${escapeHtml(params.licenseNumber || "—")} (${escapeHtml(params.licenseState || "—")}) · MLS: ${escapeHtml(params.mlsAssociation || "—")}</p>
+        <p style="margin:0;">Their public site stays offline until you confirm them.</p>
+      `,
+      cta: { label: "Review in admin", url: `${baseUrl()}/admin/applications/agents` },
+    }),
+  });
+}
+
+/** Sent when the admin confirms the agent and their public site goes live. */
+export async function sendAgentSiteLiveEmail(params: { name: string; email: string; subdomain?: string }) {
+  const resend = getResend();
+  const firstName = escapeHtml(params.name.split(" ")[0] || "there");
+  const url = params.subdomain ? `https://${params.subdomain}.chatrealty.io` : `${baseUrl()}/agent/dashboard`;
+  await resend.emails.send({
+    from: platformFrom(),
+    to: [params.email],
+    replyTo: ADMIN_EMAIL,
+    subject: "You're confirmed — your ChatRealty site can go live",
+    html: renderBrandedEmail({
+      title: "You're confirmed",
+      preheader: "We've reviewed your details. Your site is cleared to go live.",
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName},</p>
+        <p style="margin:0 0 16px;">We've confirmed your license and MLS details. Your site is cleared to go live — it publishes as soon as your profile checklist on the dashboard is complete.</p>
+      `,
+      cta: { label: "View your site", url },
+    }),
+  });
+}

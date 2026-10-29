@@ -1,7 +1,7 @@
 ---
 title: Free-Tier Gating & Forced Onboarding
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-28
 related: [README.md, ../auth/README.md, ../admin/README.md]
 ---
 
@@ -15,6 +15,30 @@ but shown "Coming soon". When a user first becomes an agent they are **forced th
 (which includes a plan step) before they can use the rest of the portal. Free-tier agents get a reduced
 nav (Dashboard, Contacts, CMS, Settings) and reduced Settings; Email, Messages, and Campaigns are hidden
 **and** blocked server-side. **Admins and any paid-tier agent see everything.**
+
+## Update 2026-10-28 — paid onboarding (supersedes the "free agent" model below)
+
+- **Being an agent requires Basic.** `portalGates()` in `src/proxy.ts` sends a
+  non-admin agent whose JWT `agentTier` is `"free"` (never paid, or the plan
+  ended) to `/agent/settings?section=billing`, where `BillingSettings` now
+  sells Basic (Checkout) and opens the billing portal for payers.
+- **Grandfathered agents** (`agentProfile.grandfathered`) resolve to
+  `"beginner"` inside `getAgentTier()`, so every gate — JWT, paywall,
+  `isFreeTier` route guards, Settings steps — treats them as Basic.
+- **Outreach is admin-only**, whatever the tier: campaigns (ads, postcards,
+  voicemail), text messages and email sending. One switch,
+  `OUTREACH_FOR_AGENTS` in `src/config/feature-access.ts`, gates the proxy
+  (`/api` prefixes → 403, pages → dashboard), the 12 outreach routes'
+  in-route guards, the agent nav and the Settings integrations. The dialer was
+  already admin-only (`src/lib/dialer/session-server.ts`).
+- **Site live** is one helper, `isAgentSiteLive()` in
+  `src/lib/agent-site-readiness.ts`: force-active → live; grandfathered → old
+  rule (checklist complete OR active sub); everyone else → checklist complete
+  AND active sub AND admin-confirmed (`agentApplication.siteApprovedAt`).
+- **`PUT /api/user/profile` can no longer write** `grandfathered`,
+  `siteForceActive`, `customDomain` or `mlsMembership` (an agent could
+  otherwise grant themselves free Basic, publish an unreviewed site, or claim
+  another agent's domain).
 
 ## The one gating rule
 

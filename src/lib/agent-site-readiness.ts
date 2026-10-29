@@ -77,3 +77,28 @@ export function getSiteReadiness(input: SiteReadinessInput): SiteReadiness {
 export function isSiteReady(input: SiteReadinessInput): boolean {
   return getSiteReadiness(input).complete;
 }
+
+/**
+ * Whether an agent's PUBLIC site is live (vs "Coming Soon"). The one rule for
+ * src/app/api/agent/public and src/app/agent-site/[[...slug]] — change it here.
+ *
+ *   - admin force-activated (agentProfile.siteForceActive)       → live
+ *   - grandfathered agents (joined before 2026-10-28)            → the old rule:
+ *       profile complete OR an active subscription
+ *   - everyone else (paid onboarding)                            → profile complete
+ *       AND an active Basic subscription AND the admin confirmed their license
+ *       and MLS details (agentApplication.siteApprovedAt)
+ */
+export function isAgentSiteLive(
+  agent: SiteReadinessInput & {
+    agentProfile?: (SiteReadinessInput["agentProfile"] & { siteForceActive?: boolean; grandfathered?: boolean }) | null;
+    agentApplication?: { siteApprovedAt?: Date | string | null } | null;
+  },
+  hasActiveSubscription: boolean
+): boolean {
+  const ap = (agent.agentProfile ?? {}) as { siteForceActive?: boolean; grandfathered?: boolean };
+  if (ap.siteForceActive) return true;
+  const complete = getSiteReadiness(agent).complete;
+  if (ap.grandfathered) return complete || hasActiveSubscription;
+  return complete && hasActiveSubscription && !!agent.agentApplication?.siteApprovedAt;
+}

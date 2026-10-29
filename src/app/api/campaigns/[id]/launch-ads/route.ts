@@ -9,6 +9,7 @@ import PointsLedger from '@/models/PointsLedger';
 import { adBudgetToCredits } from '@/config/credit-costs';
 import mongoose from 'mongoose';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 /**
  * POST /api/campaigns/[id]/launch-ads
@@ -29,7 +30,7 @@ export async function POST(
     }
 
     // Launching ads is a paid-plan feature; block free-tier agents (admins exempt).
-    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier((session.user as any).id))) {
       return NextResponse.json(
         { success: false, error: 'Campaigns require a paid plan.' },
         { status: 403 }

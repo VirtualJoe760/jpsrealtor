@@ -6,6 +6,7 @@ import CampaignFunding from "@/models/CampaignFunding";
 import { approveAndCollect, denyFunding } from "@/lib/co-marketing/funding";
 import { launchFundedCampaign } from "@/lib/co-marketing/ad-launch";
 import { isFreeTier } from "@/lib/subscription-helpers";
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 /**
  * POST /api/campaigns/funding/[fundingId]/respond
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (action === "approve") {
       // Co-marketing ad funding is a paid-plan feature; block free-tier agents (admins exempt).
-      if (!(session.user as any).isAdmin && (await isFreeTier(uid))) {
+      if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier(uid))) {
         return NextResponse.json(
           { success: false, error: "Co-marketing ad funding requires a paid plan." },
           { status: 403 }

@@ -10,6 +10,7 @@
 
 import dbConnect from "@/lib/mongoose";
 import AgentSubscription, { type SubscriptionTier } from "@/models/AgentSubscription";
+import User from "@/models/User";
 
 export type { SubscriptionTier };
 
@@ -24,7 +25,14 @@ export async function getAgentTier(userId: string): Promise<SubscriptionTier> {
     .sort({ status: 1, updatedAt: -1 })
     .select("tier")
     .lean<{ tier?: SubscriptionTier } | null>();
-  return sub?.tier ?? "free";
+  const tier = sub?.tier ?? "free";
+  if (tier !== "free") return tier;
+  // Agents who existed when paid onboarding began (2026-10-28) keep Basic
+  // ("beginner") access free forever. Resolving them HERE means every gate —
+  // JWT agentTier, the portal pay-wall in src/proxy.ts, isFreeTier route
+  // guards, Settings steps — treats them as Basic without its own check.
+  const grandfathered = await User.exists({ _id: userId, "agentProfile.grandfathered": true });
+  return grandfathered ? "beginner" : "free";
 }
 
 /** True when the agent is on the free tier (or has no subscription record). */

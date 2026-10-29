@@ -243,6 +243,19 @@ export async function PUT(request: NextRequest) {
       // Clean incoming profile
       const cleanedIncoming = removeUndefined(agentProfile);
 
+      // Fields only the platform or an admin may set (2026-10-28). Through this
+      // deep merge an agent could otherwise grant themselves free Basic
+      // (grandfathered), publish a site that hasn't been reviewed
+      // (siteForceActive), claim ANOTHER agent's domain (customDomain —
+      // resolveDomainOwner checks it before anything else; domains are set by
+      // src/lib/domains/point.ts after DNS + Vercel verification), or rewrite
+      // the admin's MLS outreach notes (mlsMembership has its own endpoint).
+      if (cleanedIncoming) {
+        for (const key of ["grandfathered", "siteForceActive", "customDomain", "mlsMembership"]) {
+          delete cleanedIncoming[key];
+        }
+      }
+
       console.log('🔍 [PROFILE UPDATE] Cleaned incoming:', JSON.stringify(cleanedIncoming, null, 2));
 
       // Deep merge function

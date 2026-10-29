@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { OUTREACH_FOR_AGENTS, OUTREACH_API_PREFIXES, OUTREACH_PAGE_PREFIXES } from "@/config/feature-access";
 import {
   agentHomeSubdomain,
   agentOrigin,
@@ -184,6 +185,21 @@ async function handleApiGate(request: NextRequest, pathname: string) {
   if (underAny(pathname, ADMIN_API_PREFIXES) && !token.isAdmin && !token.impersonatedBy) {
     return NextResponse.json(
       { error: "forbidden", message: "Admin access required." },
+      { status: 403 }
+    );
+  }
+
+  // 4. Outreach (campaigns, texts, email) is admin-only for now — every
+  //    channel spends real money and none is ready for agents. Paid and
+  //    grandfathered agents included. See src/config/feature-access.ts.
+  if (
+    !OUTREACH_FOR_AGENTS &&
+    underAny(pathname, OUTREACH_API_PREFIXES) &&
+    !token.isAdmin &&
+    !token.impersonatedBy
+  ) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Campaigns, texts and email aren't available yet." },
       { status: 403 }
     );
   }
@@ -674,6 +690,39 @@ function portalGates(request: NextRequest, pathname: string, token: any): NextRe
     const onboardingUrl = new URL("/agent/settings", request.url);
     onboardingUrl.searchParams.set("onboarding", "true");
     return NextResponse.redirect(onboardingUrl);
+  }
+
+  // Being an agent requires Basic (2026-10-28). A non-admin agent whose tier
+  // resolves to "free" — never paid, or their subscription ended — can only
+  // reach Settings (where Billing lives) until they subscribe. Grandfathered
+  // agents resolve to "beginner" in getAgentTier(), so they never land here.
+  // A stale/undefined agentTier is NOT treated as free (no wrongful bounce);
+  // session.update() after checkout refreshes it.
+  if (
+    isAgent &&
+    isAuth &&
+    !(token as any)?.isAdmin &&
+    !(token as any)?.impersonatedBy &&
+    Array.isArray((token as any)?.roles) &&
+    (token as any).roles.includes("realEstateAgent") &&
+    (token as any)?.agentTier === "free" &&
+    !pathname.startsWith("/agent/settings")
+  ) {
+    const billingUrl = new URL("/agent/settings", request.url);
+    billingUrl.searchParams.set("section", "billing");
+    return NextResponse.redirect(billingUrl);
+  }
+
+  // Outreach pages are admin-only for now (src/config/feature-access.ts).
+  if (
+    isAgent &&
+    isAuth &&
+    !OUTREACH_FOR_AGENTS &&
+    !(token as any)?.isAdmin &&
+    !(token as any)?.impersonatedBy &&
+    OUTREACH_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))
+  ) {
+    return NextResponse.redirect(new URL("/agent/dashboard", request.url));
   }
 
   // Free-tier agents can't reach the paid feature PAGES (defense-in-depth on

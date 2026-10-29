@@ -6,6 +6,7 @@ import PointsLedger from '@/models/PointsLedger';
 import { estimateVoicemailCredits, VOICEMAIL_DROP_CREDITS } from '@/config/credit-costs';
 import { Types } from 'mongoose';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 const DROP_COWBOY_TEAM_ID = process.env.DROP_COWBOY_TEAM_ID;
 const DROP_COWBOY_SECRET = process.env.DROP_COWBOY_SECRET;
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Voicemail drops are a paid-plan feature; block free-tier agents (admins exempt).
-    if (!(session.user as any).isAdmin && (await isFreeTier((session.user as any).id))) {
+    if (!(session.user as any).isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier((session.user as any).id))) {
       return NextResponse.json(
         { error: 'Voicemail campaigns require a paid plan.' },
         { status: 403 }

@@ -7,14 +7,25 @@ import { CheckCircle, XCircle, Clock, Shield } from "lucide-react";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
 
+// Paid onboarding (2026-10-28): apply → pay (becomes an agent) → verify ID →
+// admin confirms here → public site can go live. Reject cancels + refunds.
 interface AgentApplication {
   _id: string;
   name?: string;
   email: string;
+  phone?: string;
+  isAgent?: boolean;
+  subdomain?: string;
   licenseNumber?: string;
+  licenseState?: string;
   brokerageName?: string;
-  identityStatus?: string;
+  mlsAssociation?: string;
+  mlsId?: string;
+  mlsContact?: string;
+  identityStatus?: string | null;
   phase?: string;
+  paidAt?: string | null;
+  siteApprovedAt?: string | null;
   createdAt: string;
 }
 
@@ -60,7 +71,7 @@ export default function AdminAgentApplicationsPage() {
     }
   };
 
-  const handleAction = async (userId: string, action: "approve" | "reject", reason?: string) => {
+  const handleAction = async (userId: string, action: "confirm" | "reject", reason?: string) => {
     setProcessing(userId);
     try {
       const response = await fetch("/api/admin/applications/agents", {
@@ -69,13 +80,13 @@ export default function AdminAgentApplicationsPage() {
         body: JSON.stringify({ userId, action, reason }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        toast.success(action === "approve" ? "Application approved" : "Application rejected");
+        toast.success(data.message || (action === "confirm" ? "Confirmed" : "Rejected"));
         fetchApplications();
         setRejectModal(null);
         setRejectReason("");
       } else {
-        const data = await response.json();
         toast.error(data.error || "Action failed");
       }
     } catch (error) {
@@ -86,18 +97,16 @@ export default function AdminAgentApplicationsPage() {
     }
   };
 
-  const getStatusBadge = (phase?: string, identityStatus?: string) => {
-    if (phase === "final_approved") {
-      return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Approved</span>;
-    }
-    if (phase === "final_rejected" || phase === "inquiry_rejected") {
-      return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Rejected</span>;
-    }
-    if (identityStatus === "verified") {
-      return <span className="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400">Verified</span>;
-    }
-    return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pending</span>;
+  const badge = (cls: string, label: string) => <span className={`px-2 py-1 text-xs rounded-full ${cls}`}>{label}</span>;
+  const getStatusBadge = (phase?: string) => {
+    if (phase === "final_approved") return badge("bg-green-500/20 text-green-400", "Confirmed — site can go live");
+    if (phase === "final_rejected" || phase === "inquiry_rejected") return badge("bg-red-500/20 text-red-400", "Rejected");
+    if (phase === "site_review") return badge("bg-blue-500/20 text-blue-400", "Paid — needs your review");
+    if (phase === "awaiting_payment") return badge("bg-gray-500/20 text-gray-400", "Applied — hasn't paid");
+    return badge("bg-yellow-500/20 text-yellow-400", "Pending (old flow)");
   };
+  const idLabel = (s?: string | null) =>
+    s === "verified" ? "✓ ID verified" : s === "requires_input" ? "ID check failed — retrying" : s === "pending" ? "ID check in progress" : s === "failed" ? "ID check cancelled" : "ID not verified yet";
 
   if (status === "loading" || loading) {
     return (
@@ -131,39 +140,44 @@ export default function AdminAgentApplicationsPage() {
                   <h3 className={`font-semibold ${textPrimary} truncate`}>
                     {app.name || "Unknown"}
                   </h3>
-                  {getStatusBadge(app.phase, app.identityStatus)}
+                  {getStatusBadge(app.phase)}
                 </div>
                 <p className={`text-sm ${textSecondary} truncate`}>{app.email}</p>
                 <div className={`text-sm ${textSecondary} mt-2 flex flex-wrap gap-x-4 gap-y-1`}>
+                  {app.licenseNumber && <span>License: {app.licenseNumber}{app.licenseState ? ` (${app.licenseState})` : ""}</span>}
                   {app.brokerageName && <span>Brokerage: {app.brokerageName}</span>}
-                  {app.licenseNumber && <span>License: {app.licenseNumber}</span>}
+                  {app.mlsAssociation && <span>MLS: {app.mlsAssociation}{app.mlsId ? ` · ID ${app.mlsId}` : ""}</span>}
+                  {app.mlsContact && <span>Assoc. contact: {app.mlsContact}</span>}
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {new Date(app.createdAt).toLocaleDateString()}
+                    Applied {new Date(app.createdAt).toLocaleDateString()}
+                    {app.paidAt ? ` · paid ${new Date(app.paidAt).toLocaleDateString()}` : ""}
                   </span>
-                  <span>
-                    Identity: {app.identityStatus || "pending"}
-                  </span>
+                  {app.isAgent && <span>{idLabel(app.identityStatus)}</span>}
+                  {app.subdomain && <span>{app.subdomain}.chatrealty.io</span>}
                 </div>
               </div>
 
               {app.phase !== "final_approved" && app.phase !== "final_rejected" && (
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => handleAction(app._id, "approve")}
-                    disabled={processing === app._id}
-                    className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approve
-                  </button>
+                  {app.isAgent && (
+                    <button
+                      onClick={() => handleAction(app._id, "confirm")}
+                      disabled={processing === app._id}
+                      title={app.identityStatus === "verified" ? "" : "Their ID isn't verified yet"}
+                      className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Confirm &amp; publish site
+                    </button>
+                  )}
                   <button
                     onClick={() => setRejectModal(app._id)}
                     disabled={processing === app._id}
                     className="flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
                   >
                     <XCircle className="w-4 h-4" />
-                    Reject
+                    {app.isAgent ? "Reject & refund" : "Reject"}
                   </button>
                 </div>
               )}
@@ -176,7 +190,10 @@ export default function AdminAgentApplicationsPage() {
       {rejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className={`${cardBg} ${border} border rounded-xl p-6 w-full max-w-md`}>
-            <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Reject Application</h3>
+            <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Reject Application</h3>
+            <p className={`text-sm ${textSecondary} mb-4`}>
+              If they&apos;ve paid, this cancels their Basic plan, refunds their payment and removes agent access.
+            </p>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}

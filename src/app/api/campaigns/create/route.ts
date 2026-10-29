@@ -6,6 +6,7 @@ import dbConnect from '@/lib/mongoose';
 import Campaign from '@/models/Campaign';
 import ContactCampaign from '@/models/ContactCampaign';
 import { isFreeTier } from '@/lib/subscription-helpers';
+import { OUTREACH_FOR_AGENTS } from "@/config/feature-access";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     const userId = user.id;
 
     // Campaigns are a paid-plan feature; block free-tier agents (admins exempt).
-    if (!user.isAdmin && (await isFreeTier(userId))) {
+    if (!user.isAdmin && (!OUTREACH_FOR_AGENTS || await isFreeTier(userId))) {
       return NextResponse.json(
         { success: false, error: 'Campaigns require a paid plan.' },
         { status: 403 }

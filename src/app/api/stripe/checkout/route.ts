@@ -31,10 +31,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Must be a real estate agent
-    if (!user.roles?.includes("realEstateAgent")) {
+    // Agents, or applicants paying to become one: since 2026-10-28 paying for
+    // Basic IS how an applicant becomes an agent (the webhook grants the role
+    // — src/lib/agent-onboarding.ts).
+    const isApplicant = (user as any).agentApplication?.phase === "awaiting_payment";
+    if (!user.roles?.includes("realEstateAgent") && !isApplicant) {
       return NextResponse.json(
-        { error: "Only real estate agents can subscribe" },
+        { error: "Apply to become an agent first." },
         { status: 403 }
       );
     }
