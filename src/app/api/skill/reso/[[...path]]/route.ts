@@ -37,6 +37,10 @@ import {
 import { parseResoQuery, preferredPageSize, type ResoQuery } from "@/lib/reso/web-api/query";
 
 export const dynamic = "force-dynamic";
+// The Lookup catalog's first build per instance scans the listings for
+// distinct StateOrProvince (no index on it: ~16s). Vercel's default 15s
+// killed it with a 504 on 2026-10-29; after the first build it is cached 1h.
+export const maxDuration = 60;
 
 const BASE_PATH = "/api/skill/reso";
 const DEFAULT_PAGE = 100;
