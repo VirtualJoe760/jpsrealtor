@@ -217,7 +217,6 @@ function newest(...values: (string | undefined)[]): string | undefined {
 export function getStaticEntries(baseUrl: string): SitemapEntry[] {
   return [
     '',
-    '/about',
     '/buy',
     '/sell',
     '/neighborhoods',

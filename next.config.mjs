@@ -230,6 +230,15 @@ const nextConfig = {
         destination: "/sell",
         permanent: true,
       },
+
+      // /about was removed 2026-10-28 on every host (platform and agent sites,
+      // incl. jpsrealtor.com) — ChatRealty doesn't have an About page. 301 to
+      // the homepage: /about sat in the sitemap since launch.
+      {
+        source: "/about",
+        destination: "/",
+        permanent: true,
+      },
     ];
   },
 };

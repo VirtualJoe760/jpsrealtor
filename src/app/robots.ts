@@ -74,7 +74,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       rules: [
         {
           userAgent: '*',
-          allow: ['/', '/about', '/pricing', '/agents'],
+          allow: ['/', '/pricing', '/agents'],
           disallow: ['/api/', '/admin/', '/dashboard/', '/auth/', '/private/'],
         },
       ],
@@ -101,7 +101,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           '/sell',
           '/book-appointment',
           '/contact',
-          '/about',
         ],
         disallow: DISALLOW_ALL_CRAWLERS,
       },
