@@ -1,7 +1,7 @@
 ---
 title: ChatRealty API Productization — Area Overview
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-29
 related: [./ship-strategy.md, ./architecture.md, ./build_plan.md, ./external-site.md, ./data-tiers.md, ../multi-tenant/README.md]
 ---
 
@@ -75,13 +75,14 @@ How hosts, subdomains and tenant databases fit together:
 | [`data-dictionary.md`](./data-dictionary.md) | RESO field catalog (`src/lib/reso/data-dictionary.ts`) |
 | [`rate-limiting.md`](./rate-limiting.md) | KV sliding-window rate limiting design |
 | [`research.md`](./research.md) | Productization research the architecture settled on |
+| [`reso-compliance-plan.md`](./reso-compliance-plan.md) | Plan to pass RESO `reso-cert` Web API Core 2.1.0, then Data Dictionary (draft, not built) |
 | [`spike-chap-postgis.md`](./spike-chap-postgis.md), [`spike-cmastats-schema.md`](./spike-cmastats-schema.md) | Spikes |
 
 ## The `/api/skill/*` surface
 
 52 route files; bearer `crt_live_…` tokens; scopes per `src/lib/skill-scopes.ts`;
 rate tiers per `src/lib/skill-auth.ts` (identity 200/min, read 100/min, write
-30/min, send 5/min, research 60/min — in-memory, per instance).
+30/min, send 5/min, research 60/min, reso 600/min — in-memory, per instance).
 
 | Group | Routes | Scope |
 |---|---|---|
@@ -97,6 +98,7 @@ rate tiers per `src/lib/skill-auth.ts` (identity 200/min, read 100/min, write
 | Tenant | `tenant` (allowance), `tenant/provision` | any valid token |
 | Social | `instagram/carousel` | `social:post` — publishes immediately |
 | Testing / support | `bugs`, `feedback`, `feedback/[id]/upload`, `tickets`, `testing`, `testing/messages` | token only |
+| RESO Web API (OData 4.01, DD field names) | `reso/[[...path]]` — `$metadata`, `Property`, `Lookup`; dogfood only, tenant → 501; rate tier `reso` 600/min | `listings:read` — see [`reso-compliance-plan.md`](./reso-compliance-plan.md) |
 
 ## npm packages (versions as committed in `packages/*/package.json`)
 
