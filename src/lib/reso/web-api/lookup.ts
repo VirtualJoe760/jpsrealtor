@@ -42,7 +42,7 @@ const CATALOG_TIMESTAMP = "2026-10-29T00:00:00Z";
 const TTL_MS = 60 * 60 * 1000;
 
 export type LookupRow = Record<string, string | null>;
-let cache: { at: number; rows: LookupRow[] } | null = null;
+let cache: { at: number; rows: Promise<LookupRow[]> } | null = null;
 
 async function buildRows(): Promise<LookupRow[]> {
   const rows: LookupRow[] = [];
@@ -76,8 +76,15 @@ async function buildRows(): Promise<LookupRow[]> {
 }
 
 export async function lookupRows(filter: string | null): Promise<LookupRow[]> {
-  if (!cache || Date.now() - cache.at > TTL_MS) cache = { at: Date.now(), rows: await buildRows() };
-  if (!filter) return cache.rows;
+  // Cache the promise, so concurrent cold requests share one slow build;
+  // a failed build is dropped rather than cached.
+  if (!cache || Date.now() - cache.at > TTL_MS) {
+    const rows = buildRows();
+    cache = { at: Date.now(), rows };
+    rows.catch(() => { if (cache?.rows === rows) cache = null; });
+  }
+  const rows = await cache.rows;
+  if (!filter) return rows;
   const query = filterToMongo(filter, LOOKUP_FIELD_MAP);
-  return cache.rows.filter((r) => matches(r, query));
+  return rows.filter((r) => matches(r, query));
 }
