@@ -10,7 +10,7 @@
 // costs a `distinct` over the listings collection.
 
 import { filterToMongo } from "./filter-to-mongo";
-import { LOOKUP_FIELDS, PROPERTY_FIELDS, fieldMap } from "./fields";
+import { LOOKUP_FIELDS, MEDIA_FIELDS, PROPERTY_FIELDS, fieldMap } from "./fields";
 import { matches } from "./match";
 import { distinctPropertyValues } from "./property-store";
 
@@ -31,6 +31,9 @@ const STANDARD_VALUES: Record<string, Record<string, string>> = {
     Pending: "Pending",
     Withdrawn: "Withdrawn",
   },
+  // Media rows are always listing photos (fields.ts MEDIA_FIELDS constants).
+  ResourceName: { Property: "Property" },
+  MediaCategory: { Photo: "Photo" },
 };
 
 // Stable while the value set is unchanged; a fixed instant keeps
@@ -43,15 +46,20 @@ let cache: { at: number; rows: LookupRow[] } | null = null;
 
 async function buildRows(): Promise<LookupRow[]> {
   const rows: LookupRow[] = [];
-  for (const f of PROPERTY_FIELDS) {
+  for (const f of [...PROPERTY_FIELDS, ...MEDIA_FIELDS]) {
     if (!f.lookupName) continue;
+    // Quoted sources are constants (Media), so there is nothing to scan.
+    const constant = f.source.startsWith("'");
     const standard = STANDARD_VALUES[f.lookupName] ?? {};
     const legacyToDisplay = new Map(Object.entries(standard).map(([d, l]) => [l, d]));
     const values = new Map<string, string | null>(Object.entries(standard)); // display → legacy
-    for (const v of await distinctPropertyValues(f.source)) {
+    for (const v of constant ? [] : await distinctPropertyValues(f.source)) {
       // A stored machine value ("ComingSoon") is the same entry as its display form.
       const display = legacyToDisplay.get(v) ?? v;
-      if (!values.has(display)) values.set(display, null);
+      // DD StateOrProvince standard values are the postal codes ("CA"), so a
+      // two-letter code is standard; reso-cert dd warns when it isn't marked.
+      const standardCode = f.lookupName === "StateOrProvince" && /^[A-Z]{2}$/.test(display);
+      if (!values.has(display)) values.set(display, standardCode ? display : null);
     }
     for (const [display, legacy] of values) {
       rows.push({

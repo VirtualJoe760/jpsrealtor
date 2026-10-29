@@ -80,12 +80,27 @@ export interface PropertyPage {
   count?: number;
 }
 
+/** Sources with a single-field index on `unified_listings` (checked against
+ *  `indexes()` on 2026-10-29). Keep in sync if the backend drops one. */
+const SINGLE_FIELD_INDEXED = new Set([
+  "modificationTimestamp",
+  "listingContractDate",
+  "onMarketDate",
+  "listingId",
+]);
+
 export async function findProperties(q: ResoQuery, take: number): Promise<PropertyPage> {
   const query: Filter<Document> = q.filter ? filterToMongo(q.filter, PROPERTY_FIELD_MAP) : {};
-  // Always end on the unique key so paging by $skip is stable across pages.
+  // End on the unique key so paging by $skip is stable across pages — except
+  // when ordering by one field that has its own index. There the index walk
+  // already returns ties in a fixed order, and appending the key would turn
+  // an indexed read into an in-memory sort of every listing (2026-10-29:
+  // `$orderby=ModificationTimestamp desc` took 26s a page vs 60ms without it,
+  // which made reso-cert's DD replication run for hours).
   const sort: Sort = {};
   for (const o of q.orderby) (sort as Record<string, 1 | -1>)[o.field.source] = o.desc ? -1 : 1;
-  if (!(KEY_SOURCE in sort)) (sort as Record<string, 1 | -1>)[KEY_SOURCE] = 1;
+  const singleIndexed = q.orderby.length === 1 && SINGLE_FIELD_INDEXED.has(q.orderby[0].field.source);
+  if (!(KEY_SOURCE in sort) && !singleIndexed) (sort as Record<string, 1 | -1>)[KEY_SOURCE] = 1;
 
   const col = await collection();
   const [docs, count] = await Promise.all([

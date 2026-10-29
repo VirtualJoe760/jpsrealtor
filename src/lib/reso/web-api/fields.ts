@@ -66,8 +66,8 @@ export const PROPERTY_FIELDS: readonly ResoWebField[] = [
   { name: "Longitude", type: "Edm.Decimal", source: "longitude", stored: "number", precision: 12, scale: 8 },
   { name: "PoolPrivateYN", type: "Edm.Boolean", source: "poolYN", stored: "boolean" },
   { name: "UnparsedAddress", type: "Edm.String", source: "unparsedAddress", stored: "string" },
-  { name: "City", type: "Edm.String", source: "city", stored: "string" },
-  { name: "StateOrProvince", type: "Edm.String", source: "stateOrProvince", stored: "string" },
+  { name: "City", type: "Edm.String", source: "city", stored: "string", lookupName: "City" },
+  { name: "StateOrProvince", type: "Edm.String", source: "stateOrProvince", stored: "string", lookupName: "StateOrProvince" },
   { name: "PostalCode", type: "Edm.String", source: "postalCode", stored: "string" },
   { name: "SubdivisionName", type: "Edm.String", source: "subdivisionName", stored: "string" },
   // MLS/IDX attribution — always declared (data-dictionary.md §3.8).
@@ -89,8 +89,8 @@ export const MEDIA_KEY = "MediaKey";
 export const MEDIA_FIELDS: readonly ResoWebField[] = [
   { name: "MediaKey", type: "Edm.String", source: "media[].id", stored: "string", nullable: false },
   { name: "ResourceRecordKey", type: "Edm.String", source: "listingKey", stored: "string" },
-  { name: "ResourceName", type: "Edm.String", source: "'Property'", stored: "string" },
-  { name: "MediaCategory", type: "Edm.String", source: "'Photo'", stored: "string" },
+  { name: "ResourceName", type: "Edm.String", source: "'Property'", stored: "string", lookupName: "ResourceName" },
+  { name: "MediaCategory", type: "Edm.String", source: "'Photo'", stored: "string", lookupName: "MediaCategory" },
   { name: "MediaURL", type: "Edm.String", source: "media[].uriLarge", stored: "string" },
   { name: "Order", type: "Edm.Int64", source: "media[] index", stored: "number" },
   { name: "ShortDescription", type: "Edm.String", source: "media[].name", stored: "string" },
