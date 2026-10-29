@@ -31,3 +31,9 @@ export const OUTREACH_API_PREFIXES = [
   "/api/agent/messaging",
   "/api/dropcowboy/campaign",
 ];
+
+// Instagram content (carousels queued for approval in the CMS) is ADMIN-ONLY
+// for now (2026-10-28). Enforced by the proxy (API prefix → 403), each
+// /api/agent/pending-posts route, and the CMS page (section hidden).
+export const INSTAGRAM_FOR_AGENTS = false;
+export const INSTAGRAM_API_PREFIXES = ["/api/agent/pending-posts"];

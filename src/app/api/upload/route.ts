@@ -33,6 +33,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Images only, and under Vercel's request-body limit (4.5 MB) with room
+    // to spare. Anything else would be stored on our Cloudinary bill.
+    if (!file.type?.startsWith("image/")) {
+      return NextResponse.json({ error: "Only image files can be uploaded." }, { status: 400 });
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      return NextResponse.json({ error: "Images must be under 4 MB." }, { status: 400 });
+    }
+
     // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -42,6 +51,27 @@ export async function POST(req: NextRequest) {
 
     // Upload based on type
     switch (type) {
+      case "content": {
+        // Photos inserted into an article/page body from the CMS editor.
+        // Namespaced per agent (jpsrealtor/agents/{userId}/content) so one
+        // tenant's media can be counted, capped or deleted without touching
+        // anyone else's, and downscaled to ≤2000px wide on the way IN
+        // (incoming transformation) so the stored original is web-sized —
+        // phone photos are often 4000px+. See docs/integrations/cloudinary-scaling.md.
+        const owner = String((session.user as any).id || "unknown");
+        const uploaded = await uploadImage(base64, `agents/${owner}/content`, {
+          width: 2000,
+          crop: "limit",
+          quality: "auto:good",
+        });
+        result = {
+          url: uploaded.secure_url,
+          publicId: uploaded.public_id,
+          width: uploaded.width,
+          height: uploaded.height,
+        };
+        break;
+      }
       case "featured":
         result = await uploadArticleFeaturedImage(base64);
         break;

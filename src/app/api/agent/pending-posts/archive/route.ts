@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { INSTAGRAM_FOR_AGENTS } from "@/config/feature-access";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  }
+  // Instagram content is admin-only for now (src/config/feature-access.ts).
+  if (!INSTAGRAM_FOR_AGENTS && !(session.user as any).isAdmin) {
+    return NextResponse.json({ error: "Instagram content isn't available yet." }, { status: 403, headers: NO_STORE });
   }
   await dbConnect();
 

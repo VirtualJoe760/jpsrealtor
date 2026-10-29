@@ -7,7 +7,7 @@ import Link from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bold,
   Italic,
@@ -61,6 +61,16 @@ export default function TipTapEditor({
     onChange // Pass onChange callback for debounced MDX updates
   );
 
+  // ── Photo upload (2026-10-28) ──────────────────────────────────────
+  // The image button used to prompt for a URL. Now it uploads the file to
+  // Cloudinary via /api/upload (type "content" → the agent's own folder,
+  // downscaled on upload — see src/app/api/upload/route.ts) and inserts it.
+  // Pasting or dropping an image into the editor does the same.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const uploadRef = useRef<(file: File, pos?: number) => Promise<void>>(async () => {});
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -94,6 +104,22 @@ export default function TipTapEditor({
       handleEditorChange(editor);
     },
     editorProps: {
+      handlePaste: (_view, event) => {
+        const images = Array.from(event.clipboardData?.files || []).filter((f) => f.type.startsWith("image/"));
+        if (!images.length) return false;
+        event.preventDefault();
+        images.forEach((f) => uploadRef.current(f));
+        return true;
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved) return false;
+        const images = Array.from(event.dataTransfer?.files || []).filter((f) => f.type.startsWith("image/"));
+        if (!images.length) return false;
+        event.preventDefault();
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        images.forEach((f) => uploadRef.current(f, pos));
+        return true;
+      },
       attributes: {
         class: isLight
           ? "prose prose-lg max-w-none focus:outline-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-code:text-blue-600 prose-code:bg-gray-100 prose-blockquote:border-blue-500 prose-blockquote:text-gray-600"
@@ -163,12 +189,33 @@ export default function TipTapEditor({
     }
   };
 
-  const addImage = () => {
-    const url = window.prompt("Enter image URL:");
-    if (url) {
-      editor?.commands.setImage({ src: url });
+  const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // Vercel rejects request bodies over 4.5 MB
+
+  uploadRef.current = async (file: File, pos?: number) => {
+    setUploadError("");
+    if (!file.type.startsWith("image/")) return setUploadError("That file isn't an image.");
+    if (file.size > MAX_PHOTO_BYTES) return setUploadError("Photos must be under 4 MB.");
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("type", "content");
+      const res = await fetch("/api/upload", { method: "POST", body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
+      const alt = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      const node = { type: "image", attrs: { src: data.url, alt } };
+      if (typeof pos === "number") editor?.chain().focus().insertContentAt(pos, node).run();
+      else editor?.chain().focus().setImage({ src: data.url, alt }).run();
+    } catch (err) {
+      setUploadError((err as Error).message || "Upload failed");
+    } finally {
+      setUploading(false);
     }
   };
+
+  // Toolbar image button → file picker (was a "paste an image URL" prompt).
+  const addImage = () => fileInputRef.current?.click();
 
   if (!editor) {
     return (
@@ -417,14 +464,28 @@ export default function TipTapEditor({
           <YoutubeIcon className="w-4 h-4" />
         </button>
         <button
+          type="button"
           onClick={addImage}
-          className={`p-2 rounded transition-colors ${
+          disabled={uploading}
+          className={`p-2 rounded transition-colors disabled:opacity-60 ${
             isLight ? "hover:bg-gray-200 text-gray-700" : "hover:bg-gray-700 text-gray-300"
           }`}
-          title="Add Image"
+          title="Upload a photo (or paste / drag one into the editor)"
         >
-          <ImageIcon className="w-4 h-4" />
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // allow picking the same file again
+            if (file) uploadRef.current(file);
+          }}
+        />
+        {uploadError && <span className="ml-1 text-xs text-red-500">{uploadError}</span>}
 
         {/* Divider */}
         <div className={`w-px h-6 mx-1 ${isLight ? "bg-gray-300" : "bg-gray-600"}`} />

@@ -26,12 +26,16 @@ import {
 } from './cms-page/components';
 import CMSModal from './cms-page/components/CMSModal';
 import InstagramContent from './components/InstagramContent';
+import { useSession } from 'next-auth/react';
+import { INSTAGRAM_FOR_AGENTS } from '@/config/feature-access';
 
 type ContentTab = 'blog' | 'landing';
 
 export default function CMSPage() {
   // Theme
   const { currentTheme } = useTheme();
+  const { data: session } = useSession();
+  const isAdmin = !!(session?.user as any)?.isAdmin;
   const { bgPrimary, textPrimary, textSecondary, textMuted, bgSecondary, border } = useThemeClasses();
   const isLight = currentTheme === 'lightgradient';
 
@@ -134,7 +138,8 @@ export default function CMSPage() {
         {/* Instagram carousels awaiting approval. Above the blog/landing tabs
             because it's time-sensitive — an unapproved post rolls to the next
             slot — and it renders nothing when the queue is empty. */}
-        <InstagramContent isLight={isLight} />
+        {/* Admin-only for now (src/config/feature-access.ts). */}
+        {(INSTAGRAM_FOR_AGENTS || isAdmin) && <InstagramContent isLight={isLight} />}
 
         {/* Tab Switcher */}
         <div className={`flex gap-1 mb-4 p-1 rounded-xl ${isLight ? 'bg-gray-100' : 'bg-gray-800/60'}`}>

@@ -14,7 +14,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { OUTREACH_FOR_AGENTS, OUTREACH_API_PREFIXES, OUTREACH_PAGE_PREFIXES } from "@/config/feature-access";
+import {
+  OUTREACH_FOR_AGENTS,
+  OUTREACH_API_PREFIXES,
+  OUTREACH_PAGE_PREFIXES,
+  INSTAGRAM_FOR_AGENTS,
+  INSTAGRAM_API_PREFIXES,
+} from "@/config/feature-access";
 import {
   agentHomeSubdomain,
   agentOrigin,
@@ -200,6 +206,19 @@ async function handleApiGate(request: NextRequest, pathname: string) {
   ) {
     return NextResponse.json(
       { error: "forbidden", message: "Campaigns, texts and email aren't available yet." },
+      { status: 403 }
+    );
+  }
+
+  // 5. Instagram content is admin-only for now (src/config/feature-access.ts).
+  if (
+    !INSTAGRAM_FOR_AGENTS &&
+    underAny(pathname, INSTAGRAM_API_PREFIXES) &&
+    !token.isAdmin &&
+    !token.impersonatedBy
+  ) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Instagram content isn't available yet." },
       { status: 403 }
     );
   }
