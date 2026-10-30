@@ -26,7 +26,6 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 import CMSModal, { type CMSModalProps } from "../../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../../components/LandingPageOptions";
-import { useDeploymentStatus } from "../../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "edit" | "preview";
 
@@ -91,7 +90,6 @@ export default function EditArticlePage() {
   });
 
   // Deployment tracking
-  const { startDeployment } = useDeploymentStatus();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -328,8 +326,6 @@ export default function EditArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        // Start deployment tracking
-        startDeployment(data.slugId, data.environment || 'production');
 
         const draftMsg = isDraft ? ' (saved as draft)' : '';
         setModal({

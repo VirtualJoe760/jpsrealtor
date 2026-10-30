@@ -11,12 +11,12 @@ supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ## TL;DR
 
 The CMS publishes articles (`articles` / `market-insights` / `real-estate-tips`)
-and landing pages (`landing-page`) — all one `Article` Mongo model. **MongoDB is
-the source of truth.** Publishing goes Mongo → MDX file in `src/posts/` → commit
-to `main` → Vercel rebuild. The MDX is a git-stored mirror, **but production
-still reads it in a few places** (category index pages, the RSS feed — see
-"Where each surface reads from"), so it is not purely archival. The public feed
-is **domain-scoped** via `resolveDomainOwner`.
+and landing pages (`landing-page`) — all one `Article` Mongo model. **The
+database is the only copy.** Publishing is validate → one upsert by slug; every
+page reads the database on request, so a publish is live the moment it returns.
+No MDX file, git commit, GitHub token or rebuild is involved (removed
+2026-10-29). Public surfaces are **domain-scoped** via `resolveDomainOwner` and
+show `status: published` only.
 
 **Multi-tenant target:** admins (jpsrealtor.com / chatrealty.io) stay on Mongo;
 every non-admin agent's articles move to their own Neon tenant DB. None of that
@@ -27,13 +27,14 @@ is built yet — see [multi-tenant-articles.md](./multi-tenant-articles.md).
 | File | Purpose |
 |---|---|
 | `src/models/article.ts` | Mongoose model (file name is lowercase). `author.id` is the scoping field; `slug` is unique; `visibility` is `public`/`private` (default `private`). Schema enum includes `landing-page`; the TS type `ArticleCategory` does not. |
-| `src/lib/publishing-pipeline.ts` | `validateForPublish()`, `publishArticle()`, `unpublishArticle()`, `deployToMain()`, GitHub Contents API helpers, IndexNow ping. Branches on `IS_PRODUCTION` (`VERCEL === '1'`, `src/lib/environment.ts`). |
+| `src/lib/publishing-pipeline.ts` | `validateForPublish()`, `publishArticle()` (validate → upsert → IndexNow), `unpublishArticle()` (delete), `isArticlePublished()`. Same behaviour on localhost and Vercel. |
+| `src/lib/articles/public-articles.ts` | **The read path for public surfaces.** `listPublishedPosts({ ownerId, category })` (owner + published only; no owner → empty), `getArticlePost(slug)`, `articleToPost()`, `resolvePageOwnerId()` for server components. Neon routing for non-admins plugs in here. |
 | `src/lib/services/article.service.ts` | CRUD over the model. `convertFormDataToMongoDoc()` is where SEO keywords become `tags`. |
 | `src/app/api/articles/` | `list`, `publish`, `unpublish`, `set-draft`, `load-published` (session routes); `generate` (Groq), `regenerate-field`; public `search`, `ai-search`, `topics`; deprecated `route.ts` (use `list`). |
 | `src/app/api/skill/articles/`, `src/app/api/skill/landing-pages/` | Token-authed (`articles:*` / `landing_pages:*` scopes) routes behind the MCP tools `create_article`, `update_article`, `get_article`, `list_my_articles` and the `*_landing_page` equivalents — see [mcp/tools.md](../mcp/tools.md). |
 | `src/app/admin/cms/`, `src/app/agent/cms/` | Admin CMS (all articles) and per-agent CMS (own articles). |
 | `src/app/insights/[category]/[slugId]/page.tsx`, `src/app/lp/[slug]/page.tsx` | Article and landing-page renderers. |
-| `src/app/utils/fetchPosts.ts` | `getPostBySlug()` (Mongo first in prod, then MDX); `getAllPosts()` / `getPostsBySection()` (MDX only). |
+| `src/app/utils/fetchPosts.ts` | `getPostBySlug()` and `getPostsBySection(section, page, limit, ownerId)` — thin wrappers over `public-articles.ts`. |
 | `src/app/api/claude/draft-landing-page/route.ts`, `src/app/agent/cms/components/ClaudeLandingPageChat.tsx` | BYOK Claude landing-page builder (SSE + tool calls). |
 | `src/app/api/claude/draft-article/route.ts` | BYOK Claude article drafter. No caller in `src/` was found. |
 | `scripts/fix-article-authors-mongo.ts`, `scripts/fix-article-images.ts` | One-off backfills (orphan `author.id`; local image paths in `content`). |
@@ -41,32 +42,40 @@ is built yet — see [multi-tenant-articles.md](./multi-tenant-articles.md).
 
 ## Publishing pipeline
 
-`publishArticle(article, slugId, { userId, userName, userEmail })`:
+`publishArticle(article, slugId, { userId, userName, userEmail })`, identical on
+localhost and Vercel:
 
-| Step | Localhost | Production (Vercel) |
+| Step | What | Fails the publish? |
 |---|---|---|
-| 1. Validate | `validateForPublish` — title 10–200 chars, excerpt 50–300, content ≥ 500, featured image required, SEO title ≤ 60, MDX compiles (`validateMDX` runs `next-mdx-remote/serialize`, the same compile the page uses) | same |
-| 2. Mongo | `createArticle` — **upsert by slug** | same |
-| 3. MDX | `writeArticleToFilesystem`, then `deployToMain` (git add/commit/push to `main`); a failure here still throws | `publishMDXViaGitHub` (Contents API PUT, needs `GITHUB_TOKEN`). **Non-fatal:** a failure is returned in `warnings` and the publish still succeeds |
-| 4. Deploy | implicit via the push | POST to `VERCEL_DEPLOY_HOOK_URL`, skipped if step 3 failed; if the hook fails, the commit still auto-deploys |
-| 5. IndexNow | `pingIndexNowForArticle` — only if `INDEXNOW_KEY` is set; resolves the **author's** domain; never fails a publish | same |
+| 1. Validate | `validateForPublish` — title 10–200 chars, excerpt 50–300, content ≥ 500, featured image required, SEO title ≤ 60, MDX compiles (`validateMDX` runs `next-mdx-remote/serialize`, the same compile the page uses) | yes |
+| 2. Save | `createArticle` — **upsert by slug**, so a retry never duplicates | yes |
+| 3. IndexNow | `pingIndexNowForArticle` — only if `INDEXNOW_KEY` is set; resolves the **author's** domain | never |
 
-`unpublishArticle` mirrors it (Mongo delete → delete MDX → push/DELETE → rebuild).
-The GitHub target is hardcoded (`VirtualJoe760/jpsrealtor`, branch `main`), so
-**every agent's article is committed to that public repo**. `deployToMain` on a
-feature branch stashes, commits, cherry-picks onto `main`, pushes and switches
-back — fragile, publish from `main` when possible. The `publish` route also
-posts to the author's Google Business Profile (non-blocking, skipped for drafts).
+`unpublishArticle` deletes the document; `POST /api/articles/set-draft` flips
+`status`. Both are live immediately. The `publish` route also posts to the
+author's Google Business Profile (non-blocking, skipped for drafts).
+
+**Removed 2026-10-29:** the MDX file write, the GitHub commit (Contents API in
+production, `git push` to `main` from localhost), the Vercel deploy hook, the
+build-time `generate-mdx` step, and the CMS's 3-minute "deploying" timer. They
+committed every agent's content to the public repo, and a dead `GITHUB_TOKEN`
+500'd a publish that had already saved (see
+[multi-tenant-articles.md](./multi-tenant-articles.md)). The `.mdx` files still
+in `src/posts/` are leftovers; nothing reads them.
 
 ## Where each surface reads from
 
-| Surface | Source in production |
+All from the database, via `src/lib/articles/public-articles.ts` unless noted.
+
+| Surface | Scope |
 |---|---|
-| `/` (home feed) via `/api/articles/list` | Mongo, scoped to the domain owner, `status: published` only |
-| `/insights/[category]/[slugId]`, `/lp/[slug]` | Mongo first (`getPostBySlug`), MDX fallback. Private articles 404 unless the domain belongs to the author (`canViewArticle`) |
-| `/insights/[category]` (category index) | **MDX on disk** (`getPostsBySection`) — updates only after a rebuild; no domain or draft filter |
-| `/api/rss/[section]` | **MDX on disk** |
-| Sitemap (`getArticleEntries` in `src/lib/sitemap-sources.ts`) | Mongo, `status: published`, `lastmod` from `updatedAt`; MDX only as a fallback |
+| `/` (home feed) via `/api/articles/list` | Domain owner, published, no landing pages (the route queries through `article.service` `listArticles`) |
+| `/insights/[category]/[slugId]`, `/lp/[slug]` | `getPostBySlug` (any status). Private articles 404 unless the domain belongs to the author (`canViewArticle`) |
+| `/insights/[category]` (category index) | Domain owner (`resolvePageOwnerId`), published, that category |
+| `/api/rss/[section]` | Domain owner, published; links use the request's canonical host |
+| `/api/articles/topics`, `/api/articles/ai-search` | Domain owner, published |
+| `/campaign/[slug]` | Published `landing-page` by slug |
+| Sitemaps (`getArticleEntries` in `sitemap-sources.ts`, `getBlogPages` in `sitemap-generator.ts`) | Published; on agent domains filtered by author name |
 | `/insights` | `permanentRedirect("/")` (308) |
 
 ## Article scoping (`/api/articles/list`)
@@ -85,8 +94,7 @@ route sets `Cache-Control: no-store` itself. `landing-page` is excluded unless
 History: 2026-05-19 — Joseph's `User._id` changed and 39 articles were orphaned;
 `scripts/fix-article-authors-mongo.ts` re-links them (rerun if it recurs). Images
 must be Cloudinary URLs (`{ url, publicId }`, append `f_auto,q_auto`); a local
-`/public/...` path in `content` breaks in production, and both Mongo `content`
-and the MDX must be fixed.
+`/public/...` path in `content` breaks in production.
 
 ## Landing-page AI builders
 
@@ -128,11 +136,12 @@ Sender is `EMAIL_FROM`, else `newsletter@${EMAIL_FROM_DOMAIN || "chatrealty.io"}
 
 ## Gotchas
 
-- **Mongo wins on divergence.** Fix Mongo first, then the MDX; `content` image paths need both.
+- **Fix content in the database.** There is no second copy; editing a `src/posts/*.mdx` file changes nothing on the site.
 - **`author.id` is stamped server-side** from `session.user.id` in the publish route.
 - **Mongoose strict mode** drops undeclared fields — extend the schema before writing a new landing-page field.
 - **Re-publishing resets `publishedAt` and `metadata.views`** (the upsert `$set`s them) and rewrites `author`.
-- **`GITHUB_TOKEN` (needs `repo` scope)** feeds the MDX mirror. If it lapses, the publish still succeeds with a warning, but the article stays off the category index and RSS. (Before 2026-10-29 a dead token 500'd the publish after the Mongo write.)
+- **Publishing needs no `GITHUB_TOKEN` or deploy hook.** The CMS stopped using both on 2026-10-29.
+- **Localhost publishes to whatever `MONGODB_URI` points at.** With `.env.local` on the production database, a local publish is a live publish.
 - **Editor saves go by slug.** "Save Draft" on a new article sends the publish `slugId`, and `POST /api/articles` returns 409 if that slug exists. "Save to Database" on the edit pages runs the publish (upsert). Both used to insert a second copy under a title-derived slug.
 - **`<user@host>` is not a link in MDX.** MDX reads it as a JSX tag (`Unexpected character '@'`) and the page crashes. `validateMDX` now rejects it; write `[user@host](mailto:user@host)`.
 - **`SECRETS_ENCRYPTION_KEY`** must exist wherever Anthropic keys are saved or used.

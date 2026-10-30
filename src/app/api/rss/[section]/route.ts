@@ -1,47 +1,24 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
 import xml from "xml";
+import { listPublishedPosts } from "@/lib/articles/public-articles";
+import { resolveDomainOwner } from "@/lib/resolveDomainOwner";
+import { getBaseUrl } from "@/lib/domain-utils";
 
-const postsDirectory = path.join(process.cwd(), "src", "posts");
+// The feed is read from the database, scoped to the domain's owner. It used to
+// read the MDX files in src/posts/, so it lagged a publish by a GitHub commit
+// plus a rebuild, and it listed every agent's articles under chatrealty.io.
 
-const baseUrl =
-  process.env.NODE_ENV === "production"
-    ? "https://chatrealty.io"
-    : "http://localhost:3000";
-
-function ensureAbsoluteUrl(url: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url; // It's already an absolute URL
+function siteBaseUrl(request: Request): string {
+  const host = (request.headers.get("host") || "").toLowerCase();
+  if (!host || host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
+    return `http://${host || "localhost:3000"}`;
   }
-  return `${baseUrl}${url}`; // Prepend baseUrl for relative URLs
+  return getBaseUrl(host.split(":")[0]);
 }
 
-function getPostsBySection(section?: string) {
-  const files = fs.readdirSync(postsDirectory);
-
-  const posts = files
-    .map((file) => {
-      const fileContents = fs.readFileSync(path.join(postsDirectory, file), "utf8");
-      const { data } = matter(fileContents);
-
-      return {
-        title: data.title || "Untitled",
-        slugId: data.slugId || file.replace(/\.mdx?$/, ""),
-        section: data.section || "general",
-        description: data.metaDescription || "",
-        pubDate: new Date(data.date).toUTCString(),
-        link: `${baseUrl}/insights/${data.section}/${data.slugId || file.replace(/\.mdx?$/, "")}`,
-        image: data.image ? ensureAbsoluteUrl(data.image) : "",
-        ogImage: data.ogImage ? ensureAbsoluteUrl(data.ogImage) : "",
-        altText: data.altText || "",
-      };
-    })
-    .filter((post) => !section || section === "all" || post.section === section)
-    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
-
-  return posts;
+function ensureAbsoluteUrl(baseUrl: string, url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${baseUrl}${url}`;
 }
 
 export async function GET(
@@ -49,9 +26,23 @@ export async function GET(
   { params }: { params: Promise<{ section: string }> }
 ) {
   const { section } = await params;
+  const baseUrl = siteBaseUrl(request);
   const feedUrl = `${baseUrl}/api/rss/${section}`;
 
-  const posts = getPostsBySection(section);
+  const { ownerId } = await resolveDomainOwner(request);
+  const { posts: rows } = await listPublishedPosts({ ownerId, category: section, limit: 100 });
+
+  const posts = rows.map((p) => {
+    const link = `${baseUrl}/insights/${p.section}/${p.slugId}`;
+    return {
+      title: p.title || "Untitled",
+      link,
+      description: p.metaDescription || p.description || "",
+      pubDate: p.date ? new Date(p.date).toUTCString() : "",
+      image: p.image ? ensureAbsoluteUrl(baseUrl, p.image) : "",
+      altText: p.altText || "",
+    };
+  });
 
   if (posts.length === 0) {
     return new NextResponse("No posts found for the given section", { status: 404 });
@@ -77,8 +68,8 @@ export async function GET(
             },
           ]
         : []),
-      ...(post.ogImage
-        ? [{ "media:content": { _attr: { url: post.ogImage, medium: "image" } } }]
+      ...(post.image
+        ? [{ "media:content": { _attr: { url: post.image, medium: "image" } } }]
         : []),
       ...(post.altText ? [{ "media:description": post.altText }] : []),
     ],
@@ -118,6 +109,8 @@ export async function GET(
   return new NextResponse(xml(feed, { declaration: true }), {
     headers: {
       "Content-Type": "application/xml",
+      // Per-domain content: never let a shared cache serve one site's feed on another.
+      "Cache-Control": "no-store, max-age=0",
     },
   });
 }

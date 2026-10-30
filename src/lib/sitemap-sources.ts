@@ -45,9 +45,6 @@
 
 import dbConnect from '@/lib/mongoose'
 import mongoose from 'mongoose'
-import fs from 'fs'
-import path from 'path'
-import matter from 'gray-matter'
 import { City } from '@/models/cities'
 import Subdivision from '@/models/subdivisions'
 import { isNonPlaceSubdivision } from '@/lib/neighborhoods-data'
@@ -565,9 +562,8 @@ export async function getListingEntries(
 // ─────────────────────────────────────────────────────
 
 /**
- * Articles, from MONGO — which is the source of truth (see
- * docs/ARCHITECTURE.md: the MDX files in src/posts are a git-stored mirror and
- * production reads Mongo only).
+ * Articles, from the database — the only copy (nothing reads the MDX files in
+ * src/posts/ since 2026-10-29).
  *
  * The old generator read the MDX directory and used frontmatter `date`, i.e.
  * the PUBLISH date, as lastmod. So an article edited last week still declared
@@ -576,8 +572,7 @@ export async function getListingEntries(
  *
  * Articles are the highest-CTR pages on this site (1.74% vs 0.35% for city
  * pages), so getting their recrawl signal right is worth more here than
- * anywhere else. The MDX directory stays as a fallback for when Mongo is
- * unreachable.
+ * anywhere else.
  */
 export async function getArticleEntries(
   baseUrl: string,
@@ -609,29 +604,9 @@ export async function getArticleEntries(
           lastmod: newest(toIso(a.updatedAt), toIso(a.publishedAt)),
         })
       }
-      if (entries.length) return entries
-    } catch (error) {
-      console.error('[sitemap-sources] getArticleEntries (mongo) failed:', error)
-    }
-
-    // Fallback: the MDX mirror.
-    try {
-      const postsDir = path.join(process.cwd(), 'src/posts')
-      if (!fs.existsSync(postsDir)) return []
-      const entries: SitemapEntry[] = []
-      for (const file of fs.readdirSync(postsDir).filter((f) => f.endsWith('.mdx'))) {
-        const { data } = matter(fs.readFileSync(path.join(postsDir, file), 'utf-8'))
-        if (!data.slugId || !data.section) continue
-        if (agentName && data.author && data.author !== agentName) continue
-        const loc =
-          data.section === 'landing-page'
-            ? `${baseUrl}/lp/${data.slugId}`
-            : `${baseUrl}/insights/${data.section}/${data.slugId}`
-        entries.push({ loc, lastmod: toIso(data.date) })
-      }
       return entries
     } catch (error) {
-      console.error('[sitemap-sources] getArticleEntries (mdx) failed:', error)
+      console.error('[sitemap-sources] getArticleEntries failed:', error)
       return []
     }
   })

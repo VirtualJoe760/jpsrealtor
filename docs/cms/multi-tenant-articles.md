@@ -19,10 +19,10 @@ collection. **Every non-admin agent stores articles in their own Neon Postgres
 tenant database**, and their existing Mongo articles migrate there. A
 non-admin without a Neon DB is a test account, not a customer.
 
-**Today none of that is true.** Every article from every agent goes to the
-shared Mongo collection, then is committed as MDX to the public
-`VirtualJoe760/jpsrealtor` repo, and publishing fails if that commit fails. The
-work below closes the gap.
+**Where it stands:** publishing is already a single database write and every
+surface reads the database (steps 1 and 5, 2026-10-29). What's missing is the
+per-agent store: every agent's articles still go to the shared Mongo
+collection. Steps 2–4 close that gap.
 
 ## What happened on 2026-10-29 (why this doc exists)
 
@@ -31,7 +31,7 @@ on jpsrealtor.com produced three separate failures:
 
 | # | Failure | Cause | Temporary fix applied |
 |---|---|---|---|
-| 1 | Publish returned 500 | Step 3 (MDX → GitHub) got `GitHub API error (401): Bad credentials`; the production `GITHUB_TOKEN` is dead. The Mongo save in step 1 had already succeeded. | None yet. Replacing the token is blocked on a permission prompt. |
+| 1 | Publish returned 500 | Step 3 (MDX → GitHub) got `GitHub API error (401): Bad credentials`; the production `GITHUB_TOKEN` is dead. The Mongo save in step 1 had already succeeded. | Token replaced; the step was made non-fatal, then removed (rollout step 5). |
 | 2 | Article posted twice | After the error, the editor's Save button called the deprecated `POST /api/articles`, which `Article.create`d a second doc (a draft with a different slug). The public feed has **no status filter**, so the draft showed too. | Draft `6ae3aefaba8be951ecbe1343` deleted (backup kept in the session scratchpad). |
 | 3 | Article page crashed (`Application error`, digest `506066817`) | Content had `<josephsardella@gmail.com>`, a Markdown email autolink. MDX reads `<…>` as a JSX tag and refuses `@`. `validateForPublish`'s `validateMDX` did not catch it. | Mongo `content` rewritten to `[josephsardella@gmail.com](mailto:josephsardella@gmail.com)`. Page verified 200. |
 
@@ -39,21 +39,18 @@ All three are consequences of the current design, and each recurs for any agent
 until fixed. #2 and #3 are fixed in the target design; #1 disappears once the
 GitHub step is gone.
 
-## Current flow (as built)
+## Current flow (as built, after steps 1 and 5)
 
 ```
 CMS editor ──POST /api/articles/publish──▶ publishArticle()
-   1. validateForPublish (validateMDX ≠ the renderer's compiler)
-   2. Mongo `articles` upsert by slug          ← every agent, one collection
-   3. MDX → GitHub Contents API (GITHUB_TOKEN) ← public repo, every agent
-   4. Vercel deploy hook
-   5. IndexNow
-   any throw after step 2 → 500, editor then calls POST /api/articles → duplicate
+   1. validateForPublish (same MDX compile as the page)
+   2. Mongo `articles` upsert by slug   ← every agent, one collection
+   3. IndexNow (never fatal)
 ```
 
-Reads: home feed `/api/articles/list` (Mongo, domain-owner scoped, **no status
-filter**); article page `getPostBySlug` (Mongo then MDX); category index and RSS
-(**MDX on disk only**); sitemap (Mongo). See [README.md](./README.md).
+Public reads go through `src/lib/articles/public-articles.ts` (domain owner +
+published), except the home feed route and the sitemaps, which query Mongo
+directly with the same filters. See [README.md](./README.md).
 
 ## Target design
 
@@ -174,15 +171,17 @@ retired.
 1. Quick fixes that need no new storage: the status filter, the editor fallback,
    making the GitHub step non-fatal, and the validator/compiler match. These also
    stop the 2026-10-29 failures from recurring on jpsrealtor.com.
-   **Done on `fix/cms-publish-hardening` (not yet deployed).** Still open from
-   §6: the article page's fallback for bad MDX, and removing the deprecated
-   route (the editors' Save Draft still calls it, now slug-guarded).
+   **Done (PR #7, deployed 2026-10-29).** Still open from §6: the article
+   page's fallback for bad MDX, and removing the deprecated route (the editors'
+   Save Draft still calls it, now slug-guarded).
 2. `ArticleRepo` interface + Mongo implementation; move all callers onto
    `resolveArticleStore`. jpsrealtor.com behaviour is unchanged.
 3. Postgres table + migration runner for existing tenants.
 4. Postgres implementation; turn on Neon routing for non-owner agents.
-5. Move category index, RSS and sitemap off MDX; remove the GitHub/MDX step and
-   `src/posts/`.
+5. Move category index, RSS and sitemap off MDX; remove the GitHub/MDX step.
+   **Done on `feat/cms-db-only` (2026-10-29), ahead of 2–4,** so the Neon work
+   has one read path to route (`public-articles.ts`). Left: deleting the
+   leftover `src/posts/*.mdx` files, which nothing reads.
 
 ## Decisions (Joseph, 2026-10-29)
 

@@ -27,9 +27,7 @@
  */
 
 import { MetadataRoute } from 'next'
-import fs from 'fs'
-import path from 'path'
-import matter from 'gray-matter'
+import mongoose from 'mongoose'
 import dbConnect from '@/lib/mongoose'
 import UnifiedListing from '@/models/unified-listing'
 import { City } from '@/models/cities'
@@ -320,35 +318,39 @@ async function getSubdivisionPages(baseUrl: string, now: Date, scope: ScopeCity[
   }
 }
 
-function getBlogPages(baseUrl: string, now: Date, agentName?: string): MetadataRoute.Sitemap {
-  const pages: MetadataRoute.Sitemap = []
-  const postsDir = path.join(process.cwd(), 'src/posts')
-  if (!fs.existsSync(postsDir)) return pages
+// Articles and landing pages, from the database (the MDX files in src/posts/
+// are no longer read anywhere since 2026-10-29). Same author-name filter the
+// MDX version applied on agent domains.
+async function getBlogPages(baseUrl: string, now: Date, agentName?: string): Promise<MetadataRoute.Sitemap> {
+  try {
+    await dbConnect()
+    const db = mongoose.connection.db
+    if (!db) return []
+    const rows = await db
+      .collection('articles')
+      .find(
+        { status: 'published' },
+        { projection: { slug: 1, category: 1, publishedAt: 1, updatedAt: 1, author: 1 } },
+      )
+      .toArray()
 
-  const blogFiles = fs.readdirSync(postsDir).filter((file) => file.endsWith('.mdx'))
-  blogFiles.forEach((file) => {
-    const filePath = path.join(postsDir, file)
-    const fileContent = fs.readFileSync(filePath, 'utf-8')
-    const { data } = matter(fileContent)
-
-    if (!data.slugId || !data.section) return
-
-    // For agent domains, only include posts authored by this agent
-    if (agentName && data.author && data.author !== agentName) return
-
-    const url = data.section === 'landing-page'
-      ? `${baseUrl}/lp/${data.slugId}`
-      : `${baseUrl}/insights/${data.section}/${data.slugId}`
-
-    pages.push({
-      url,
-      lastModified: data.date ? new Date(data.date) : now,
-      changeFrequency: data.section === 'landing-page' ? 'weekly' : 'monthly',
-      priority: data.section === 'landing-page' ? 0.8 : 0.7,
-    })
-  })
-
-  return pages
+    const pages: MetadataRoute.Sitemap = []
+    for (const a of rows as any[]) {
+      if (!a?.slug || !a?.category) continue
+      if (agentName && a.author?.name && a.author.name !== agentName) continue
+      const isLp = a.category === 'landing-page'
+      pages.push({
+        url: isLp ? `${baseUrl}/lp/${a.slug}` : `${baseUrl}/insights/${a.category}/${a.slug}`,
+        lastModified: a.updatedAt ? new Date(a.updatedAt) : a.publishedAt ? new Date(a.publishedAt) : now,
+        changeFrequency: isLp ? 'weekly' : 'monthly',
+        priority: isLp ? 0.8 : 0.7,
+      })
+    }
+    return pages
+  } catch (error) {
+    console.error('[Sitemap] getBlogPages failed:', error)
+    return []
+  }
 }
 
 async function getListingPages(
@@ -507,7 +509,7 @@ async function generateAgentSitemap(domain: DomainInfo): Promise<MetadataRoute.S
   const subdivisionPages = await getSubdivisionPages(baseUrl, now, scope)
 
   // Blog posts (filtered to agent's authored content, or all if no filter applies)
-  const blogPages = getBlogPages(baseUrl, now, agentName)
+  const blogPages = await getBlogPages(baseUrl, now, agentName)
 
   // Listings take whatever room is left under the single-file ceiling.
   const fixedCount =

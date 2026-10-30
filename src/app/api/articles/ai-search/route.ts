@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import { listPublishedPosts } from '@/lib/articles/public-articles';
+import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -52,8 +51,8 @@ export async function POST(req: Request) {
     // Step 1: Extract intent from query using Groq
     const intent = await extractIntent(query);
 
-    // Step 2: Load all articles from MDX files
-    const articles = await loadAllArticles();
+    // Step 2: This site's published articles, from the database
+    const articles = await loadAllArticles(req);
 
     // Step 3: Filter articles based on filters
     let filteredArticles = articles;
@@ -162,41 +161,22 @@ Respond in JSON format:
 }
 
 /**
- * Load all articles from src/posts directory
+ * This site's owner's published articles, from the database. It read every
+ * agent's MDX file in src/posts/ until 2026-10-29.
  */
-async function loadAllArticles(): Promise<Article[]> {
-  const postsDirectory = path.join(process.cwd(), 'src/posts');
-
-  if (!fs.existsSync(postsDirectory)) {
-    return [];
-  }
-
-  const filenames = fs.readdirSync(postsDirectory);
-  const articles: Article[] = [];
-
-  for (const filename of filenames) {
-    if (!filename.endsWith('.mdx')) continue;
-
-    const filePath = path.join(postsDirectory, filename);
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const { data, content } = matter(fileContent);
-
-    // Skip drafts in search results
-    if (data.draft === true) continue;
-
-    articles.push({
-      title: data.title || '',
-      excerpt: data.metaDescription || '',
-      image: data.image || data.ogImage || '',
-      category: data.section || 'articles',
-      date: data.date || '',
-      slug: data.slugId || filename.replace('.mdx', ''),
-      topics: data.keywords || [],
-      content: content.substring(0, 1000), // First 1000 chars for relevance
-    });
-  }
-
-  return articles;
+async function loadAllArticles(req: Request): Promise<Article[]> {
+  const { ownerId } = await resolveDomainOwner(req);
+  const { posts } = await listPublishedPosts({ ownerId, limit: 500 });
+  return posts.map((p) => ({
+    title: p.title || '',
+    excerpt: p.metaDescription || p.description || '',
+    image: p.image || '',
+    category: p.section || 'articles',
+    date: p.date || '',
+    slug: p.slugId,
+    topics: p.keywords || [],
+    content: (p.content || '').substring(0, 1000), // First 1000 chars for relevance
+  }));
 }
 
 /**

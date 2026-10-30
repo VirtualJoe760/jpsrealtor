@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "dev:next": "next dev",
-    "prebuild": "npm run build:mcp-server && npm run generate-mdx",
+    "prebuild": "npm run build:mcp-server",
     "build": "next build",
     "build:mcp-server": "tsc -p packages/mcp-server/tsconfig.json",
     "start": "NODE_ENV=production node server.js",
@@ -14,7 +14,6 @@
     "lint:links": "linkinator http://localhost:3000 --recurse --verbosity debug --skip \".*\\.(png|jpg|jpeg|gif|svg)$\" --format JSON > .\\local-logs\\linkinator-report.json 2>&1",
     "lint:links:prod": "linkinator https://jpsrealtor.com --recurse --external --verbosity debug --format JSON > .\\local-logs\\linkinator-prod.json 2>&1",
     "lint:links:sitemap": "linkinator https://jpsrealtor.com/sitemap.xml --recurse --external --verbosity debug --format JSON > .\\local-logs\\linkinator-from-sitemap.json 2>&1",
-    "generate-mdx": "npx tsx scripts/generate-mdx-from-db.ts",
     "db:optimize-indexes": "npx tsx src/scripts/optimize-indexes.ts",
     "test:dropcowboy": "npx tsx scripts/test-dropcowboy-rvm.ts",
     "analyze:contacts": "npx tsx scripts/analyze-messy-contacts.ts",

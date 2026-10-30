@@ -157,7 +157,7 @@ export default function ArticlesAdminPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Article deleted permanently!\n\nThe MDX file has been removed from src/posts/ and will be pushed to GitHub.`);
+        alert(`Article deleted permanently!\n\nIt has been removed from the site.`);
         fetchArticles();
       } else {
         alert(`Failed to delete:\n\n${data.error || 'Unknown error'}`);

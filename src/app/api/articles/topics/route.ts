@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import { listPublishedPosts } from '@/lib/articles/public-articles';
+import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -18,39 +17,19 @@ interface Topic {
 /**
  * GET /api/articles/topics
  *
- * Auto-generates topic cloud from all published articles
+ * Auto-generates the topic cloud from this site's published articles
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const postsDirectory = path.join(process.cwd(), 'src/posts');
-
-    if (!fs.existsSync(postsDirectory)) {
-      return NextResponse.json({
-        success: true,
-        topics: [],
-      });
-    }
-
-    // Load all articles
-    const filenames = fs.readdirSync(postsDirectory);
-    const articles: { keywords: string[]; title: string; excerpt: string }[] = [];
-
-    for (const filename of filenames) {
-      if (!filename.endsWith('.mdx')) continue;
-
-      const filePath = path.join(postsDirectory, filename);
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const { data } = matter(fileContent);
-
-      // Skip drafts
-      if (data.draft === true) continue;
-
-      articles.push({
-        keywords: data.keywords || [],
-        title: data.title || '',
-        excerpt: data.metaDescription || '',
-      });
-    }
+    // This site's owner's published articles, from the database (previously
+    // every agent's MDX file in src/posts/).
+    const { ownerId } = await resolveDomainOwner(request);
+    const { posts } = await listPublishedPosts({ ownerId, limit: 500 });
+    const articles = posts.map((p) => ({
+      keywords: p.keywords || [],
+      title: p.title || '',
+      excerpt: p.metaDescription || p.description || '',
+    }));
 
     // Extract all keywords and count frequency
     const keywordCount: Record<string, number> = {};

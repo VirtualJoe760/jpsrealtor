@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import { IS_PRODUCTION } from '@/lib/environment';
 import { listArticles } from '@/lib/services/article.service';
 import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 
@@ -24,9 +20,7 @@ interface Article {
 /**
  * GET /api/articles/list
  *
- * Dual-environment article listing:
- * LOCALHOST: Reads MDX files from src/posts/
- * PRODUCTION: Fetches from MongoDB database
+ * Reads the database in every environment (there is no MDX path).
  *
  * Three scoping modes:
  * - default: DOMAIN-owner scoped (public insights feed) — jpsrealtor.com shows
@@ -66,142 +60,70 @@ export async function GET(request: Request) {
       ownerId, source, isAdmin, showAll, mine,
     });
 
-    if (IS_PRODUCTION) {
-      // PRODUCTION: Fetch from MongoDB
-      const filters: any = {};
+    const filters: any = {};
 
-      if (mine) {
-        // Agent CMS: the logged-in user's own articles.
-        filters.authorId = selfId;
-      } else if (!(isAdmin && showAll)) {
-        // Public feed: scope by domain owner. Admin can bypass with ?all=true.
-        if (!ownerId) {
-          // Defensive: no owner resolved (PRIMARY_AGENT_EMAIL missing?) ->
-          // return nothing rather than leaking the whole network.
-          return NextResponse.json({ success: true, articles: [], total: 0 });
-        }
-        filters.authorId = ownerId;
-        // Visitors see published articles only. Without this a draft showed on
-        // the live home page (2026-10-29: a failed publish left a draft copy,
-        // and jpsrealtor.com listed the article twice).
-        filters.status = 'published';
+    if (mine) {
+      // Agent CMS: the logged-in user's own articles.
+      filters.authorId = selfId;
+    } else if (!(isAdmin && showAll)) {
+      // Public feed: scope by domain owner. Admin can bypass with ?all=true.
+      if (!ownerId) {
+        // Defensive: no owner resolved (PRIMARY_AGENT_EMAIL missing?) ->
+        // return nothing rather than leaking the whole network.
+        return NextResponse.json({ success: true, articles: [], total: 0 });
       }
-
-      // Exclude landing pages from insights feed
-      if (excludeLandingPages) {
-        filters.category = { $ne: "landing-page" };
-      }
-
-      const result = await listArticles({
-        filters,
-        limit: 100, // Get all articles
-        sortBy: 'publishedAt',
-        sortOrder: 'desc',
-      });
-
-      // Convert MongoDB documents to Article interface
-      const articles: Article[] = result.articles.map((doc) => ({
-        title: doc.title,
-        excerpt: doc.excerpt,
-        image: doc.featuredImage.url,
-        category: doc.category,
-        date: doc.publishedAt.toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-        }),
-        slug: doc.slug,
-        topics: doc.tags,
-        visibility: doc.visibility || 'private',
-        authorId: doc.author.id.toString(),
-        authorName: doc.author.name,
-      }));
-
-      return NextResponse.json(
-        {
-          success: true,
-          articles,
-          total: articles.length,
-        },
-        {
-          // no-store needed because vercel.json's catch-all otherwise stamps
-          // `immutable, max-age=31536000` on API responses, freezing per-user
-          // scoped data in the browser for a year. Same fix needed on any
-          // /api/* route that returns dynamic data until vercel.json is
-          // tightened to scope the immutable rule to /_next/static/*.
-          headers: { "Cache-Control": "no-store, max-age=0" },
-        }
-      );
-
-    } else {
-      // LOCALHOST: Read MDX files
-      const postsDirectory = path.join(process.cwd(), 'src/posts');
-
-      if (!fs.existsSync(postsDirectory)) {
-        return NextResponse.json({
-          success: true,
-          articles: [],
-          total: 0,
-        });
-      }
-
-      const filenames = fs.readdirSync(postsDirectory);
-      const articles: Article[] = [];
-
-      for (const filename of filenames) {
-        if (!filename.endsWith('.mdx')) continue;
-
-        const filePath = path.join(postsDirectory, filename);
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const { data } = matter(fileContent);
-
-        // Skip drafts
-        if (data.draft === true) continue;
-
-        // Skip landing pages from insights feed
-        if (excludeLandingPages && data.section === "landing-page") continue;
-
-        // Scoping. ?mine=true -> logged-in user's articles (agent CMS);
-        // default -> domain owner's articles. Articles with no authorId are
-        // legacy (pre-scoping) — visible only to admins with ?all=true.
-        if (mine) {
-          if (!data.authorId || data.authorId !== selfId) continue;
-        } else if (!(isAdmin && showAll)) {
-          if (!ownerId || !data.authorId || data.authorId !== ownerId) {
-            continue;
-          }
-        }
-
-        articles.push({
-          title: data.title || '',
-          excerpt: data.metaDescription || '',
-          image: data.image || data.ogImage || '',
-          category: data.section || 'articles',
-          date: data.date || '',
-          slug: data.slugId || filename.replace('.mdx', ''),
-          topics: data.keywords || [],
-          visibility: data.visibility || 'private',
-          authorId: data.authorId,
-          authorName: data.authorName,
-        });
-      }
-
-      // Sort by date (most recent first)
-      articles.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
-      });
-
-      return NextResponse.json(
-        {
-          success: true,
-          articles,
-          total: articles.length,
-        },
-        { headers: { "Cache-Control": "no-store, max-age=0" } }
-      );
+      filters.authorId = ownerId;
+      // Visitors see published articles only. Without this a draft showed on
+      // the live home page (2026-10-29: a failed publish left a draft copy,
+      // and jpsrealtor.com listed the article twice).
+      filters.status = 'published';
     }
+
+    // Exclude landing pages from insights feed
+    if (excludeLandingPages) {
+      filters.category = { $ne: "landing-page" };
+    }
+
+    const result = await listArticles({
+      filters,
+      limit: 100, // Get all articles
+      sortBy: 'publishedAt',
+      sortOrder: 'desc',
+    });
+
+    // Convert MongoDB documents to Article interface
+    const articles: Article[] = result.articles.map((doc) => ({
+      title: doc.title,
+      excerpt: doc.excerpt,
+      image: doc.featuredImage.url,
+      category: doc.category,
+      date: doc.publishedAt.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+      }),
+      slug: doc.slug,
+      topics: doc.tags,
+      visibility: doc.visibility || 'private',
+      authorId: doc.author.id.toString(),
+      authorName: doc.author.name,
+    }));
+
+    return NextResponse.json(
+      {
+        success: true,
+        articles,
+        total: articles.length,
+      },
+      {
+        // no-store needed because vercel.json's catch-all otherwise stamps
+        // `immutable, max-age=31536000` on API responses, freezing per-user
+        // scoped data in the browser for a year. Same fix needed on any
+        // /api/* route that returns dynamic data until vercel.json is
+        // tightened to scope the immutable rule to /_next/static/*.
+        headers: { "Cache-Control": "no-store, max-age=0" },
+      }
+    );
   } catch (error) {
     console.error('Article list error:', error);
     return NextResponse.json(

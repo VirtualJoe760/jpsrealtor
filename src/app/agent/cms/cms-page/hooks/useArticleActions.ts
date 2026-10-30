@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CMSModalProps } from '../components/CMSModal';
-import { useDeploymentStatus } from './useDeploymentStatus';
 
 interface UseArticleActionsResult {
   handleDelete: (slug: string) => void;
@@ -21,7 +20,6 @@ interface UseArticleActionsResult {
  */
 export function useArticleActions(refetch?: () => Promise<void>): UseArticleActionsResult {
   const router = useRouter();
-  const { startDeployment } = useDeploymentStatus();
 
   const [modal, setModal] = useState<Omit<CMSModalProps, 'isOpen' | 'onClose'> & { isOpen: boolean }>({
     isOpen: false,
@@ -109,11 +107,6 @@ export function useArticleActions(refetch?: () => Promise<void>): UseArticleActi
               throw new Error(data.error || 'Failed to unpublish article');
             }
 
-            // Start deployment tracking if in production
-            if (data.environment === 'production') {
-              startDeployment(slug, 'production');
-            }
-
             // Show success modal
             setModal({
               isOpen: true,
@@ -142,7 +135,7 @@ export function useArticleActions(refetch?: () => Promise<void>): UseArticleActi
         },
       });
     },
-    [refetch, startDeployment]
+    [refetch]
   );
 
   const handleView = useCallback(
