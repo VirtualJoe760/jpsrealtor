@@ -45,6 +45,9 @@ export interface ResoWebField {
   /** String-mode enumeration: the Lookup resource's LookupName. */
   readonly lookupName?: string;
   readonly nullable?: boolean;
+  /** Edm.String MaxLength — the DD's suggested max. Checked against the data
+   *  first: reso-cert fails any served value longer than what we declare. */
+  readonly maxLength?: number;
   readonly precision?: number;
   readonly scale?: number;
 }
@@ -52,9 +55,9 @@ export interface ResoWebField {
 export const PROPERTY_KEY = "ListingKey";
 
 export const PROPERTY_FIELDS: readonly ResoWebField[] = [
-  { name: "ListingKey", type: "Edm.String", source: "listingKey", stored: "string", nullable: false },
-  { name: "ListingId", type: "Edm.String", source: "listingId", stored: "string" },
-  { name: "OriginatingSystemName", type: "Edm.String", source: "mlsSource", stored: "string" },
+  { name: "ListingKey", type: "Edm.String", source: "listingKey", stored: "string", maxLength: 255, nullable: false },
+  { name: "ListingId", type: "Edm.String", source: "listingId", stored: "string", maxLength: 255 },
+  { name: "OriginatingSystemName", type: "Edm.String", source: "mlsSource", stored: "string", maxLength: 255 },
   { name: "StandardStatus", type: "Edm.String", source: "standardStatus", stored: "string", lookupName: "StandardStatus" },
   { name: "ListPrice", type: "Edm.Decimal", source: "listPrice", stored: "number", precision: 14, scale: 2 },
   { name: "BedroomsTotal", type: "Edm.Int64", source: "bedsTotal", stored: "number" },
@@ -65,14 +68,14 @@ export const PROPERTY_FIELDS: readonly ResoWebField[] = [
   { name: "Latitude", type: "Edm.Decimal", source: "latitude", stored: "number", precision: 12, scale: 8 },
   { name: "Longitude", type: "Edm.Decimal", source: "longitude", stored: "number", precision: 12, scale: 8 },
   { name: "PoolPrivateYN", type: "Edm.Boolean", source: "poolYN", stored: "boolean" },
-  { name: "UnparsedAddress", type: "Edm.String", source: "unparsedAddress", stored: "string" },
+  { name: "UnparsedAddress", type: "Edm.String", source: "unparsedAddress", stored: "string", maxLength: 255 },
   { name: "City", type: "Edm.String", source: "city", stored: "string", lookupName: "City" },
   { name: "StateOrProvince", type: "Edm.String", source: "stateOrProvince", stored: "string", lookupName: "StateOrProvince" },
-  { name: "PostalCode", type: "Edm.String", source: "postalCode", stored: "string" },
-  { name: "SubdivisionName", type: "Edm.String", source: "subdivisionName", stored: "string" },
+  { name: "PostalCode", type: "Edm.String", source: "postalCode", stored: "string", maxLength: 10 },
+  { name: "SubdivisionName", type: "Edm.String", source: "subdivisionName", stored: "string", maxLength: 150 },
   // MLS/IDX attribution — always declared (data-dictionary.md §3.8).
-  { name: "ListAgentFullName", type: "Edm.String", source: "listAgentName", stored: "string" },
-  { name: "ListOfficeName", type: "Edm.String", source: "listOfficeName", stored: "string" },
+  { name: "ListAgentFullName", type: "Edm.String", source: "listAgentName", stored: "string", maxLength: 150 },
+  { name: "ListOfficeName", type: "Edm.String", source: "listOfficeName", stored: "string", maxLength: 255 },
   { name: "ListingContractDate", type: "Edm.Date", source: "listingContractDate", stored: "isoDatePrefix" },
   { name: "OnMarketDate", type: "Edm.Date", source: "onMarketDate", stored: "isoDatePrefix" },
   { name: "ModificationTimestamp", type: "Edm.DateTimeOffset", source: "modificationTimestamp", stored: "isoTimestamp" },
@@ -87,24 +90,24 @@ export const PROPERTY_FIELDS: readonly ResoWebField[] = [
  */
 export const MEDIA_KEY = "MediaKey";
 export const MEDIA_FIELDS: readonly ResoWebField[] = [
-  { name: "MediaKey", type: "Edm.String", source: "media[].id", stored: "string", nullable: false },
-  { name: "ResourceRecordKey", type: "Edm.String", source: "listingKey", stored: "string" },
+  { name: "MediaKey", type: "Edm.String", source: "media[].id", stored: "string", maxLength: 255, nullable: false },
+  { name: "ResourceRecordKey", type: "Edm.String", source: "listingKey", stored: "string", maxLength: 255 },
   { name: "ResourceName", type: "Edm.String", source: "'Property'", stored: "string", lookupName: "ResourceName" },
   { name: "MediaCategory", type: "Edm.String", source: "'Photo'", stored: "string", lookupName: "MediaCategory" },
-  { name: "MediaURL", type: "Edm.String", source: "media[].uriLarge", stored: "string" },
+  { name: "MediaURL", type: "Edm.String", source: "media[].uriLarge", stored: "string", maxLength: 8000 },
   { name: "Order", type: "Edm.Int64", source: "media[] index", stored: "number" },
-  { name: "ShortDescription", type: "Edm.String", source: "media[].name", stored: "string" },
+  { name: "ShortDescription", type: "Edm.String", source: "media[].name", stored: "string", maxLength: 50 },
 ];
 
 /** RCP-032/039 Lookup resource — the string-enumeration catalog. Rows are
  *  computed in memory and keyed by RESO name, so `source` === `name`. */
 export const LOOKUP_KEY = "LookupKey";
 export const LOOKUP_FIELDS: readonly ResoWebField[] = [
-  { name: "LookupKey", type: "Edm.String", source: "LookupKey", stored: "string", nullable: false },
-  { name: "LookupName", type: "Edm.String", source: "LookupName", stored: "string" },
-  { name: "LookupValue", type: "Edm.String", source: "LookupValue", stored: "string" },
-  { name: "StandardLookupValue", type: "Edm.String", source: "StandardLookupValue", stored: "string" },
-  { name: "LegacyODataValue", type: "Edm.String", source: "LegacyODataValue", stored: "string" },
+  { name: "LookupKey", type: "Edm.String", source: "LookupKey", stored: "string", maxLength: 255, nullable: false },
+  { name: "LookupName", type: "Edm.String", source: "LookupName", stored: "string", maxLength: 255 },
+  { name: "LookupValue", type: "Edm.String", source: "LookupValue", stored: "string", maxLength: 255 },
+  { name: "StandardLookupValue", type: "Edm.String", source: "StandardLookupValue", stored: "string", maxLength: 255 },
+  { name: "LegacyODataValue", type: "Edm.String", source: "LegacyODataValue", stored: "string", maxLength: 255 },
   { name: "ModificationTimestamp", type: "Edm.DateTimeOffset", source: "ModificationTimestamp", stored: "isoTimestamp" },
 ];
 

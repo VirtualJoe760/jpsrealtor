@@ -10,9 +10,10 @@
 // costs a `distinct` over the listings collection.
 
 import { filterToMongo } from "./filter-to-mongo";
-import { LOOKUP_FIELDS, MEDIA_FIELDS, PROPERTY_FIELDS, fieldMap } from "./fields";
+import { LOOKUP_FIELDS, MEDIA_FIELDS, PROPERTY_FIELDS, fieldMap, type ResoWebField } from "./fields";
 import { matches } from "./match";
-import { distinctPropertyValues } from "./property-store";
+import { distinctPropertyValues, distinctPropertyValuesIn } from "./property-store";
+import { LIVE_SCOPE, type ResoScope } from "./scope";
 
 export const LOOKUP_FIELD_MAP = fieldMap(LOOKUP_FIELDS);
 
@@ -42,18 +43,31 @@ const CATALOG_TIMESTAMP = "2026-10-29T00:00:00Z";
 const TTL_MS = 60 * 60 * 1000;
 
 export type LookupRow = Record<string, string | null>;
-let cache: { at: number; rows: Promise<LookupRow[]> } | null = null;
+const caches = new Map<ResoScope["id"], { at: number; rows: Promise<LookupRow[]> }>();
 
-async function buildRows(): Promise<LookupRow[]> {
+const LOOKUP_SOURCE_FIELDS = [...PROPERTY_FIELDS, ...MEDIA_FIELDS].filter(
+  (f): f is ResoWebField & { lookupName: string } => Boolean(f.lookupName),
+);
+
+/** Stored values per lookup field. Live: one indexed `distinct` each (only
+ *  stateOrProvince scans). Scoped: one `$group` pass over the scope. */
+async function storedValues(scope: ResoScope): Promise<Record<string, string[]>> {
+  // Quoted sources are constants (Media), so there is nothing to scan.
+  const sources = LOOKUP_SOURCE_FIELDS.map((f) => f.source).filter((s) => !s.startsWith("'"));
+  if (Object.keys(scope.base).length > 0) return distinctPropertyValuesIn(sources, scope);
+  const out: Record<string, string[]> = {};
+  for (const s of sources) out[s] = await distinctPropertyValues(s);
+  return out;
+}
+
+async function buildRows(scope: ResoScope): Promise<LookupRow[]> {
+  const stored = await storedValues(scope);
   const rows: LookupRow[] = [];
-  for (const f of [...PROPERTY_FIELDS, ...MEDIA_FIELDS]) {
-    if (!f.lookupName) continue;
-    // Quoted sources are constants (Media), so there is nothing to scan.
-    const constant = f.source.startsWith("'");
+  for (const f of LOOKUP_SOURCE_FIELDS) {
     const standard = STANDARD_VALUES[f.lookupName] ?? {};
     const legacyToDisplay = new Map(Object.entries(standard).map(([d, l]) => [l, d]));
     const values = new Map<string, string | null>(Object.entries(standard)); // display → legacy
-    for (const v of constant ? [] : await distinctPropertyValues(f.source)) {
+    for (const v of stored[f.source] ?? []) {
       // A stored machine value ("ComingSoon") is the same entry as its display form.
       const display = legacyToDisplay.get(v) ?? v;
       // DD StateOrProvince standard values are the postal codes ("CA"), so a
@@ -75,13 +89,17 @@ async function buildRows(): Promise<LookupRow[]> {
   return rows.sort((a, b) => a.LookupKey!.localeCompare(b.LookupKey!));
 }
 
-export async function lookupRows(filter: string | null): Promise<LookupRow[]> {
+export async function lookupRows(filter: string | null, scope: ResoScope = LIVE_SCOPE): Promise<LookupRow[]> {
   // Cache the promise, so concurrent cold requests share one slow build;
   // a failed build is dropped rather than cached.
+  let cache = caches.get(scope.id);
   if (!cache || Date.now() - cache.at > TTL_MS) {
-    const rows = buildRows();
-    cache = { at: Date.now(), rows };
-    rows.catch(() => { if (cache?.rows === rows) cache = null; });
+    const pending = buildRows(scope);
+    cache = { at: Date.now(), rows: pending };
+    caches.set(scope.id, cache);
+    pending.catch(() => {
+      if (caches.get(scope.id)?.rows === pending) caches.delete(scope.id);
+    });
   }
   const rows = await cache.rows;
   if (!filter) return rows;

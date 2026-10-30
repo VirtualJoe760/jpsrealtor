@@ -1,7 +1,7 @@
 ---
 title: ChatRealty API Productization — Area Overview
 status: current
-last_verified: 2026-10-29
+last_verified: 2026-10-30
 related: [./ship-strategy.md, ./architecture.md, ./build_plan.md, ./external-site.md, ./data-tiers.md, ../multi-tenant/README.md]
 ---
 
@@ -98,7 +98,7 @@ rate tiers per `src/lib/skill-auth.ts` (identity 200/min, read 100/min, write
 | Tenant | `tenant` (allowance), `tenant/provision` | any valid token |
 | Social | `instagram/carousel` | `social:post` — publishes immediately |
 | Testing / support | `bugs`, `feedback`, `feedback/[id]/upload`, `tickets`, `testing`, `testing/messages` | token only |
-| RESO Web API (OData 4.01, DD field names) | `reso/[[...path]]` — `$metadata`, `Property`, `Lookup`; dogfood only, tenant → 501; rate tier `reso` 600/min | `listings:read` — see [`reso-compliance-plan.md`](./reso-compliance-plan.md) |
+| RESO Web API (OData 4.01, DD field names) | `reso/[[...path]]` (live) and `reso-cert/[[...path]]` (frozen certification set) — `$metadata`, `Property`, `Lookup`; dogfood only, tenant → 501; rate tier `reso` 600/min | `listings:read` — see [`reso-compliance-plan.md`](./reso-compliance-plan.md) |
 
 ## npm packages (versions as committed in `packages/*/package.json`)
 

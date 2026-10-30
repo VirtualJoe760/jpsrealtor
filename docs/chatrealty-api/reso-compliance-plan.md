@@ -1,7 +1,7 @@
 ---
 title: RESO Web API compliance plan
 status: draft
-last_verified: 2026-10-29
+last_verified: 2026-10-30
 related: [./research.md, ./data-dictionary.md, ./build_plan.md, ./db-adapter.md]
 ---
 
@@ -251,8 +251,11 @@ The RESO layer switches to the new fields once they exist.
 
 | File | Role |
 |---|---|
-| `src/app/api/skill/reso/[[...path]]/route.ts` | Service doc, `$metadata`, `Property`, `Property('k')`, `Property('k')/Media`, `Lookup`, OData 404. Auth: `crt_live` + `listings:read`; tenant tokens → 501; rate tier `reso` (600/min) |
-| `src/lib/reso/web-api/fields.ts` | The declared fields and their Mongo sources. **Add a field only after checking its stored type** |
+| `src/app/api/skill/reso/[[...path]]/route.ts` | Live service root (all listings). Thin: `resoGet(LIVE_SCOPE)` |
+| `src/app/api/skill/reso-cert/[[...path]]/route.ts` | **Certification** service root: the frozen set (§8c). `resoGet(CERT_SCOPE)` — give RESO this URL |
+| `src/lib/reso/web-api/handler.ts` | The shared handler: service doc, `$metadata`, `Property`, `Property('k')`, `Property('k')/Media`, `Lookup`, OData 404. Auth: `crt_live` + `listings:read`; tenant tokens → 501; rate tier `reso` (600/min) |
+| `src/lib/reso/web-api/scope.ts` | Which listings a root serves; `CERT_CUTOFF` |
+| `src/lib/reso/web-api/fields.ts` | The declared fields and their Mongo sources. **Add a field only after checking its stored type** — and its longest value, if you give it a `maxLength` (reso-cert fails any longer value) |
 | `src/lib/reso/web-api/edmx.ts` | `$metadata` (string-mode enums, matches RESO's own generator) |
 | `src/lib/reso/web-api/filter-to-mongo.ts` | `$filter` AST (RESO's parser) → Mongo |
 | `src/lib/reso/web-api/query.ts` | `$select $orderby $top $skip $count $expand`, `Prefer: odata.maxpagesize` |
@@ -349,6 +352,32 @@ in **strict** mode against production: **6 passed, 0 failed** (114 min;
 replicated all 85,346 records three ways; metadata 0 errors, 12 `MaxLength`
 SHOULD warnings). The only step not run is variations, which needs the
 credentials file RESO issues on application. That run is the submission.
+
+### 8c. Data Dictionary 2.1 and the frozen certification set (2026-10-30)
+
+Assume RESO runs the newest versions: `reso-cert` 0.11.5 (latest on npm),
+Web API Core 2.1.0, DD 2.1 (DD 2.2 is still in drafting).
+
+**DD 2.1 strict failed on the live root**: one listing synced mid-run had
+`City = "Grizzly Flats"`, a value the Lookup catalog (read once at the start)
+never advertised. reso-cert spends 1–2 h replicating, so on a live feed any
+new City/State value arriving during RESO's run fails it.
+
+Fix: `/api/skill/reso-cert` serves only listings inserted before
+`CERT_CUTOFF` (ObjectId time; the sync updates in place, so the set only
+shrinks as listings leave the feed: 84,807 of 86,139 on 2026-10-30), and builds
+its Lookup catalog from that same set in one `$group` pass (~21 s cold, then
+cached 1 h). `/api/skill/reso` is unchanged. **Submit the `reso-cert` URL.**
+It is still real MLS data (§6 licensing question stands).
+
+Also added: DD suggested `MaxLength` on all 17 string fields. Checked against
+the data first (longest: UnparsedAddress 97/255, ListOfficeName 65/255,
+media caption 40/50, PostalCode 10/10).
+
+Results on `/api/skill/reso-cert` (local): Core 2.1.0 **47 passed, 0 failed,
+10 skipped**. DD 2.1 strict (`--skip-variations`):
+**6 passed, 0 failed, 0 metadata warnings** (179 min; all three replication
+strategies over the frozen set). Only RESO's variations step remains.
 
 ## Sources
 

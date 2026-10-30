@@ -30,6 +30,7 @@ function propertyXml(f: ResoWebField): string {
   if (f.nullable === false) attrs.push('Nullable="false"');
   if (f.type === "Edm.Decimal" && f.precision !== undefined) attrs.push(`Precision="${f.precision}"`);
   if (f.type === "Edm.Decimal" && f.scale !== undefined) attrs.push(`Scale="${f.scale}"`);
+  if (f.type === "Edm.String" && f.maxLength !== undefined) attrs.push(`MaxLength="${f.maxLength}"`);
   if (f.lookupName) {
     return `        <Property ${attrs.join(" ")}>\n          <Annotation Term="RESO.OData.Metadata.LookupName" String="${esc(f.lookupName)}"/>\n        </Property>`;
   }

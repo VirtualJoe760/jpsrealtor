@@ -19,6 +19,7 @@ import { notFound } from "./errors";
 import { filterToMongo } from "./filter-to-mongo";
 import { PROPERTY_FIELDS, fieldMap, type ResoWebField } from "./fields";
 import type { ExpandMedia, ResoQuery } from "./query";
+import { LIVE_SCOPE, scoped, type ResoScope } from "./scope";
 
 export const PROPERTY_FIELD_MAP = fieldMap(PROPERTY_FIELDS);
 const KEY_SOURCE = "listingKey";
@@ -89,8 +90,8 @@ const SINGLE_FIELD_INDEXED = new Set([
   "listingId",
 ]);
 
-export async function findProperties(q: ResoQuery, take: number): Promise<PropertyPage> {
-  const query: Filter<Document> = q.filter ? filterToMongo(q.filter, PROPERTY_FIELD_MAP) : {};
+export async function findProperties(q: ResoQuery, take: number, scope: ResoScope = LIVE_SCOPE): Promise<PropertyPage> {
+  const query = scoped(scope, q.filter ? filterToMongo(q.filter, PROPERTY_FIELD_MAP) : {});
   // End on the unique key so paging by $skip is stable across pages — except
   // when ordering by one field that has its own index. There the index walk
   // already returns ties in a fixed order, and appending the key would turn
@@ -120,23 +121,47 @@ export async function findProperties(q: ResoQuery, take: number): Promise<Proper
   };
 }
 
-export async function getProperty(key: string, q: Pick<ResoQuery, "select" | "expandMedia">) {
+export async function getProperty(
+  key: string,
+  q: Pick<ResoQuery, "select" | "expandMedia">,
+  scope: ResoScope = LIVE_SCOPE,
+) {
   const col = await collection();
-  const doc = await col.findOne({ [KEY_SOURCE]: key }, { projection: projection(q) });
+  const doc = await col.findOne(scoped(scope, { [KEY_SOURCE]: key }), { projection: projection(q) });
   if (!doc) throw notFound(`Property('${key}') not found`);
   return mapProperty(doc, q);
 }
 
-export async function getPropertyMedia(key: string): Promise<Record<string, unknown>[]> {
+export async function getPropertyMedia(key: string, scope: ResoScope = LIVE_SCOPE): Promise<Record<string, unknown>[]> {
   const col = await collection();
-  const doc = await col.findOne({ [KEY_SOURCE]: key }, { projection: { _id: 0, [KEY_SOURCE]: 1, media: 1 } });
+  const doc = await col.findOne(scoped(scope, { [KEY_SOURCE]: key }), {
+    projection: { _id: 0, [KEY_SOURCE]: 1, media: 1 },
+  });
   if (!doc) throw notFound(`Property('${key}') not found`);
   return mapMedia(doc, { select: null, top: null });
 }
 
+const usable = (vals: unknown[]): string[] =>
+  vals.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+
 /** Distinct stored values of one field — feeds the Lookup resource. */
 export async function distinctPropertyValues(source: string): Promise<string[]> {
   const col = await collection();
-  const vals = await col.distinct(source);
-  return vals.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  return usable(await col.distinct(source));
+}
+
+/**
+ * Distinct values of several fields within a scope, in ONE pass. A filtered
+ * `distinct` can't use the per-field index, so each would be a full scan
+ * (~16-26 s over 85k listings); one `$group` costs one scan.
+ */
+export async function distinctPropertyValuesIn(
+  sources: string[],
+  scope: ResoScope,
+): Promise<Record<string, string[]>> {
+  const col = await collection();
+  const group: Document = { _id: null };
+  sources.forEach((s, i) => (group[`f${i}`] = { $addToSet: `$${s}` }));
+  const [row] = await col.aggregate([{ $match: scope.base }, { $group: group }], { allowDiskUse: true }).toArray();
+  return Object.fromEntries(sources.map((s, i) => [s, usable(row?.[`f${i}`] ?? [])]));
 }
