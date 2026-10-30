@@ -142,8 +142,9 @@ Sender is `EMAIL_FROM`, else `newsletter@${EMAIL_FROM_DOMAIN || "chatrealty.io"}
 - **Re-publishing resets `publishedAt` and `metadata.views`** (the upsert `$set`s them) and rewrites `author`.
 - **Publishing needs no `GITHUB_TOKEN` or deploy hook.** The CMS stopped using both on 2026-10-29.
 - **Localhost publishes to whatever `MONGODB_URI` points at.** With `.env.local` on the production database, a local publish is a live publish.
-- **Editor saves go by slug.** "Save Draft" on a new article sends the publish `slugId`, and `POST /api/articles` returns 409 if that slug exists. "Save to Database" on the edit pages runs the publish (upsert). Both used to insert a second copy under a title-derived slug.
-- **`<user@host>` is not a link in MDX.** MDX reads it as a JSX tag (`Unexpected character '@'`) and the page crashes. `validateMDX` now rejects it; write `[user@host](mailto:user@host)`.
+- **Editor saves go by slug.** "Save Draft" on a new article sends the publish `slugId`, and `POST /api/articles` returns 409 if that slug exists. It used to insert a second copy under a title-derived slug.
+- **`<user@host>` is not a link in MDX.** MDX reads it as a JSX tag (`Unexpected character '@'`) and the page crashes. `validateMDX` rejects it; write `[user@host](mailto:user@host)`. The editor's `htmlToMdx` used to *generate* it: remark-stringify writes a link whose text equals its URL as an autolink, so every save turned `[email](mailto:email)` back into `<email>` (and `[https://x](https://x)` into `<https://x>`). Fixed with `resourceLink: true` (2026-10-30).
+- **The edit pages have two buttons:** "Save as Draft" and "Update on Site", both through the publish route's upsert. "Backup to DB" was removed (2026-10-30); it was the same upsert under a third name.
 - **`SECRETS_ENCRYPTION_KEY`** must exist wherever Anthropic keys are saved or used.
 
 ## Related

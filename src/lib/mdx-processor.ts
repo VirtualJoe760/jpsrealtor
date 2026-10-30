@@ -72,6 +72,12 @@ export async function htmlToMdx(html: string): Promise<ProcessedMDX> {
         fence: '`',                           // Use ` for code fences
         fences: true,                         // Use fenced code blocks
         incrementListMarker: false,           // Keep list markers consistent
+        // Always write [text](url). By default remark writes a link whose text
+        // equals its URL as an autolink — `<name@host>` or `<https://…>` — which
+        // MDX reads as a broken JSX tag. Every editor save turned the article's
+        // [email](mailto:email) back into <email>, and the publish check then
+        // refused it ("Unexpected character `@`", 2026-10-30).
+        resourceLink: true,
       })
       .process(html);
 
