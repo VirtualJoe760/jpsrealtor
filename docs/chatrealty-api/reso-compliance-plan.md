@@ -15,7 +15,12 @@ related: [./research.md, ./data-dictionary.md, ./build_plan.md, ./db-adapter.md]
 > Data Dictionary certification comes after that. Add/Edit and EntityEvent are
 > optional endorsements we skip.
 >
-> **Status 2026-10-29: `reso-cert core` (Web API Core 2.1.0) PASSES locally:
+> **Status 2026-10-29 (production): Web API Core 2.1.0 passes (47/0/10) and
+> Data Dictionary 2.0 passes in strict mode (0 failed) at
+> `https://www.chatrealty.io/api/skill/reso`. Only RESO's variations check
+> (needs their credentials) remains. See §8.**
+>
+> Earlier the same day: `reso-cert core` (Web API Core 2.1.0) PASSED locally:
 > 45 passed, 0 failed, 12 skipped, outcome `passed`, `certification.valid:
 > true`.** The endpoint is `/api/skill/reso` (see §7). This is a local run
 > against `localhost`, not yet deployed and not yet submitted to RESO
@@ -337,6 +342,13 @@ Vercel's 15 s default). PR #8 sets `maxDuration = 60` and shares one build
 across concurrent requests. Backend follow-up: index
 `unified_listings.stateOrProvince` (build drops to ~100 ms). The DD run
 against production waits on PR #8, since it reads `/Lookup` too.
+
+**After PR #8 (same day):** `reso-cert core` against production: **47 passed,
+0 failed, 10 skipped**. `reso-cert dd --dd-version 2.0 --skip-variations`
+in **strict** mode against production: **6 passed, 0 failed** (114 min;
+replicated all 85,346 records three ways; metadata 0 errors, 12 `MaxLength`
+SHOULD warnings). The only step not run is variations, which needs the
+credentials file RESO issues on application. That run is the submission.
 
 ## Sources
 
