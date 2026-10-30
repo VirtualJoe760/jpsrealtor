@@ -51,6 +51,16 @@ export default function SubdivisionPageClient({
   } = useThemeClasses();
   const isLight = currentTheme === "lightgradient";
 
+  // Card chrome that only appears from md up; on phones the section sits
+  // directly on the page. Literal md: classes (mirroring cardBg/cardBorder/
+  // shadow from themes.ts) because Tailwind can't generate prefixes built at
+  // runtime.
+  const MD_CARD = `md:p-8 md:border md:rounded-2xl ${
+    isLight
+      ? "md:bg-white/95 md:border-slate-300 md:shadow-lg"
+      : "md:bg-gray-900/50 md:border-gray-800 md:shadow-2xl md:shadow-black/40"
+  }`;
+
   // Track subdivision view
   useEffect(() => {
     trackViewContent({
@@ -185,11 +195,7 @@ export default function SubdivisionPageClient({
                 chrome drops away so the photo spans the screen edge to edge.
                 Card classes are literal (not md:${"{"}cardBg}) because Tailwind
                 can't generate prefixes built at runtime. */}
-            <div className={`-mx-4 md:mx-0 pb-2 md:p-8 md:border md:rounded-2xl ${
-              isLight
-                ? "md:bg-white/95 md:border-slate-300 md:shadow-lg"
-                : "md:bg-gray-900/50 md:border-gray-800 md:shadow-2xl md:shadow-black/40"
-            }`}>
+            <div className={`-mx-4 md:mx-0 pb-2 ${MD_CARD}`}>
               {/* No heading: the carousel sits directly under the page title.
                   (Never label it "Featured Listings" — an empty carousel then
                   reads as a listings section with no listings. The real
@@ -261,8 +267,10 @@ export default function SubdivisionPageClient({
           {/* Map */}
           {subdivision.coordinates && (
             <NeighborhoodErrorBoundary sectionName="Map">
-              <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-                <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+              {/* Full-bleed landscape on mobile, card from md up (same as the
+                  photo carousel and the city map). */}
+              <div className={`-mx-4 md:mx-0 ${MD_CARD}`}>
+                <h2 className={`px-4 md:px-0 text-2xl md:text-3xl font-bold ${textPrimary} mb-4 md:mb-6`}>
                   Location & Listings Map
                 </h2>
                 <SubdivisionMap
@@ -272,7 +280,8 @@ export default function SubdivisionPageClient({
                     name: subdivision.name,
                     coordinates: subdivision.coordinates,
                   }}
-                  height="500px"
+                  frameClassName="aspect-[3/2] md:aspect-auto md:h-[500px]"
+                  fullBleedMobile
                 />
               </div>
             </NeighborhoodErrorBoundary>
@@ -280,8 +289,10 @@ export default function SubdivisionPageClient({
 
           {/* Listings */}
           <NeighborhoodErrorBoundary sectionName="Listings">
-            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
+            {/* No card on mobile: the listing cards use the full content width
+                instead of sitting inside a second padded box. */}
+            <div className={MD_CARD}>
+              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-4 md:mb-6`}>
                 Available Homes
               </h2>
               <SubdivisionListings subdivisionSlug={slug} cityId={cityId} />

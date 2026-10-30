@@ -17,6 +17,9 @@ interface SubdivisionMapProps {
   subdivision: Subdivision;
   onListingClick?: (listing: MapListing) => void;
   height?: string;
+  /** Passed through to ListingsMap — see its docs. */
+  frameClassName?: string;
+  fullBleedMobile?: boolean;
   propertyTypeFilter?: "all" | "sale" | "rental";
 }
 
@@ -32,6 +35,8 @@ export default function SubdivisionMap({
   subdivision,
   onListingClick,
   height = "400px",
+  frameClassName,
+  fullBleedMobile,
   propertyTypeFilter: externalFilter,
 }: SubdivisionMapProps) {
   const [listings, setListings] = useState<MapListing[]>([]);
@@ -83,6 +88,8 @@ export default function SubdivisionMap({
       listings={listings}
       loading={loading}
       height={height}
+      frameClassName={frameClassName}
+      fullBleedMobile={fullBleedMobile}
       center={subdivision.coordinates}
       zoom={13}
       showFilters
