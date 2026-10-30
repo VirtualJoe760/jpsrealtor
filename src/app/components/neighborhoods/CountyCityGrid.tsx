@@ -47,7 +47,7 @@ export default function CountyCityGrid({ county, regionSlug }: CountyCityGridPro
   const currentCities = county.cities.slice(startIndex, endIndex);
 
   return (
-    <div className="min-h-screen pt-20 md:pt-12 px-4">
+    <div className="min-h-screen pt-4 md:pt-12 px-4">
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto mb-8">
         {/* Back to Neighborhoods Button */}
