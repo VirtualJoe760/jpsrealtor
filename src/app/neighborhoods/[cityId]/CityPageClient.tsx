@@ -148,7 +148,7 @@ export default function CityPageClient({
   const countySlug = createSlug(countyName) + '-county';
 
   return (
-    <div className="min-h-screen pt-14 md:pt-8 px-4" data-page="neighborhoods-city">
+    <div className="min-h-screen pt-4 md:pt-8 px-4" data-page="neighborhoods-city">
       <div className="max-w-7xl mx-auto">
         {/* Back to County Button */}
         <Link
@@ -241,12 +241,21 @@ export default function CityPageClient({
         <div className="space-y-8">
           {/* Map View */}
           <NeighborhoodErrorBoundary sectionName="Map">
-            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
+            {/* Full-bleed landscape on mobile (same treatment as the community
+                photo carousel): -mx-4 cancels the page gutter and the card
+                chrome only appears from md up. Literal md: classes because
+                Tailwind can't generate prefixes built at runtime. */}
+            <div className={`-mx-4 md:mx-0 md:border md:rounded-2xl md:p-8 ${
+              isLight
+                ? "md:bg-white md:border-gray-200 md:shadow-lg"
+                : "md:bg-gray-800 md:border-gray-700 md:shadow-xl md:shadow-black/20"
+            }`}>
               <CityMap
                 cityId={cityId}
                 cityName={city.name}
                 coordinates={cityDoc?.coordinates}
-                height="600px"
+                frameClassName="aspect-[3/2] md:aspect-auto md:h-[600px]"
+                fullBleedMobile
               />
             </div>
           </NeighborhoodErrorBoundary>

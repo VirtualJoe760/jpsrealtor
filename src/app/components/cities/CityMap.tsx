@@ -15,6 +15,9 @@ interface CityMapProps {
   };
   onListingClick?: (listing: MapListing) => void;
   height?: string;
+  /** Passed through to ListingsMap — see its docs. */
+  frameClassName?: string;
+  fullBleedMobile?: boolean;
 }
 
 const FILTER_OPTIONS = [
@@ -31,6 +34,8 @@ export default function CityMap({
   coordinates,
   onListingClick,
   height = "600px",
+  frameClassName,
+  fullBleedMobile,
 }: CityMapProps) {
   const [listings, setListings] = useState<MapListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +134,8 @@ export default function CityMap({
       listings={listings}
       loading={loading}
       height={height}
+      frameClassName={frameClassName}
+      fullBleedMobile={fullBleedMobile}
       center={coordinates}
       showFilters
       filterOptions={FILTER_OPTIONS}

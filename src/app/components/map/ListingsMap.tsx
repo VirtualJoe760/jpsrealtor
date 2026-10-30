@@ -33,6 +33,14 @@ export interface ListingsMapProps {
   loading?: boolean;
   /** Map container height */
   height?: string;
+  /**
+   * Tailwind sizing classes for the map frame (e.g. "aspect-[3/2] md:h-[600px]").
+   * When set, replaces the fixed inline `height` so the frame can be
+   * responsive — a fixed px height is a tall portrait box on phones.
+   */
+  frameClassName?: string;
+  /** Edge-to-edge on mobile: drop the side border/rounding; inset the filter bar. */
+  fullBleedMobile?: boolean;
   /** Initial center coordinates */
   center?: { latitude: number; longitude: number };
   /** Initial zoom level */
@@ -230,6 +238,8 @@ export default function ListingsMap({
   listings,
   loading = false,
   height = "500px",
+  frameClassName,
+  fullBleedMobile = false,
   center,
   zoom = 12,
   fitBoundsOnLoad = true,
@@ -343,9 +353,16 @@ export default function ListingsMap({
 
   return (
     <div className="space-y-3">
-      <div className="relative" style={{ height }}>
+      <div
+        className={`relative ${frameClassName ?? ""}`}
+        style={frameClassName ? undefined : { height }}
+      >
         <div
-          className={`w-full h-full rounded-xl overflow-hidden shadow-xl border ${
+          className={`w-full h-full overflow-hidden ${
+            fullBleedMobile
+              ? "border-y md:border md:rounded-xl md:shadow-xl"
+              : "rounded-xl shadow-xl border"
+          } ${
             isLight ? "border-gray-300" : "border-gray-700"
           }`}
           style={{ touchAction: "pan-x pan-y" }}
@@ -474,6 +491,8 @@ export default function ListingsMap({
       {showFilters && filterOptions && onFilterChange && (
         <div
           className={`flex gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide rounded-xl border p-1.5 ${
+            fullBleedMobile ? "mx-4 md:mx-0" : ""
+          } ${
             isLight
               ? "bg-white border-gray-200"
               : "bg-black/85 border-gray-700"
@@ -501,7 +520,7 @@ export default function ListingsMap({
 
       {/* Status text + action button */}
       {(statusText || actionButton) && (
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between ${fullBleedMobile ? "px-4 md:px-0" : ""}`}>
           {statusText && (
             <div className={`text-xs md:text-sm ${isLight ? "text-gray-500" : "text-gray-500"}`}>
               {statusText}

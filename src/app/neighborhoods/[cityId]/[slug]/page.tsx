@@ -212,7 +212,7 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
           tree. */}
       <nav
         aria-label="Breadcrumb"
-        className="mx-auto max-w-7xl px-4 pt-20 text-sm text-neutral-500 md:pt-12 dark:text-neutral-400"
+        className="mx-auto max-w-7xl px-4 pt-4 text-sm text-neutral-500 md:pt-12 dark:text-neutral-400"
       >
         <ol className="flex flex-wrap items-center gap-1.5">
           <li>
