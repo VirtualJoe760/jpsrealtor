@@ -86,6 +86,10 @@ const PUBLIC_API_PREFIXES = [
   "/api/schools", "/api/schoolImage", "/api/search", "/api/agents",
   "/api/yelp-search", "/api/chat", "/api/chat-v2", "/api/chat-v3", "/api/swipes",
   "/api/activity", "/api/photos",
+  // RSS feeds (/api/rss/[section]). Feed readers never have a session, so the
+  // gate 401'd every feed from 2026-07-02 until 2026-10-29. Read-only: the
+  // route lists the domain owner's published articles.
+  "/api/rss",
 ];
 
 // Individual public routes inside otherwise-authenticated subtrees.
