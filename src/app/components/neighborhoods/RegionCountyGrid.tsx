@@ -32,7 +32,7 @@ export default function RegionCountyGrid({ region }: { region: RegionData }) {
   const isLight = currentTheme === "lightgradient";
 
   return (
-    <div className="min-h-screen pt-20 md:pt-12 px-4">
+    <div className="min-h-screen pt-4 md:pt-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Back */}
         <Link
