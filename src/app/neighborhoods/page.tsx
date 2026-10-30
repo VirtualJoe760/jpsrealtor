@@ -36,10 +36,13 @@ export default async function NeighborhoodsPage() {
   return (
     <>
       <NeighborhoodsClient />
+      {/* Collapsed: the region accordions above are the real navigation; this
+          stays only so the city links exist in server HTML for crawlers. */}
       <CrawlableLinks
-        title="Browse cities"
-        description={`${cityLinks.length.toLocaleString()} Southern California cities with active listings`}
+        title="All cities A–Z"
+        description={`${cityLinks.length.toLocaleString()} with active listings`}
         links={cityLinks}
+        collapsible
       />
     </>
   );

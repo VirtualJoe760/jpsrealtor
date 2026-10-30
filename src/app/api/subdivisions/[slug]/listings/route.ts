@@ -494,13 +494,18 @@ export async function GET(
                    listing.primaryPhoto.uri640;
       } else if (listing.media && listing.media.length > 0) {
         // Fallback: Old media array approach
+        // The photo sync now stores media camelCase (uri1600, primary: true).
+        // Reading only the old PascalCase keys left primaryPhotoUrl null, so
+        // the subdivision map popup showed no photo. Accept both shapes.
         const media = listing.media;
         const primaryPhoto = media.find(
-          (m: any) => m.MediaCategory === "Primary Photo" || m.Order === 0
+          (m: any) => m.primary === true || m.MediaCategory === "Primary Photo" || m.Order === 0
         ) || media[0];
 
         photoUrl = primaryPhoto
-          ? primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640
+          ? primaryPhoto.uri1600 || primaryPhoto.uri1280 || primaryPhoto.uri1024 || primaryPhoto.uri800 || primaryPhoto.uri640 ||
+            primaryPhoto.Uri1600 || primaryPhoto.Uri1280 || primaryPhoto.Uri1024 || primaryPhoto.Uri800 || primaryPhoto.Uri640 ||
+            null
           : null;
       }
 

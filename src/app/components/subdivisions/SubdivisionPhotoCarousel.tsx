@@ -20,6 +20,11 @@ interface Photo {
   bathroomsTotalDecimal: number;
 }
 
+// Landscape frame sized to the viewport. The old fixed h-[600px]/h-[700px]
+// rendered a tall portrait crop on phones and ate the whole first screen on
+// desktop.
+const FRAME = "aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9]";
+
 interface SubdivisionPhotoCarouselProps {
   subdivisionSlug: string;
   cityId?: string;
@@ -90,6 +95,16 @@ export default function SubdivisionPhotoCarousel({
     setCurrentIndex(index);
   };
 
+  // Swipe on touch devices (40px threshold so vertical scrolls don't flip slides)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 40) (dx > 0 ? goToPrevious : goToNext)();
+    setTouchStartX(null);
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -109,12 +124,12 @@ export default function SubdivisionPhotoCarousel({
       <div className="space-y-4">
         {/* Main photo skeleton */}
         <div
-          className={`relative w-full h-[600px] md:h-[700px] ${
+          className={`relative w-full ${FRAME} ${
             isLight ? "bg-gray-200" : "bg-gray-800"
-          } rounded-2xl animate-pulse`}
+          } md:rounded-2xl animate-pulse`}
         />
         {/* Thumbnails skeleton */}
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-3 overflow-x-auto pb-2 px-4 md:px-0">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
@@ -161,11 +176,15 @@ export default function SubdivisionPhotoCarousel({
   const currentPhoto = photos[currentIndex];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Main Listing Display - Slideshow */}
-      <div className={`relative rounded-2xl overflow-hidden ${
-        isLight ? "bg-gray-100" : "bg-gray-900"
-      } shadow-2xl`}>
+      <div
+        className={`relative md:rounded-2xl overflow-hidden ${
+          isLight ? "bg-gray-100" : "bg-gray-900"
+        } md:shadow-xl`}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
@@ -173,7 +192,7 @@ export default function SubdivisionPhotoCarousel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="relative w-full h-[600px] md:h-[700px]"
+            className={`relative w-full ${FRAME}`}
           >
             {/* Photo */}
             <Image
@@ -187,62 +206,52 @@ export default function SubdivisionPhotoCarousel({
             />
 
             {/* Gradient Overlay - dark for both themes */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
             {/* Listing Details Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
-              {/* Price */}
-              <div className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white">
-                {formatPrice(currentPhoto.listPrice)}
-              </div>
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                {/* Price */}
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-none">
+                  {formatPrice(currentPhoto.listPrice)}
+                </div>
 
-              {/* Beds & Baths */}
-              <div className="flex items-center gap-8 mb-6">
-                {currentPhoto.bedsTotal !== undefined && currentPhoto.bedsTotal !== null && (
-                  <div className="flex items-center gap-3 text-white">
-                    <Bed className="w-6 h-6 md:w-7 md:h-7" />
-                    <span className="text-2xl md:text-3xl font-bold">
-                      {currentPhoto.bedsTotal}
+                {/* Beds & Baths */}
+                <div className="mt-2 flex items-center gap-4 text-sm md:text-base text-white/90">
+                  {currentPhoto.bedsTotal !== undefined && currentPhoto.bedsTotal !== null && (
+                    <span className="flex items-center gap-1.5">
+                      <Bed className="w-4 h-4" />
+                      {currentPhoto.bedsTotal} {currentPhoto.bedsTotal === 1 ? "bed" : "beds"}
                     </span>
-                    <span className="text-lg md:text-xl font-medium text-white/90">
-                      {currentPhoto.bedsTotal === 1 ? "bed" : "beds"}
+                  )}
+                  {currentPhoto.bathroomsTotalDecimal !== undefined && currentPhoto.bathroomsTotalDecimal !== null && (
+                    <span className="flex items-center gap-1.5">
+                      <Bath className="w-4 h-4" />
+                      {currentPhoto.bathroomsTotalDecimal} {currentPhoto.bathroomsTotalDecimal === 1 ? "bath" : "baths"}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {currentPhoto.bathroomsTotalDecimal !== undefined && currentPhoto.bathroomsTotalDecimal !== null && (
-                  <div className="flex items-center gap-3 text-white">
-                    <Bath className="w-6 h-6 md:w-7 md:h-7" />
-                    <span className="text-2xl md:text-3xl font-bold">
-                      {currentPhoto.bathroomsTotalDecimal}
-                    </span>
-                    <span className="text-lg md:text-xl font-medium text-white/90">
-                      {currentPhoto.bathroomsTotalDecimal === 1 ? "bath" : "baths"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Address */}
-              <div className="flex items-start gap-3 mb-8">
-                <MapPin className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0 mt-1 text-white" />
-                <p className="text-xl md:text-2xl lg:text-3xl font-semibold leading-tight text-white">
-                  {currentPhoto.address}
+                {/* Address */}
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs sm:text-sm md:text-base text-white/80 truncate">
+                  <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                  <span className="truncate">{currentPhoto.address}</span>
                 </p>
               </div>
 
               {/* View Details Button */}
               <Link
                 href={`/mls-listings/${currentPhoto.slug}`}
-                className={`inline-flex items-center gap-3 px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-2xl ${
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full font-semibold text-xs md:text-sm transition-colors ${
                   isLight
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
               >
-                View Full Details
+                <span className="hidden sm:inline">View Details</span>
+                <span className="sm:hidden">View</span>
                 <svg
-                  className="w-6 h-6"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -262,39 +271,25 @@ export default function SubdivisionPhotoCarousel({
               <>
                 <button
                   onClick={goToPrevious}
-                  className={`absolute left-6 top-1/3 -translate-y-1/2 ${
-                    isLight
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  } backdrop-blur-md p-4 rounded-full transition-all duration-300 shadow-xl hover:scale-110 z-10`}
+                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/50 text-white/90 hover:text-white backdrop-blur-sm transition-colors z-10"
                   aria-label="Previous listing"
                 >
-                  <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
+                  <ChevronLeft className="w-5 h-5" strokeWidth={2} />
                 </button>
 
                 <button
                   onClick={goToNext}
-                  className={`absolute right-6 top-1/3 -translate-y-1/2 ${
-                    isLight
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  } backdrop-blur-md p-4 rounded-full transition-all duration-300 shadow-xl hover:scale-110 z-10`}
+                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/50 text-white/90 hover:text-white backdrop-blur-sm transition-colors z-10"
                   aria-label="Next listing"
                 >
-                  <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
+                  <ChevronRight className="w-5 h-5" strokeWidth={2} />
                 </button>
               </>
             )}
 
             {/* Counter Badge */}
             <div
-              className={`absolute top-6 right-6 ${
-                isLight
-                  ? "bg-white/95 text-gray-900"
-                  : "bg-black/90 text-white"
-              } backdrop-blur-md px-5 py-2.5 rounded-full text-base font-bold shadow-xl border ${
-                isLight ? "border-gray-200" : "border-white/20"
-              }`}
+              className="absolute top-3 right-3 md:top-4 md:right-4 bg-black/40 text-white backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-semibold tabular-nums"
             >
               {currentIndex + 1} / {photos.length}
             </div>
@@ -303,10 +298,8 @@ export default function SubdivisionPhotoCarousel({
       </div>
 
       {/* Thumbnail Navigation */}
-      <div className={`relative p-4 rounded-xl ${
-        isLight ? "bg-white border border-gray-200" : "bg-gray-900/50"
-      }`}>
-        <div className={`flex gap-3 overflow-x-auto px-2 py-2 pb-3 scrollbar-thin ${
+      <div className="relative">
+        <div className={`flex gap-3 overflow-x-auto px-4 md:px-1 py-2 pb-3 scrollbar-thin ${
           isLight
             ? "scrollbar-thumb-gray-300 scrollbar-track-gray-100"
             : "scrollbar-thumb-gray-600 scrollbar-track-gray-800"
@@ -317,10 +310,10 @@ export default function SubdivisionPhotoCarousel({
               onClick={() => goToListing(index)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`flex-shrink-0 relative w-40 h-28 rounded-xl overflow-hidden transition-all duration-300 ${
+              className={`flex-shrink-0 relative w-28 h-20 md:w-36 md:h-24 rounded-lg overflow-hidden transition-all duration-300 ${
                 index === currentIndex
-                  ? `ring-4 ${isLight ? "ring-blue-600" : "ring-emerald-500"} shadow-2xl scale-105`
-                  : `ring-2 ${isLight ? "ring-gray-300 hover:ring-blue-400" : "ring-gray-700 hover:ring-emerald-500"} shadow-lg hover:shadow-xl opacity-70 hover:opacity-100`
+                  ? `ring-2 ${isLight ? "ring-blue-600" : "ring-emerald-500"} shadow-lg`
+                  : `ring-1 ${isLight ? "ring-gray-300 hover:ring-blue-400" : "ring-gray-700 hover:ring-emerald-500"} opacity-70 hover:opacity-100`
               }`}
             >
               {/* Thumbnail Photo */}
@@ -329,17 +322,17 @@ export default function SubdivisionPhotoCarousel({
                 alt={`Listing ${index + 1}`}
                 fill
                 className="object-cover"
-                sizes="160px"
+                sizes="144px"
                 quality={85}
               />
 
               {/* Overlay with price - dark for both themes */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              <div className="absolute bottom-2 left-2 right-2">
-                <p className="font-bold text-sm truncate text-white">
+              <div className="absolute bottom-1.5 left-2 right-2 text-left">
+                <p className="font-bold text-xs md:text-sm truncate text-white">
                   {formatPrice(photo.listPrice)}
                 </p>
-                <p className="text-xs truncate text-white/80">
+                <p className="text-[10px] md:text-xs truncate text-white/80">
                   {photo.bedsTotal}bd · {photo.bathroomsTotalDecimal}ba
                 </p>
               </div>
@@ -349,11 +342,6 @@ export default function SubdivisionPhotoCarousel({
       </div>
 
       {/* Browse instruction */}
-      <div className="text-center pt-2">
-        <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-          Click thumbnails to browse listings or use arrow keys
-        </p>
-      </div>
     </div>
   );
 }

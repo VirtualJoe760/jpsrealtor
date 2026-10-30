@@ -26,6 +26,13 @@ interface CrawlableLinksProps {
   /** Rendered above the grid, e.g. "223 cities across Southern California" */
   description?: string;
   columns?: 2 | 3 | 4;
+  /**
+   * Render as a closed <details> disclosure. For hubs whose own UI already
+   * navigates (e.g. /neighborhoods region accordions) and where a 200-row list
+   * is visual noise. Collapsed <details> content is still in the HTML and
+   * indexed — unlike display:none, it is user-openable, so not a cloaking signal.
+   */
+  collapsible?: boolean;
 }
 
 export default function CrawlableLinks({
@@ -33,6 +40,7 @@ export default function CrawlableLinks({
   links,
   description,
   columns = 4,
+  collapsible = false,
 }: CrawlableLinksProps) {
   if (!links.length) return null;
 
@@ -43,19 +51,7 @@ export default function CrawlableLinks({
         ? "sm:grid-cols-2 lg:grid-cols-3"
         : "sm:grid-cols-2 lg:grid-cols-4";
 
-  return (
-    <nav
-      aria-label={title}
-      className="border-t border-neutral-200/60 dark:border-neutral-800 px-4 py-10 sm:px-6"
-    >
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-300">
-        {title}
-      </h2>
-      {description ? (
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {description}
-        </p>
-      ) : null}
+  const list = (
       <ul className={`mt-4 grid grid-cols-1 gap-x-6 gap-y-1.5 ${colClass}`}>
         {links.map((link) => (
           <li key={link.href} className="min-w-0">
@@ -73,6 +69,42 @@ export default function CrawlableLinks({
           </li>
         ))}
       </ul>
+  );
+
+  if (collapsible) {
+    return (
+      <nav
+        aria-label={title}
+        className="border-t border-neutral-200/60 dark:border-neutral-800 px-4 py-6 sm:px-6"
+      >
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 [&::-webkit-details-marker]:hidden">
+            <span className="inline-block transition-transform group-open:rotate-90">›</span>
+            <span>
+              {title}
+              {description ? ` · ${description}` : ""}
+            </span>
+          </summary>
+          {list}
+        </details>
+      </nav>
+    );
+  }
+
+  return (
+    <nav
+      aria-label={title}
+      className="border-t border-neutral-200/60 dark:border-neutral-800 px-4 py-10 sm:px-6"
+    >
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-300">
+        {title}
+      </h2>
+      {description ? (
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          {description}
+        </p>
+      ) : null}
+      {list}
     </nav>
   );
 }

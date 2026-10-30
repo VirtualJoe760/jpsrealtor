@@ -181,15 +181,19 @@ export default function SubdivisionPageClient({
         <div className="space-y-8">
           {/* Photo Carousel */}
           <NeighborhoodErrorBoundary sectionName="Photos">
-            <div className={`${cardBg} ${cardBorder} border rounded-2xl p-6 md:p-8 ${shadow}`}>
-              {/* Renamed from "Featured Listings": this is a PHOTO carousel,
-                  and the old heading made a page with an empty carousel look
-                  like a listings section with no listings — which is how the
-                  audit read it. The real listing anchors are server-rendered
-                  further down (see page.tsx). */}
-              <h2 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-6`}>
-                Photos from {subdivision.name}
-              </h2>
+            {/* Full-bleed on mobile: -mx-4 cancels the page gutter and the card
+                chrome drops away so the photo spans the screen edge to edge.
+                Card classes are literal (not md:${"{"}cardBg}) because Tailwind
+                can't generate prefixes built at runtime. */}
+            <div className={`-mx-4 md:mx-0 pb-2 md:p-8 md:border md:rounded-2xl ${
+              isLight
+                ? "md:bg-white/95 md:border-slate-300 md:shadow-lg"
+                : "md:bg-gray-900/50 md:border-gray-800 md:shadow-2xl md:shadow-black/40"
+            }`}>
+              {/* No heading: the carousel sits directly under the page title.
+                  (Never label it "Featured Listings" — an empty carousel then
+                  reads as a listings section with no listings. The real
+                  listing anchors are server-rendered further down, see page.tsx.) */}
               <SubdivisionPhotoCarousel
                 subdivisionSlug={slug}
                 cityId={cityId}

@@ -113,6 +113,9 @@ export default function NeighborhoodsClient() {
     setExpandedCities(newSet);
   };
 
+  // `slug` is everything after /neighborhoods/. Subdivisions only exist under
+  // their city (/neighborhoods/<city>/<subdivision>); passing the bare
+  // subdivision slug 404'd every community click in this accordion.
   const handleNavigation = (type: 'region' | 'county' | 'city' | 'subdivision', slug: string) => {
     router.push(`/neighborhoods/${slug}`);
   };
@@ -412,7 +415,7 @@ export default function NeighborhoodsClient() {
                                         {city.subdivisions.map((subdivision, subIndex) => (
                                           <button
                                             key={subdivision.slug}
-                                            onClick={() => handleNavigation('subdivision', subdivision.slug)}
+                                            onClick={() => handleNavigation('subdivision', `${city.slug}/${subdivision.slug}`)}
                                             className={`w-full px-6 py-3 pl-36 flex items-center justify-between transition-colors ${
                                               isLight ? 'hover:bg-purple-50' : 'hover:bg-gray-800/50'
                                             } ${subIndex > 0 && 'border-t'} ${isLight ? 'border-gray-50' : 'border-gray-800'}`}
