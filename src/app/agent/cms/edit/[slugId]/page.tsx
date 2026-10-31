@@ -25,6 +25,7 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 import CMSModal, { type CMSModalProps } from "../../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../../components/LandingPageOptions";
+import { previewSrc } from "@/lib/article-preview";
 
 type TabType = "edit" | "preview";
 
@@ -563,14 +564,14 @@ export default function EditArticlePage() {
               <div className={`${border} rounded-lg overflow-hidden`} style={{ height: "800px" }}>
                 <iframe
                   key={`sidebar-preview-${previewKey}`}
-                  src={`/articles/preview?${new URLSearchParams({
+                  src={previewSrc({
                     title: formData.title || "Untitled Article",
                     excerpt: formData.excerpt || "",
                     content: formData.content || "",
                     category: formData.category,
                     imageUrl: formData.featuredImage.url || "",
                     theme: currentTheme,
-                  }).toString()}`}
+                  })}
                   className="w-full h-full"
                   title="Article Preview"
                 />
@@ -1061,14 +1062,14 @@ export default function EditArticlePage() {
                   >
                     <iframe
                       key={previewKey}
-                      src={`/articles/preview?${new URLSearchParams({
+                      src={previewSrc({
                         title: formData.title || "Untitled Article",
                         excerpt: formData.excerpt || "",
                         content: formData.content || "",
                         category: formData.category,
                         imageUrl: formData.featuredImage.url || "",
                         theme: currentTheme,
-                      }).toString()}`}
+                      })}
                       className="w-full h-screen"
                       title="Article Preview"
                     />

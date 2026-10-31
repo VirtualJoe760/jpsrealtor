@@ -1,15 +1,32 @@
 // src/app/articles/preview/page.tsx
 "use client";
 
-import { use, Suspense, useEffect } from "react";
+import { use, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { readPreviewStash } from "@/lib/article-preview";
 import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import LandingPagePreview from "../LandingPagePreview";
 
 function PreviewContent() {
-  const searchParams = useSearchParams();
+  const urlParams = useSearchParams();
+
+  // Long articles arrive via localStorage (?stash=1) instead of the query
+  // string, which overflowed Vercel's URL limit (see lib/article-preview.ts).
+  // Read it after mount so the server render and hydration agree.
+  const isStashed = urlParams.get("stash") === "1";
+  const [stash, setStash] = useState<Record<string, string> | null>(null);
+  const [stashRead, setStashRead] = useState(false);
+  useEffect(() => {
+    if (!isStashed) return;
+    setStash(readPreviewStash());
+    setStashRead(true);
+  }, [isStashed, urlParams]);
+  const searchParams = {
+    get: (k: string): string | null =>
+      isStashed ? (stash?.[k] ?? null) : urlParams.get(k),
+  };
 
   // Detect if we're in an iframe and add class to body
   useEffect(() => {
@@ -46,6 +63,10 @@ function PreviewContent() {
   }, [theme]);
 
   const isLight = theme === "lightgradient";
+
+  // Stash not read yet (first client render): show nothing rather than an
+  // "Untitled Article" flash.
+  if (isStashed && !stashRead) return null;
 
   // Render landing page preview using separate component
   if (isLandingPage) {
