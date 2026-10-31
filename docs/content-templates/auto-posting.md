@@ -1,8 +1,8 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-30
-last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25 — same status, different message, see "Blocked 2026-10-25". The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
+last_verified: 2026-10-31
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25, 2026-10-30 and 2026-10-31 — same status, same "outstanding balance" message since the 25th, see "Blocked 2026-10-31", which also records the Vertex AI route being probed and found closed. The pool, queue and Recuerdo frame numbers in "Blocked 2026-10-31" were measured 2026-10-31. The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
@@ -1950,6 +1950,102 @@ arrival:
 |---|---|---|---|
 | 49552 Recuerdo Lane, Morongo Valley, $467,500 | 55 | Unfurnished | new 2026-10-28, unchecked. Remarks: just over an acre fenced, fireplace, private casita with kitchenette, mountain views |
 
+### Blocked 2026-10-31 — fourth blocked run, and Vertex is not the way around it
+
+**No build.** `tmp-gemini-probe.ts` against a real 17 Lugo frame returns the
+same 403 as 10-24, 10-25 and 10-30, verbatim:
+
+```
+403 {"error":{"code":403,"message":"Your billing account has an outstanding
+     balance. Make a payment at https://aistudio.google.com/billing to restore
+     service. ...","status":"PERMISSION_DENIED"}}
+```
+
+Nothing may be struck on a selector count while this stands.
+
+#### The alternate route was tested and is closed
+
+The three previous entries treat the payment as the only lever. It is worth
+recording that the obvious workaround was tried and does not work, so a fifth
+run does not spend the time: `.env.local` carries `GOOGLE_APPLICATION_CREDENTIALS`,
+`GOOGLE_SERVICE_ACCOUNT_B64` and `GOOGLE_CLOUD_PROJECT=jpsrealtor`, and
+`@google/genai` 2.8.0 reaches the **same Gemini models through Vertex AI** on a
+service account with `{ vertexai: true, project, location }` — no pipeline
+rewrite, a constructor argument. Vertex bills to the GCP project rather than to
+AI Studio, so on paper it sidesteps the unpaid balance.
+
+It does not. `scripts/tmp-vertex-probe.ts` and `tmp-vertex-probe2.ts` (both new,
+both scratch) establish:
+
+| Probe | Result |
+|---|---|
+| Service-account auth | **works** — the failures are 404/403 on resources, not 401 |
+| `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-flash-latest`, `gemini-2.5-flash-lite` @ `us-central1` and `global` | **404** `Publisher model ... was not found or your project does not have access to it` |
+| `serviceusage` read of `aiplatform.googleapis.com` | **403** permission denied — the SA cannot even read whether the API is on |
+| `cloudbilling` read of the project | **403** `Cloud Billing API has not been used in project 782962984168 before or it is disabled` |
+
+So Vertex AI is not enabled on the `jpsrealtor` project, the service account has
+no rights to enable it, and the project's billing is unread because that API is
+off too. Enabling Vertex and granting `aiplatform.user` are console actions —
+and they would attach to the **same Google billing account** that is in arrears.
+It is the same bill plus extra setup, not a way around it.
+
+**Conclusion: paying the AI Studio balance is the only lever.** That is a
+financial action a scheduled run may not take. Neither browser could put the
+page on screen to make it one click: the in-app browser loaded
+`aistudio.google.com/billing` and was redirected to a signed-out Google sign-in,
+and `list_connected_browsers` returned `[]`, so the Chrome extension is not
+connected. Handed over as the link, which is the one case where that is correct.
+
+#### Queue and pool
+
+`awaiting_review` **0**, distinct listings **0**, nothing stale, nothing to
+relist-check — the 2026-10-29 bulk decline still stands and no reason was ever
+recorded. Pool is **37 broad / 30 key-matched**, down two from 10-30. Diff vs
+the 10-25 snapshot: 74586 Tesla (old key), 66550 San Diego, 28 Oak Tree and
+1184 Lear left; the new-key 74586 Tesla and 49552 Recuerdo arrived.
+
+**17 Lugo Drive is still the pick**, unchanged for four runs. `lugo-drive.ts`
+re-linted today with `tmp-copy-lint.ts` — all seventeen strings pass, cover body
+201/260, every room caption under 90, both CTA paragraphs under 110. The build
+is still one command behind the payment.
+
+#### 49552 Recuerdo Lane is checked now, and it is a real candidate
+
+Carried as "unchecked" on 10-30. Inspected directly off the contact sheet, which
+needs no Gemini, so the next run does not re-sheet it:
+
+- **Interiors are #6–#30 and furnished throughout** — yellow sofa and stacked-stone
+  fireplace (#8), dining in a window bay (#10), white kitchen with a cobalt
+  backsplash and steel-top island (#12, #14), grey sectional (#18), two made
+  bedrooms (#20, #22, #26), casita/office (#28). Professionally lit, undistorted.
+- **Outdoor is #32–#54**: covered patio with the hot tub (#32), shed and pines
+  (#34), the fenced acre (#38), block-wall planter with Joshua trees (#50),
+  aerial (#52, #54).
+- **Exclude candidates:** #22 and #26 are beds shot from the doorway with the
+  mattress filling the foreground at waist height — the opaque-near-face category
+  from 2026-08-26. #54 carries a *"lot lines are an approximation"* overlay burned
+  into the bottom edge.
+- **No private pool.** `poolFeatures` is unset; `spaFeatures` is
+  `"Hot Tub, Private, Above Ground"` and the tub in #32 is the only water. A
+  `pool` room key will land on the patio, so that caption must be worded to the
+  patio and the hot tub, never to a pool.
+- **#28 is the Hombria/Apache trap** — one charcoal accent wall in an otherwise
+  white, wood-look-floor room. Draft the invariant (the floor, the window to the
+  hills) and make it specific at reband, per `copy-voice.md` §8.
+
+`furnished: "Unfurnished"` is the sale term, not a statement about the
+photographs — it is set on this listing and the rooms are full. Do not read that
+field as a staging disqualification.
+
+#### A note on the scratch-script list
+
+`tmp-listing-facts.js`, `tmp-one-photo-url.js`, `tmp-photo-urls.js` and
+`tmp-urls.js` already do the record read and the URL dump. This run wrote three
+replacements before finding them and deleted them again. **Grep `scripts/` for an
+existing `tmp-*` before writing one** — the list below is long enough that it is
+cheaper to search it than to re-derive it.
+
 ## Implementation map
 
 | Piece | Where | Notes |
@@ -1976,6 +2072,8 @@ arrival:
 `scripts/tmp-stale-queue.js`, `tmp-pool3.js`, `tmp-pool4.js`, `tmp-detail2.js`,
 `tmp-drop-slide.js`, `tmp-graft-slide.js`, `tmp-retire-duplicate.js`,
 `tmp-retext-pending-post.ts` and `tmp-selector-dump.ts` are committed.
+
+Added 2026-10-31, both scratch and both safe to delete: `tmp-vertex-probe.ts <photoUrl>` and `tmp-vertex-probe2.ts` ask whether the same Gemini models are reachable through Vertex AI on the GCP service account instead of AI Studio on `GEMINI_API_KEY`. They are kept because the answer is no and the reasoning is not obvious — see "Blocked 2026-10-31". Re-run them only if the GCP project's APIs change.
 
 Added 2026-10-25, all scratch and all safe to delete: `tmp-copy-lint.ts <slug>`
 measures a pending config's strings against the copy-voice.md §8 budgets before
