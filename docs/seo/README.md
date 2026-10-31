@@ -1,8 +1,8 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-10-25
-related: [../multi-tenant/README.md, ../routing/README.md, ../cms/README.md]
+last_verified: 2026-10-31
+related: [../multi-tenant/README.md, ../routing/README.md, ../cms/README.md, ../listings/README.md]
 ---
 
 # SEO
@@ -35,7 +35,10 @@ The 2026-07-25 audit + fixes are the baseline; GSC context: 165 clicks /
 - **No cross-host `<loc>` entries.** Sitemap protocol requires same-host URLs;
   Google ignored the old agent/platform cross-links.
 - **Sold/inactive listings are noindexed** (kept: `robots index:false` in
-  `mls-listings/[slugAddress]/page.tsx` generateMetadata).
+  `mls-listings/[slugAddress]/page.tsx` generateMetadata). That covers a listing
+  still PRESENT in `unified_listings`. One that has left the collection
+  redirects instead of 404ing — different mechanism, see
+  [the 404 bucket](#2026-10-31--the-404-bucket-and-what-the-index-numbers-now-say).
 - **JSON-LD**: `OrganizationJsonLd` resolves the domain owner and emits a real
   RealEstateAgent (name, phone, headshot, CA DRE identifier, brokerage,
   sameAs, areaServed). Listing pages emit `PropertyListingJsonLd`
@@ -381,6 +384,114 @@ publishing a community page whose parent city says noindex would orphan it.
   rebrand — flagged, deliberately untouched.
 - The in-process sitemap cache is per-lambda; a cold start pays the full ~22s.
   A precomputed gate collection would fix it if it ever becomes a problem.
+
+## 2026-10-31 — the 404 bucket, and what the index numbers now say
+
+GSC Page indexing for `sc-domain:jpsrealtor.com`, data through 2026-10-22:
+
+| | 2026-10-11 audit | 2026-10-31 |
+|---|---|---|
+| Indexed | 3,707 | **28,900** |
+| Not indexed | 126,407 | 143,000 |
+| Sitemap URLs discovered | 2,360 → ~33,300 declared | **58,508** |
+
+The declaration work paid off — indexed pages are up ~7.8× — so record that
+before the rest, because the headline "143K not indexed" reads like a
+regression and is not one.
+
+### Most of "not indexed" is not a defect
+
+Breaking the 10 reasons down by whether anything is actually lost:
+
+| Reason | Pages | Real? |
+|---|---|---|
+| Blocked by robots.txt | 83,116 | **No** — every sampled URL is `/v1/listings/{id}/photos/{id}`, a Spark API path we deliberately disallow |
+| Crawled – currently not indexed | 28,301 | **Yes** — see below |
+| Not found (404) | 22,676 | **Was** — fixed this pass |
+| Discovered – not indexed | 7,150 | Yes — crawl budget |
+| noindex | 678 | No — the indexability gate working |
+| Alternate/canonical/redirect/soft-404/5xx | ~1,100 | Mostly no |
+
+So 83K of the 143K is the robots.txt group doing its job. It is still worth one
+note: Google only reports a blocked URL it has **discovered**, so 83K of them
+means something links `/v1/` paths into the crawl graph. Flagged, not chased.
+
+### 22,676 hard 404s on dead listing URLs
+
+`/mls-listings/[slugAddress]` called `notFound()` for any slug missing from
+`unified_listings`, and the bucket had been filling since 2025-11-08. A 404 on a
+URL Google crawled for months discards what the page earned and keeps the
+crawler returning to re-confirm it.
+
+Now two-tier, in `lib/listings/dead-listing-redirect.ts` — full rationale in
+[../listings/README.md](../listings/README.md#dead-listing-urls):
+
+- **Found in `unified_closed_listings`** → it sold, which is permanent → **308**
+  to the city page. 4 of 10 sampled 404s resolved this way.
+- **Resolves nowhere** → **307**, not 308. `--purge` is disabled, and
+  `readEnrichedListing` prefers an Active row "when multiple exist for the same
+  address (relisting scenario)", so the slug can come back; a browser caches a
+  308 indefinitely and would shadow the relisting.
+
+The destination is checked before use — a city page renders only when its
+`cities` row has `listingCount > 0`, so redirecting blind would turn one 404
+into a chain ending in a 404. Falls back to `/mls-listings`.
+
+**Two gates, easily conflated** — this one cost time:
+
+| Gate | Decides | Passing |
+|---|---|---|
+| `listingCount > 0` | whether the city page RENDERS | **1,047 / 1,047** |
+| `getCityIndexability` | whether it asks to RANK | ~193 |
+
+So these redirects frequently land on a `noindex, follow` page. Correct
+destination, but they consolidate less equity than 22,676 suggests — the honest
+claim is "the 404s stop", not "22.7K pages recovered".
+
+**Slug drift was the wrong hypothesis.** 5 of 6 unmatched slugs are absent from
+both collections under any address spelling, so these URLs really are gone and
+307 rests on relisting risk alone. Active slug tails are consistent enough to
+parse: 85,391 of 86,067 end `-ca-<zip>`, 573 end `-ca`, 103 neither.
+
+### Crawl budget is spent almost entirely on churn
+
+Of 58,508 sitemap URLs, the evergreen ones — the pages that can actually hold a
+ranking — are **393**:
+
+| child | URLs |
+|---|---|
+| `static` | 7 |
+| `cities` | 193 |
+| `subdivisions` | 151 |
+| `articles` | 42 |
+| `listings-*` (8 counties) | ~58,100 |
+
+Los Angeles alone is 27,062, 46% of the sitemap. Riverside (10,531) is 3×
+San Diego (3,386), and there is **no Coachella Valley listings child at all**
+while the GBP profile is verified in Palm Desert — where we are established and
+where the crawl budget goes do not overlap.
+
+### Still open after this pass
+
+- **28,301 "Crawled – currently not indexed" is the real remaining problem, and
+  it is NOT listing churn.** 8 of 10 sampled URLs are still `standardStatus:
+  Active` — live inventory Google fetched and declined to index. That is thin
+  content on current listings, a different fix from everything above.
+- **Closed listings carry no photos.** `primaryPhotoUrl`, `media` and
+  `externalPhotos` are present on **0 of 1,108,789** rows, which is why sold
+  pages were not built here: a text-only sold page risks landing straight in the
+  bucket above. `photosCount` (non-zero on 87%) and `resourceUri` are both 100%,
+  so the photos exist in Spark and are addressable — caching them onto closed
+  rows is the prerequisite, and it is a pipeline job, not a page one.
+- **Something links `/v1/` photo paths** into the crawl graph (see above).
+- **`josephsardella.com` is a clean alias, not a second site** — it serves the
+  same app and every page already canonicals to `jpsrealtor.com`, so making it
+  primary is a config change, not a migration. Two snags if that happens: its
+  `/sitemap.xml` currently emits `jpsrealtor.com` `<loc>`s (cross-host, which
+  the protocol forbids — see the Gotchas), and it is a URL-prefix property in
+  GSC where the primary is a domain property. Sequence would be
+  canonical/sitemap/og → 301 at the edge → new domain property + sitemap →
+  Change of Address → GBP website field last.
 
 ## Tracking & retargeting tags
 
