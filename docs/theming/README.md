@@ -1,7 +1,7 @@
 ---
 title: Theming
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-10-28
 related: [../routing/README.md, ../multi-tenant/README.md]
 ---
 
@@ -74,8 +74,9 @@ Load-bearing pieces — keep them intact:
    env(safe-area-inset-top))`, and solid `#ffffff`/`#000000` fallbacks —
    this is what paints under the island / home indicator.
 3. `<meta name="theme-color">` + `<meta name="apple-mobile-web-app-status-bar-style">`:
-   SSR'd from the resolved theme; ThemeContext re-creates them (remove +
-   append — Safari reliably notices a fresh tag) on every theme change. In
+   SSR'd from the resolved theme; ThemeContext updates them in place on every
+   theme change. Never remove React-owned SSR metas: navigation then throws
+   `removeChild` when React cleans up the already-detached tag. In
    system mode it installs **dual theme-color metas with media attributes**,
    so Safari flips the chrome natively and in sync when the OS theme changes.
 4. Do NOT add an `appleWebApp` block to `generateMetadata` — Next emits its
