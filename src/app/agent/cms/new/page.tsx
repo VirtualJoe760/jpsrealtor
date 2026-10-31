@@ -25,6 +25,7 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../components/LandingPageOptions";
 import ClaudeLandingPageChat from "../components/ClaudeLandingPageChat";
+import { previewSrc } from "@/lib/article-preview";
 
 type TabType = "generate" | "edit" | "preview";
 
@@ -597,7 +598,7 @@ export default function NewArticlePage() {
               <div className="w-full h-full overflow-auto">
                 <iframe
                   key={previewKey}
-                  src={`/articles/preview?${new URLSearchParams({
+                  src={previewSrc({
                     title: formData.title || "Untitled",
                     excerpt: formData.excerpt || "",
                     content: formData.content || "",
@@ -614,7 +615,7 @@ export default function NewArticlePage() {
                       formButtonText: lpConfig.formButtonText || "Submit",
                       formFields: JSON.stringify(lpConfig.formFields),
                     } : {}),
-                  }).toString()}`}
+                  })}
                   className="w-full h-full border-0"
                   title="Article Preview"
                 />
@@ -876,14 +877,14 @@ export default function NewArticlePage() {
                   >
                     <iframe
                       key={`generator-preview-${previewKey}`}
-                      src={`/articles/preview?${new URLSearchParams({
+                      src={previewSrc({
                         title: formData.title || "Untitled Article",
                         excerpt: formData.excerpt || "",
                         content: formData.content || "",
                         category: formData.category,
                         imageUrl: formData.featuredImage.url || "",
                         theme: currentTheme,
-                      }).toString()}`}
+                      })}
                       className="w-full h-full"
                       title="Generated Article Preview"
                     />
@@ -1248,14 +1249,14 @@ export default function NewArticlePage() {
                   >
                     <iframe
                       key={previewKey}
-                      src={`/articles/preview?${new URLSearchParams({
+                      src={previewSrc({
                         title: formData.title || "Untitled Article",
                         excerpt: formData.excerpt || "",
                         content: formData.content || "",
                         category: formData.category,
                         imageUrl: formData.featuredImage.url || "",
                         theme: currentTheme,
-                      }).toString()}`}
+                      })}
                       className="w-full h-screen"
                       title="Article Preview"
                     />
