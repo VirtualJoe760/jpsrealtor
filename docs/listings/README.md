@@ -1,7 +1,7 @@
 ---
 title: Listings / MLS
 status: partial
-last_verified: 2026-10-25
+last_verified: 2026-10-31
 related: [caching-and-traffic.md, ../multi-tenant/README.md, ../chat/README.md, ../chatrealty-api/data-tiers.md, ../mcp/tools.md]
 ---
 
@@ -35,6 +35,7 @@ from Settings — see [Hosted MLS seeding](#hosted-mls-seeding-tenant-databases)
 | `src/app/api/mls-listings/route.ts` | Canonical public search: `listingType`→`propertyType`, price/beds/baths/sqft/lot/year/amenity/HOA/city/subdivision/`mlsSource`/`excludeKeys` filters, radius overrides the bounding box, `openhouses` `$lookup`, `s-maxage=3600, stale-while-revalidate=604800` |
 | `src/app/api/mls-listings/[slugAddress]/route.ts` | Single-listing JSON for browser callers (map, chat cards); CDN `s-maxage=600` |
 | `src/lib/listings/listing-detail.ts` | Shared in-process reads (`getEnrichedListing`, `getListingPhotos`) used by the detail page, its OG image and both API routes — see [caching-and-traffic.md](caching-and-traffic.md) |
+| `src/lib/listings/dead-listing-redirect.ts` | Where `/mls-listings/<slug>` goes when the listing has left `unified_listings` — see [Dead listing URLs](#dead-listing-urls) |
 | `src/app/api/unified-listings/route.ts` | Lookup by `listingKey`/`slugAddress`, true `$near` radius (meters) |
 | `src/app/api/listings/[listingKey]/photos/route.ts` | Per-listing photos, DB-first (siblings: `listings/{nearby,related,quick-search}`) |
 | `src/lib/listings/fetch-primary-photos.ts` | Batched Spark photo fetch (50 keys/request per `mlsId`, 1h cache) |
@@ -145,9 +146,70 @@ listing goes off-market and leaves the live Spark feed.
 
 ## Frontend routes
 
-- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that reads the listing and photos in-process via `src/lib/listings/listing-detail.ts` (10-min data cache; it no longer fetches its own API over HTTP — [caching-and-traffic.md](caching-and-traffic.md)); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` falls back to `/api/cma/subdivision/{slug}` then `/api/cma/generate`. `/mls-listings/[slugAddress]/map` — listing-scoped map.
+- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that reads the listing and photos in-process via `src/lib/listings/listing-detail.ts`; an unreadable slug **redirects** rather than 404s ([Dead listing URLs](#dead-listing-urls)) (10-min data cache; it no longer fetches its own API over HTTP — [caching-and-traffic.md](caching-and-traffic.md)); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` uses `/api/cma/generate` for that listing. Subdivision rollups cannot be passed to the listing report: they have no subject or scored comp arrays. `/mls-listings/[slugAddress]/map` — listing-scoped map.
 - `/neighborhoods/[cityId]` — city page (reads `cities`) with `events`, `hoa-contact-info`, `local-business`, `school-district` sub-pages. `/neighborhoods/[cityId]/[slug]` — subdivision page (reads `subdivisions`, embeds `SubdivisionCmaSection`). The old `…/buy` and `…/sell` variants are gone.
-- `/chap` — chat + full-screen map ([../chat/README.md](../chat/README.md)). `/map` has only a metadata layout (`page.tsx.disabled`), so it serves no page.
+- `/chap` — chat + full-screen map ([../chat/README.md](../chat/README.md)). The listing bottom panel has a **CMA** button immediately before the AI listing-info button; it opens CHAP with a listing-address CMA query. `/map` has only a metadata layout (`page.tsx.disabled`), so it serves no page.
+
+## Dead listing URLs
+
+`/mls-listings/[slugAddress]` **no longer 404s** on a slug it cannot read. By
+2026-10-24 Search Console held **22,676 "Not found (404)"** URLs under
+`/mls-listings/` (first detected 2025-11-08) against 28.9k indexed pages, and a
+hard 404 on a URL Google has crawled for months discards whatever the page
+earned while the crawler keeps returning to re-confirm it.
+
+`resolveDeadListingTarget(slugAddress)` resolves a destination in two tiers:
+
+| Case | Destination | Status | Why |
+|---|---|---|---|
+| Row found in `unified_closed_listings` | `/neighborhoods/<city>` | **308** permanent | It sold; that is permanent, so Google may consolidate |
+| Slug resolves nowhere | `/neighborhoods/<city>` | **307** temporary | NOT proof it is gone — see below |
+| City page would not render | `/mls-listings` | inherits tier | A 301 into a 404 is worse than the 404 it replaced |
+
+Two constraints drive the design, and both have bitten:
+
+- **Temporary for unknown slugs, not permanent.** `--purge` is disabled (see
+  [VPS cron pipeline](#vps-cron-pipeline)), so rows leave Active only by status
+  transition — a slug matching nothing is more likely format drift or a
+  transient pipeline gap than a deleted property. `readEnrichedListing` already
+  prefers an Active row "when multiple exist for the same address (relisting
+  scenario)", i.e. the same slug can come back. Browsers cache a 308
+  indefinitely, so a permanent hop would shadow a future relisting for anyone
+  who ever hit the dead URL.
+
+  Checked 2026-10-31 and **slug drift is NOT the cause**: of six sampled 404
+  slugs matching nothing by `slugAddress`, five are absent from both
+  collections under any address spelling. So these URLs really are gone, and
+  the remaining case for 307 is the relisting risk alone — a withdrawn or
+  expired listing can return at the same address, hence the same slug. Worth
+  re-opening if that stops being true. (Slug tails are consistent enough to
+  parse: 85,391 of 86,067 active slugs end `-ca-<zip>`, 573 end `-ca`, 103
+  neither.)
+- **The destination must be confirmed to render.** A city page exists only when
+  its `cities` row has `listingCount > 0` — `getNeighborhoodsDirectory()` builds
+  the tree from `City.find({ listingCount: { $gt: 0 } })` and
+  `/neighborhoods/[cityId]` calls `notFound()` for anything outside it.
+  Measured 2026-10-31: **1,047 of 1,047** city records pass, so the gate
+  currently excludes nothing — it is a guard against a city's inventory
+  emptying, not a filter doing visible work today.
+
+Note these are **two different gates** and only the first decides whether the
+page renders. `listingCount > 0` controls existence (1,047/1,047);
+`getCityIndexability` — `activeCount ≥ 15`, `closedCount ≥ 24`, plus a complete
+stats block — controls whether the page asks to be ranked, and only ~193 cities
+clear it. So a redirect frequently lands on a `noindex, follow` city page. That
+is still the right destination: the page is real and useful to a visitor, and
+`follow` passes the signal onward — but it means these redirects consolidate
+less equity than the raw count suggests.
+
+The city is taken from the closed row when there is one, otherwise parsed from
+the slug tail — the slug is `<street>-<city>-ca[-<zip>]` with no delimiter
+between street and city, so candidates are matched longest-first against real
+city slugs ("north-tustin" must beat "tustin"). Both tail shapes are live in
+production data: `…-dana-point-ca` alongside `…-san-diego-ca-92111`.
+
+In GSC these URLs move from "Not found (404)" to "Page with redirect", which is
+an excluded state rather than an error.
 
 ## Map stack
 
@@ -199,6 +261,6 @@ scope in `src/lib/mls-scope.ts`; tiers in `src/lib/data-tiers.ts`; writer is
 
 The [dialer preview](../crm/dialer/README.md) includes mobile Home and Comps panels. They reuse saved contact facts, ContactPropertyCarousel, the read-only contact enrichment endpoint, and contact-owned closed-sale comparables. Property enrichment can return a neighborhood reference, so the workspace preserves match cautions and saved facts. Photo lookup independently requires address-matched metadata and never substitutes neighborhood images. Comps use `unified_closed_listings`, real date/radius filters, and available like-kind facts; returned-subset medians are labeled. Active asking prices are distinct from sale prices. No sample listing records or prices are fabricated.
 
-Sold-comps map interactions (verified 2026-10-18): pointer hover or keyboard focus previews the MLS photo, sold price, address and beds/baths/size without zooming. Click/tap opens a native property-details dialog with saved closed-listing media, description, sale/build/lot/pool facts, attribution and external research links. Sale-list Property details offers the same view, including sales without map coordinates. The contact-owned comparables route projects `primaryPhotoUrl`/`media`/`publicRemarks`/`listingId` from `unified_closed_listings`; the shared photo lookup may separately reuse exact-address active MLS photos or discover public property-page photos. Missing facts/photos remain explicitly unavailable. Mobile map gestures preserve one-finger panel scrolling.
+Sold-comps map interactions (verified 2026-10-18): pointer hover or keyboard focus previews the MLS photo, sold price, address and beds/baths/size without zooming. Click/tap opens a native property-details dialog with saved closed-listing media, description, sale/build/lot/pool facts, attribution and external research links. Sale-list Property details offers the same view, including sales without map coordinates. The contact-owned comparables route projects `primaryPhotoUrl`/`media`/`publicRemarks`/`listingId` from `unified_closed_listings`; the shared photo lookup may separately reuse exact-address active MLS photos or discover public property-page photos. **Measured 2026-10-31: `primaryPhotoUrl`, `media` and `externalPhotos` are present on 0 of 1,108,789 closed rows** — only `publicRemarks` (98.9%) and `listingId` actually come back from that projection, so every sold-comp photo today arrives via the separate lookup, not the projection. What closed rows *do* carry is `photosCount` (100%, non-zero on 87%) and `resourceUri` (100%), i.e. the photos exist in Spark and are addressable; nothing in this repo caches them onto closed rows the way the 9:00/9:30 AM jobs populate active `media[]`. Missing facts/photos remain explicitly unavailable. Mobile map gestures preserve one-finger panel scrolling.
 
 Property photo enrichment (2026-10-18): contacts and sold-property dialogs share free, best-effort address-verified photo lookup and provenance-aware caching. POST lookups can seed declared `externalPhotos` fields on contacts/closed listings; MLS media is preserved. Source blocks are reported; no paid search provider or bypass is used. See [property-photo-discovery](../crm/property-photo-discovery.md).
