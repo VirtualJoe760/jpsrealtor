@@ -68,7 +68,7 @@ export default function ArticlePageClient({ post, category, mdxContent }: Articl
             <BookOpen className="w-5 h-5" />
             <span className="text-sm uppercase tracking-wider">Article</span>
           </div>
-          <h1 className={`text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl ${
+          <h1 className={`text-2xl sm:text-3xl md:text-5xl font-bold mb-4 drop-shadow-2xl ${
             isLight ? 'text-gray-900' : 'text-white'
           }`}>
             {post.title || "Untitled Post"}
