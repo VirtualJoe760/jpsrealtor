@@ -72,24 +72,9 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
     async function fetchCMA() {
       setLoading(true);
       try {
-        // Fast path: try pre-built subdivision CMA if subdivision is known
-        if (subdivisionName) {
-          const slug = subdivisionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          try {
-            const subRes = await fetch(`/api/cma/subdivision/${slug}`);
-            if (subRes.ok && !cancelled) {
-              const subData = await subRes.json();
-              if (subData.cmaStats || subData.active || subData.closed) {
-                setResult(subData.cmaStats ?? subData);
-                return;
-              }
-            }
-          } catch {
-            // Subdivision CMA not available — fall through to full generation
-          }
-        }
-
-        // Slow path: full CMA generation
+        // A subdivision rollup has no subject or scored comp arrays and cannot
+        // be rendered as a listing CMA. Prebuilt listing results arrive via
+        // preloadedResult; otherwise use the listing-specific endpoint.
         const res = await fetch(`/api/cma/generate?listingKey=${encodeURIComponent(listingKey)}`);
         if (!res.ok) throw new Error(`CMA generation failed: ${res.status}`);
         const data = await res.json();

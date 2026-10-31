@@ -1,7 +1,7 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-10-26
+last_verified: 2026-10-28
 related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md, ../routing/README.md, ../chatrealty-api/chap-search-pg.md]
 supersedes: docs/archive/chat-production/CHAT_V3.md
 ---
@@ -160,7 +160,7 @@ URL contract on `/chap` (the URL always wins over saved state):
 |---|---|
 | `view=map` or `map=open` | Show the map; with `lat`/`lng`/`zoom` skip the spawn resolver |
 | `listing=<slug>` | Restore the selected listing panel |
-| `aiQuery=<text>` | Hide the map, auto-send the text to `ChatWidget`, then strip the param. Used by the AI button in `ListingBottomPanel` |
+| `aiQuery=<text>` | Hide the map, auto-send the text to `ChatWidget`, then strip the param. Used by the adjacent CMA and AI buttons in `ListingBottomPanel`; CMA sends `Generate a CMA for {address}` |
 | no `view` | Chat view; the sidebar "Chat" link closes the map even if state had it open |
 
 The map toggle sync never re-adds `?view=map` from state. **New Chat** clears
