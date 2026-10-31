@@ -1,7 +1,7 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-25
+last_verified: 2026-10-30
 last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25 — same status, different message, see "Blocked 2026-10-25". The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
@@ -1917,6 +1917,38 @@ none of it material: 41142 Calle Bosque and the old 5803 Los Santos key left,
 68148 Madrid arrived, and three queued listings cut their price. The eleven
 FRESH stageable rows and the six disqualifications are unchanged, so the
 2026-10-24 candidate table stands as written and 17 Lugo is still the pick.
+
+### Blocked 2026-10-30 — same bill, but the queue was emptied the day before
+
+**No build, third blocked run.** `tmp-gemini-probe.ts` returns the same 403
+*"Your billing account has an outstanding balance"*, and `tmp-dump-why.ts` on 17
+Lugo returns `urls=35 assessed=0 stageable=0`. Do not strike anything on that.
+
+**`awaiting_review` is now 0, and that is not a bug in `tmp-stale-queue.js`.**
+All 29 posts were set `declined` on 2026-10-29 around 20:21 UTC, one every
+second or so, with `declineReason: null`. The status counts are now **54
+declined, 2 posted, nothing else**. There is no recorded reason, so this run
+makes no guess at one.
+
+**That changes what `queued` means in the pool report.** `tmp-pool4.js` tests
+`distinct("listingKey")` across every status, so a row marked `queued` may now
+hold only declined builds. The narrowing from 2026-09-07 (generate only for a
+never-queued listing) was there to stop a second live build of one house
+reaching the review stack, and with an empty stack that reason does not apply.
+Whether declined listings are back in the pool is the agent's call, because a
+bulk decline with no reason may be a verdict on those builds. 17 Lugo is
+unaffected: it was never built.
+
+Pool is **38 broad / 30 key-matched**. Thirteen FRESH stageable rows, of which
+four are relists or a repeat of a repo config (Chuperosa, Acoma, Los Santos, and
+the new-key 74586 Tesla, which has `tesla-drive.ts`) and three are standing
+strikes (Mountain View, Barron, Harbor). Never-built: **17 Lugo, still the pick,
+copy in `lugo-drive.ts`**; Madrid, Avenida Rubio, Willow, Latham, and one new
+arrival:
+
+| Candidate | Photos | `furnished` | Read |
+|---|---|---|---|
+| 49552 Recuerdo Lane, Morongo Valley, $467,500 | 55 | Unfurnished | new 2026-10-28, unchecked. Remarks: just over an acre fenced, fireplace, private casita with kitchenette, mountain views |
 
 ## Implementation map
 

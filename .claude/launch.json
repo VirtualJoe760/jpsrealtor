@@ -8,6 +8,13 @@
       "port": 3000
     },
     {
+      "name": "dev-3005",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "env": { "PORT": "3005" },
+      "port": 3005
+    },
+    {
       "name": "dev-wordmark",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "F:\\web-clients\\joseph-sardella\\jpsrealtor-wordmark", "run", "dev"],
