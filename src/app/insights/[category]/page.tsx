@@ -1,6 +1,7 @@
 // src\app\insights\[category]\page.tsx
 
 import { getPostsBySection } from "@/utils/fetchPosts";
+import { resolvePageOwnerId } from "@/lib/articles/public-articles";
 import InsightsList from "@/components/InsightsList";
 import { insightsCategoriesContent, categoriesPageContent } from "@/constants/staticContent";
 import { Metadata } from "next";
@@ -58,8 +59,9 @@ export default async function CategoryPage({
     .replace("-", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-  // Fetch posts with pagination
-  const { posts, totalPages } = await getPostsBySection(category, page, 5);
+  // This site's owner's published posts, from the database
+  const ownerId = await resolvePageOwnerId();
+  const { posts, totalPages } = await getPostsBySection(category, page, 5, ownerId);
 
   const selectedCategory = insightsCategoriesContent.categories.find(
     (cat) => cat.href.split("/").pop() === category

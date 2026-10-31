@@ -237,7 +237,7 @@ export default function NewArticlePage() {
     }
   };
 
-  // Handle publish to website (write MDX file to src/posts/)
+  // Handle publish to website (saves to the database)
   const handlePublishToSite = async () => {
     if (!slugId) {
       alert("Please generate an article first to get a slug ID");
@@ -370,7 +370,7 @@ export default function NewArticlePage() {
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-blue-600 hover:bg-blue-700"
                 } text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to website (writes MDX file to src/posts/)"}
+                title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to your website"}
               >
                 {isPublishing ? (
                   <>

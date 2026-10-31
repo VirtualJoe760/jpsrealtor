@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useTheme, useThemeClasses } from "@/app/contexts/ThemeContext";
 import {
-  Save,
   Monitor,
   Eye,
   Sparkles,
@@ -26,7 +25,6 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import RegenerateButton from "@/app/components/RegenerateButton";
 import CMSModal, { type CMSModalProps } from "../../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../../components/LandingPageOptions";
-import { useDeploymentStatus } from "../../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "edit" | "preview";
 
@@ -79,7 +77,6 @@ export default function EditArticlePage() {
   const [keywordInput, setKeywordInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSavingToDB, setIsSavingToDB] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
 
   // Modal state
@@ -91,7 +88,6 @@ export default function EditArticlePage() {
   });
 
   // Deployment tracking
-  const { startDeployment } = useDeploymentStatus();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -328,8 +324,6 @@ export default function EditArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        // Start deployment tracking
-        startDeployment(data.slugId, data.environment || 'production');
 
         const draftMsg = isDraft ? ' (saved as draft)' : '';
         setModal({
@@ -373,19 +367,6 @@ export default function EditArticlePage() {
   // Handle save as draft
   const handleSaveAsDraft = async () => {
     await handleRepublish(true);
-  };
-
-  // Handle save to database
-  // This article already exists, so saving goes through the publish route,
-  // which upserts by slug. It used to POST /api/articles, which inserted a
-  // second, published copy under a title-derived slug.
-  const handleSaveToDatabase = async () => {
-    setIsSavingToDB(true);
-    try {
-      await handleRepublish(false);
-    } finally {
-      setIsSavingToDB(false);
-    }
   };
 
   // Add keyword
@@ -472,29 +453,8 @@ export default function EditArticlePage() {
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
               <button
-                onClick={handleSaveToDatabase}
-                disabled={isSavingToDB || isPublishing}
-                className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
-                  isLight
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-purple-600 hover:bg-purple-700"
-                } text-white rounded-lg transition-colors font-semibold disabled:opacity-50`}
-              >
-                {isSavingToDB ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Backup to DB
-                  </>
-                )}
-              </button>
-              <button
                 onClick={handleSaveAsDraft}
-                disabled={isSavingToDB || isPublishing}
+                disabled={isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
                     ? "bg-orange-600 hover:bg-orange-700"
@@ -515,7 +475,7 @@ export default function EditArticlePage() {
               </button>
               <button
                 onClick={() => handleRepublish(false)}
-                disabled={isSavingToDB || isPublishing}
+                disabled={isPublishing}
                 className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base ${
                   isLight
                     ? "bg-blue-600 hover:bg-blue-700"

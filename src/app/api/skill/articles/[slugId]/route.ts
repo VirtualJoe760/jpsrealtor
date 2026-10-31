@@ -174,7 +174,6 @@ export async function PATCH(
       );
     }
     await publishArticle(article, doc.slug, {
-      autoDeploy: true,
       userId: String(auth.user._id),
       userName: auth.user.name || auth.user.email || "Unknown",
       userEmail: auth.user.email || "noemail@example.com",

@@ -1,8 +1,5 @@
 'use client';
 
-import { useDeploymentStatus } from '../hooks/useDeploymentStatus';
-import DeploymentTimer from './DeploymentTimer';
-
 export interface DeploymentStatusBadgeProps {
   slug: string;
   isDraft?: boolean;
@@ -14,18 +11,8 @@ export default function DeploymentStatusBadge({
   isDraft = false,
   className = '',
 }: DeploymentStatusBadgeProps) {
-  const { isDeploying, getDeployment } = useDeploymentStatus();
-  const deployment = getDeployment(slug);
-
-  // Show deployment status if actively deploying
-  if (isDeploying(slug) && deployment) {
-    return (
-      <div className={`${className}`}>
-        <DeploymentTimer expiresAt={deployment.expiresAt} />
-      </div>
-    );
-  }
-
+  // Publishing is a single database write, so there is no "deploying" state
+  // (until 2026-10-29 a publish waited on a Vercel rebuild).
   // Show draft badge
   if (isDraft) {
     return (

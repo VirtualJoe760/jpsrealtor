@@ -1,26 +1,24 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { validateMDX } from './mdx-processor';
-import {
-  IS_PRODUCTION,
-  IS_LOCALHOST,
-  DEPLOY_HOOK_URL,
-  isDeployHookConfigured,
-  getEnvironmentName
-} from './environment';
+import { getEnvironmentName } from './environment';
 import { createArticle, deleteArticle, articleExists } from './services/article.service';
 
-const execAsync = promisify(exec);
-
 /**
- * Layer 5: Dual-Environment Publishing Pipeline
+ * Article publishing: validate, then ONE database write.
  *
- * LOCALHOST: Writes MDX files to src/posts/ + git operations
- * PRODUCTION: Saves to MongoDB + triggers Vercel rebuild
+ * The database is the only copy of an article. Every page that shows articles
+ * reads it on request (home feed, article page, category index, RSS, sitemap,
+ * topics, AI search, landing pages), so a publish is live as soon as the write
+ * returns — no file, no git commit, no rebuild.
  *
- * This enables article publishing from ANY environment (localhost or production)
+ * Until 2026-10-29 a publish also wrote an MDX file to src/posts/ and committed
+ * it to the public GitHub repo (Contents API in production, `git push` to main
+ * from localhost), then fired a Vercel deploy hook. A dead GITHUB_TOKEN 500'd a
+ * publish whose database write had already succeeded, the editor's fallback
+ * then created a duplicate, and every agent's content was committed to a
+ * public repo. Don't bring a file mirror back into this path.
+ *
+ * Where the write goes per agent (Mongo for admins, the agent's Neon tenant DB
+ * for everyone else) is planned in docs/cms/multi-tenant-articles.md.
  */
 
 export interface PublishValidation {
@@ -116,187 +114,46 @@ export async function validateForPublish(
 }
 
 /**
- * Publish article to MongoDB database (Production environment)
- * Saves article data to MongoDB for later MDX generation during build
- */
-export async function publishArticleToDatabase(
-  article: ArticleFormData,
-  slugId: string,
-  userId: string,
-  userName: string,
-  userEmail: string
-): Promise<{ _id: string; slug: string }> {
-  console.log(`[PUBLISH] Saving article to MongoDB: ${slugId}`);
-
-  // Add slug to article data
-  const articleWithSlug = { ...article, slug: slugId };
-
-  // Save to MongoDB
-  const doc = await createArticle(articleWithSlug, userId, userName, userEmail);
-
-  console.log(`✅ Article saved to MongoDB: ${doc.slug} (${doc._id})`);
-
-  return {
-    _id: doc._id.toString(),
-    slug: doc.slug,
-  };
-}
-
-/**
- * Trigger Vercel rebuild via deploy hook
- * This causes production site to rebuild and pick up new articles from MongoDB
- */
-export async function triggerVercelRebuild(
-  reason: string
-): Promise<{ success: boolean; message: string; jobId?: string }> {
-  if (!isDeployHookConfigured()) {
-    return {
-      success: false,
-      message: 'Deploy hook not configured. Article saved to database but site rebuild required.',
-    };
-  }
-
-  try {
-    console.log(`[DEPLOY] Triggering Vercel rebuild: ${reason}`);
-
-    const response = await fetch(DEPLOY_HOOK_URL!, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Deploy hook failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const jobId = data.job?.id;
-
-    console.log(`✅ Vercel rebuild triggered! Job ID: ${jobId}`);
-
-    return {
-      success: true,
-      message: 'Deployment triggered! Site will rebuild in 2-3 minutes.',
-      jobId,
-    };
-  } catch (error) {
-    console.error('[DEPLOY] Failed to trigger rebuild:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to trigger rebuild',
-    };
-  }
-}
-
-/**
- * Main publish article function - Unified CMS workflow
+ * Publish an article: validate, upsert by slug, then best-effort follow-ups.
  *
- * WORKFLOW (both localhost and production):
- * 1. Save article to MongoDB (source of truth)
- * 2. Generate MDX file from MongoDB data
- * 3. Commit and push MDX to main branch (regardless of current branch)
- * 4. Trigger Vercel rebuild (production) or rely on auto-deploy (localhost)
+ * Returns warnings for follow-up steps that didn't finish. Only validation and
+ * the database write can fail a publish.
  */
 export async function publishArticle(
   article: ArticleFormData,
   slugId: string,
   options: {
-    autoDeploy?: boolean;
     userId?: string;
     userName?: string;
     userEmail?: string;
   } = {}
 ): Promise<{ warnings: string[] }> {
-  // Problems after the database write. Reported back, never thrown.
   const warnings: string[] = [];
 
-  // Validate before publishing
   const validation = await validateForPublish(article);
   if (!validation.isValid) {
     throw new Error(`Cannot publish: ${validation.errors.join(', ')}`);
   }
 
-  const environment = getEnvironmentName();
-  console.log(`[PUBLISH] Environment: ${environment}`);
-  console.log(`[PUBLISH] Article: ${slugId}`);
-  console.log('[PUBLISH] Method: MongoDB + MDX generation + Git push to main');
-
   if (!options.userId || !options.userName || !options.userEmail) {
     throw new Error('User information required for publishing');
   }
 
-  // STEP 1: Save to MongoDB (source of truth)
-  console.log('[PUBLISH] Step 1/4: Saving to MongoDB...');
-  const dbResult = await publishArticleToDatabase(
-    article,
-    slugId,
+  console.log(`[PUBLISH] ${getEnvironmentName()}: ${slugId}`);
+
+  // Upsert by slug, so a retry never creates a second copy.
+  const doc = await createArticle(
+    { ...article, slug: slugId } as any,
     options.userId,
     options.userName,
     options.userEmail
   );
-
-  if (IS_PRODUCTION) {
-    // PRODUCTION: Use GitHub Contents API (Vercel's filesystem is read-only)
-    //
-    // The article is already saved and live (the home feed and article page
-    // read Mongo). The MDX mirror only feeds the category index and RSS, so a
-    // failure here is a warning, never a failed publish. 2026-10-29: a dead
-    // GITHUB_TOKEN 500'd a publish whose Mongo write had succeeded, and the
-    // editor's Save Draft then created a duplicate article.
-    console.log('[PUBLISH] Step 2/4: Pushing MDX to GitHub via API...');
-    let mirrored = false;
-    try {
-      await publishMDXViaGitHub(article, slugId);
-      mirrored = true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[PUBLISH] MDX mirror failed (article is saved and live): ${msg}`);
-      warnings.push(
-        `Saved and live, but the MDX copy didn't reach GitHub (${msg}). ` +
-          'It won\'t appear on the category page or RSS feed until that is fixed.'
-      );
-    }
-
-    // STEP 3: Trigger Vercel rebuild via deploy hook. Without a new MDX file a
-    // rebuild changes nothing, so skip it when the mirror failed.
-    if (mirrored) {
-      console.log('[PUBLISH] Step 3/4: Triggering Vercel rebuild...');
-      const deployResult = await triggerVercelRebuild(`Article: ${article.title}`);
-      if (deployResult.success) {
-        console.log(`✅ Article published to production! ${deployResult.message}`);
-      } else {
-        // Deploy hook failed but the GitHub commit will still trigger auto-deploy
-        console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
-      }
-    }
-    console.log(`✅ Article published! (${dbResult._id})`);
-  } else {
-    // LOCALHOST: Write to filesystem + git push
-    console.log('[PUBLISH] Step 2/4: Generating MDX file...');
-    await writeArticleToFilesystem(article, slugId);
-
-    console.log('[PUBLISH] Step 3/4: Pushing to main branch...');
-    if (options.autoDeploy !== false) {
-      await deployToMain(article, slugId);
-    }
-
-    console.log('[PUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
-    console.log(`✅ Article published! Pushed to main branch (${dbResult._id})`);
-  }
+  console.log(`[PUBLISH] Saved: ${doc.slug} (${doc._id})`);
 
   // Tell Bing and Yandex immediately, rather than waiting to be crawled.
-  //
-  // Articles are the highest-CTR pages on this site (1.74% vs 0.35% for city
-  // pages), so the lag between publishing and being findable costs more here
-  // than anywhere else. Google does not participate in IndexNow — for Google
-  // the signal is the sitemap's lastmod, which now comes from
-  // `articles.updatedAt` (see lib/sitemap-sources.ts) instead of the publish
-  // date it used to report.
-  //
-  // NEVER let this fail a publish. The article is already saved and deployed
-  // by this point; a search-engine ping that 503s must not surface as "publish
-  // failed" and send someone re-running the pipeline.
+  // Google does not participate in IndexNow — for Google the signal is the
+  // sitemap's lastmod, from `articles.updatedAt` (lib/sitemap-sources.ts).
+  // Never fails a publish.
   await pingIndexNowForArticle(article, slugId, options.userId);
 
   return { warnings };
@@ -354,533 +211,16 @@ async function pingIndexNowForArticle(
   }
 }
 
-/**
- * Write article as MDX file to src/posts/ directory
- * This is how articles appear on /insights pages
- */
-export async function writeArticleToFilesystem(
-  article: ArticleFormData,
-  slugId: string
-): Promise<void> {
-  // Format frontmatter to match existing structure
-  const frontmatter = formatFrontmatter(article, slugId);
-
-  // Combine frontmatter + content
-  const fullContent = `---
-${frontmatter}
----
-
-${article.content}`;
-
-  // Define file path: src/posts/{slugId}.mdx
-  const postsDirectory = path.join(process.cwd(), 'src/posts');
-  const filePath = path.join(postsDirectory, `${slugId}.mdx`);
-
-  // Check if file already exists
-  try {
-    await fs.access(filePath);
-    console.log(`Updating existing article: ${slugId}.mdx`);
-  } catch {
-    console.log(`Creating new article: ${slugId}.mdx`);
-  }
-
-  // Ensure directory exists
-  await fs.mkdir(postsDirectory, { recursive: true });
-
-  // Write file
-  await fs.writeFile(filePath, fullContent, 'utf-8');
-
-  console.log(`✅ Article written to: ${filePath}`);
-}
-
-/**
- * Format article data into YAML frontmatter
- * Matches structure from existing posts (e.g., coachella-valley-energy-costs.mdx)
- */
-function formatFrontmatter(article: ArticleFormData, slugId: string): string {
-  const now = new Date();
-  const date = now.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  }); // Format: MM/DD/YYYY
-
-  // Build frontmatter YAML
-  const lines = [
-    `title: "${escapeYAML(article.title)}"`,
-    `slugId: "${slugId}"`,
-    `date: "${date}"`,
-    `section: "${article.category}"`, // category → section mapping
-    article.draft ? `draft: true` : null,  // Add draft flag if true
-    article.authorId ? `authorId: "${article.authorId}"` : null,  // Agent scoping
-    article.authorName ? `authorName: "${escapeYAML(article.authorName)}"` : null,  // Display name
-    `image: "${article.featuredImage.url}"`,
-    `metaTitle: "${escapeYAML(article.seo.title || article.title)}"`,
-    `metaDescription: "${escapeYAML(article.seo.description || article.excerpt)}"`,
-    `ogImage: "${article.featuredImage.url}"`,
-    `altText: "${escapeYAML(article.featuredImage.alt || article.title)}"`,
-    `keywords:`,
-  ].filter(line => line !== null);  // Filter out null values
-
-  // Add keywords as YAML array
-  article.seo.keywords.forEach((keyword) => {
-    lines.push(`  - ${keyword}`);
-  });
-
-  // Landing page specific frontmatter
-  if (article.category === "landing-page") {
-    if ((article as any).standalone) lines.push(`standalone: true`);
-    if ((article as any).heroType) lines.push(`heroType: "${(article as any).heroType}"`);
-    if ((article as any).youtubeUrl) lines.push(`youtubeUrl: "${escapeYAML((article as any).youtubeUrl)}"`);
-    if ((article as any).videoAutoplay !== undefined) lines.push(`videoAutoplay: ${(article as any).videoAutoplay}`);
-    if ((article as any).themeOverride) lines.push(`themeOverride: "${(article as any).themeOverride}"`);
-    if ((article as any).formEnabled) {
-      lines.push(`formEnabled: true`);
-      lines.push(`formHeading: "${escapeYAML((article as any).formHeading || 'Get Started')}"`);
-      lines.push(`formButtonText: "${escapeYAML((article as any).formButtonText || 'Submit')}"`);
-      if ((article as any).formRecipients) lines.push(`formRecipients: "${escapeYAML((article as any).formRecipients)}"`);
-      if ((article as any).formDisclaimer) lines.push(`formDisclaimer: "${escapeYAML((article as any).formDisclaimer)}"`);
-      lines.push(`formFields:`);
-      ((article as any).formFields || []).forEach((field: any) => {
-        lines.push(`  - id: "${field.id}"`);
-        lines.push(`    label: "${escapeYAML(field.label)}"`);
-        lines.push(`    type: "${field.type}"`);
-        lines.push(`    required: ${field.required}`);
-        if (field.options && field.options.length > 0) {
-          lines.push(`    options:`);
-          field.options.forEach((opt: string) => {
-            lines.push(`      - "${escapeYAML(opt)}"`);
-          });
-        }
-      });
-    }
-  }
-
-  return lines.join('\n');
-}
-
-/**
- * Escape special characters in YAML strings
- */
-function escapeYAML(str: string): string {
-  return str
-    .replace(/\\/g, '\\\\') // Escape backslashes
-    .replace(/"/g, '\\"'); // Escape quotes
-}
-
-/**
- * Unpublish article - Unified CMS workflow
- *
- * WORKFLOW (both localhost and production):
- * 1. Delete article from MongoDB
- * 2. Delete MDX file from filesystem
- * 3. Commit and push deletion to main branch
- * 4. Trigger Vercel rebuild (production) or rely on auto-deploy (localhost)
- */
+/** Unpublish = delete the article from the database. */
 export async function unpublishArticle(slugId: string): Promise<void> {
-  const environment = getEnvironmentName();
-  console.log(`[UNPUBLISH] Environment: ${environment}`);
-  console.log(`[UNPUBLISH] Article: ${slugId}`);
-  console.log('[UNPUBLISH] Method: MongoDB deletion + MDX removal + Git push to main');
-
-  // STEP 1: Delete from MongoDB
-  console.log('[UNPUBLISH] Step 1/4: Deleting from MongoDB...');
   const deleted = await deleteArticle(slugId);
-
   if (!deleted) {
     throw new Error(`Failed to unpublish article: ${slugId} not found in database`);
   }
-
-  console.log(`✅ Article deleted from MongoDB: ${slugId}`);
-
-  if (IS_PRODUCTION) {
-    // PRODUCTION: Delete via GitHub Contents API
-    console.log('[UNPUBLISH] Step 2/4: Deleting MDX from GitHub via API...');
-    await deleteMDXViaGitHub(slugId);
-
-    console.log('[UNPUBLISH] Step 3/4: Triggering Vercel rebuild...');
-    const deployResult = await triggerVercelRebuild(`Unpublish: ${slugId}`);
-    if (deployResult.success) {
-      console.log(`✅ Rebuild triggered! Article will be removed in 2-3 minutes.`);
-    } else {
-      console.warn(`⚠️ Deploy hook failed but GitHub commit will auto-deploy: ${deployResult.message}`);
-    }
-    console.log(`✅ Article unpublished!`);
-  } else {
-    // LOCALHOST: Delete from filesystem + git push
-    console.log('[UNPUBLISH] Step 2/4: Deleting MDX file...');
-    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
-
-    try {
-      await fs.unlink(filePath);
-      console.log(`✅ MDX file deleted: ${slugId}.mdx`);
-    } catch (error) {
-      console.warn('File not found or already deleted:', filePath);
-    }
-
-    console.log('[UNPUBLISH] Step 3/4: Pushing deletion to main branch...');
-    await unpublishFromMain(slugId);
-
-    console.log('[UNPUBLISH] Step 4/4: Waiting for Vercel auto-deploy...');
-    console.log(`✅ Article unpublished! Deletion pushed to main branch.`);
-  }
+  console.log(`[UNPUBLISH] Deleted: ${slugId}`);
 }
 
-/**
- * Check if article is already published
- * LOCALHOST: Checks if MDX file exists
- * PRODUCTION: Checks if article exists in MongoDB
- */
+/** Whether an article with this slug exists in the database. */
 export async function isArticlePublished(slugId: string): Promise<boolean> {
-  if (IS_PRODUCTION) {
-    // PRODUCTION: Check MongoDB
-    return articleExists(slugId);
-  } else {
-    // LOCALHOST: Check filesystem
-    const filePath = path.join(process.cwd(), 'src/posts', `${slugId}.mdx`);
-
-    try {
-      await fs.access(filePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
-/**
- * Deploy article to main branch (regardless of current branch)
- * This ensures CMS articles always go to production
- */
-export async function deployToMain(
-  article: ArticleFormData,
-  slugId: string
-): Promise<{
-  success: boolean;
-  message: string;
-  commitHash?: string;
-}> {
-  try {
-    const fileName = `${slugId}.mdx`;
-    const filePath = `src/posts/${fileName}`;
-
-    // Save current branch name
-    const { stdout: currentBranch } = await execAsync('git branch --show-current');
-    const originalBranch = currentBranch.trim();
-    console.log(`📍 Current branch: ${originalBranch}`);
-
-    // Stage the article file
-    console.log(`📝 Staging ${filePath}...`);
-    await execAsync(`git add "${filePath}"`);
-
-    // Check if anything is staged
-    const { stdout: diffOutput } = await execAsync('git diff --cached --name-only');
-    if (!diffOutput.includes(fileName)) {
-      return {
-        success: true,
-        message: 'No changes to deploy (file already up to date)',
-      };
-    }
-
-    // Create commit message
-    const isDraft = article.draft ? ' [DRAFT]' : '';
-    const commitMessage = `Update article: ${article.title}${isDraft}
-
-- Category: ${article.category}
-- Slug: ${slugId}
-- Auto-deployed via CMS`;
-
-    if (originalBranch === 'main') {
-      // Already on main — just commit and push directly.
-      console.log('💾 Committing on main...');
-      const { stdout: commitOutput } = await execAsync(
-        `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
-      );
-      const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
-      const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
-
-      console.log('🚀 Pushing to main...');
-      await execAsync('git push origin main');
-
-      console.log('✅ Deployed to main!');
-      return {
-        success: true,
-        message: 'Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.',
-        commitHash,
-      };
-    }
-
-    // On a different branch — commit the staged article, cherry-pick onto main, push, switch back.
-    // Use --keep-index so the staged article file survives the stash.
-    console.log('💼 Stashing other changes (keeping staged article)...');
-    await execAsync('git stash push --keep-index --include-untracked -m "CMS publish temp stash"').catch(() => {});
-
-    console.log('💾 Committing on current branch...');
-    const { stdout: commitOutput } = await execAsync(
-      `git commit -m "${commitMessage.replace(/"/g, '\\"')}"`
-    );
-    const commitHashMatch = commitOutput.match(/\[[\w-]+ ([a-f0-9]+)\]/);
-    const commitHash = commitHashMatch ? commitHashMatch[1] : undefined;
-
-    console.log('🔀 Switching to main...');
-    await execAsync('git checkout main');
-    await execAsync('git pull origin main');
-    await execAsync(`git cherry-pick ${commitHash}`);
-
-    console.log('🚀 Pushing to main...');
-    await execAsync('git push origin main');
-
-    console.log(`🔙 Returning to ${originalBranch}...`);
-    await execAsync(`git checkout ${originalBranch}`);
-    await execAsync('git stash pop').catch(() => {});
-
-    console.log('✅ Deployed to main!');
-    return {
-      success: true,
-      message: 'Article deployed to main branch! Vercel will auto-deploy in ~2 minutes.',
-      commitHash,
-    };
-
-  } catch (error) {
-    console.error('❌ Deploy failed:', error);
-
-    // Parse git error messages
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    if (errorMessage.includes('nothing to commit')) {
-      return {
-        success: true,
-        message: 'No changes to deploy (file already up to date)',
-      };
-    }
-
-    if (errorMessage.includes('failed to push')) {
-      throw new Error('Failed to push to GitHub. Check your git credentials and network connection.');
-    }
-
-    throw new Error(`Deploy failed: ${errorMessage}`);
-  }
-}
-
-/**
- * Remove article from main branch (regardless of current branch)
- * This ensures article deletions always remove from production
- */
-export async function unpublishFromMain(slugId: string): Promise<void> {
-  try {
-    const fileName = `${slugId}.mdx`;
-    const filePath = `src/posts/${fileName}`;
-
-    // Save current branch name
-    const { stdout: currentBranch } = await execAsync('git branch --show-current');
-    const originalBranch = currentBranch.trim();
-    console.log(`📍 Current branch: ${originalBranch}`);
-
-    // Stash any uncommitted changes
-    console.log('💼 Stashing other changes...');
-    await execAsync('git stash push -m "CMS unpublish temp stash"').catch(() => {
-      // Ignore errors if nothing to stash
-    });
-
-    // Switch to main branch
-    console.log('🔀 Switching to main branch...');
-    await execAsync('git checkout main');
-
-    // Pull latest changes
-    console.log('⬇️ Pulling latest changes...');
-    await execAsync('git pull origin main');
-
-    // Check if file exists on main
-    try {
-      await execAsync(`git ls-files --error-unmatch "${filePath}"`);
-    } catch {
-      console.log('⚠️ File not found on main branch, skipping deletion');
-      await execAsync(`git checkout ${originalBranch}`);
-      await execAsync('git stash pop').catch(() => {});
-      return;
-    }
-
-    // Delete the file
-    console.log(`🗑️ Deleting ${filePath}...`);
-    await execAsync(`git rm "${filePath}"`);
-
-    // Create commit message
-    const commitMessage = `Delete article: ${slugId}
-
-- Unpublished via CMS
-- Removed from production
-
-🤖 Generated with Claude Code CMS`;
-
-    // Commit the deletion
-    console.log('💾 Committing deletion...');
-    await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`);
-
-    // Push to main
-    console.log('🚀 Pushing to main branch...');
-    await execAsync('git push origin main');
-
-    // Switch back to original branch
-    console.log(`🔙 Returning to ${originalBranch}...`);
-    await execAsync(`git checkout ${originalBranch}`);
-
-    // Also delete from current branch if it exists
-    try {
-      await fs.unlink(path.join(process.cwd(), filePath));
-      await execAsync(`git rm "${filePath}"`).catch(() => {});
-    } catch {
-      // File doesn't exist on current branch, that's fine
-    }
-
-    // Restore stashed changes if any
-    await execAsync('git stash pop').catch(() => {
-      // Ignore errors if nothing was stashed
-    });
-
-    console.log('✅ Removed from main!');
-
-  } catch (error) {
-    console.error('❌ Unpublish failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to remove from main: ${errorMessage}`);
-  }
-}
-
-/**
- * Deploy article to production by committing and pushing to GitHub
- * Vercel will auto-deploy when it detects the push
- * @deprecated Use deployToMain instead for unified CMS workflow
- */
-export async function deployToProduction(
-  article: ArticleFormData,
-  slugId: string
-): Promise<{
-  success: boolean;
-  message: string;
-  commitHash?: string;
-}> {
-  // Redirect to deployToMain for unified workflow
-  return deployToMain(article, slugId);
-}
-
-// ─── GitHub Contents API helpers (production publishing) ───
-
-const GITHUB_OWNER = 'VirtualJoe760';
-const GITHUB_REPO = 'jpsrealtor';
-const GITHUB_BRANCH = 'main';
-
-function getGitHubToken(): string {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error(
-      'GITHUB_TOKEN env var is required for production publishing. ' +
-      'Create a Personal Access Token with "repo" scope at ' +
-      'https://github.com/settings/tokens and add it to your Vercel env vars.'
-    );
-  }
-  return token;
-}
-
-async function githubAPI(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<Response> {
-  const token = getGitHubToken();
-  return fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}${endpoint}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-}
-
-/**
- * Get the SHA of an existing file (needed for updates/deletes).
- * Returns null if the file doesn't exist.
- */
-async function getFileSHA(filePath: string): Promise<string | null> {
-  const res = await githubAPI(`/contents/${filePath}?ref=${GITHUB_BRANCH}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.sha || null;
-}
-
-/**
- * Create or update an MDX file in the repo via GitHub Contents API.
- * Commits directly to main, which triggers Vercel auto-deploy.
- */
-export async function publishMDXViaGitHub(
-  article: ArticleFormData,
-  slugId: string
-): Promise<void> {
-  const filePath = `src/posts/${slugId}.mdx`;
-  const frontmatter = formatFrontmatter(article, slugId);
-  const fullContent = `---\n${frontmatter}\n---\n\n${article.content}`;
-
-  // Base64-encode the content (GitHub API requirement)
-  const contentBase64 = Buffer.from(fullContent, 'utf-8').toString('base64');
-
-  // Check if file already exists (need SHA for update)
-  const existingSHA = await getFileSHA(filePath);
-
-  const body: any = {
-    message: `${existingSHA ? 'Update' : 'Publish'} article: ${article.title}\n\nAuto-published via CMS`,
-    content: contentBase64,
-    branch: GITHUB_BRANCH,
-  };
-
-  if (existingSHA) {
-    body.sha = existingSHA;
-  }
-
-  console.log(`[GitHub API] ${existingSHA ? 'Updating' : 'Creating'} ${filePath}...`);
-  const res = await githubAPI(`/contents/${filePath}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(
-      `GitHub API error (${res.status}): ${(error as any)?.message || 'Unknown error'}`
-    );
-  }
-
-  const data = await res.json();
-  console.log(`✅ Published to GitHub: ${data.commit?.sha?.slice(0, 7)}`);
-}
-
-/**
- * Delete an MDX file from the repo via GitHub Contents API.
- */
-export async function deleteMDXViaGitHub(slugId: string): Promise<void> {
-  const filePath = `src/posts/${slugId}.mdx`;
-  const sha = await getFileSHA(filePath);
-
-  if (!sha) {
-    console.warn(`[GitHub API] File not found: ${filePath} — skipping deletion`);
-    return;
-  }
-
-  console.log(`[GitHub API] Deleting ${filePath}...`);
-  const res = await githubAPI(`/contents/${filePath}`, {
-    method: 'DELETE',
-    body: JSON.stringify({
-      message: `Delete article: ${slugId}\n\nUnpublished via CMS`,
-      sha,
-      branch: GITHUB_BRANCH,
-    }),
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(
-      `GitHub API error (${res.status}): ${(error as any)?.message || 'Unknown error'}`
-    );
-  }
-
-  console.log(`✅ Deleted from GitHub: ${filePath}`);
+  return articleExists(slugId);
 }

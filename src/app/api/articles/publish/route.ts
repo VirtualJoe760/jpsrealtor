@@ -2,15 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { publishArticle, validateForPublish, type ArticleFormData } from '@/lib/publishing-pipeline';
-import { IS_PRODUCTION } from '@/lib/environment';
 import { publishArticleToGBP } from '@/lib/gbp-publisher';
 
 /**
  * POST /api/articles/publish
  *
- * Dual-environment publishing:
- * LOCALHOST: Writes MDX file to src/posts/ + git operations
- * PRODUCTION: Saves to MongoDB + triggers Vercel rebuild
+ * Validates, then saves the article to the database (upsert by slug). Live on
+ * the author's site as soon as this returns — no file, commit or rebuild.
  */
 export async function POST(req: Request) {
   try {
@@ -24,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { article, slugId, autoDeploy = true } = body; // autoDeploy defaults to true
+    const { article, slugId } = body;
 
     // Add author information from session
     article.authorId = session.user.id;
@@ -56,9 +54,8 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Publish article with environment-aware logic
+    // Save to the database (the only copy of the article)
     const { warnings: publishWarnings } = await publishArticle(article as ArticleFormData, slugId, {
-      autoDeploy,
       userId: session.user.id,
       userName: session.user.name || session.user.email || 'Unknown',
       userEmail: session.user.email || 'noemail@example.com',
@@ -92,9 +89,7 @@ export async function POST(req: Request) {
     // Unified workflow response messages
     const message = publishWarnings.length
       ? `Article saved and live on your site. Some follow-up steps didn't finish — see warnings.`
-      : IS_PRODUCTION
-        ? `Article saved to MongoDB and pushed to main branch! Vercel is rebuilding - your article will be live in 2-3 minutes.`
-        : `Article saved to MongoDB and pushed to main branch! Vercel will auto-deploy in ~2 minutes.`;
+      : `Article published and live on your site.`;
 
     return NextResponse.json({
       success: true,
@@ -102,9 +97,6 @@ export async function POST(req: Request) {
       url: `/insights/${slugId}`,
       warnings: [...(validation.warnings || []), ...publishWarnings],
       message,
-      deployed: true,
-      environment: IS_PRODUCTION ? 'production' : 'localhost',
-      workflow: 'MongoDB → MDX → Git (main) → Vercel',
       gbp: gbpResult ? { success: gbpResult.success, postName: gbpResult.postName, error: gbpResult.error } : null,
     });
 

@@ -207,7 +207,7 @@ reaches nobody.
   touching a page. A broken route is worse than the bug being fixed.
 
   It has to be the npm script because `prebuild` compiles
-  `packages/mcp-server` and regenerates the MDX mirror first. `npx next build`
+  `packages/mcp-server` first. `npx next build`
   skips the lifecycle hook, so `packages/mcp-server/dist/tools/index.js` stays
   stale and the build dies with six `Module not found` errors
   (`./create_carousel_slide.js`, `./give_feedback.js`, …) that point at the MCP

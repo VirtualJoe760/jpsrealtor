@@ -3,9 +3,8 @@
 // These pages have a clean, conversion-focused layout — no sidebar or blog chrome.
 
 import { notFound } from "next/navigation";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
+import connectDB from "@/lib/mongodb";
+import Article from "@/models/article";
 import { Metadata } from "next";
 import CampaignPageClient from "./CampaignPageClient";
 
@@ -13,44 +12,45 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Published landing pages only, from the database. Until 2026-10-29 this read
+// the MDX files in src/posts/, so a landing page appeared only after a GitHub
+// commit and a rebuild.
 async function getLandingPage(slug: string) {
-  // Try loading from MDX files (localhost)
-  const postsDir = path.join(process.cwd(), "src/posts");
+  await connectDB();
+  const doc: any = await Article.findOne({
+    slug,
+    category: "landing-page",
+    status: "published",
+  }).lean();
+  if (!doc) return null;
 
-  if (fs.existsSync(postsDir)) {
-    const files = fs.readdirSync(postsDir).filter((f) => f.endsWith(".mdx"));
-
-    for (const file of files) {
-      const filePath = path.join(postsDir, file);
-      const content = fs.readFileSync(filePath, "utf-8");
-      const { data, content: mdxContent } = matter(content);
-
-      if (data.slugId === slug && data.section === "landing-page") {
-        return {
-          title: data.title || "",
-          excerpt: data.metaDescription || "",
-          content: mdxContent,
-          image: data.image || data.ogImage || "",
-          metaTitle: data.metaTitle || data.title || "",
-          metaDescription: data.metaDescription || "",
-          ogImage: data.ogImage || data.image || "",
-          keywords: data.keywords || [],
-          date: data.date || "",
-          standalone: data.standalone || false,
-          heroType: data.heroType || "photo",
-          youtubeUrl: data.youtubeUrl || "",
-          videoAutoplay: data.videoAutoplay !== false,
-          formEnabled: data.formEnabled || false,
-          formHeading: data.formHeading || "Get Started",
-          formFields: data.formFields || [],
-          formRecipients: data.formRecipients || "",
-          formButtonText: data.formButtonText || "Submit",
-        };
-      }
-    }
-  }
-
-  return null;
+  const image = doc.featuredImage?.url || "";
+  return {
+    title: doc.title || "",
+    excerpt: doc.excerpt || "",
+    content: doc.content || "",
+    image,
+    metaTitle: doc.seo?.title || doc.title || "",
+    metaDescription: doc.seo?.description || doc.excerpt || "",
+    ogImage: image,
+    keywords: doc.seo?.keywords || doc.tags || [],
+    date: doc.publishedAt ? new Date(doc.publishedAt).toISOString() : "",
+    standalone: doc.standalone || false,
+    heroType: doc.heroType || "photo",
+    youtubeUrl: doc.youtubeUrl || "",
+    videoAutoplay: doc.videoAutoplay !== false,
+    formEnabled: doc.formEnabled || false,
+    formHeading: doc.formHeading || "Get Started",
+    formFields: (doc.formFields || []).map((f: any) => ({
+      id: f.id,
+      label: f.label,
+      type: f.type,
+      required: f.required,
+      options: f.options ? Array.from(f.options) : [],
+    })),
+    formRecipients: doc.formRecipients || "",
+    formButtonText: doc.formButtonText || "Submit",
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

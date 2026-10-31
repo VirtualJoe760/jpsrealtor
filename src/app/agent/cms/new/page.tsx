@@ -25,7 +25,6 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../components/LandingPageOptions";
 import ClaudeLandingPageChat from "../components/ClaudeLandingPageChat";
-import { useDeploymentStatus } from "../cms-page/hooks/useDeploymentStatus";
 
 type TabType = "generate" | "edit" | "preview";
 
@@ -107,7 +106,6 @@ export default function NewArticlePage() {
   });
 
   // Deployment tracking
-  const { startDeployment } = useDeploymentStatus();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -336,7 +334,7 @@ export default function NewArticlePage() {
     }
   };
 
-  // Handle publish to website (write MDX file to src/posts/)
+  // Handle publish to website (saves to the database)
   const handlePublishToSite = async () => {
     if (!slugId) {
       setModal({
@@ -383,9 +381,6 @@ export default function NewArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        // Start deployment tracking
-        startDeployment(data.slugId, data.environment || 'production');
-
         // Show success modal with deployment info
         setModal({
           isOpen: true,
@@ -520,7 +515,7 @@ export default function NewArticlePage() {
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-blue-600 hover:bg-blue-700"
                 } text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to website (writes MDX file to src/posts/)"}
+                title={!slugId ? "Generate an article first to get a slug ID" : "Publish article to your website"}
               >
                 {isPublishing ? (
                   <>
