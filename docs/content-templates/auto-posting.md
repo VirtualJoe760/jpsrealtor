@@ -1,8 +1,8 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-31
-last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25, 2026-10-30 and 2026-10-31 — same status, same "outstanding balance" message since the 25th, see "Blocked 2026-10-31", which also records the Vertex AI route being probed and found closed. The pool, queue and Recuerdo frame numbers in "Blocked 2026-10-31" were measured 2026-10-31. The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
+last_verified: 2026-11-01
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17. THE GEMINI 403 IS RESOLVED as of 2026-11-01 — the unpaid-balance error recorded in "Blocked 2026-10-24" through "Blocked 2026-10-31" no longer occurs and those four entries are history, not instructions. The live blocker, probed against the API on 2026-11-01, is the AI Studio project sitting on the FREE TIER, whose per-day quota for gemini-2.5-flash-image is exhausted: see "Blocked 2026-11-01". The Vertex AI route was probed and found closed on 2026-10-31; do not re-derive it. The pool, queue, 17 Lugo copy lint and 17 Lugo selector/stageable frame numbers in "Blocked 2026-11-01" were measured 2026-11-01; the Recuerdo frame numbers were measured 2026-10-31. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
@@ -2046,6 +2046,128 @@ replacements before finding them and deleted them again. **Grep `scripts/` for a
 existing `tmp-*` before writing one** — the list below is long enough that it is
 cheaper to search it than to re-derive it.
 
+### Blocked 2026-11-01 — the 403 is GONE. The new wall is the FREE TIER's daily image quota
+
+**No build, but the blocker changed, so the previous four entries are now
+history rather than instructions.** The unpaid-balance 403 that stopped
+2026-10-24/25/30/31 is **resolved**. `tmp-gemini-probe.ts` against a real 17
+Lugo frame returns `OK: Entrance`, and the build's selector phase ran to
+completion and classified six frames. Billing is restored. **Do not re-probe
+the 403 or re-try Vertex — both questions are closed.**
+
+The build then died on something else:
+
+```
+2. staging 6 candidates for 4 slots…
+   #8 rejected — 429 Client Error: Too Many Requests
+   #24 rejected — 429 Client Error: Too Many Requests
+   ... (all six)
+fatal: no photo survived staging
+```
+
+#### The diagnosis: the project is on the Gemini FREE TIER, and the daily image quota is spent
+
+`scripts/tmp-image-quota-probe.ts` (new, scratch) calls
+`gemini-2.5-flash-image` directly and prints the error body that
+`raise_for_status()` throws away. Three quotas are in violation, all of them
+**Free Tier**:
+
+| `quotaId` | Window |
+|---|---|
+| `GenerateContentInputTokensPerModelPerMinute-FreeTier` | per minute |
+| `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` | per minute |
+| **`GenerateRequestsPerDayPerProjectPerModel-FreeTier`** | **per day** |
+
+`quotaDimensions.model` is `gemini-2.5-flash-preview-image`, and
+`RetryInfo.retryDelay` is **`60249s`** — about 16.7 hours. If only the
+per-minute buckets were full the retry delay would be ~60s; it is the **daily**
+bucket that binds, so waiting out a minute and re-running does nothing, and
+neither does spacing the calls.
+
+**Paying the arrears restored service but did not move the project onto the paid
+tier.** Those are two different things and this is the distinction the previous
+four entries could not see, because a 403 masks the tier. The lever is now
+**enabling paid-tier billing on the AI Studio project** at
+https://aistudio.google.com/billing — still a financial action a scheduled run
+may not take, but a *different* one from "pay the outstanding balance", and the
+outstanding balance must not be re-reported as the cause.
+
+Worth noting for whoever does it: the free tier's daily allowance for the image
+model is small, and one carousel spends **4–9 image calls plus retries**. Even
+once this unblocks, the free tier cannot sustain a daily carousel — this will
+recur every day until the tier changes.
+
+#### Two code defects this exposed — flagged, not fixed
+
+Both are outside the blast radius of "build one carousel", so neither was
+touched. They are why four runs' worth of diagnosis was harder than it needed
+to be.
+
+1. **`stage_geometric.py` has no 429 backoff.** The scraper at
+   `scripts/scrape-community-websites.py:70` has exponential backoff; the stager
+   has none (its only retry, line 687, is about strict bars). Six staging calls
+   go out back-to-back, so even on the paid tier a per-minute limit would fail a
+   whole build that a few seconds of sleep would have saved.
+2. **A 429 is reported as `rejected`.** `build-pending-post.ts:225` prints
+   `#N rejected — <error>`, the same word the geometry and face gates use. The
+   error text is there, but `fatal: no photo survived staging` reads as *these
+   photographs are unusable* when it actually means *the API refused every call*.
+   A quota failure and a bad photo set should not print the same verdict.
+
+#### What is ready, and what this run established about 17 Lugo
+
+**17 Lugo Drive is still the pick** — fifth run unchanged — and the build is
+still one command behind the billing change. `lugo-drive.ts` re-linted clean
+today: all seventeen strings pass, cover body 201/260, every room caption under
+90, both CTA paragraphs under 110.
+
+Facts re-verified against the record: `poolFeatures: "Community, In Ground"`,
+`poolPrivateYN` **unset** — there is no private pool, so the `pool` caption must
+stay worded to the patio and the semi-private pool *across the street*. The
+remarks carry **no virtual-staging disclosure**, so the watermark strip check of
+§10 is not needed on this listing. `furnished: "Furnished"`, HOA $1,151/mo,
+Tesla charger, Heavenly Heat sauna, repainted interior, golf-course view, 35
+photos — all confirmed.
+
+**New and important: this listing is thin and pair-heavy.** The selector dump
+returned **only 7 stageable frames out of 35**, and they are three near-duplicate
+pairs plus one oddity:
+
+| Frames | Room | Note |
+|---|---|---|
+| #6, #8 | `living` | same sofa, same round coffee table |
+| #10, #11 | `dining` | **same table, and the dump gave both `seated_dining`** |
+| #32, #33 | `outdoor_living` | same patio bar counter |
+| #34 | `other` | polished concrete, white cabinets, the wooden sauna — the garage |
+
+`#10`/`#11` are the 80519 Avenida Santa Isadora failure exactly: one table, one
+posture, consecutive slides, which `actor-generation.md` §6 forbids and which no
+gate catches. **Expect to drop one of each pair with `tmp-drop-slide.js` rather
+than excluding up front** — and keep the frame showing a room the post does not
+otherwise have, per §4.
+
+`#34` has no caption written for `other`, so it will take
+`fallbackCaption` ("Guard-gated Sunrise Country Club, Rancho Mirage."), which is
+true of it. Watch it anyway: if the stager returns `living` for that frame, the
+living line's "painted top to bottom … comes furnished" would print over a
+garage. Reband it if so.
+
+**The dump is not the plan, again confirmed.** The build's own selector returned
+`#8 living`, `#24 primary_bedroom`, `#10 dining`, `#0 exterior`, `#34 other`,
+`#4 living` — `#24`, `#0` and `#4` were never in the dump, and `#6`, `#11`, `#32`
+and `#33` were offered by the dump and never staged. So there *is* a
+`primary_bedroom` frame and an `exterior` frame this listing can use, and the
+primary-bedroom caption is reachable after all.
+
+#### Queue and pool
+
+`awaiting_review` **0**, distinct listings **0**, nothing stale, nothing to
+relist-check. The failed build inserted **no** `PendingPost` — it dies before
+the insert, so there is no partial record and no orphaned Cloudinary asset to
+clean up. Pool is **38 broad / 30 key-matched**, up one from 10-31: 28 Oak Tree,
+Rancho Mirage ($479,900) re-arrived, and it already has `oak-tree.ts` in the
+repo, so it is a prior build and not a fresh candidate. 13 FRESH stageable rows.
+
 ## Implementation map
 
 | Piece | Where | Notes |
@@ -2072,6 +2194,14 @@ cheaper to search it than to re-derive it.
 `scripts/tmp-stale-queue.js`, `tmp-pool3.js`, `tmp-pool4.js`, `tmp-detail2.js`,
 `tmp-drop-slide.js`, `tmp-graft-slide.js`, `tmp-retire-duplicate.js`,
 `tmp-retext-pending-post.ts` and `tmp-selector-dump.ts` are committed.
+
+Added 2026-11-01, scratch and safe to delete: `tmp-image-quota-probe.ts` calls
+`gemini-2.5-flash-image` — the model **staging** uses — and prints the raw error
+body, including the `quotaId` and `RetryInfo.retryDelay` that
+`stage_geometric.py`'s `raise_for_status()` discards. Use it rather than
+`tmp-gemini-probe.ts` to decide whether a build can run: the two models are
+separate quota buckets, and on 2026-11-01 the text probe answered `OK` while
+every image call 429'd. A green text probe does not mean a green build.
 
 Added 2026-10-31, both scratch and both safe to delete: `tmp-vertex-probe.ts <photoUrl>` and `tmp-vertex-probe2.ts` ask whether the same Gemini models are reachable through Vertex AI on the GCP service account instead of AI Studio on `GEMINI_API_KEY`. They are kept because the answer is no and the reasoning is not obvious — see "Blocked 2026-10-31". Re-run them only if the GCP project's APIs change.
 
