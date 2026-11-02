@@ -7,6 +7,7 @@ export type AppointmentType =
   | "open-house"
   | "listing-presentation"
   | "closing"
+  | "ai-class"
   | "other";
 
 export type AppointmentStatus =
@@ -75,7 +76,8 @@ const AppointmentSchema = new Schema<IAppointment>(
     description: String,
     type: {
       type: String,
-      enum: ["showing", "consultation", "call", "open-house", "listing-presentation", "closing", "other"],
+      // "ai-class": a ChatRealty AI class at a brokerage office, booked from /ai-classes.
+      enum: ["showing", "consultation", "call", "open-house", "listing-presentation", "closing", "ai-class", "other"],
       default: "consultation",
     },
     status: {

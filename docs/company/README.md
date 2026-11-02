@@ -1,7 +1,7 @@
 ---
 title: Company pages (Mission, Join Us, Invest, Support)
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-02
 related: [../ARCHITECTURE.md]
 ---
 
@@ -15,6 +15,7 @@ ChatRealty-the-company pages, added 2026-10-28.
 | `/join` | Open roles + application form, then the agent pitch → `/agent/settings` | applying; the agent "get started" step |
 | `/invest` | Investor summary for the planned pre-seed round: **$3M for 15%** (implied $20M post-money) | booking a consultation |
 | `/support` | One-time Stripe contribution (gift) | contributing |
+| `/ai-classes` | Book an in-office AI class for a brokerage (Claude Code, AI content tools, ChatRealty) | nothing (public booking) |
 
 The sidebar shows **Mission · Join Us · Invest** above Privacy · Terms, on the
 **platform host only** (`LegalLinks showCompany={isPlatformHost}`). On an agent's
@@ -44,6 +45,23 @@ runs through a registered funding portal. So:
   submissions.
 - The page carries the required legend. Do not add a payment button or an
   amount field to `/invest`.
+
+## AI classes (`/ai-classes`)
+
+Added 2026-11-02. Part of the sales motion: Joseph teaches AI classes at
+brokerage offices. Linked from the platform homepage (`/chat-landing`,
+"Book an AI Class").
+
+- `src/app/ai-classes/AiClassBooker.tsx` uses the same public booking
+  pipeline as `/invest`, with **60-minute** slots, weekdays, 30 days out.
+  The class lands on the platform owner's Google Calendar, creates a CRM
+  contact and sends the booking SMS alert.
+- **No account required** (unlike `/invest`): the booker is usually a broker
+  or office manager who has never used ChatRealty.
+- Appointment type `ai-class` (added to the enum). `/api/appointments/book`
+  takes optional `brokerage` and `location` (office address): the calendar
+  title is `AI Class: <brokerage> — <name>` and the office address is the
+  event location. Topics and headcount go in the message, prefixed `[AI class]`.
 
 ## Contributions (`/support`)
 

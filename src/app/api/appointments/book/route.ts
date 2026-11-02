@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
     message,
     propertyAddress,
     propertyListingKey,
+    // AI-class bookings (/ai-classes): the brokerage and the office the class is held at.
+    brokerage,
+    location,
   } = body;
 
   try {
@@ -111,13 +114,19 @@ export async function POST(request: NextRequest) {
 
   const title = type === "showing"
     ? `Showing: ${propertyAddress || "Property"} — ${name}`
-    : `${type.charAt(0).toUpperCase() + type.slice(1)} with ${name}`;
+    : type === "ai-class"
+      ? `AI Class: ${brokerage || "Brokerage"} — ${name}`
+      : `${type.charAt(0).toUpperCase() + type.slice(1)} with ${name}`;
+
+  const eventLocation: string | undefined = propertyAddress || location || undefined;
 
   const description = [
     `Booked via chatRealty`,
     `Name: ${name}`,
     `Email: ${email}`,
     phone ? `Phone: ${phone}` : null,
+    brokerage ? `Brokerage: ${brokerage}` : null,
+    location ? `Office: ${location}` : null,
     propertyAddress ? `Property: ${propertyAddress}` : null,
     message ? `\nMessage: ${message}` : null,
   ].filter(Boolean).join("\n");
@@ -128,7 +137,7 @@ export async function POST(request: NextRequest) {
         {
           summary: title,
           description,
-          location: propertyAddress,
+          location: eventLocation,
           start: { dateTime: startTime, timeZone: timezone },
           end: { dateTime: endTime, timeZone: timezone },
           attendees: [{ email, displayName: name }],
@@ -163,7 +172,7 @@ export async function POST(request: NextRequest) {
     startTime: new Date(startTime),
     endTime: new Date(endTime),
     timezone,
-    location: propertyAddress,
+    location: eventLocation,
     propertyListingKey,
     propertyAddress,
     attendee: { name, email, phone },
@@ -175,7 +184,7 @@ export async function POST(request: NextRequest) {
     agentId: String(resolvedAgentId),
     kind: "hot_lead",
     leadName: name,
-    detail: [`Booked ${type}`, propertyAddress].filter(Boolean).join(" • "),
+    detail: [`Booked ${type}`, brokerage, propertyAddress].filter(Boolean).join(" • "),
     leadPhone: phone,
   }).catch(() => {});
 
