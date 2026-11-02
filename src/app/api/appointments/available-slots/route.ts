@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { getAvailableSlots } from "@/lib/gcal-api";
+import { filterAiClassSlots } from "@/lib/ai-class-schedule";
 
 /**
  * GET /api/appointments/available-slots
@@ -79,11 +80,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const slots = await getAvailableSlots(
+    let slots = await getAvailableSlots(
       resolvedAgentId,
       date,
       duration
     );
+
+    // AI classes need a gap between them, which free/busy alone doesn't give.
+    if (searchParams.get("type") === "ai-class") {
+      slots = await filterAiClassSlots(resolvedAgentId, slots);
+    }
 
     return NextResponse.json({
       slots,

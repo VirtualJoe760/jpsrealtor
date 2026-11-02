@@ -9,6 +9,15 @@ import {
   getAgentCalendarSettings,
 } from "@/lib/gcal-api";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
+import { aiClassTooClose } from "@/lib/ai-class-schedule";
+import {
+  AI_CLASS_GAP_MINUTES,
+  AI_CLASS_LEAD_DAYS,
+  earliestClassStart,
+  formatIntake,
+  isSocalCounty,
+  type AiClassIntake,
+} from "@/config/ai-classes";
 
 /**
  * POST /api/appointments/book
@@ -36,10 +45,12 @@ export async function POST(request: NextRequest) {
     message,
     propertyAddress,
     propertyListingKey,
-    // AI-class bookings (/ai-classes): the brokerage and the office the class is held at.
-    brokerage,
-    location,
-  } = body;
+    // AI-class bookings (/ai-classes): office + room intake, see src/config/ai-classes.ts
+    aiClass,
+  } = body as { aiClass?: AiClassIntake } & Record<string, any>;
+
+  const brokerage: string | undefined = aiClass?.brokerage;
+  const location: string | undefined = aiClass ? `${aiClass.address}, ${aiClass.city}` : undefined;
 
   try {
   // Validate required fields
@@ -50,6 +61,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // AI classes: Southern California only, booked at least a week out. The
+  // form enforces both too; this stops a hand-made request from skipping them.
+  if (type === "ai-class") {
+    if (!aiClass?.brokerage || !aiClass.address || !aiClass.city || !aiClass.roomType) {
+      return NextResponse.json({ error: "Office and room details are required for an AI class" }, { status: 400 });
+    }
+    if (!aiClass.pointOfContact?.name || !aiClass.pointOfContact?.phone) {
+      return NextResponse.json({ error: "A point of contact with a phone number is required" }, { status: 400 });
+    }
+    if (!isSocalCounty(aiClass.county)) {
+      return NextResponse.json({ error: "AI classes are currently offered in Southern California only" }, { status: 400 });
+    }
+    if (new Date(startTime) < earliestClassStart()) {
+      return NextResponse.json({ error: `AI classes must be booked at least ${AI_CLASS_LEAD_DAYS} days in advance` }, { status: 400 });
+    }
+  }
+
   if (!agentId && !subdomain) {
     return NextResponse.json(
       { error: "agentId or subdomain required" },
@@ -58,6 +86,14 @@ export async function POST(request: NextRequest) {
   }
 
   await dbConnect();
+
+  // AI classes keep a gap between them (checked after connect: it reads Appointments).
+  if (type === "ai-class" && agentId && (await aiClassTooClose(String(agentId), new Date(startTime), new Date(endTime)))) {
+    return NextResponse.json(
+      { error: `That time is too close to another class (we need ${AI_CLASS_GAP_MINUTES / 60} hours between classes). Please pick another time.` },
+      { status: 409 }
+    );
+  }
 
   // Resolve agent
   let resolvedAgentId = agentId;
@@ -125,9 +161,8 @@ export async function POST(request: NextRequest) {
     `Name: ${name}`,
     `Email: ${email}`,
     phone ? `Phone: ${phone}` : null,
-    brokerage ? `Brokerage: ${brokerage}` : null,
-    location ? `Office: ${location}` : null,
     propertyAddress ? `Property: ${propertyAddress}` : null,
+    aiClass ? `\n${formatIntake(aiClass)}` : null,
     message ? `\nMessage: ${message}` : null,
   ].filter(Boolean).join("\n");
 
@@ -176,6 +211,7 @@ export async function POST(request: NextRequest) {
     propertyListingKey,
     propertyAddress,
     attendee: { name, email, phone },
+    aiClass: type === "ai-class" ? aiClass : undefined,
     notes: message,
   });
 
