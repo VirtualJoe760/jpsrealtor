@@ -837,53 +837,34 @@ export async function sendPartnerApplicationEmail(
       replyTo: `noreply@${NOREPLY_DOMAIN}`,
       to: email,
       subject: 'Welcome to ChatRealty — Your Service Partner Application',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#059669,#0d9488);border-radius:16px 16px 0 0;padding:40px 32px;text-align:center;">
-              <h1 style="color:#fff;font-size:24px;margin:0 0 8px;">Application Received</h1>
-              <p style="color:#d1fae5;font-size:14px;margin:0;">ChatRealty Service Partner Network</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;">
-              <p style="color:#334155;font-size:16px;line-height:1.6;">Hi ${name || 'there'},</p>
-              <p style="color:#334155;font-size:16px;line-height:1.6;">
-                Thank you for applying to join the ChatRealty Service Partner Network! We've received your application and it's currently under review.
-              </p>
-              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:24px 0;">
-                <h3 style="color:#166534;font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">Application Summary</h3>
-                <table style="width:100%;font-size:14px;color:#334155;">
-                  <tr><td style="padding:4px 0;color:#64748b;">Company</td><td style="padding:4px 0;font-weight:600;">${companyName}</td></tr>
-                  <tr><td style="padding:4px 0;color:#64748b;">Partner Type</td><td style="padding:4px 0;font-weight:600;">${typeLabel}</td></tr>
-                  <tr><td style="padding:4px 0;color:#64748b;">Status</td><td style="padding:4px 0;font-weight:600;color:#059669;">Pending Review</td></tr>
-                </table>
-              </div>
-              <h3 style="color:#334155;font-size:16px;margin:24px 0 12px;">What happens next?</h3>
-              <ol style="color:#475569;font-size:14px;line-height:1.8;padding-left:20px;">
-                <li>Our team will review your application (typically 1-2 business days)</li>
-                <li>You'll receive an email once your application is approved</li>
-                <li>Once approved, you can set up your full partner profile and start connecting with agents</li>
-              </ol>
-              <div style="text-align:center;margin:32px 0 16px;">
-                <a href="${baseUrl}/partner/settings" style="display:inline-block;background:#059669;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  View Your Partner Dashboard
-                </a>
-              </div>
-              <p style="color:#94a3b8;font-size:13px;text-align:center;">
-                If you have any questions, reply to this email or contact us at support@chatrealty.io
-              </p>
-            </div>
-            <div style="padding:24px 32px;text-align:center;">
-              <p style="color:#94a3b8;font-size:12px;margin:0;">
-                ChatRealty Service Partner Network
-              </p>
-            </div>
+      html: renderBrandedEmail({
+        title: 'Application received',
+        preheader: 'Your ChatRealty Service Partner application is under review.',
+        bodyHtml: `
+          <p style="margin:0 0 16px;">Hi ${name || 'there'},</p>
+          <p style="margin:0 0 16px;">
+            Thank you for applying to join the ChatRealty Service Partner Network! We've received your application and it's currently under review.
+          </p>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:24px 0;">
+            <h3 style="color:#166534;font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">Application Summary</h3>
+            <table style="width:100%;font-size:14px;color:#334155;">
+              <tr><td style="padding:4px 0;color:#64748b;">Company</td><td style="padding:4px 0;font-weight:600;">${companyName}</td></tr>
+              <tr><td style="padding:4px 0;color:#64748b;">Partner Type</td><td style="padding:4px 0;font-weight:600;">${typeLabel}</td></tr>
+              <tr><td style="padding:4px 0;color:#64748b;">Status</td><td style="padding:4px 0;font-weight:600;color:#059669;">Pending Review</td></tr>
+            </table>
           </div>
-        </body>
-        </html>
-      `,
+          <p style="margin:24px 0 8px;font-weight:600;">What happens next?</p>
+          <ol style="margin:0 0 16px;font-size:14px;line-height:1.8;padding-left:20px;">
+            <li>Our team will review your application (typically 1-2 business days)</li>
+            <li>You'll receive an email once your application is approved</li>
+            <li>Once approved, you can set up your full partner profile and start connecting with agents</li>
+          </ol>
+          <p style="margin:0;color:#94a3b8;font-size:13px;">
+            If you have any questions, reply to this email or contact us at support@chatrealty.io
+          </p>
+        `,
+        cta: { label: 'View your partner dashboard', url: `${baseUrl}/partner/settings` },
+      }),
     });
 
     if (error) {
@@ -925,42 +906,25 @@ export async function sendPartnerApplicationNotification(
       headers: {
         'X-Entity-Ref-ID': `partner-apply-${Date.now()}`,
       },
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:20px;margin:0 0 4px;">New Service Partner Application</h1>
-              <p style="color:#bfdbfe;font-size:13px;margin:0;">ChatRealty Partner Network</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;">
-              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:0 0 24px;">
-                <table style="width:100%;font-size:14px;color:#334155;">
-                  <tr><td style="padding:6px 0;color:#64748b;width:120px;">Applicant</td><td style="padding:6px 0;font-weight:600;">${applicantName || 'N/A'}</td></tr>
-                  <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;font-weight:600;"><a href="mailto:${applicantEmail}" style="color:#2563eb;">${applicantEmail}</a></td></tr>
-                  <tr><td style="padding:6px 0;color:#64748b;">Company</td><td style="padding:6px 0;font-weight:600;">${companyName}</td></tr>
-                  <tr><td style="padding:6px 0;color:#64748b;">Type</td><td style="padding:6px 0;font-weight:600;">${typeLabel}</td></tr>
-                  ${phone ? `<tr><td style="padding:6px 0;color:#64748b;">Phone</td><td style="padding:6px 0;">${phone}</td></tr>` : ''}
-                  ${website ? `<tr><td style="padding:6px 0;color:#64748b;">Website</td><td style="padding:6px 0;"><a href="${website}" style="color:#2563eb;">${website}</a></td></tr>` : ''}
-                  ${licenseNumber ? `<tr><td style="padding:6px 0;color:#64748b;">License #</td><td style="padding:6px 0;">${licenseNumber}</td></tr>` : ''}
-                  ${nmlsId ? `<tr><td style="padding:6px 0;color:#64748b;">NMLS ID</td><td style="padding:6px 0;">${nmlsId}</td></tr>` : ''}
-                </table>
-              </div>
-              <div style="text-align:center;">
-                <a href="${baseUrl}/agent/dashboard" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  Review in Agent Dashboard
-                </a>
-              </div>
-              <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">
-                Reply to this email to contact the applicant directly.
-              </p>
-            </div>
+      html: renderBrandedEmail({
+        title: 'New service partner application',
+        bodyHtml: `
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:0 0 16px;">
+            <table style="width:100%;font-size:14px;color:#334155;">
+              <tr><td style="padding:6px 0;color:#64748b;width:120px;">Applicant</td><td style="padding:6px 0;font-weight:600;">${applicantName || 'N/A'}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;font-weight:600;"><a href="mailto:${applicantEmail}" style="color:#2563eb;">${applicantEmail}</a></td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Company</td><td style="padding:6px 0;font-weight:600;">${companyName}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Type</td><td style="padding:6px 0;font-weight:600;">${typeLabel}</td></tr>
+              ${phone ? `<tr><td style="padding:6px 0;color:#64748b;">Phone</td><td style="padding:6px 0;">${phone}</td></tr>` : ''}
+              ${website ? `<tr><td style="padding:6px 0;color:#64748b;">Website</td><td style="padding:6px 0;"><a href="${website}" style="color:#2563eb;">${website}</a></td></tr>` : ''}
+              ${licenseNumber ? `<tr><td style="padding:6px 0;color:#64748b;">License #</td><td style="padding:6px 0;">${licenseNumber}</td></tr>` : ''}
+              ${nmlsId ? `<tr><td style="padding:6px 0;color:#64748b;">NMLS ID</td><td style="padding:6px 0;">${nmlsId}</td></tr>` : ''}
+            </table>
           </div>
-        </body>
-        </html>
-      `,
+          <p style="margin:0;color:#94a3b8;font-size:12px;">Reply to this email to contact the applicant directly.</p>
+        `,
+        cta: { label: 'Review in agent dashboard', url: `${baseUrl}/agent/dashboard` },
+      }),
     });
 
     if (error) {
@@ -994,10 +958,6 @@ export async function sendSubscriptionEmail(
   const subject = isSubscribed
     ? 'Welcome to Pro — Your Upgrade is Active'
     : 'Your Pro Subscription Has Been Cancelled';
-
-  const gradientColors = isSubscribed
-    ? 'linear-gradient(135deg,#059669,#10b981)'
-    : 'linear-gradient(135deg,#6b7280,#9ca3af)';
 
   const heading = isSubscribed
     ? 'You\'re on Pro!'
@@ -1036,28 +996,11 @@ export async function sendSubscriptionEmail(
       to: [email],
       replyTo: ADMIN_EMAIL,
       subject,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:${gradientColors};border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:24px;margin:0 0 4px;">${heading}</h1>
-              <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;">ChatRealty Pro</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              ${body}
-              <div style="text-align:center;margin:24px 0 0;">
-                <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  ${ctaText}
-                </a>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        title: heading,
+        bodyHtml: body,
+        cta: { label: ctaText, url: ctaUrl },
+      }),
     });
 
     if (error) {
@@ -1094,39 +1037,26 @@ export async function sendCancellationNotification(
       replyTo: userEmail,
       to: adminEmail,
       subject: `[Cancellation] ${userName || userEmail} cancelled Pro`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#dc2626,#ef4444);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:20px;margin:0 0 4px;">Pro Subscription Cancelled</h1>
-              <p style="color:#fecaca;font-size:13px;margin:0;">ChatRealty Billing</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px;margin:0 0 24px;">
-                <table style="width:100%;font-size:14px;color:#334155;">
-                  <tr><td style="padding:6px 0;color:#64748b;width:100px;">User</td><td style="padding:6px 0;font-weight:600;">${userName || 'N/A'}</td></tr>
-                  <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;"><a href="mailto:${userEmail}" style="color:#2563eb;">${userEmail}</a></td></tr>
-                  ${expiresAt ? `<tr><td style="padding:6px 0;color:#64748b;">Access Until</td><td style="padding:6px 0;">${expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
-                  ${reason ? `<tr><td style="padding:6px 0;color:#64748b;">Reason</td><td style="padding:6px 0;font-weight:600;">${reason}</td></tr>` : ''}
-                </table>
-              </div>
-              ${feedback ? `
-                <div style="margin:0 0 24px;">
-                  <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:600;">FEEDBACK</p>
-                  <p style="color:#334155;font-size:14px;margin:0;background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0;">${feedback}</p>
-                </div>
-              ` : ''}
-              <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">
-                Reply to this email to reach the user directly.
-              </p>
-            </div>
+      html: renderBrandedEmail({
+        title: 'Pro subscription cancelled',
+        bodyHtml: `
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px;margin:0 0 24px;">
+            <table style="width:100%;font-size:14px;color:#334155;">
+              <tr><td style="padding:6px 0;color:#64748b;width:100px;">User</td><td style="padding:6px 0;font-weight:600;">${userName || 'N/A'}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;"><a href="mailto:${userEmail}" style="color:#2563eb;">${userEmail}</a></td></tr>
+              ${expiresAt ? `<tr><td style="padding:6px 0;color:#64748b;">Access Until</td><td style="padding:6px 0;">${expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
+              ${reason ? `<tr><td style="padding:6px 0;color:#64748b;">Reason</td><td style="padding:6px 0;font-weight:600;">${reason}</td></tr>` : ''}
+            </table>
           </div>
-        </body>
-        </html>
-      `,
+          ${feedback ? `
+            <div style="margin:0 0 24px;">
+              <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:600;">FEEDBACK</p>
+              <p style="color:#334155;font-size:14px;margin:0;background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0;">${feedback}</p>
+            </div>
+          ` : ''}
+          <p style="margin:0;color:#94a3b8;font-size:12px;">Reply to this email to reach the user directly.</p>
+        `,
+      }),
     });
 
     if (error) {
@@ -1162,32 +1092,18 @@ export async function sendEmailChangeVerification(
       from: platformFrom(),
       to: [newEmail],
       subject: 'Confirm your new email address',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:22px;margin:0;">Confirm Your New Email</h1>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <p style="color:#334155;font-size:15px;line-height:1.7;">
-                Hey ${firstName}, we received a request to change your ChatRealty account email to this address. Click below to confirm:
-              </p>
-              <div style="text-align:center;margin:24px 0;">
-                <a href="${verifyUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  Confirm Email Change
-                </a>
-              </div>
-              <p style="color:#94a3b8;font-size:13px;text-align:center;">
-                This link expires in 1 hour. If you didn't request this change, ignore this email.
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        title: 'Confirm your new email',
+        bodyHtml: `
+          <p style="margin:0 0 16px;">
+            Hey ${firstName}, we received a request to change your ChatRealty account email to this address. Click below to confirm.
+          </p>
+          <p style="margin:0;color:#94a3b8;font-size:13px;">
+            This link expires in 1 hour. If you didn't request this change, ignore this email.
+          </p>
+        `,
+        cta: { label: 'Confirm email change', url: verifyUrl },
+      }),
     });
 
     if (error) {
@@ -1290,36 +1206,22 @@ export async function sendPartnerApprovalEmail(
       to: [email],
       replyTo: ADMIN_EMAIL,
       subject: `You're approved — ${companyName || 'your business'} is now in the ChatRealty partner directory`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#0e7c7b,#10b981);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:24px;margin:0 0 4px;">You're Approved!</h1>
-              <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;">Welcome to the ChatRealty Partner Network</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <p style="color:#334155;font-size:15px;line-height:1.7;">
-                Hi ${firstName}, great news — <strong>${companyName || 'your business'}</strong> has been approved
-                as a <strong>${typeLabel}</strong> and is now listed in the ChatRealty partner directory, where
-                agents and their clients can find and connect with you.
-              </p>
-              <div style="text-align:center;margin:24px 0 8px;">
-                <a href="${baseUrl}/directory" style="display:inline-block;background:#0e7c7b;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  View the Directory
-                </a>
-              </div>
-              <p style="color:#64748b;font-size:13px;line-height:1.7;text-align:center;margin:16px 0 0;">
-                You can update your company profile, service areas, and specializations any time in
-                <a href="${baseUrl}/partner/settings" style="color:#0e7c7b;">your partner settings</a>.
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        title: "You're approved!",
+        preheader: 'Welcome to the ChatRealty Partner Network',
+        bodyHtml: `
+          <p style="margin:0 0 16px;">
+            Hi ${firstName}, great news — <strong>${companyName || 'your business'}</strong> has been approved
+            as a <strong>${typeLabel}</strong> and is now listed in the ChatRealty partner directory, where
+            agents and their clients can find and connect with you.
+          </p>
+          <p style="margin:0;color:#64748b;font-size:13px;">
+            You can update your company profile, service areas, and specializations any time in
+            <a href="${baseUrl}/partner/settings" style="color:#2563eb;">your partner settings</a>.
+          </p>
+        `,
+        cta: { label: 'View the directory', url: `${baseUrl}/directory` },
+      }),
     });
 
     if (error) {
@@ -1359,47 +1261,34 @@ export async function sendCoMarketingApprovalEmail(opts: {
       to: [opts.email],
       replyTo: ADMIN_EMAIL,
       subject: `Approve your share of ${opts.agentName}'s co-marketing campaign`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:linear-gradient(135deg,#0e7c7b,#10b981);border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:22px;margin:0 0 4px;">Co-Marketing Ad Spend — Your Approval Needed</h1>
-              <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;">${opts.campaignName}</p>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <p style="color:#334155;font-size:15px;line-height:1.7;">
-                Hi ${firstName}, <strong>${opts.agentName}</strong> has set up a co-marketing campaign and
-                allocated you a share of the ad spend. You only pay the fair-market value of the advertising
-                you receive — nothing more.
-              </p>
-              <div style="background:#f1f5f9;border-radius:10px;padding:18px 20px;margin:18px 0;">
-                <p style="margin:0;font-size:13px;color:#64748b;">Your share</p>
-                <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#0f172a;">
-                  ${opts.shareCredits.toLocaleString()} credits
-                  <span style="font-size:14px;font-weight:500;color:#64748b;">(~$${opts.shareDollars.toFixed(2)} in ad spend)</span>
-                </p>
-              </div>
-              <p style="color:#334155;font-size:14px;line-height:1.7;">
-                Review the creative and approve or deny your share in your account. If your credit balance
-                doesn't cover it, you'll be able to top up first — the campaign launches only after every
-                party approves.
-              </p>
-              <div style="text-align:center;margin:24px 0 8px;">
-                <a href="${opts.reviewUrl}" style="display:inline-block;background:#0e7c7b;color:#fff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  Review &amp; Approve
-                </a>
-              </div>
-              <p style="color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;margin:16px 0 0;">
-                This is a joint marketing arrangement. Your payment is for your own advertising, not a referral.
-              </p>
-            </div>
+      html: renderBrandedEmail({
+        title: 'Co-marketing ad spend: your approval is needed',
+        preheader: opts.campaignName,
+        bodyHtml: `
+          <p style="margin:0 0 6px;color:#64748b;font-size:13px;">${opts.campaignName}</p>
+          <p style="margin:0 0 16px;">
+            Hi ${firstName}, <strong>${opts.agentName}</strong> has set up a co-marketing campaign and
+            allocated you a share of the ad spend. You only pay the fair-market value of the advertising
+            you receive — nothing more.
+          </p>
+          <div style="background:#f1f5f9;border-radius:10px;padding:18px 20px;margin:18px 0;">
+            <p style="margin:0;font-size:13px;color:#64748b;">Your share</p>
+            <p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#0f172a;">
+              ${opts.shareCredits.toLocaleString()} credits
+              <span style="font-size:14px;font-weight:500;color:#64748b;">(~$${opts.shareDollars.toFixed(2)} in ad spend)</span>
+            </p>
           </div>
-        </body>
-        </html>
-      `,
+          <p style="margin:0 0 16px;font-size:14px;">
+            Review the creative and approve or deny your share in your account. If your credit balance
+            doesn't cover it, you'll be able to top up first — the campaign launches only after every
+            party approves.
+          </p>
+          <p style="margin:0;color:#94a3b8;font-size:12px;">
+            This is a joint marketing arrangement. Your payment is for your own advertising, not a referral.
+          </p>
+        `,
+        cta: { label: 'Review & approve', url: opts.reviewUrl },
+      }),
     });
 
     if (error) {
@@ -1435,36 +1324,22 @@ export async function sendPartnerRejectionEmail(
       to: [email],
       replyTo: ADMIN_EMAIL,
       subject: `Update on your ChatRealty partner application`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-        <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-            <div style="background:#1e293b;border-radius:16px 16px 0 0;padding:32px;text-align:center;">
-              <h1 style="color:#fff;font-size:22px;margin:0;">Partner Application Update</h1>
-            </div>
-            <div style="background:#fff;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-              <p style="color:#334155;font-size:15px;line-height:1.7;">
-                Hi ${firstName}, thank you for your interest in joining the ChatRealty partner directory with
-                <strong>${companyName || 'your business'}</strong>. After review, we're not able to approve the
-                application at this time.
-              </p>
-              ${reason ? `<div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="color:#475569;font-size:13px;font-weight:600;margin:0 0 6px;">REASON</p><p style="color:#334155;font-size:14px;margin:0;">${reason}</p></div>` : ''}
-              <p style="color:#64748b;font-size:14px;line-height:1.7;">
-                If you believe this was a mistake or you'd like to provide additional information, just reply to
-                this email and we'll take another look.
-              </p>
-              <div style="text-align:center;margin:20px 0 0;">
-                <a href="${baseUrl}/partner/settings/apply" style="display:inline-block;background:#475569;color:#fff;padding:12px 30px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                  Re-apply
-                </a>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        title: 'Partner application update',
+        bodyHtml: `
+          <p style="margin:0 0 16px;">
+            Hi ${firstName}, thank you for your interest in joining the ChatRealty partner directory with
+            <strong>${companyName || 'your business'}</strong>. After review, we're not able to approve the
+            application at this time.
+          </p>
+          ${reason ? `<div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="color:#475569;font-size:13px;font-weight:600;margin:0 0 6px;">REASON</p><p style="color:#334155;font-size:14px;margin:0;">${reason}</p></div>` : ''}
+          <p style="margin:0;color:#64748b;font-size:14px;">
+            If you believe this was a mistake or you'd like to provide additional information, just reply to
+            this email and we'll take another look.
+          </p>
+        `,
+        cta: { label: 'Re-apply', url: `${baseUrl}/partner/settings/apply` },
+      }),
     });
 
     if (error) {
@@ -1510,10 +1385,9 @@ export async function sendJobApplicationNotification(opts: {
       to: ADMIN_EMAIL,
       subject: `[Careers] ${opts.roleTitle}: ${opts.name}`,
       attachments: opts.attachments,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#334155;line-height:1.5;">
-          <p style="margin:0;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#2563eb;">New application</p>
-          <h2 style="margin:4px 0 12px;color:#0f172a;">${esc(opts.roleTitle)}</h2>
+      html: renderBrandedEmail({
+        title: `New application: ${esc(opts.roleTitle)}`,
+        bodyHtml: `
           <p style="margin:0;"><strong>${esc(opts.name)}</strong> &lt;${esc(opts.email)}&gt;</p>
           ${opts.phone ? `<p style="margin:0;">${esc(opts.phone)}</p>` : ''}
           ${opts.linkedin ? `<p style="margin:0;">${esc(opts.linkedin)}</p>` : ''}
@@ -1522,8 +1396,8 @@ export async function sendJobApplicationNotification(opts: {
           ${qa}
           ${opts.coverLetterText ? `<h3 style="margin:24px 0 8px;color:#0f172a;">Cover letter</h3><p style="white-space:pre-wrap;margin:0;">${esc(opts.coverLetterText)}</p>` : ''}
           <p style="margin-top:24px;font-size:12px;color:#94a3b8;">Reply to this email to contact the applicant. The application is also saved in the job_applications collection.</p>
-        </div>
-      `,
+        `,
+      }),
     });
     if (error) console.error('[careers] application notification error:', error);
   } catch (error) {

@@ -158,7 +158,7 @@ is still gated, but do not rely on that alone — add the check.
 | File | Why it matters |
 |---|---|
 | `lib/email-resend.ts` | 1,465 lines, 13 senders. Platform mail is `ChatRealty <noreply@chatrealty.io>` via `platformFrom()`. |
-| `lib/email-brand.ts` | `renderBrandedEmail()` — the branded shell. **Only 1 of 13 senders uses it**; adopting it is open work. |
+| `lib/email-brand.ts` | `renderBrandedEmail()` — the branded shell. Every platform (`platformFrom()`) sender uses it; agent-branded mail does not. |
 | `lib/spark-roster.ts` | MLS agent roster. Listing rows carry agent email ~1% of the time; the roster resource has it. |
 | `lib/publishing-pipeline.ts` | Article/landing-page publish |
 | `lib/google-ads-api.ts` `lib/meta-ads-api.ts` `lib/twilio.ts` `lib/thanksio.ts` | Outbound channels — all cost money |

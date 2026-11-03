@@ -1,7 +1,7 @@
 ---
 title: Affiliate program (recurring commissions on agent subscriptions)
 status: current
-last_verified: 2026-11-02
+last_verified: 2026-11-03
 related: [./README.md, ./stripe-billing.md, ./transactions-and-partnerships.md, ../multi-tenant/site-platform-plan.md]
 ---
 
@@ -57,6 +57,7 @@ that invoice; annual invoices pay 12 months at once.
 | `src/lib/affiliates.ts` | All affiliate logic: clicks, `captureReferral`, `recordInvoiceCommission`, `reverseCommissionForPayment`, Connect onboarding, `runAffiliatePayouts`, dashboard summary |
 | `src/app/components/AffiliateRefCapture.tsx` | In the root layout; posts `?ref=` to the track route |
 | `src/app/partner/affiliate/page.tsx` | Apply form → pending → dashboard |
+| Entry points | Consumer: `/dashboard/settings` card. Agents: Billing step in `/agent/settings` (added 2026-11-03; agents had no link before). Service partners: `/partner/settings/apply`. |
 | `src/app/admin/affiliates/page.tsx` | Queue, pause/resume/terminate, rate override, ledger |
 | `src/app/affiliate-terms/page.tsx` | Terms; numbers render from the config |
 | `src/lib/email-resend.ts` | `sendAffiliateApplicationReceivedEmail`, `…AdminNotification`, `sendAffiliateApprovalEmail`, `sendAffiliateRejectionEmail` — all `renderBrandedEmail` + `platformFrom()` |

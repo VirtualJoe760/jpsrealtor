@@ -1,7 +1,7 @@
 ---
 title: Email (Resend) — platform mail + per-agent CRM sending
 status: current
-last_verified: 2026-11-02
+last_verified: 2026-11-03
 related:
   - twilio.md
   - ../crm/README.md
@@ -108,10 +108,17 @@ collection.
   lazily (`getResendClient()`); `crm/send-email` creates its own client at module load.
 - `src/lib/email-brand.ts` exports `renderBrandedEmail()` (dependency-free,
   table-based shell: CHATREALTY wordmark header, `#2563eb` CTA, reply-to-us footer), `platformFrom()`
-  and `escapeHtml()`. Two of the 14 `email-resend.ts` senders
-  (`sendAgentApprovalEmail`, `sendAiClassConfirmationEmail`) use the shell; the three agent-application mails in
-  `src/lib/email-agent-application.ts` do too. `email-resend.ts` also keeps its own
-  private `platformFrom()`, a duplicate of the one in `email-brand.ts`.
+  and `escapeHtml()`. Every `platformFrom()` sender in `email-resend.ts` uses the
+  shell (2026-11-03: subscription, partner application/approval/rejection,
+  co-marketing approval, email-change, cancellation and job-application alerts
+  moved off their own gradient headers, which carried no logo). So do the
+  agent-application mails in `src/lib/email-agent-application.ts` and the
+  "ChatRealty Leads" form alert in `api/campaign/submit`. Not on the shell, on
+  purpose: the four agent-branded senders (agent colors, not ChatRealty's), CRM
+  sends, the tenant magic-link (`crm/end-user-auth.ts`, the tenant's name), the
+  plain-text bug/feedback alerts, and the two parked `webhooks/stripe-identity`
+  mails (the webhook never fires). `email-resend.ts` also keeps its own private
+  `platformFrom()`, a duplicate of the one in `email-brand.ts`.
 - **Header logo** (2026-11-02): the two-weight text wordmark rendered to PNG
   (mail clients don't load Jost) — `public/images/brand/chatrealty-wordmark-email.png`,
   served from Cloudinary (`jpsrealtor/brand/chatrealty/wordmark-email`) so a send

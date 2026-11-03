@@ -126,7 +126,10 @@ export function isPlatformPinnedApi(pathname: string): boolean {
  * at these paths, so the agent's site loses nothing.
  */
 export function isPlatformSurfacePath(pathname: string): boolean {
-  return ["/auth", "/agent", "/admin", "/dashboard"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  // /partner and /affiliate-terms: agents work on their subdomain, and the
+  // partner/affiliate program has to open there too (2026-11-03: it rendered
+  // the agent's public "under construction" page instead).
+  return ["/auth", "/agent", "/admin", "/dashboard", "/partner", "/affiliate-terms"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 /** NextAuth session cookie names — what must never be forwarded to a third-party deployment. */

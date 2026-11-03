@@ -470,7 +470,8 @@ export async function proxy(request: NextRequest) {
     const subdomain = detectedSubdomain;
 
     // Let auth, agent, admin, and dashboard routes pass through normally
-    const passthroughPrefixes = ["/auth", "/agent", "/admin", "/dashboard"];
+    // Keep in step with isPlatformSurfacePath (src/lib/agent-host.ts).
+    const passthroughPrefixes = ["/auth", "/agent", "/admin", "/dashboard", "/partner", "/affiliate-terms"];
     const isPassthrough = passthroughPrefixes.some(
       (p) => pathname === p || pathname.startsWith(p + "/")
     );

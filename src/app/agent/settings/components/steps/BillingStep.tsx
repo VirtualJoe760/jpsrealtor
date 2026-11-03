@@ -354,6 +354,21 @@ export default function BillingStep({
         </a>
       )}
 
+      {/* Affiliate program (docs/commerce/affiliates.md). Agents can be
+          affiliates too; this was only linked from the consumer dashboard. */}
+      <a
+        href="/partner/affiliate"
+        className={`mt-4 flex items-center justify-between rounded-xl border p-4 ${
+          isLight ? "border-gray-200 bg-gray-50 hover:bg-gray-100" : "border-gray-700 bg-gray-800/50 hover:bg-gray-800"
+        }`}
+      >
+        <span>
+          <span className={`block text-sm font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Affiliate program</span>
+          <span className={`block text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>Earn $5–$25 a month for every agent you refer who subscribes.</span>
+        </span>
+        <ExternalLink className={`h-4 w-4 ${isLight ? "text-gray-400" : "text-gray-500"}`} />
+      </a>
+
       {/* Change Plan */}
       <div className="mt-6">
         <button
