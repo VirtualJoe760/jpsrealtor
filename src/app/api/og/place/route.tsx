@@ -156,14 +156,12 @@ export async function GET(request: NextRequest) {
           {/* The platform mark, not a brokerage logo: one deployment serves
               many agents, so a hardcoded agency here would stamp one brand
               onto every other agent's share cards. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${baseUrl}/images/brand/chatrealty-logo-light-1436x356.png`}
-            alt="chatRealty"
-            width={300}
-            height={74}
-            style={{ objectFit: "contain" }}
-          />
+          {/* Text wordmark (CHAT 200 / REALTY 500, Jost), replacing the retired
+              speech-bubble logo 2026-11-02. */}
+          <div style={{ display: "flex", fontFamily: "Jost", fontSize: 30, letterSpacing: 9, marginRight: -9, color: "#0f172a" }}>
+            <span style={{ fontWeight: 200 }}>CHAT</span>
+            <span style={{ fontWeight: 500 }}>REALTY</span>
+          </div>
         </div>
       </div>
     ),
