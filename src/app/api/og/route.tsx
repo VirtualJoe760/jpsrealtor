@@ -1,9 +1,11 @@
 // GET /api/og?subdomain=josephsardella
 // Dynamic OG image generation for agent homepages.
-// White background, the TEXT wordmark (CHAT thin / REALTY medium, Jost,
-// wide tracking — same as the site's Wordmark component) center-left,
-// transparent headshot off-center right. Satori requires explicit font
-// data, so the two Jost weights are fetched from public/fonts/.
+// Agent card: the agent's brokerage logo top-left (falls back to the TEXT
+// wordmark — CHAT thin / REALTY medium, Jost, wide tracking, same as the
+// site's Wordmark component), name/brokerage/DRE below, transparent
+// headshot right. Platform card: the wordmark alone. Satori requires
+// explicit font data, so the two Jost weights are fetched from public/fonts/.
+// Resolution order is documented in docs/agent-identity/README.md.
 
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest) {
 
   await dbConnect();
   const agent = await User.findOne({ "agentProfile.subdomain": subdomain })
-    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors agentProfile.teamLogo agentProfile.teamLogoDark agentProfile.ogBackgroundImage")
+    .select("name brokerageName licenseNumber agentProfile.headshotTransparent agentProfile.headshot agentProfile.brandColors agentProfile.brokerage.logo agentProfile.brokerage.logoDark agentProfile.brokerLogo agentProfile.brokerLogoDark agentProfile.teamLogo agentProfile.teamLogoDark agentProfile.ogBackgroundImage")
     .lean();
 
   const ap = (agent as any)?.agentProfile;
@@ -111,9 +113,6 @@ export async function GET(request: NextRequest) {
     .map((c: string) => c.trim())
     .filter(Boolean);
   const primaryColor: string = colorList[0] || "#1e3a5f";
-  // Team logo (when the agent has one) replaces the platform wordmark on the
-  // agent's card — ChatRealty is the parent platform's brand, not the
-  // agent's agency. Relative paths resolve against this deployment.
   // Optional background photo (Brand settings → Share-Card Background).
   // With a photo the card goes DARK: full-strength image, dark scrim on
   // top, light copy + headshot above it (owner: don't fade the photo — put
@@ -122,13 +121,24 @@ export async function GET(request: NextRequest) {
   const bgUrl = bgRaw ? (bgRaw.startsWith("http") ? bgRaw : `${baseUrl}${bgRaw}`) : "";
   const darkCard = Boolean(bgUrl);
 
-  // Team logo: the dark-mode (white) variant on the dark card.
-  const teamLogoRaw: string =
-    (darkCard ? ap?.teamLogoDark || ap?.teamLogo : ap?.teamLogo) || "";
-  const teamLogoUrl = teamLogoRaw
-    ? teamLogoRaw.startsWith("http")
-      ? teamLogoRaw
-      : `${baseUrl}${teamLogoRaw}`
+  // The top-left mark on an AGENT card is their brokerage's logo —
+  // ChatRealty is the platform's brand, not the agent's agency (changed
+  // 2026-11-03 at Joseph's request; the card showed CHATREALTY above
+  // "Fathom Realty"). Order: brokerage logo → legacy brokerLogo pair (same
+  // order as /api/agent-branding) → team logo (the previous behaviour, kept
+  // for agents who only set that) → the CHATREALTY text wordmark. On the
+  // dark photo card each slot prefers its dark-background (white) artwork.
+  // Relative paths resolve against this deployment.
+  const pickLogo = (light?: string, dark?: string) =>
+    (darkCard ? dark || light : light || dark) || "";
+  const markRaw: string =
+    pickLogo(ap?.brokerage?.logo, ap?.brokerage?.logoDark) ||
+    pickLogo(ap?.brokerLogo, ap?.brokerLogoDark) ||
+    pickLogo(ap?.teamLogo, ap?.teamLogoDark);
+  const markUrl = markRaw
+    ? markRaw.startsWith("http")
+      ? markRaw
+      : `${baseUrl}${markRaw}`
     : "";
 
   // Text + accent palette per card mode.
@@ -174,8 +184,12 @@ export async function GET(request: NextRequest) {
       <div style={{ display: "flex", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: 60, paddingTop: 60, paddingBottom: 60, flex: 1 }}>
           <div style={{ display: "flex", marginBottom: 44 }}>
-            {teamLogoUrl ? (
-              <img src={teamLogoUrl} alt="" width={560} height={131} style={{ objectFit: "contain" }} />
+            {markUrl ? (
+              // Height only: Satori reads the image's natural size and keeps
+              // its aspect, so a square shield and a wide wordmark both sit
+              // flush left. A fixed width + objectFit:contain centred narrow
+              // logos in a 560px box, floating them away from the copy.
+              <img src={markUrl} alt="" height={130} style={{ maxWidth: 560 }} />
             ) : (
               <WordmarkRow fontSize={68} color={markColor} />
             )}
