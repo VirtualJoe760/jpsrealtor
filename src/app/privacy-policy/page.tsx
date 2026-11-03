@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { getBaseUrlFromHeaders } from '@/lib/domain-utils';
 import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
@@ -7,6 +9,18 @@ import AgentLegalDoc from '@/app/components/legal/AgentLegalDoc';
 import PlatformPrivacy from './PlatformPrivacy';
 
 export const dynamic = 'force-dynamic';
+
+// Own title, description and canonical. Without this the page inherited the
+// homepage's title, description and og:url (site-platform-plan P1.2).
+export async function generateMetadata(): Promise<Metadata> {
+  const base = await getBaseUrlFromHeaders();
+  return {
+    title: 'Privacy Policy',
+    description: 'How this site collects, uses and protects your personal information, including contact, SMS and cookie data.',
+    alternates: { canonical: `${base}/privacy-policy` },
+    openGraph: { title: 'Privacy Policy', description: 'How this site collects, uses and protects your personal information, including contact, SMS and cookie data.', url: `${base}/privacy-policy` },
+  };
+}
 
 /**
  * Platform domains (primary agent) → the full approved master Privacy Policy.

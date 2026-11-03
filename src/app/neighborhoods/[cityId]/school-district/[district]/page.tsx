@@ -8,7 +8,7 @@ import {
   School,
 } from "@/constants/schoolDataset";
 import { Metadata } from "next";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 const districts: { [key: string]: SchoolDistrict } = {
   psusd: palmSpringsUnifiedSchoolDistrict,
@@ -19,7 +19,7 @@ const districts: { [key: string]: SchoolDistrict } = {
 // Metadata function
 export async function generateMetadata({ params }: { params: { cityId: string; district: string } }): Promise<Metadata> {
   const { cityId, district } = params;
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   const selectedDistrict = districts[district];
   if (!selectedDistrict) {

@@ -4,11 +4,20 @@
 // Property field catalog. Grounded in:
 //   src/lib/db/adapter.ts (ListingDTO)
 //   src/lib/reso/data-dictionary.ts (RESO Property fields)
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import Callout from "@/components/developers/Callout";
 import FieldTable from "@/components/developers/FieldTable";
 import { DocsHeader, DocsSection, Prose } from "@/components/developers/DocsPage";
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "Listing Schema — ChatRealty API" },
+  description: "The ChatRealty listing schema: every field and its type.",
+  alternates: { canonical: "https://www.chatrealty.io/developers/schema" },
+};
 
 export default function SchemaPage() {
   return (

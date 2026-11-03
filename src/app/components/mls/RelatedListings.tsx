@@ -24,6 +24,8 @@ interface RelatedListingsProps {
   subdivisionName?: string;
   excludeListingKey: string;
   listPrice?: number;
+  /** Section heading; the off-market page uses "Homes for sale nearby". */
+  title?: string;
 }
 
 function formatPrice(price: number) {
@@ -37,6 +39,7 @@ export default function RelatedListings({
   subdivisionName,
   excludeListingKey,
   listPrice,
+  title = "Similar Properties",
 }: RelatedListingsProps) {
   const [listings, setListings] = useState<RelatedListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +106,7 @@ export default function RelatedListings({
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h2 className={`text-2xl md:text-3xl font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-            Similar Properties
+            {title}
           </h2>
           <Link
             href={subdivisionName

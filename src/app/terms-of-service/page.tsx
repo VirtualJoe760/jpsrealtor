@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { getBaseUrlFromHeaders } from '@/lib/domain-utils';
 import { resolveDomainOwner } from '@/lib/resolveDomainOwner';
 import dbConnect from '@/lib/mongoose';
 import User from '@/models/User';
@@ -7,6 +9,18 @@ import AgentLegalDoc from '@/app/components/legal/AgentLegalDoc';
 import PlatformTerms from './PlatformTerms';
 
 export const dynamic = 'force-dynamic';
+
+// Own title, description and canonical. Without this the page inherited the
+// homepage's title, description and og:url (site-platform-plan P1.2).
+export async function generateMetadata(): Promise<Metadata> {
+  const base = await getBaseUrlFromHeaders();
+  return {
+    title: 'Terms of Service',
+    description: 'The terms that govern your use of this site, its listing search, AI tools and communications.',
+    alternates: { canonical: `${base}/terms-of-service` },
+    openGraph: { title: 'Terms of Service', description: 'The terms that govern your use of this site, its listing search, AI tools and communications.', url: `${base}/terms-of-service` },
+  };
+}
 
 /**
  * On the platform domains (Joseph / primary agent) → render the full approved

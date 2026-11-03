@@ -87,6 +87,24 @@ export async function getBaseUrlFromHeaders(): Promise<string> {
   return getBaseUrl(host)
 }
 
+/** The consumer search site the platform's catalog pages defer to. */
+const CONSUMER_CATALOG_HOST = 'jpsrealtor.com'
+
+/**
+ * Base URL for SEO on CONSUMER CATALOG pages (/mls-listings/*, /neighborhoods/*).
+ *
+ * chatrealty.io serves the same catalog as jpsrealtor.com, word for word, and
+ * used to self-canonical it — Google kept one copy and the two competed
+ * (Indio: 3,056 words, 100% match). chatrealty.io ranks as the agent product
+ * site instead (site-platform-plan D1, P1.3), so on platform hosts these pages
+ * canonical to jpsrealtor.com. Every other host is unchanged.
+ */
+export async function getCatalogBaseUrlFromHeaders(): Promise<string> {
+  const headersList = await headers()
+  const host = headersList.get('host') || 'chatrealty.io'
+  return isPlatformDomain(host) ? `https://${CONSUMER_CATALOG_HOST}` : getBaseUrl(host)
+}
+
 /**
  * Async helper to get the hostname from request headers.
  */

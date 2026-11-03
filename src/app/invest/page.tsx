@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import InvestClient from "./InvestClient";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.chatrealty.io/invest" },
   title: { absolute: "Invest in ChatRealty" },
   description: "ChatRealty's planned pre-seed community round: $3M for 15%. Book an investment consultation.",
 };

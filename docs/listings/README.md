@@ -1,7 +1,7 @@
 ---
 title: Listings / MLS
 status: partial
-last_verified: 2026-10-31
+last_verified: 2026-11-02
 related: [caching-and-traffic.md, ../multi-tenant/README.md, ../chat/README.md, ../chatrealty-api/data-tiers.md, ../mcp/tools.md]
 ---
 
@@ -35,7 +35,7 @@ from Settings — see [Hosted MLS seeding](#hosted-mls-seeding-tenant-databases)
 | `src/app/api/mls-listings/route.ts` | Canonical public search: `listingType`→`propertyType`, price/beds/baths/sqft/lot/year/amenity/HOA/city/subdivision/`mlsSource`/`excludeKeys` filters, radius overrides the bounding box, `openhouses` `$lookup`, `s-maxage=3600, stale-while-revalidate=604800` |
 | `src/app/api/mls-listings/[slugAddress]/route.ts` | Single-listing JSON for browser callers (map, chat cards); CDN `s-maxage=600` |
 | `src/lib/listings/listing-detail.ts` | Shared in-process reads (`getEnrichedListing`, `getListingPhotos`) used by the detail page, its OG image and both API routes — see [caching-and-traffic.md](caching-and-traffic.md) |
-| `src/lib/listings/dead-listing-redirect.ts` | Where `/mls-listings/<slug>` goes when the listing has left `unified_listings` — see [Dead listing URLs](#dead-listing-urls) |
+| `src/lib/listings/dead-listing-redirect.ts` | Location context (city, subdivision) for the off-market notice page when a listing has left `unified_listings` — see [Dead listing URLs](#dead-listing-urls) |
 | `src/app/api/unified-listings/route.ts` | Lookup by `listingKey`/`slugAddress`, true `$near` radius (meters) |
 | `src/app/api/listings/[listingKey]/photos/route.ts` | Per-listing photos, DB-first (siblings: `listings/{nearby,related,quick-search}`) |
 | `src/lib/listings/fetch-primary-photos.ts` | Batched Spark photo fetch (50 keys/request per `mlsId`, 1h cache) |
@@ -146,7 +146,7 @@ listing goes off-market and leaves the live Spark feed.
 
 ## Frontend routes
 
-- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that reads the listing and photos in-process via `src/lib/listings/listing-detail.ts`; an unreadable slug **redirects** rather than 404s ([Dead listing URLs](#dead-listing-urls)) (10-min data cache; it no longer fetches its own API over HTTP — [caching-and-traffic.md](caching-and-traffic.md)); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` uses `/api/cma/generate` for that listing. Subdivision rollups cannot be passed to the listing report: they have no subject or scored comp arrays. `/mls-listings/[slugAddress]/map` — listing-scoped map.
+- `/mls-listings` — search index. `/mls-listings/[slugAddress]` — detail page: a server component that reads the listing and photos in-process via `src/lib/listings/listing-detail.ts`; an unreadable slug renders an **off-market notice page** (200, noindex) rather than 404ing ([Dead listing URLs](#dead-listing-urls)) (10-min data cache; it no longer fetches its own API over HTTP — [caching-and-traffic.md](caching-and-traffic.md)); its CMA section renders pre-built `cmaStats` via `adaptPrebuiltCmaStats`, else `CMAReport` uses `/api/cma/generate` for that listing. Subdivision rollups cannot be passed to the listing report: they have no subject or scored comp arrays. `/mls-listings/[slugAddress]/map` — listing-scoped map.
 - `/neighborhoods/[cityId]` — city page (reads `cities`) with `events`, `hoa-contact-info`, `local-business`, `school-district` sub-pages. `/neighborhoods/[cityId]/[slug]` — subdivision page (reads `subdivisions`, embeds `SubdivisionCmaSection`). The old `…/buy` and `…/sell` variants are gone.
 - `/chap` — chat + full-screen map ([../chat/README.md](../chat/README.md)). The listing bottom panel has a **CMA** button immediately before the AI listing-info button; it opens CHAP with a listing-address CMA query. `/map` has only a metadata layout (`page.tsx.disabled`), so it serves no page.
 
@@ -158,7 +158,20 @@ listing goes off-market and leaves the live Spark feed.
 hard 404 on a URL Google has crawled for months discards whatever the page
 earned while the crawler keeps returning to re-confirm it.
 
-`resolveDeadListingTarget(slugAddress)` resolves a destination in two tiers:
+**Since 2026-11-02: an off-market notice page, not a redirect.** An
+unreadable slug renders `OffMarketListing` (200, `noindex, follow`): "This home
+is no longer on the market", a contact CTA for the site's agent, active listings
+nearby (`RelatedListings`, subdivision first, city fallback), and the community
+with a link to its page. It shows **nothing about the property itself** — NAR's
+model IDX rules (adopted by CRMLS) prohibit displaying expired and withdrawn
+listings, and an unmatched slug may be either. `resolveOffMarketContext()` finds
+the city/subdivision from `unified_closed_listings`, else from the slug text.
+Plan and rule sources: [off-market-pages.md](off-market-pages.md). It replaced
+the redirect below for the visitor's sake — a city index with no context lost
+them.
+
+*History — the redirect this replaced (`d2aa74c2`, removed 2026-11-02).*
+`resolveDeadListingTarget(slugAddress)` resolved a destination in two tiers:
 
 | Case | Destination | Status | Why |
 |---|---|---|---|

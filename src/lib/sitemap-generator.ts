@@ -457,11 +457,24 @@ async function generatePlatformSitemap(domain: DomainInfo): Promise<MetadataRout
   const { baseUrl } = domain
   const now = new Date()
 
+  // chatrealty.io is a product site for agents (site-platform-plan D1), so
+  // this lists the agent-facing pages. Every entry must answer 200 itself:
+  // `/about` (308 → /) and `/agents` (307 → sign-in) were removed 2026-11-02
+  // because a redirect in a sitemap is a declared error.
   const pages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
-    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${baseUrl}/agents`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${baseUrl}/ai-classes`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${baseUrl}/developers`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    ...['mcp', 'authentication', 'endpoints', 'schema', 'sync'].map((p) => ({
+      url: `${baseUrl}/developers/${p}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    })),
+    { url: `${baseUrl}/mission`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${baseUrl}/join`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${baseUrl}/invest`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${baseUrl}/privacy-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/terms-of-service`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]

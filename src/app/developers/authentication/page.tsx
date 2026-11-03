@@ -2,11 +2,20 @@
 //
 // Authentication reference — crt_live_* tokens, the Authorization header, and
 // the scope catalog. Grounded in src/lib/skill-auth.ts and src/lib/skill-scopes.ts.
+import type { Metadata } from "next";
 
 import CodeBlock from "@/components/developers/CodeBlock";
 import Callout from "@/components/developers/Callout";
 import FieldTable from "@/components/developers/FieldTable";
 import { DocsHeader, DocsSection, Prose } from "@/components/developers/DocsPage";
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "Authentication — ChatRealty API" },
+  description: "API tokens, scopes and authentication for the ChatRealty API.",
+  alternates: { canonical: "https://www.chatrealty.io/developers/authentication" },
+};
 
 export default function AuthenticationPage() {
   return (
