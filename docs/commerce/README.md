@@ -270,6 +270,7 @@ any new Stripe integration in this repo.
 
 - `./stripe-billing.md` — webhook events, idempotency, env vars, go-live runbook.
 - `./affiliates.md` — affiliate program: attribution, commission ledger, Connect payouts.
+- `./site-setup.md` — $300 one-time custom-site setup for Basic subscribers.
 - `./free-tier-gating.md` — free-tier feature gating, forced onboarding wizard, and server-side 403 guards.
 - `../agent-onboarding/README.md` — agent application phases (and why Stripe Identity is parked).
 - `../admin/README.md` — admin Subscriptions page and credit gifting.

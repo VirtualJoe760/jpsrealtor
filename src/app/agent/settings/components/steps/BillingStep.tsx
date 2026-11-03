@@ -338,6 +338,22 @@ export default function BillingStep({
       {/* Usage meters */}
       {usage && <UsageMeters usage={usage} isLight={isLight} />}
 
+      {/* $300 custom-site setup (docs/commerce/site-setup.md) — Basic only */}
+      {subscription.tier === "beginner" && subscription.status === "active" && (
+        <a
+          href="/agent/site-setup"
+          className={`mt-6 flex items-center justify-between rounded-xl border p-4 ${
+            isLight ? "border-gray-200 bg-gray-50 hover:bg-gray-100" : "border-gray-700 bg-gray-800/50 hover:bg-gray-800"
+          }`}
+        >
+          <span>
+            <span className={`block text-sm font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Custom site setup — $300</span>
+            <span className={`block text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>We build a custom website for you with Claude, one-time.</span>
+          </span>
+          <ExternalLink className={`h-4 w-4 ${isLight ? "text-gray-400" : "text-gray-500"}`} />
+        </a>
+      )}
+
       {/* Change Plan */}
       <div className="mt-6">
         <button

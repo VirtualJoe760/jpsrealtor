@@ -100,6 +100,7 @@ Signing secret: `STRIPE_WEBHOOK_SECRET`. Signature verified via
 | **`charge.refunded`** | **reverse credits granted for a refunded top-up** (full refunds; partials logged for manual review); full refund also reverses an affiliate commission |
 | `invoice.paid` | affiliate commission for a referred agent's subscription invoice ([affiliates.md](./affiliates.md)); `invoice.payment_succeeded` also tries, idempotent on invoice id |
 | `charge.dispute.created` | reverses the affiliate commission on that payment |
+| `checkout.session.completed` (`metadata.type=site_setup`) | marks the $300 setup order paid, before the event claim ([site-setup.md](./site-setup.md)); a full `charge.refunded` marks it refunded |
 
 **Idempotency:** every event is claimed in `ProcessedStripeEvent` (unique
 `eventId`, 30-day TTL) before processing; duplicates/retries short-circuit. On a

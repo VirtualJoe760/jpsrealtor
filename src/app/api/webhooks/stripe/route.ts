@@ -24,6 +24,7 @@ import { isDomainCheckout, startDomainOrder, endDomainRenewal } from "@/lib/doma
 import { activatePaidAgent, recordIdentityResult, IDENTITY_PURPOSE } from "@/lib/agent-onboarding";
 import Affiliate from "@/models/Affiliate";
 import { recordInvoiceCommission, reverseCommissionForPayment } from "@/lib/affiliates";
+import { isSiteSetupCheckout, fulfillSiteSetupCheckout, markSiteSetupRefunded } from "@/lib/site-setup";
 
 // ---------------------------------------------------------------------------
 // Stripe SDK — lazy init (same pattern as stripe-identity webhook)
@@ -125,6 +126,24 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('[stripe-webhook] Domain order failed:', (error as Error).message);
         return NextResponse.json({ error: 'Domain fulfillment failed; retry required' }, { status: 500 });
+      }
+      return NextResponse.json({ received: true });
+    }
+  }
+  // $300 custom-site setup (src/lib/site-setup.ts). One-time payment, never a
+  // subscription, so it must not reach the plan handlers (or affiliate
+  // commissions). Own idempotency: only an awaiting_payment order moves.
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const checkout = event.data.object as Stripe.Checkout.Session;
+    if (isSiteSetupCheckout(checkout.metadata)) {
+      try {
+        if (checkout.livemode !== event.livemode) {
+          return NextResponse.json({ error: 'Stripe payment mode mismatch' }, { status: 400 });
+        }
+        await fulfillSiteSetupCheckout(checkout, event.livemode);
+      } catch (error) {
+        console.error('[stripe-webhook] Site setup fulfillment failed:', (error as Error).message);
+        return NextResponse.json({ error: 'Site setup fulfillment failed; retry required' }, { status: 500 });
       }
       return NextResponse.json({ received: true });
     }
@@ -617,6 +636,7 @@ export async function POST(request: NextRequest) {
         // reverse it; partial refunds are logged for manual review (same rule
         // as credit top-ups below).
         if (fullyRefunded) {
+          if (await markSiteSetupRefunded(pi)) console.log(`[stripe-webhook] Refund on ${pi}: site setup marked refunded`);
           const outcome = await reverseCommissionForPayment({ paymentIntentId: pi, chargeId: charge.id, reason: "refund" });
           if (outcome !== "none") console.log(`[stripe-webhook] Refund on ${pi}: affiliate commission ${outcome}`);
         } else {
