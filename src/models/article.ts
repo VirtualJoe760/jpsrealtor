@@ -4,7 +4,26 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type ArticleStatus = "draft" | "published" | "archived";
-export type ArticleCategory = "articles" | "market-insights" | "real-estate-tips";
+export type ArticleCategory = "articles" | "market-insights" | "real-estate-tips" | "landing-page" | "listing-post";
+
+/**
+ * A "listing blog post" advertises one active MLS listing (or its open house)
+ * and captures registrations. Only the REFERENCE to the listing is stored —
+ * price, photos and facts are read live from unified_listings at render time,
+ * so the post never holds a stale copy of another brokerage's data.
+ */
+export interface IListingPost {
+  listingKey: string;
+  slugAddress?: string;
+  address?: string;
+  postType: "open-house" | "listing";
+  openHouse?: {
+    date?: string;      // YYYY-MM-DD, local to the listing
+    startTime?: string; // "1:00 PM"
+    endTime?: string;   // "4:00 PM"
+    notes?: string;
+  };
+}
 
 export interface IArticle extends Document {
   _id: mongoose.Types.ObjectId;
@@ -84,6 +103,9 @@ export interface IArticle extends Document {
     options?: string[];
   }>;
 
+  // Listing blog post (only used when category === "listing-post")
+  listingPost?: IListingPost;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -118,7 +140,7 @@ const ArticleSchema = new Schema<IArticle>(
     // Organization
     category: {
       type: String,
-      enum: ["articles", "market-insights", "real-estate-tips", "landing-page"],
+      enum: ["articles", "market-insights", "real-estate-tips", "landing-page", "listing-post"],
       required: true,
       index: true,
     },
@@ -256,6 +278,26 @@ const ArticleSchema = new Schema<IArticle>(
       required: { type: Boolean, default: false },
       options: [String],
     }],
+
+    // Listing blog post (only used when category === "listing-post")
+    listingPost: {
+      type: new Schema(
+        {
+          listingKey: { type: String, required: true },
+          slugAddress: String,
+          address: String,
+          postType: { type: String, enum: ["open-house", "listing"], default: "listing" },
+          openHouse: {
+            date: String,
+            startTime: String,
+            endTime: String,
+            notes: String,
+          },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
   },
   {
     timestamps: true,
