@@ -10,6 +10,7 @@ import {
 } from "@/lib/gcal-api";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
 import { aiClassTooClose } from "@/lib/ai-class-schedule";
+import { sendAiClassConfirmationEmail } from "@/lib/email-resend";
 import {
   AI_CLASS_GAP_MINUTES,
   AI_CLASS_LEAD_DAYS,
@@ -223,6 +224,13 @@ export async function POST(request: NextRequest) {
     detail: [`Booked ${type}`, brokerage, propertyAddress].filter(Boolean).join(" • "),
     leadPhone: phone,
   }).catch(() => {});
+
+  // AI class: confirmation from ChatRealty (noreply@chatrealty.io). Awaited
+  // because a serverless function can be frozen once the response is sent;
+  // the sender logs and returns null on failure, so it never fails the booking.
+  if (type === "ai-class" && aiClass) {
+    await sendAiClassConfirmationEmail({ to: email, name, startTime, endTime, intake: aiClass });
+  }
 
   return NextResponse.json({
     success: true,

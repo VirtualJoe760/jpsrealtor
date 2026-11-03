@@ -74,6 +74,14 @@ Flow (`src/app/ai-classes/AiClassBooker.tsx`):
    Google Calendar via the same public pipeline as `/invest`
    (`/api/agent/public` → `available-slots` → `appointments/book`).
 
+**Confirmation email** — `sendAiClassConfirmationEmail` in
+`src/lib/email-resend.ts`, sent from the book route for `type: "ai-class"`.
+From `ChatRealty <noreply@chatrealty.io>` (`platformFrom()`, never agent-
+branded), reply-to `ADMIN_EMAIL`, wrapped in `renderBrandedEmail`. Shows
+when/where/point of contact and a prep list built from the room answers (screen,
+Wi-Fi, laptops). Awaited so serverless doesn't drop it; failure is logged and
+never fails the booking. The Google Calendar invite is separate.
+
 The booking creates the calendar event (title `AI Class: <brokerage> — <name>`,
 office address as location, full intake in the description), a CRM contact and
 the SMS alert. The intake is stored structured on `Appointment.aiClass`
