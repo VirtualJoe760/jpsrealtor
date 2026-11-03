@@ -127,7 +127,7 @@ export interface IAgentSubscription extends Document {
   };
 
   // Referral Tracking (agent referred another agent)
-  referredBy?: mongoose.Types.ObjectId; // Agent who referred this agent
+  referredBy?: mongoose.Types.ObjectId; // Affiliate's User _id (docs/commerce/affiliates.md); locked once set
   referralCredits?: number; // Credits earned from referrals
 
   // Notes

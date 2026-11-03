@@ -2,7 +2,8 @@
 // Stripe subscription webhook handler
 // Events: checkout.session.completed, customer.subscription.updated,
 //         customer.subscription.deleted, invoice.payment_succeeded,
-//         invoice.payment_failed
+//         invoice.payment_failed, invoice.paid (affiliate commissions),
+//         charge.refunded, charge.dispute.created (affiliate reversals)
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -21,6 +22,8 @@ import { creditWalletForMode } from '@/lib/credit-wallet-mode';
 import { sendSubscriptionEmail } from "@/lib/email-resend";
 import { isDomainCheckout, startDomainOrder, endDomainRenewal } from "@/lib/domains/fulfill";
 import { activatePaidAgent, recordIdentityResult, IDENTITY_PURPOSE } from "@/lib/agent-onboarding";
+import Affiliate from "@/models/Affiliate";
+import { recordInvoiceCommission, reverseCommissionForPayment } from "@/lib/affiliates";
 
 // ---------------------------------------------------------------------------
 // Stripe SDK — lazy init (same pattern as stripe-identity webhook)
@@ -267,6 +270,19 @@ export async function POST(request: NextRequest) {
           { upsert: true, new: true }
         );
 
+        // Affiliate attribution: lock the referring affiliate onto the
+        // subscription (docs/commerce/affiliates.md). Never self-referral.
+        const affiliateIdMeta = stripeSub.metadata?.affiliateId;
+        if (affiliateIdMeta && subDoc && !subDoc.referredBy) {
+          const aff = await Affiliate.findById(affiliateIdMeta).select("userId").lean<any>().catch(() => null);
+          if (aff?.userId && String(aff.userId) !== String(userId)) {
+            await AgentSubscription.updateOne(
+              { _id: subDoc._id, $or: [{ referredBy: { $exists: false } }, { referredBy: null }] },
+              { $set: { referredBy: aff.userId } }
+            );
+          }
+        }
+
         // Sync to User model
         await User.findByIdAndUpdate(userId, {
           $set: {
@@ -494,9 +510,41 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Affiliate commission. invoice.paid (below) is the primary path and
+        // retries on failure; this is a best-effort duplicate in case that
+        // event isn't enabled on the endpoint. Idempotent on invoice id.
+        await recordInvoiceCommission(invoice, event.livemode).catch((err) =>
+          console.error("[stripe-webhook] affiliate commission (payment_succeeded) failed:", err?.message)
+        );
+
         console.log(
           `[stripe-webhook] Invoice paid: ${invoice.id} amount=${(invoice.amount_paid ?? 0) / 100}`
         );
+        break;
+      }
+
+      // -----------------------------------------------------------------
+      // Invoice paid — affiliate commission only (subscriptions only; no
+      // credits, ad spend, or real-estate transactions). Throws → retried.
+      // -----------------------------------------------------------------
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const result = await recordInvoiceCommission(invoice, event.livemode);
+        if (result.created) {
+          console.log(`[stripe-webhook] Affiliate commission $${result.amount} for invoice ${invoice.id}`);
+        }
+        break;
+      }
+
+      // -----------------------------------------------------------------
+      // Chargeback — reverse the affiliate commission on that payment
+      // -----------------------------------------------------------------
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const pi = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+        const outcome = await reverseCommissionForPayment({ paymentIntentId: pi, chargeId, reason: "chargeback" });
+        if (outcome !== "none") console.log(`[stripe-webhook] Dispute on ${pi}: affiliate commission ${outcome}`);
         break;
       }
 
@@ -564,6 +612,16 @@ export async function POST(request: NextRequest) {
           ? charge.payment_intent
           : (charge.payment_intent as any)?.id;
         if (!pi) break;
+
+        // Affiliate commission on a refunded subscription payment. Full refunds
+        // reverse it; partial refunds are logged for manual review (same rule
+        // as credit top-ups below).
+        if (fullyRefunded) {
+          const outcome = await reverseCommissionForPayment({ paymentIntentId: pi, chargeId: charge.id, reason: "refund" });
+          if (outcome !== "none") console.log(`[stripe-webhook] Refund on ${pi}: affiliate commission ${outcome}`);
+        } else {
+          console.warn(`[stripe-webhook] Partial refund on ${pi} — affiliate commission (if any) left for manual review`);
+        }
 
         const RefundLedger = creditWalletForMode(event.livemode ? 'live' : 'test');
         const ledger = await RefundLedger.findOne({

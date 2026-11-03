@@ -1,7 +1,7 @@
 ---
 title: Stripe Billing & Credits
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-02
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 related:
   - ../campaigns/co-marketing-adspend.md
@@ -18,7 +18,9 @@ general-user Pro) and **one-time credit top-ups**. **Stripe Identity** (agent
 ID checks) is built but parked since 2026-07-23. All ad/mail/voicemail/co-marketing spend runs on the **internal credit
 ledger** — Stripe is only touched to *buy* credits or subscribe. Checkout is
 server-created → redirect to Stripe-hosted pages (no card data touches the app;
-PCI-safe). **No Stripe Connect/payouts** — co-marketing settles via credits.
+PCI-safe). Co-marketing settles via credits. The only money paid *out* is
+**affiliate commissions via Stripe Connect Express** ([affiliates.md](./affiliates.md)),
+and transfers stay off until `AFFILIATE_PAYOUTS_ENABLED=true`.
 
 ## Plan availability & free-tier gating (2026-07)
 
@@ -95,7 +97,9 @@ Signing secret: `STRIPE_WEBHOOK_SECRET`. Signature verified via
 | `customer.subscription.deleted` | downgrade to free |
 | `invoice.payment_succeeded` | log invoice; credit renewal points (>25-day guard) |
 | `invoice.payment_failed` | mark `past_due` |
-| **`charge.refunded`** | **reverse credits granted for a refunded top-up** (full refunds; partials logged for manual review) |
+| **`charge.refunded`** | **reverse credits granted for a refunded top-up** (full refunds; partials logged for manual review); full refund also reverses an affiliate commission |
+| `invoice.paid` | affiliate commission for a referred agent's subscription invoice ([affiliates.md](./affiliates.md)); `invoice.payment_succeeded` also tries, idempotent on invoice id |
+| `charge.dispute.created` | reverses the affiliate commission on that payment |
 
 **Idempotency:** every event is claimed in `ProcessedStripeEvent` (unique
 `eventId`, 30-day TTL) before processing; duplicates/retries short-circuit. On a
@@ -141,7 +145,7 @@ Stripe retries (a transient failure must never silently drop a paid event).
    `https://www.jpsrealtor.com/api/webhooks/stripe` with events
    `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted`, `invoice.payment_succeeded`,
-   `invoice.payment_failed`, **`charge.refunded`**. Copy its **live signing secret**.
+   `invoice.payment_failed`, **`charge.refunded`**, `invoice.paid`, `charge.dispute.created`. Copy its **live signing secret**.
    Repeat for `/api/webhooks/stripe-identity` (identity events).
 4. **Set Vercel (Production) env vars** — live values:
    `STRIPE_SECRET_KEY=sk_live_…`, `STRIPE_PUBLISHABLE_KEY=pk_live_…`,

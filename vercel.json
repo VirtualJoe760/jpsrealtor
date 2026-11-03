@@ -142,6 +142,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/affiliate-payouts",
+      "schedule": "0 17 * * *"
+    },
+    {
       "path": "/api/cron/publish-pending",
       "schedule": "0 * * * *"
     },

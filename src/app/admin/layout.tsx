@@ -17,12 +17,14 @@ import {
   Menu,
   X,
   ChevronLeft,
+  BadgeDollarSign,
 } from "lucide-react";
 
 const sidebarItems = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/applications/agents", label: "Agent Applications", icon: UserCheck },
   { href: "/admin/applications/partners", label: "Partner Applications", icon: Handshake },
+  { href: "/admin/affiliates", label: "Affiliates", icon: BadgeDollarSign },
   { href: "/admin/mls-associations", label: "MLS Associations", icon: Building2 },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/admin/domains", label: "Domains", icon: Globe },

@@ -135,6 +135,9 @@ const PUBLIC_API_EXACT = new Set([
   "/api/leads/buy-intake",
   "/api/leads/sell-intake",
   "/api/contact",
+  // Affiliate link clicks (?ref=CODE). Visitors have no session; the route
+  // only counts the click and sets the first-party cr_aff cookie. Rate-limited.
+  "/api/affiliate/track",
 ]);
 
 // Routes that authenticate themselves (bearer token / webhook signature / cron

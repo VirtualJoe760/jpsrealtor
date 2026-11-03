@@ -741,6 +741,16 @@ export interface IUser extends Document {
     ip?: string;             // IP at signup
   };
 
+  // Affiliate attribution (docs/commerce/affiliates.md). Set from the cr_aff
+  // cookie at signup and refreshed at checkout (last click wins). Locked once
+  // the agent's subscription carries referredBy.
+  affiliateReferral?: {
+    affiliateId: mongoose.Types.ObjectId;
+    code: string;
+    capturedAt: Date;
+    source: "signup" | "checkout";
+  };
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -1572,6 +1582,15 @@ const UserSchema = new Schema<IUser>(
       ip: String,
     },
 
+    // Affiliate attribution — declared BEFORE any write (strict mode drops
+    // undeclared fields silently).
+    affiliateReferral: {
+      affiliateId: { type: Schema.Types.ObjectId, ref: "Affiliate" },
+      code: String,
+      capturedAt: Date,
+      source: { type: String, enum: ["signup", "checkout"] },
+    },
+
     // Metadata
     lastLoginAt: Date,
   },
@@ -1583,6 +1602,7 @@ const UserSchema = new Schema<IUser>(
 
 // Indexes for performance
 UserSchema.index({ roles: 1 });
+UserSchema.index({ "affiliateReferral.affiliateId": 1 }, { sparse: true });
 UserSchema.index({ "activityMetrics.lastActivityAt": -1 }); // For sorting by recent activity
 UserSchema.index({ "activityMetrics.engagementScore": -1 }); // For sorting by engagement
 UserSchema.index({ isAdmin: 1 });

@@ -1,4 +1,5 @@
 // app/layout.tsx
+import AffiliateRefCapture from "@/app/components/AffiliateRefCapture";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
@@ -279,6 +280,8 @@ export default async function RootLayout({
             per tenant from agentProfile.tracking, with the env values as the
             platform fallback. */}
         <GoogleTags tracking={tenant.tracking} />
+        {/* Affiliate links (?ref=CODE) → click count + cr_aff cookie. */}
+        <AffiliateRefCapture />
         <ClientLayoutWrapper
           initialTheme={serverTheme}
           initialPreference={serverPreference}

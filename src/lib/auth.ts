@@ -146,6 +146,18 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
+          // Affiliate attribution from the ?ref= cookie. The OAuth callback runs
+          // inside the /api/auth route handler, so next/headers cookies() works.
+          try {
+            const { cookies } = await import("next/headers");
+            const { AFFILIATE_COOKIE } = await import("@/config/affiliates");
+            const { captureReferral } = await import("@/lib/affiliates");
+            const affCode = (await cookies()).get(AFFILIATE_COOKIE)?.value;
+            if (affCode) await captureReferral(existingUser._id, affCode, "signup");
+          } catch (err) {
+            console.error("[auth] affiliate capture failed:", (err as Error).message);
+          }
+
           // Link to agent if signed up on agent domain (non-blocking)
           // Note: OAuth callback has limited origin data but agentId may be set
           const { linkUserToAgent } = await import("@/lib/signup-origin");

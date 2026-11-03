@@ -16,6 +16,8 @@ import PointsLedger, { POINTS_TIERS } from "@/models/PointsLedger";
 import type { PointsTier } from "@/models/PointsLedger";
 import { sendSubscriptionEmail } from "@/lib/email-resend";
 import { SELLABLE_TIERS, SELLABLE_INTERVALS } from "@/config/stripe-prices";
+import { captureReferral } from "@/lib/affiliates";
+import { AFFILIATE_COOKIE } from "@/config/affiliates";
 
 export async function POST(request: NextRequest) {
   try {
@@ -153,7 +155,17 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXTAUTH_URL || "https://chatrealty.io";
 
+    // Affiliate attribution: a newer ?ref= click replaces the signup one (last
+    // click wins) until the subscription is attributed. The stored referral
+    // rides on the Stripe subscription metadata so the first invoice can be
+    // credited even if it lands before checkout.session.completed.
+    await captureReferral(user._id, request.cookies.get(AFFILIATE_COOKIE)?.value, "checkout").catch((err) =>
+      console.error("[stripe/checkout] affiliate capture failed:", err?.message)
+    );
+    const referral = (await User.findById(user._id).select("affiliateReferral").lean<any>())?.affiliateReferral;
+
     const checkoutSession = await createCheckoutSession({
+      affiliateId: referral?.affiliateId ? String(referral.affiliateId) : undefined,
       userId: user._id.toString(),
       customerId: stripeCustomerId,
       tier: tier as Exclude<SubscriptionTier, "free">,

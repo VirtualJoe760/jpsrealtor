@@ -1124,6 +1124,16 @@ export default function SettingsPage() {
                   </>
                 )}
               </div>
+
+              {/* Affiliate program (docs/commerce/affiliates.md) */}
+              <div className={`rounded-xl border p-5 ${isLight ? "border-gray-200 bg-gray-50" : "border-gray-700 bg-gray-800/50"}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Handshake className={`w-5 h-5 ${isLight ? "text-blue-600" : "text-emerald-500"}`} />
+                  <h3 className={`text-base font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>Affiliate</h3>
+                </div>
+                <p className={`text-sm mb-4 ${isLight ? "text-gray-500" : "text-gray-400"}`}>Earn a monthly commission on every agent who subscribes to ChatRealty through your link, for as long as they stay subscribed.</p>
+                <Link href="/partner/affiliate" className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${isLight ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>Affiliate program</Link>
+              </div>
             </div>
           </Section>
 

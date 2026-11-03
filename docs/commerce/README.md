@@ -1,7 +1,7 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-02
 related: [./stripe-billing.md, ./free-tier-gating.md, ../agent-onboarding/README.md, ../admin/README.md, ../multi-tenant/README.md]
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 ---
@@ -38,6 +38,7 @@ This update verifies only the dialer integration findings above against the revi
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\CreditLedger.ts` | Credit balance + transactions[]. Collection name still `pointsledgers` (no data migration). Methods: `creditPoints()`, `debitPoints()`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\PointsLedger.ts` | **DEPRECATED** back-compat shim — re-exports `CreditLedger` + legacy `POINTS_TIERS` shape derived from `CREDIT_TIERS`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Transaction.ts` | Closed-deal commission record. **Schema only — no importers.** |
+| `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Affiliate.ts`, `AffiliateCommission.ts`, `AffiliatePayout.ts` | Affiliate program: applications, commission ledger, Stripe Connect payouts. Rules in `src/config/affiliates.ts`; see [affiliates.md](./affiliates.md). |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\models\Partnership.ts` | Agent ↔ service-partner co-marketing with RESPA JMA, cost-split terms, and `billingHistory`. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\config\credits.ts` | **Single source of truth for credit math.** `CREDIT_SPEND_VALUE = $0.10`, `CREDIT_TIERS`, `CUSTOM_TOPUP_MARKUP = 0.15`, conversion helpers. |
 | `F:\web-clients\joseph-sardella\jpsrealtor\src\config\stripe-prices.ts` | Stripe price IDs + `TIER_DETAILS` UI catalog. `tierFromPriceId()` reverse lookup. |
@@ -141,7 +142,7 @@ One doc per agent. Key fields beyond the tier/status basics:
 - **`paymentFailures[]`:** retry tracking for `invoice.payment_failed`.
 - **`addons[]`:** future feature — per-month additional charges layered on top of base tier.
 - **`discount`:** Stripe coupon mirror (`percentage`, `amountOff`, `duration`, `durationInMonths`).
-- **`referredBy` + `referralCredits`:** agent-to-agent referral attribution.
+- **`referredBy`:** the **affiliate's `User._id`** who referred this agent. Written by the Stripe webhook (checkout and first paid invoice) and then locked — see [affiliates.md](./affiliates.md). `referralCredits` is still unused.
 
 Static helper: `AgentSubscription.findExpiring(daysUntilExpiration)` returns
 active subs renewing within the window.
@@ -183,6 +184,13 @@ Moved to [transactions-and-partnerships.md](./transactions-and-partnerships.md).
 In short: `Transaction` (commission maths) is schema-only — nothing imports it;
 `Partnership` is the live agent ↔ service-partner cost-share record (RESPA JMA);
 Stripe Identity is **parked** since 2026-07-23.
+
+## Affiliates
+
+Affiliates earn a flat monthly amount per agent they signed up, for as long as
+the agent pays (tiered $5–$25 by currently paying agents), paid out through
+Stripe Connect Express. Subscriptions only. Full doc:
+[affiliates.md](./affiliates.md).
 
 ## Stripe Checkout + Portal
 
@@ -261,6 +269,7 @@ any new Stripe integration in this repo.
 ## Related
 
 - `./stripe-billing.md` — webhook events, idempotency, env vars, go-live runbook.
+- `./affiliates.md` — affiliate program: attribution, commission ledger, Connect payouts.
 - `./free-tier-gating.md` — free-tier feature gating, forced onboarding wizard, and server-side 403 guards.
 - `../agent-onboarding/README.md` — agent application phases (and why Stripe Identity is parked).
 - `../admin/README.md` — admin Subscriptions page and credit gifting.

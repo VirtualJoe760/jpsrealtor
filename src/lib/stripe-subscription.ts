@@ -66,6 +66,8 @@ export async function createCheckoutSession(opts: {
   successUrl: string;
   cancelUrl: string;
   trialDays?: number;
+  /** Affiliate who referred this agent (src/lib/affiliates.ts). */
+  affiliateId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const s = getStripe();
   const priceId = STRIPE_PRICES[opts.tier][opts.billingInterval];
@@ -86,6 +88,7 @@ export async function createCheckoutSession(opts: {
         userId: opts.userId,
         tier: opts.tier,
         billingInterval: opts.billingInterval,
+        ...(opts.affiliateId ? { affiliateId: opts.affiliateId } : {}),
       },
       ...(opts.trialDays ? { trial_period_days: opts.trialDays } : {}),
     },

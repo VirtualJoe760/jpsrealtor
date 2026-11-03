@@ -1608,3 +1608,129 @@ export async function sendAiClassConfirmationEmail(opts: {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Affiliate program (docs/commerce/affiliates.md). Platform mail: branded
+// shell + platformFrom(). Money rules come from src/config/affiliates.ts.
+// ---------------------------------------------------------------------------
+
+/** Send a platform email (ChatRealty sender, admin reply-to). Best-effort: returns null on failure. */
+export async function sendPlatformEmail(tag: string, to: string, subject: string, html: string) {
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: platformFrom(),
+      to: [to],
+      replyTo: ADMIN_EMAIL,
+      subject,
+      html,
+    });
+    if (error) {
+      console.error(`❌ ${tag} email error:`, error);
+      return null;
+    }
+    return data;
+  } catch (error: any) {
+    console.error(`Failed to send ${tag} email:`, error);
+    return null;
+  }
+}
+
+/** Applicant: "we got your application". */
+export async function sendAffiliateApplicationReceivedEmail(email: string, name: string) {
+  const firstName = escapeHtml((name || '').split(' ')[0] || 'there');
+  return sendPlatformEmail(
+    'Affiliate application received',
+    email,
+    'We got your ChatRealty affiliate application',
+    renderBrandedEmail({
+      title: 'Application received',
+      preheader: "We'll review it and email you your link once you're approved.",
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName}, thanks for applying to the ChatRealty affiliate program.</p>
+        <p style="margin:0 0 16px;">We review every application by hand. Once you're approved we'll email your personal link — every agent who subscribes through it earns you a monthly commission for as long as they stay subscribed.</p>
+      `,
+    }),
+  );
+}
+
+/** Admin: a new affiliate applied. */
+export async function sendAffiliateApplicationAdminNotification(app: {
+  name: string;
+  email: string;
+  website?: string;
+  audience?: string;
+  promotionPlan?: string;
+  isSettlementServiceProvider?: boolean;
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
+  const row = (k: string, v?: string) =>
+    v ? `<tr><td style="padding:4px 12px 4px 0;color:#64748b;vertical-align:top;">${k}</td><td style="padding:4px 0;">${escapeHtml(v)}</td></tr>` : '';
+  return sendPlatformEmail(
+    'Affiliate admin notification',
+    ADMIN_EMAIL,
+    `New affiliate application: ${app.name}`,
+    renderBrandedEmail({
+      title: 'New affiliate application',
+      bodyHtml: `
+        <table role="presentation" style="font-size:14px;border-collapse:collapse;">
+          ${row('Name', app.name)}${row('Email', app.email)}${row('Website', app.website)}
+          ${row('Audience', app.audience)}${row('How they will promote', app.promotionPlan)}
+          ${row('Licensed RE / lender / title / escrow', app.isSettlementServiceProvider ? 'Yes — check with counsel before approving' : 'No')}
+        </table>
+      `,
+      cta: { label: 'Review affiliates', url: `${baseUrl}/admin/affiliates` },
+    }),
+  );
+}
+
+/** Applicant: approved — their code, link and how they get paid. */
+export async function sendAffiliateApprovalEmail(email: string, name: string, code: string, link: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://chatrealty.io';
+  const firstName = escapeHtml((name || '').split(' ')[0] || 'there');
+  const { AFFILIATE_TIERS, PAYOUT_MINIMUM_USD, REFUND_HOLD_DAYS } = await import('@/config/affiliates');
+  const tierRows = AFFILIATE_TIERS.map(
+    (t) => `<tr><td style="padding:3px 16px 3px 0;">${escapeHtml(t.label)}</td><td style="padding:3px 0;font-weight:600;">$${t.ratePerAgent}/agent/month</td></tr>`,
+  ).join('');
+  return sendPlatformEmail(
+    'Affiliate approval',
+    email,
+    "You're approved — here's your ChatRealty affiliate link",
+    renderBrandedEmail({
+      title: "You're a ChatRealty affiliate",
+      preheader: `Your code is ${code}. Share your link and earn every month an agent stays subscribed.`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName}, you're approved. Share your link with real estate agents — when one subscribes to ChatRealty through it, you earn a flat amount every month they keep paying.</p>
+        <div style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:0 0 20px;">
+          <p style="margin:0 0 6px;color:#1e40af;font-size:13px;font-weight:600;">YOUR CODE</p>
+          <p style="margin:0 0 14px;font-size:20px;font-weight:700;letter-spacing:1px;">${escapeHtml(code)}</p>
+          <p style="margin:0 0 6px;color:#1e40af;font-size:13px;font-weight:600;">YOUR LINK</p>
+          <p style="margin:0;font-size:15px;"><a href="${link}" style="color:#2563eb;">${escapeHtml(link)}</a></p>
+        </div>
+        <p style="margin:0 0 8px;font-weight:600;">What you earn</p>
+        <p style="margin:0 0 8px;font-size:14px;">The rate depends on how many of your agents are paying right now, and applies to all of them:</p>
+        <table role="presentation" style="font-size:14px;border-collapse:collapse;margin:0 0 16px;">${tierRows}</table>
+        <p style="margin:0 0 16px;font-size:14px;">Commissions become payable ${REFUND_HOLD_DAYS} days after the agent's payment and are paid monthly once your balance reaches $${PAYOUT_MINIMUM_USD}. To get paid, connect a payout account from your affiliate dashboard (Stripe handles your bank details and tax form).</p>
+        <p style="margin:0 0 16px;font-size:14px;"><strong>You must tell people you're paid.</strong> Wherever you share your link, say you earn a commission if they subscribe (FTC rule). Commissions are paid on ChatRealty subscriptions only — never on a home sale, lead or closing. Full terms: <a href="${baseUrl}/affiliate-terms" style="color:#2563eb;">${baseUrl}/affiliate-terms</a>.</p>
+      `,
+      cta: { label: 'Open your affiliate dashboard', url: `${baseUrl}/partner/affiliate` },
+    }),
+  );
+}
+
+/** Applicant: not approved. */
+export async function sendAffiliateRejectionEmail(email: string, name: string, reason?: string) {
+  const firstName = escapeHtml((name || '').split(' ')[0] || 'there');
+  return sendPlatformEmail(
+    'Affiliate rejection',
+    email,
+    'Your ChatRealty affiliate application',
+    renderBrandedEmail({
+      title: 'About your application',
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${firstName}, thanks for your interest in the ChatRealty affiliate program. We're not able to approve your application right now.</p>
+        ${reason ? `<p style="margin:0 0 16px;color:#64748b;">${escapeHtml(reason)}</p>` : ''}
+        <p style="margin:0;">If you have questions, just reply to this email.</p>
+      `,
+    }),
+  );
+}

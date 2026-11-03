@@ -11,6 +11,8 @@ import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { verifyTurnstile, clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isGibberishName, honeypotTripped } from "@/lib/spam-defenses";
+import { captureReferral } from "@/lib/affiliates";
+import { AFFILIATE_COOKIE } from "@/config/affiliates";
 
 // Mark this route as dynamic to prevent static optimization during build
 export const dynamic = 'force-dynamic';
@@ -154,6 +156,11 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await User.create(userData);
+
+    // Affiliate attribution from the ?ref= cookie (best-effort, never blocks signup).
+    await captureReferral(user._id, request.cookies.get(AFFILIATE_COOKIE)?.value, "signup").catch((err) =>
+      console.error("[register] affiliate capture failed:", err?.message)
+    );
 
     // If signed up on an agent's domain, add as client contact (non-blocking)
     linkUserToAgent(user._id.toString(), name, email, phone, signupOrigin).catch(() => {});

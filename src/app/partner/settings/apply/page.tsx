@@ -301,6 +301,10 @@ export default function PartnerApplyPage() {
                   Apply to join the ChatRealty Service Partner network. Complete
                   the form below to get started.
                 </p>
+                <p className={`mt-2 text-sm ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                  Not a service provider? Earn a monthly commission referring agents through the{" "}
+                  <Link href="/partner/affiliate" className="underline">affiliate program</Link>.
+                </p>
               </div>
 
               {/* Error */}
