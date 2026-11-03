@@ -84,9 +84,28 @@ interface AreaRow {
   yearMonthsCovered: number | null
 }
 
+export interface CellSale {
+  closeDate: string | null
+  closePrice: number | null
+  listPrice: number | null
+  listAgentName: string | null
+  listAgentMlsId: string | null
+  listOfficeName: string | null
+  buyerAgentName: string | null
+  buyerAgentMlsId: string | null
+  buyerOfficeName: string | null
+  address: string | null
+  slugAddress: string | null
+  beds: number | null
+  baths: number | null
+  livingArea: number | null
+  yearBuilt: number | null
+  subdivisionName: string | null
+}
+
 type Selection =
   | { kind: 'zone'; zone: Hotspot; area: AreaRow | null; wider: boolean; loading: boolean }
-  | { kind: 'cell'; cell: GridCell }
+  | { kind: 'cell'; cell: GridCell; sales: CellSale[] | null; loading: boolean; error: string | null }
   | null
 
 function usd(n: number | null | undefined): string {
@@ -126,6 +145,13 @@ export default function AnalyticsClient() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Minimum sales per cell/zone. `sales` is a stored field on sales_grid, so
+  // this filter pushes down into the query rather than thinning the result
+  // client-side. An "agents per cell" filter CANNOT work the same way —
+  // agentCount is not stored, and counting distinct agents is aggregation,
+  // which the read surface may not do. It needs a precompute field.
+  const [minSales, setMinSales] = useState(1)
+
   const [showHeat, setShowHeat] = useState(true)
   const [showCells, setShowCells] = useState(true)
   const [showZones, setShowZones] = useState(true)
@@ -146,14 +172,14 @@ export default function AnalyticsClient() {
   // Panning fires moveend continuously; one in-flight fetch at a time.
   const reqId = useRef(0)
 
-  const load = useCallback(async (vp: Viewport, yr: string) => {
+  const load = useCallback(async (vp: Viewport, yr: string, min: number) => {
     const id = ++reqId.current
     setLoading(true)
     setError(null)
     try {
       const q = `bbox=${vp.bbox}&year=${yr}`
       const [gRes, hRes] = await Promise.all([
-        fetch(`/api/analytics/sales-grid?${q}&minSales=1`),
+        fetch(`/api/analytics/sales-grid?${q}&minSales=${min}`),
         fetch(`/api/analytics/hotspots?${q}&limit=50`),
       ])
       if (id !== reqId.current) return // a newer pan superseded this one
@@ -174,8 +200,8 @@ export default function AnalyticsClient() {
   }, [])
 
   useEffect(() => {
-    if (viewport) load(viewport, year)
-  }, [viewport, year, load])
+    if (viewport) load(viewport, year, minSales)
+  }, [viewport, year, minSales, load])
 
   const onSelectZone = useCallback(
     async (zone: Hotspot) => {
@@ -195,6 +221,35 @@ export default function AnalyticsClient() {
         setSelection({ kind: 'zone', zone, area: res.ok ? body.area : null, wider, loading: false })
       } catch {
         setSelection({ kind: 'zone', zone, area: null, wider, loading: false })
+      }
+    },
+    [year],
+  )
+
+  /**
+   * Opening a cell fetches the actual transactions inside its bbox.
+   *
+   * The cell's OWN bbox is sent, not the viewport — this is the one place a
+   * bbox means a ~0.3 mile square rather than what is on screen.
+   */
+  const onSelectCell = useCallback(
+    async (cell: GridCell) => {
+      setSelection({ kind: 'cell', cell, sales: null, loading: true, error: null })
+      const b = cell.bbox
+      const bbox = [b.minLng, b.minLat, b.maxLng, b.maxLat].join(',')
+      try {
+        const res = await fetch(`/api/analytics/cell-sales?bbox=${bbox}&year=${year}&limit=50`)
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Failed to load sales')
+        setSelection({ kind: 'cell', cell, sales: body.sales ?? [], loading: false, error: null })
+      } catch (e) {
+        setSelection({
+          kind: 'cell',
+          cell,
+          sales: null,
+          loading: false,
+          error: e instanceof Error ? e.message : 'Failed to load sales',
+        })
       }
     },
     [year],
@@ -220,6 +275,21 @@ export default function AnalyticsClient() {
             {YEAR_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <span className={textSecondary}>Min sales</span>
+          <select
+            value={minSales}
+            onChange={(e) => setMinSales(Number(e.target.value))}
+            className={`rounded border px-2 py-1 text-sm ${input}`}
+          >
+            {[1, 3, 5, 10, 20, 40].map((n) => (
+              <option key={n} value={n}>
+                {n === 1 ? 'any' : `${n}+`}
               </option>
             ))}
           </select>
@@ -282,7 +352,7 @@ export default function AnalyticsClient() {
             zoom={DEFAULT_ZOOM}
             onViewportChange={setViewport}
             onSelectZone={onSelectZone}
-            onSelectCell={(cell) => setSelection({ kind: 'cell', cell })}
+            onSelectCell={onSelectCell}
           />
           <div
             className={`pointer-events-none absolute bottom-8 left-3 z-[1000] rounded px-3 py-2 text-[11px] shadow ${panel} ${textPrimary}`}
@@ -308,7 +378,7 @@ export default function AnalyticsClient() {
         {/* Side list + detail */}
         <aside className={`flex w-96 shrink-0 flex-col border-l ${border} ${panel}`}>
           {selection ? (
-            <DetailPanel selection={selection} onClose={() => setSelection(null)} />
+            <DetailPanel selection={selection} year={year} onClose={() => setSelection(null)} />
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div
@@ -356,9 +426,11 @@ export default function AnalyticsClient() {
 
 function DetailPanel({
   selection,
+  year,
   onClose,
 }: {
   selection: NonNullable<Selection>
+  year: string
   onClose: () => void
 }) {
   const { currentTheme } = useTheme()
@@ -388,9 +460,25 @@ function DetailPanel({
           <Row label="Median $/sqft" value={selection.cell.medianPricePerSqft?.toFixed(0) ?? '—'} />
           <Row label="City" value={selection.cell.city ?? '—'} />
           <Row label="ZIP" value={selection.cell.postalCode ?? '—'} />
-          <p className={`pt-2 text-[11px] ${textMuted}`}>
+          <p className={`pt-1 text-[11px] ${textMuted}`}>
             One ~0.3 mile grid cell. Medians are per cell and are never averaged together.
           </p>
+
+          <CmaButton cell={selection.cell} year={year} />
+
+          <div className={`border-t pt-3 ${border}`}>
+            {selection.loading ? (
+              <p className={`text-xs ${textMuted}`}>Loading sales…</p>
+            ) : selection.error ? (
+              <p className={`text-xs ${textMuted}`}>{selection.error}</p>
+            ) : selection.sales && selection.sales.length > 0 ? (
+              <CellSalesList sales={selection.sales} />
+            ) : (
+              <p className={`text-xs ${textMuted}`}>
+                No individual sales found in this cell for the selected year.
+              </p>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-3 p-4">
@@ -437,6 +525,172 @@ function DetailPanel({
             )}
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The transactions inside a clicked cell, grouped by listing agent.
+ *
+ * Grouping keys on `listAgentMlsId`, not the name: the feed carries one agent
+ * under several spellings ("Sarah Benson" / "SARAH BENSON", "Chris Tebbutt" /
+ * "Christopher Tebbutt"), so name-grouping would split one agent into two rows
+ * and understate them.
+ *
+ * The counts here describe exactly the list rendered beneath them — the reader
+ * can count the rows themselves. They are NOT a cell-wide market statistic:
+ * a filter like "cells with fewer than 3 agents" needs a stored `agentCount`
+ * from the precompute, because that is a different number over all years and
+ * cannot be derived from a truncated list.
+ */
+function CellSalesList({ sales }: { sales: CellSale[] }) {
+  const { textMuted, border, textSecondary } = useThemeClasses()
+  const [side, setSide] = useState<'list' | 'buy'>('list')
+
+  // Group on the MlsId, never the name. One agent carries several spellings in
+  // the feed — "Sarah Benson" / "SARAH BENSON", "Chris Tebbutt" /
+  // "Christopher Tebbutt" — so name-grouping splits one agent into two rows
+  // and understates them.
+  const byAgent = new Map<string, { name: string; office: string | null; rows: CellSale[] }>()
+  for (const s of sales) {
+    const id = side === 'list' ? s.listAgentMlsId : s.buyerAgentMlsId
+    const nm = side === 'list' ? s.listAgentName : s.buyerAgentName
+    const off = side === 'list' ? s.listOfficeName : s.buyerOfficeName
+    const key = id ?? nm ?? 'unknown'
+    const existing = byAgent.get(key)
+    if (existing) existing.rows.push(s)
+    else byAgent.set(key, { name: nm ?? 'Unknown agent', office: off, rows: [s] })
+  }
+  const groups = [...byAgent.values()].sort((a, b) => b.rows.length - a.rows.length)
+
+  const tab = (v: 'list' | 'buy', label: string) => (
+    <button
+      onClick={() => setSide(v)}
+      className={`rounded px-2 py-0.5 text-[11px] ${
+        side === v ? `border ${border} font-medium` : textMuted
+      }`}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium">
+          {sales.length} {sales.length === 1 ? 'sale' : 'sales'} · {groups.length}{' '}
+          {groups.length === 1 ? 'agent' : 'agents'}
+        </span>
+        <span className="flex items-center gap-1">
+          {tab('list', 'Listing')}
+          {tab('buy', 'Buying')}
+        </span>
+      </div>
+
+      {groups.map((g, gi) => (
+        <div key={gi} className={`rounded border p-2 ${border}`}>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="truncate text-sm font-medium">{g.name}</span>
+            <span className="shrink-0 text-xs tabular-nums">{g.rows.length}</span>
+          </div>
+          {g.office && <div className={`truncate text-[11px] ${textMuted}`}>{g.office}</div>}
+
+          <ul className="mt-1.5 space-y-1.5">
+            {g.rows.map((r, ri) => (
+              <li key={ri} className="text-[11px] leading-tight">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate">{r.address ?? r.subdivisionName ?? '—'}</span>
+                  <span className="shrink-0 tabular-nums font-medium">{usd(r.closePrice)}</span>
+                </div>
+                <div className={textMuted}>
+                  {[
+                    r.closeDate ? new Date(r.closeDate).toLocaleDateString() : null,
+                    r.beds != null ? `${r.beds} bd` : null,
+                    r.baths != null ? `${r.baths} ba` : null,
+                    r.livingArea != null ? `${r.livingArea.toLocaleString()} sqft` : null,
+                    r.yearBuilt != null ? `built ${r.yearBuilt}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+                {/* The other side of the same transaction, so a row is never
+                    half a story regardless of which grouping is active. */}
+                <div className={textMuted}>
+                  {side === 'list'
+                    ? `Buyer: ${r.buyerAgentName ?? '—'}`
+                    : `Listed: ${r.listAgentName ?? '—'}`}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <p className={`text-[11px] ${textSecondary}`}>
+        Counts describe the list above, not a market statistic.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Downloads the tile's CMA as a PDF.
+ *
+ * Generation is a cold Chromium launch plus two collection reads, so it is
+ * slow enough (seconds) that firing it from a bare <a> would look broken. The
+ * fetch keeps the button in a visible pending state and surfaces the route's
+ * own error text — a 404 here means "no comparables in this tile", which is a
+ * real answer and not a failure.
+ */
+function CmaButton({ cell, year }: { cell: GridCell; year: string }) {
+  const { textMuted, border } = useThemeClasses()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const run = async () => {
+    setBusy(true)
+    setErr(null)
+    const b = cell.bbox
+    const bbox = [b.minLng, b.minLat, b.maxLng, b.maxLat].join(',')
+    try {
+      const res = await fetch(`/api/analytics/cma?bbox=${bbox}&year=${year}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Could not generate the CMA')
+      }
+      const blob = await res.blob()
+      const name =
+        res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'cma.pdf'
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not generate the CMA')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pt-1">
+      <button
+        onClick={run}
+        disabled={busy}
+        className={`w-full rounded border px-3 py-1.5 text-xs font-medium ${border} ${
+          busy ? 'opacity-60' : 'hover:underline'
+        }`}
+      >
+        {busy ? 'Building CMA…' : 'Download CMA (PDF)'}
+      </button>
+      {err && <p className={`mt-1 text-[11px] ${textMuted}`}>{err}</p>}
+      {busy && (
+        <p className={`mt-1 text-[11px] ${textMuted}`}>
+          Collecting comparables and rendering five pages — this takes a few seconds.
+        </p>
       )}
     </div>
   )
