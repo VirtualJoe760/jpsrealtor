@@ -169,6 +169,12 @@ RULES:
         ? `${base}-open-house-${openHouse.date}-${suffix}`
         : `${base}-${suffix}`;
 
+    // The page already shows the title as its H1; the model sometimes opens
+    // the body with a near-copy of it anyway (seen in the 2026-11-03 test, not
+    // always word-for-word). Sections are ##, so a leading single-# line is
+    // always that duplicate.
+    const content = digested.content.replace(/^\s*#\s+[^\n]*\n+/, "");
+
     const photo = data.photos[0]?.src || l.primaryPhotoUrl || "";
 
     return NextResponse.json(
@@ -179,7 +185,7 @@ RULES:
           slugId,
           title: digested.title,
           excerpt: digested.excerpt,
-          content: digested.content,
+          content,
           category: "listing-post",
           tags: ["listing-post", postType === "open-house" ? "open-house" : "listing", l.city].filter(Boolean),
           featuredImage: {

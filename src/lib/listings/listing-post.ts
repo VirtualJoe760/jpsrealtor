@@ -54,9 +54,8 @@ function mapOpenHouses(list: any[] | undefined) {
 }
 
 /**
- * Address autocomplete over ACTIVE listings. Anchored prefix on the indexed
- * `slugAddress` first (fast); falls back to a case-insensitive match on the
- * street line when the slug misses (e.g. a typed unit number or "#").
+ * Address autocomplete over ACTIVE listings: anchored prefix on the indexed
+ * `slugAddress` ("123 Main St" → "^123-main-st").
  */
 export async function searchActiveListingsByAddress(q: string, limit = 8): Promise<ListingSearchHit[]> {
   const query = q.trim();
@@ -69,23 +68,19 @@ export async function searchActiveListingsByAddress(q: string, limit = 8): Promi
     "media.Uri800": 1, "media.Uri640": 1, "media.MediaCategory": 1, "media.Order": 1, OpenHouses: 1,
   };
 
+  // Anchored, case-sensitive prefix on the lowercase slug is the only shape
+  // that uses the slugAddress index (~30ms). There is deliberately no
+  // case-insensitive fallback on unparsedAddress: it has no index, and on a
+  // miss it scanned the whole collection for 26-30s (found in the 2026-11-03
+  // localhost test).
   const slug = toSlugPrefix(query);
-  let rows: any[] = slug
+  const rows: any[] = slug
     ? await UnifiedListing.collection
         .find({ slugAddress: { $regex: "^" + escapeRegex(slug) }, standardStatus: "Active" }, { projection })
         .limit(limit)
+        .maxTimeMS(3000)
         .toArray()
     : [];
-
-  if (rows.length === 0) {
-    rows = await UnifiedListing.collection
-      .find(
-        { unparsedAddress: { $regex: "^" + escapeRegex(query), $options: "i" }, standardStatus: "Active" },
-        { projection }
-      )
-      .limit(limit)
-      .toArray();
-  }
 
   return rows.map((r) => ({
     listingKey: r.listingKey,

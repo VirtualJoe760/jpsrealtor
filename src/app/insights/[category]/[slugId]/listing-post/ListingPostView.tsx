@@ -182,7 +182,8 @@ export default function ListingPostView(props: ListingPostViewProps) {
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {subdivision.listingCount != null && <Stat label="Active listings" value={String(subdivision.listingCount)} isLight={isLight} />}
               {subdivision.medianPrice ? <Stat label="Median list price" value={shortMoney(subdivision.medianPrice)} isLight={isLight} /> : null}
-              {subdivision.priceRange?.min ? <Stat label="Price range" value={`${shortMoney(subdivision.priceRange.min)}–${shortMoney(subdivision.priceRange.max)}`} isLight={isLight} /> : null}
+              {/* No price-range tile: the precomputed subdivision range mixes in
+                  rentals, so it read "$2K–$649K" for a sale community. */}
               {subdivision.hoaMonthlyMin ? <Stat label="HOA / month" value={`${money(subdivision.hoaMonthlyMin)}${subdivision.hoaMonthlyMax && subdivision.hoaMonthlyMax !== subdivision.hoaMonthlyMin ? `–${money(subdivision.hoaMonthlyMax)}` : ""}`} isLight={isLight} /> : null}
             </div>
             {subdivision.features && subdivision.features.length > 0 && (

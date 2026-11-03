@@ -128,7 +128,8 @@ that captures registrations. Added 2026-11-03.
 **Generate (agent).** `/agent/cms/new` → Category "Listing Post". The address
 field autocompletes over Active `unified_listings` via
 `GET /api/agent/listing-posts/search` (session-only; anchored prefix on the
-indexed `slugAddress`, falling back to `unparsedAddress`). The agent ticks
+indexed `slugAddress` only — an unindexed `unparsedAddress` fallback scanned the
+whole collection for ~30s on a miss and was removed). The agent ticks
 **Open house** or **General listing page**; an MLS open house on the listing
 pre-fills the date/times. `POST /api/agent/listing-posts/generate` writes the
 copy with Groq from the listing's facts only (no invented claims, no
