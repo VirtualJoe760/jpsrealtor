@@ -1,7 +1,7 @@
 ---
 title: Company pages (Mission, Join Us, Invest, Support)
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-02
 related: [../ARCHITECTURE.md]
 ---
 
@@ -15,6 +15,7 @@ ChatRealty-the-company pages, added 2026-10-28.
 | `/join` | Open roles + application form, then the agent pitch → `/agent/settings` | applying; the agent "get started" step |
 | `/invest` | Investor summary for the planned pre-seed round: **$3M for 15%** (implied $20M post-money) | booking a consultation |
 | `/support` | One-time Stripe contribution (gift) | contributing |
+| `/ai-classes` | Book an in-office AI class for a brokerage (Claude Code / Codex, AI content tools, ChatRealty) | nothing (public booking) |
 
 The sidebar shows **Mission · Join Us · Invest** above Privacy · Terms, on the
 **platform host only** (`LegalLinks showCompany={isPlatformHost}`). On an agent's
@@ -44,6 +45,48 @@ runs through a registered funding portal. So:
   submissions.
 - The page carries the required legend. Do not add a payment button or an
   amount field to `/invest`.
+
+## AI classes (`/ai-classes`)
+
+Added 2026-11-02. Part of the sales motion: Joseph teaches AI classes
+(ChatRealty, Claude Code / Codex, AI content tools) in person at brokerage offices. Every class covers all three — there is no topic picker. Linked from
+the platform homepage (`/chat-landing`, "Book an AI Class").
+
+Rules and intake options live in **`src/config/ai-classes.ts`** — the form and
+the book route both read it:
+
+- **Southern California only** (`SOCAL_COUNTIES`). "Outside Southern
+  California" stops the form with a note to email support@chatrealty.io.
+- **Booked at least 7 days out** (`AI_CLASS_LEAD_DAYS`), weekdays, 21-day
+  window (lead + window must stay inside the owner's 30-day `advanceBookingDays`, or later days show no times). Classes run **60–90 minutes**; slots block **90** on the calendar.
+- **2 hours between classes** (`AI_CLASS_GAP_MINUTES`). Free/busy only prevents overlap, so `src/lib/ai-class-schedule.ts` checks booked `ai-class` Appointments: `available-slots?type=ai-class` hides start times inside the gap and the book route rejects them (409).
+- The book route re-checks county, lead time and required fields for
+  `type: "ai-class"`, so a hand-made request can't skip them.
+
+Flow (`src/app/ai-classes/AiClassBooker.tsx`):
+
+1. **Intake** — requester (name, role, email, phone); office (brokerage,
+   branch, address, city, county, agents in office, expected attendees, AI
+   experience); day-of point of contact (defaults to the requester; name + phone required, also checked server-side); presentation room (type, seats, yes/no/not-sure for TV,
+   Apple TV, projector, HDMI, Wi-Fi, power, laptops; room description;
+   parking/access).
+2. **Schedule** — month-view calendar, then open start times from the owner's
+   Google Calendar via the same public pipeline as `/invest`
+   (`/api/agent/public` → `available-slots` → `appointments/book`).
+
+**Confirmation email** — `sendAiClassConfirmationEmail` in
+`src/lib/email-resend.ts`, sent from the book route for `type: "ai-class"`.
+From `ChatRealty <noreply@chatrealty.io>` (`platformFrom()`, never agent-
+branded), reply-to `ADMIN_EMAIL`, wrapped in `renderBrandedEmail`. Shows
+when/where/point of contact and a prep list built from the room answers (screen,
+Wi-Fi, laptops). Awaited so serverless doesn't drop it; failure is logged and
+never fails the booking. The Google Calendar invite is separate.
+
+The booking creates the calendar event (title `AI Class: <brokerage> — <name>`,
+office address as location, full intake in the description), a CRM contact and
+the SMS alert. The intake is stored structured on `Appointment.aiClass`
+(declared in the schema field by field). No account required, unlike
+`/invest`: the booker is usually an office manager new to ChatRealty.
 
 ## Contributions (`/support`)
 

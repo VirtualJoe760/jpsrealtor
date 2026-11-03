@@ -1,7 +1,7 @@
 ---
 title: Email (Resend) — platform mail + per-agent CRM sending
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-02
 related:
   - twilio.md
   - ../crm/README.md
@@ -102,16 +102,31 @@ collection.
 
 ## Platform mail
 
-- `email-resend.ts` has 13 senders. Four use the agent-branded from-line
+- `email-resend.ts` has 14 senders. Four use the agent-branded from-line
   `"{agent.name} via ChatRealty <noreply@...>"` (verification, 2FA, password reset,
-  lead welcome); the other nine use `platformFrom()`. It builds the Resend client
+  lead welcome); the other ten use `platformFrom()`. It builds the Resend client
   lazily (`getResendClient()`); `crm/send-email` creates its own client at module load.
 - `src/lib/email-brand.ts` exports `renderBrandedEmail()` (dependency-free,
-  table-based shell: logo header, `#2563eb` CTA, reply-to-us footer), `platformFrom()`
-  and `escapeHtml()`. Only one of the 13 `email-resend.ts` senders
-  (`sendAgentApprovalEmail`) uses the shell; the three agent-application mails in
+  table-based shell: CHATREALTY wordmark header, `#2563eb` CTA, reply-to-us footer), `platformFrom()`
+  and `escapeHtml()`. Two of the 14 `email-resend.ts` senders
+  (`sendAgentApprovalEmail`, `sendAiClassConfirmationEmail`) use the shell; the three agent-application mails in
   `src/lib/email-agent-application.ts` do too. `email-resend.ts` also keeps its own
   private `platformFrom()`, a duplicate of the one in `email-brand.ts`.
+- **Header logo** (2026-11-02): the two-weight text wordmark rendered to PNG
+  (mail clients don't load Jost) — `public/images/brand/chatrealty-wordmark-email.png`,
+  served from Cloudinary (`jpsrealtor/brand/chatrealty/wordmark-email`) so a send
+  never depends on a deploy. Replaced the old speech-bubble `chatrealty-logo-light`.
+  Profile icon for sender avatars: `chatrealty-icon-1024.png` / `-512.png` (CR monogram).
+- **Inbound mail** (2026-11-02): Cloudflare Email Routing on chatrealty.io
+  (MX `route{1,2,3}.mx.cloudflare.net`, apex SPF `include:_spf.mx.cloudflare.net`,
+  DKIM `cf2024-1._domainkey`; records are Cloudflare-managed/"Locked"). One rule:
+  **support@chatrealty.io → josephsardella@gmail.com**; catch-all stays disabled
+  (Drop), so other addresses (noreply@, hello@) still bounce. Gmail filter
+  `to:support@chatrealty.io` → label `Business/ChatRealty`, kept in the inbox.
+  Resend's sending records live on `send.chatrealty.io` and are unaffected.
+  The repo's `CLOUDFLARE_API_TOKEN` has no Email Routing permission — changes go
+  through the dashboard. DMARC is still `p=none`, so BIMI (inbox logo) is not
+  possible until it is `quarantine`/`reject`.
 - `EMAIL_FROM_DOMAIN` (default `chatrealty.io`) is read in `email-resend.ts`,
   `email-brand.ts`, `crm/send-email/route.ts`, `campaign/submit/route.ts` and the
   newsletter send route (`newsletter@<domain>` unless `EMAIL_FROM` is set).

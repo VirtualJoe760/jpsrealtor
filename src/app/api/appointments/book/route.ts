@@ -9,6 +9,16 @@ import {
   getAgentCalendarSettings,
 } from "@/lib/gcal-api";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
+import { aiClassTooClose } from "@/lib/ai-class-schedule";
+import { sendAiClassConfirmationEmail } from "@/lib/email-resend";
+import {
+  AI_CLASS_GAP_MINUTES,
+  AI_CLASS_LEAD_DAYS,
+  earliestClassStart,
+  formatIntake,
+  isSocalCounty,
+  type AiClassIntake,
+} from "@/config/ai-classes";
 
 /**
  * POST /api/appointments/book
@@ -36,7 +46,12 @@ export async function POST(request: NextRequest) {
     message,
     propertyAddress,
     propertyListingKey,
-  } = body;
+    // AI-class bookings (/ai-classes): office + room intake, see src/config/ai-classes.ts
+    aiClass,
+  } = body as { aiClass?: AiClassIntake } & Record<string, any>;
+
+  const brokerage: string | undefined = aiClass?.brokerage;
+  const location: string | undefined = aiClass ? `${aiClass.address}, ${aiClass.city}` : undefined;
 
   try {
   // Validate required fields
@@ -47,6 +62,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // AI classes: Southern California only, booked at least a week out. The
+  // form enforces both too; this stops a hand-made request from skipping them.
+  if (type === "ai-class") {
+    if (!aiClass?.brokerage || !aiClass.address || !aiClass.city || !aiClass.roomType) {
+      return NextResponse.json({ error: "Office and room details are required for an AI class" }, { status: 400 });
+    }
+    if (!aiClass.pointOfContact?.name || !aiClass.pointOfContact?.phone) {
+      return NextResponse.json({ error: "A point of contact with a phone number is required" }, { status: 400 });
+    }
+    if (!isSocalCounty(aiClass.county)) {
+      return NextResponse.json({ error: "AI classes are currently offered in Southern California only" }, { status: 400 });
+    }
+    if (new Date(startTime) < earliestClassStart()) {
+      return NextResponse.json({ error: `AI classes must be booked at least ${AI_CLASS_LEAD_DAYS} days in advance` }, { status: 400 });
+    }
+  }
+
   if (!agentId && !subdomain) {
     return NextResponse.json(
       { error: "agentId or subdomain required" },
@@ -55,6 +87,14 @@ export async function POST(request: NextRequest) {
   }
 
   await dbConnect();
+
+  // AI classes keep a gap between them (checked after connect: it reads Appointments).
+  if (type === "ai-class" && agentId && (await aiClassTooClose(String(agentId), new Date(startTime), new Date(endTime)))) {
+    return NextResponse.json(
+      { error: `That time is too close to another class (we need ${AI_CLASS_GAP_MINUTES / 60} hours between classes). Please pick another time.` },
+      { status: 409 }
+    );
+  }
 
   // Resolve agent
   let resolvedAgentId = agentId;
@@ -111,7 +151,11 @@ export async function POST(request: NextRequest) {
 
   const title = type === "showing"
     ? `Showing: ${propertyAddress || "Property"} — ${name}`
-    : `${type.charAt(0).toUpperCase() + type.slice(1)} with ${name}`;
+    : type === "ai-class"
+      ? `AI Class: ${brokerage || "Brokerage"} — ${name}`
+      : `${type.charAt(0).toUpperCase() + type.slice(1)} with ${name}`;
+
+  const eventLocation: string | undefined = propertyAddress || location || undefined;
 
   const description = [
     `Booked via chatRealty`,
@@ -119,6 +163,7 @@ export async function POST(request: NextRequest) {
     `Email: ${email}`,
     phone ? `Phone: ${phone}` : null,
     propertyAddress ? `Property: ${propertyAddress}` : null,
+    aiClass ? `\n${formatIntake(aiClass)}` : null,
     message ? `\nMessage: ${message}` : null,
   ].filter(Boolean).join("\n");
 
@@ -128,7 +173,7 @@ export async function POST(request: NextRequest) {
         {
           summary: title,
           description,
-          location: propertyAddress,
+          location: eventLocation,
           start: { dateTime: startTime, timeZone: timezone },
           end: { dateTime: endTime, timeZone: timezone },
           attendees: [{ email, displayName: name }],
@@ -163,10 +208,11 @@ export async function POST(request: NextRequest) {
     startTime: new Date(startTime),
     endTime: new Date(endTime),
     timezone,
-    location: propertyAddress,
+    location: eventLocation,
     propertyListingKey,
     propertyAddress,
     attendee: { name, email, phone },
+    aiClass: type === "ai-class" ? aiClass : undefined,
     notes: message,
   });
 
@@ -175,9 +221,16 @@ export async function POST(request: NextRequest) {
     agentId: String(resolvedAgentId),
     kind: "hot_lead",
     leadName: name,
-    detail: [`Booked ${type}`, propertyAddress].filter(Boolean).join(" • "),
+    detail: [`Booked ${type}`, brokerage, propertyAddress].filter(Boolean).join(" • "),
     leadPhone: phone,
   }).catch(() => {});
+
+  // AI class: confirmation from ChatRealty (noreply@chatrealty.io). Awaited
+  // because a serverless function can be frozen once the response is sent;
+  // the sender logs and returns null on failure, so it never fails the booking.
+  if (type === "ai-class" && aiClass) {
+    await sendAiClassConfirmationEmail({ to: email, name, startTime, endTime, intake: aiClass });
+  }
 
   return NextResponse.json({
     success: true,

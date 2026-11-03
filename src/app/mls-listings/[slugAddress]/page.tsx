@@ -1,5 +1,5 @@
 // src/app/mls-listings/[slugAddress]/page.tsx
-import { notFound } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import { Metadata } from "next";
 import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
@@ -11,6 +11,7 @@ import {
   getEnrichedListing as readListing,
   getListingPhotosFromListing,
 } from "@/lib/listings/listing-detail";
+import { resolveDeadListingTarget } from "@/lib/listings/dead-listing-redirect";
 
 // Reads Mongo in-process. This used to fetch our own /api/mls-listings and
 // /api/listings/…/photos over HTTP — three invocations per render, sent with
@@ -121,7 +122,18 @@ export default async function ListingPage({
 }) {
   const { slugAddress } = await params;
   const listing = await getEnrichedListing(slugAddress);
-  if (!listing) return notFound();
+
+  // A missing listing used to be `notFound()`, which left 22,676 /mls-listings/
+  // URLs sitting in Search Console's "Not found (404)" bucket since 2025-11-08.
+  // Send them to the city page instead — permanently when the property is
+  // confirmed sold, temporarily when the slug simply resolves nowhere and could
+  // still come back. See lib/listings/dead-listing-redirect.ts for why the two
+  // cases must differ.
+  if (!listing) {
+    const target = await resolveDeadListingTarget(slugAddress);
+    if (target.permanent) permanentRedirect(target.path);
+    redirect(target.path);
+  }
 
   const address =
     listing.unparsedAddress ||

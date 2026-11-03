@@ -456,6 +456,24 @@ export default function ListingBottomPanel({
           </div>
 
           <div className="flex gap-1.5 flex-shrink-0 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                const url = `/chap?aiQuery=${encodeURIComponent(
+                  `Generate a CMA for ${address}`
+                )}`;
+                onClose();
+                router.push(url);
+              }}
+              title="View comparative market analysis for this property"
+              className={`h-9 px-2 rounded-lg flex items-center justify-center text-xs font-semibold transition-all ${
+                isLight
+                  ? "bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200"
+                  : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              }`}
+            >
+              CMA
+            </button>
             {/* AI ask — dispatches chatv3:send-message so ChatWidget
                 picks it up and routes a fresh chat turn through the
                 same parser → preview → narrate pipe. The address is

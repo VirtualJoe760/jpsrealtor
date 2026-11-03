@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { MessageSquare, Sparkles, Search, Home } from "lucide-react";
+import { MessageSquare, Sparkles, Search, Home, GraduationCap } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 
@@ -79,6 +79,18 @@ export default function ChatLandingPage() {
           >
             <Home className="w-5 h-5" />
             Browse Neighborhoods
+          </Link>
+
+          <Link
+            href="/ai-classes"
+            className={`inline-flex items-center gap-2 px-6 py-4 rounded-xl text-base font-semibold transition-all border ${
+              isLight
+                ? "border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                : "border-gray-700 text-gray-300 hover:border-gray-500 hover:bg-white/5"
+            }`}
+          >
+            <GraduationCap className="w-5 h-5" />
+            Book an AI Class
           </Link>
         </div>
 

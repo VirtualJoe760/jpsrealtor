@@ -123,40 +123,44 @@ const LIGHT_CHROME = "#ffffff";
 const DARK_CHROME = "#000000";
 
 /**
- * Re-create the chrome meta tags for the given state. Remove + append (not
- * setAttribute) — Safari reliably re-reads a fresh tag.
+ * Update chrome metas in place. React owns the SSR tags: removing them here
+ * makes its next navigation cleanup throw when their parentNode is null.
  *
  * system mode → dual theme-color metas with media queries (Safari follows the
  * OS natively); explicit/locked → a single fixed meta.
  */
 function applyChromeMetas(theme: ThemeName, followSystem: boolean) {
-  document
-    .querySelectorAll('meta[name="theme-color"]')
-    .forEach((el) => el.remove());
-
-  const add = (content: string, media?: string) => {
-    const m = document.createElement("meta");
-    m.setAttribute("name", "theme-color");
+  const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+  const update = (index: number, content: string, media?: string) => {
+    let m = metas[index];
+    if (!m) {
+      m = document.createElement("meta");
+      m.name = "theme-color";
+      m.dataset.themeChrome = "true";
+      document.head.appendChild(m);
+    }
     m.setAttribute("content", content);
     if (media) m.setAttribute("media", media);
-    document.head.appendChild(m);
+    else m.removeAttribute("media");
   };
 
   if (followSystem) {
-    add(LIGHT_CHROME, "(prefers-color-scheme: light)");
-    add(DARK_CHROME, "(prefers-color-scheme: dark)");
+    update(0, LIGHT_CHROME, "(prefers-color-scheme: light)");
+    update(1, DARK_CHROME, "(prefers-color-scheme: dark)");
   } else {
-    add(theme === "blackspace" ? DARK_CHROME : LIGHT_CHROME);
+    update(0, theme === "blackspace" ? DARK_CHROME : LIGHT_CHROME);
+    // Only remove extras created by this provider, never React-owned tags.
+    metas.slice(1).forEach((m) => {
+      if (m.dataset.themeChrome === "true") m.remove();
+    });
   }
 
   // iOS PWA status bar (no media-query support — always single, resolved).
-  document
-    .querySelectorAll('meta[name="apple-mobile-web-app-status-bar-style"]')
-    .forEach((el) => el.remove());
-  const bar = document.createElement("meta");
+  const bar = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]')
+    || document.createElement("meta");
   bar.setAttribute("name", "apple-mobile-web-app-status-bar-style");
   bar.setAttribute("content", theme === "blackspace" ? "black" : "default");
-  document.head.appendChild(bar);
+  if (!bar.parentNode) document.head.appendChild(bar);
 }
 
 /** Swap the theme classes on <html> and <body>. `dark` rides along for the

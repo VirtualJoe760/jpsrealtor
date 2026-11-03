@@ -3,6 +3,7 @@
 
 import { Resend } from 'resend';
 import { renderBrandedEmail, escapeHtml } from '@/lib/email-brand';
+import { AI_CLASS_LENGTH_LABEL, type AiClassIntake } from '@/config/ai-classes';
 
 // Lazy initialization to avoid errors during build when API key might not be set
 let resendInstance: Resend | null = null;
@@ -1527,5 +1528,83 @@ export async function sendJobApplicationNotification(opts: {
     if (error) console.error('[careers] application notification error:', error);
   } catch (error) {
     console.error('[careers] application notification failed:', error);
+  }
+}
+
+/**
+ * Confirmation to the person who booked an in-office AI class (/ai-classes).
+ * Sent as the platform (ChatRealty <noreply@chatrealty.io>), never as an agent:
+ * the class is ChatRealty's product, booked on the platform host.
+ */
+export async function sendAiClassConfirmationEmail(opts: {
+  to: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  intake: AiClassIntake;
+}) {
+  const { to, name, startTime, intake } = opts;
+  const resend = getResendClient();
+  const firstName = name.trim().split(' ')[0] || 'there';
+  const when = new Date(startTime).toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+  const office = `${intake.brokerage}${intake.officeName ? ` — ${intake.officeName}` : ''}`;
+  const poc = intake.pointOfContact;
+
+  // Prep checklist from the room answers: only ask for what we said we'd need.
+  const prep: string[] = [];
+  const eq = intake.equipment || {};
+  if (eq.tv !== 'yes' && eq.projector !== 'yes') prep.push('A TV or projector we can present on (let us know if there isn\'t one and we\'ll plan around it)');
+  if (eq.wifi !== 'yes') prep.push('The guest Wi-Fi name and password for attendees');
+  if (intake.laptops !== 'no') prep.push('Agents bring a laptop, charged, if they can — the class is hands-on');
+  prep.push(`${poc.name} reachable at ${poc.phone} on the day of the class`);
+
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px;white-space:nowrap;vertical-align:top;">${label}</td><td style="padding:4px 0;font-size:14px;">${value}</td></tr>`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: platformFrom(),
+      to: [to],
+      replyTo: ADMIN_EMAIL,
+      subject: `Your ChatRealty AI class is booked — ${when}`,
+      html: renderBrandedEmail({
+        title: 'Your AI class is booked',
+        preheader: `${when} at ${intake.brokerage}. Here's what to have ready.`,
+        bodyHtml: `
+          <p style="margin:0 0 16px;">Hi ${escapeHtml(firstName)}, thanks for booking a ChatRealty AI class for your office. We'll teach your agents ChatRealty, Claude Code / Codex and AI content creation, in person.</p>
+          <div style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              ${row('When', `<strong>${escapeHtml(when)}</strong> · ${AI_CLASS_LENGTH_LABEL} class`)}
+              ${row('Where', `${escapeHtml(office)}<br>${escapeHtml(intake.address)}, ${escapeHtml(intake.city)}`)}
+              ${row('Contact', `${escapeHtml(poc.name)} · ${escapeHtml(poc.phone)}`)}
+              ${intake.expectedAttendees ? row('Attendees', String(intake.expectedAttendees)) : ''}
+            </table>
+          </div>
+          <p style="margin:0 0 8px;font-weight:600;">Before the class, please have ready:</p>
+          <ul style="margin:0 0 20px;font-size:14px;line-height:1.9;padding-left:20px;">
+            ${prep.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}
+          </ul>
+          <p style="margin:0;">A calendar invite is on its way separately. Need to change the time or anything about the room? Just reply to this email.</p>
+        `,
+      }),
+    });
+
+    if (error) {
+      console.error('❌ AI class confirmation email error:', error);
+      return null;
+    }
+    return data;
+  } catch (error: any) {
+    console.error('Failed to send AI class confirmation email:', error);
+    return null;
   }
 }

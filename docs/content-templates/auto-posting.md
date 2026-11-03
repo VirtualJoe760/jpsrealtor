@@ -1,8 +1,8 @@
 ---
 title: Automated carousel posting — generate, review, approve, publish
 status: partial
-last_verified: 2026-10-25
-last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17; the Gemini 403 and the selector error-swallowing in "Blocked 2026-10-24" were checked against code and the live API on 2026-10-24, and the 403 was re-probed on 2026-10-25 — same status, different message, see "Blocked 2026-10-25". The pool, queue and relist counts were re-measured 2026-10-25. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
+last_verified: 2026-11-01
+last_verified_note: TL;DR, Decisions, and everything from "Implementation map" onward were checked against code on 2026-10-17. THE GEMINI 403 IS RESOLVED as of 2026-11-01 — the unpaid-balance error recorded in "Blocked 2026-10-24" through "Blocked 2026-10-31" no longer occurs and those four entries are history, not instructions. The live blocker, probed against the API on 2026-11-01, is the AI Studio project sitting on the FREE TIER, whose per-day quota for gemini-2.5-flash-image is exhausted: see "Blocked 2026-11-01". The Vertex AI route was probed and found closed on 2026-10-31; do not re-derive it. The pool, queue, 17 Lugo copy lint and 17 Lugo selector/stageable frame numbers in "Blocked 2026-11-01" were measured 2026-11-01; the Recuerdo frame numbers were measured 2026-10-31. The dated "Re-measured" entries in the middle are an operational log of pool and build measurements from 2026-08/09 — kept as history, not re-verified; counts and queue depths in them are stale by design.
 owner: content
 related: [./README.md, ./carousel-slides.md, ./actor-generation.md, ./copy-voice.md, ../integrations/twilio.md]
 ---
@@ -1918,6 +1918,256 @@ none of it material: 41142 Calle Bosque and the old 5803 Los Santos key left,
 FRESH stageable rows and the six disqualifications are unchanged, so the
 2026-10-24 candidate table stands as written and 17 Lugo is still the pick.
 
+### Blocked 2026-10-30 — same bill, but the queue was emptied the day before
+
+**No build, third blocked run.** `tmp-gemini-probe.ts` returns the same 403
+*"Your billing account has an outstanding balance"*, and `tmp-dump-why.ts` on 17
+Lugo returns `urls=35 assessed=0 stageable=0`. Do not strike anything on that.
+
+**`awaiting_review` is now 0, and that is not a bug in `tmp-stale-queue.js`.**
+All 29 posts were set `declined` on 2026-10-29 around 20:21 UTC, one every
+second or so, with `declineReason: null`. The status counts are now **54
+declined, 2 posted, nothing else**. There is no recorded reason, so this run
+makes no guess at one.
+
+**That changes what `queued` means in the pool report.** `tmp-pool4.js` tests
+`distinct("listingKey")` across every status, so a row marked `queued` may now
+hold only declined builds. The narrowing from 2026-09-07 (generate only for a
+never-queued listing) was there to stop a second live build of one house
+reaching the review stack, and with an empty stack that reason does not apply.
+Whether declined listings are back in the pool is the agent's call, because a
+bulk decline with no reason may be a verdict on those builds. 17 Lugo is
+unaffected: it was never built.
+
+Pool is **38 broad / 30 key-matched**. Thirteen FRESH stageable rows, of which
+four are relists or a repeat of a repo config (Chuperosa, Acoma, Los Santos, and
+the new-key 74586 Tesla, which has `tesla-drive.ts`) and three are standing
+strikes (Mountain View, Barron, Harbor). Never-built: **17 Lugo, still the pick,
+copy in `lugo-drive.ts`**; Madrid, Avenida Rubio, Willow, Latham, and one new
+arrival:
+
+| Candidate | Photos | `furnished` | Read |
+|---|---|---|---|
+| 49552 Recuerdo Lane, Morongo Valley, $467,500 | 55 | Unfurnished | new 2026-10-28, unchecked. Remarks: just over an acre fenced, fireplace, private casita with kitchenette, mountain views |
+
+### Blocked 2026-10-31 — fourth blocked run, and Vertex is not the way around it
+
+**No build.** `tmp-gemini-probe.ts` against a real 17 Lugo frame returns the
+same 403 as 10-24, 10-25 and 10-30, verbatim:
+
+```
+403 {"error":{"code":403,"message":"Your billing account has an outstanding
+     balance. Make a payment at https://aistudio.google.com/billing to restore
+     service. ...","status":"PERMISSION_DENIED"}}
+```
+
+Nothing may be struck on a selector count while this stands.
+
+#### The alternate route was tested and is closed
+
+The three previous entries treat the payment as the only lever. It is worth
+recording that the obvious workaround was tried and does not work, so a fifth
+run does not spend the time: `.env.local` carries `GOOGLE_APPLICATION_CREDENTIALS`,
+`GOOGLE_SERVICE_ACCOUNT_B64` and `GOOGLE_CLOUD_PROJECT=jpsrealtor`, and
+`@google/genai` 2.8.0 reaches the **same Gemini models through Vertex AI** on a
+service account with `{ vertexai: true, project, location }` — no pipeline
+rewrite, a constructor argument. Vertex bills to the GCP project rather than to
+AI Studio, so on paper it sidesteps the unpaid balance.
+
+It does not. `scripts/tmp-vertex-probe.ts` and `tmp-vertex-probe2.ts` (both new,
+both scratch) establish:
+
+| Probe | Result |
+|---|---|
+| Service-account auth | **works** — the failures are 404/403 on resources, not 401 |
+| `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-flash-latest`, `gemini-2.5-flash-lite` @ `us-central1` and `global` | **404** `Publisher model ... was not found or your project does not have access to it` |
+| `serviceusage` read of `aiplatform.googleapis.com` | **403** permission denied — the SA cannot even read whether the API is on |
+| `cloudbilling` read of the project | **403** `Cloud Billing API has not been used in project 782962984168 before or it is disabled` |
+
+So Vertex AI is not enabled on the `jpsrealtor` project, the service account has
+no rights to enable it, and the project's billing is unread because that API is
+off too. Enabling Vertex and granting `aiplatform.user` are console actions —
+and they would attach to the **same Google billing account** that is in arrears.
+It is the same bill plus extra setup, not a way around it.
+
+**Conclusion: paying the AI Studio balance is the only lever.** That is a
+financial action a scheduled run may not take. Neither browser could put the
+page on screen to make it one click: the in-app browser loaded
+`aistudio.google.com/billing` and was redirected to a signed-out Google sign-in,
+and `list_connected_browsers` returned `[]`, so the Chrome extension is not
+connected. Handed over as the link, which is the one case where that is correct.
+
+#### Queue and pool
+
+`awaiting_review` **0**, distinct listings **0**, nothing stale, nothing to
+relist-check — the 2026-10-29 bulk decline still stands and no reason was ever
+recorded. Pool is **37 broad / 30 key-matched**, down two from 10-30. Diff vs
+the 10-25 snapshot: 74586 Tesla (old key), 66550 San Diego, 28 Oak Tree and
+1184 Lear left; the new-key 74586 Tesla and 49552 Recuerdo arrived.
+
+**17 Lugo Drive is still the pick**, unchanged for four runs. `lugo-drive.ts`
+re-linted today with `tmp-copy-lint.ts` — all seventeen strings pass, cover body
+201/260, every room caption under 90, both CTA paragraphs under 110. The build
+is still one command behind the payment.
+
+#### 49552 Recuerdo Lane is checked now, and it is a real candidate
+
+Carried as "unchecked" on 10-30. Inspected directly off the contact sheet, which
+needs no Gemini, so the next run does not re-sheet it:
+
+- **Interiors are #6–#30 and furnished throughout** — yellow sofa and stacked-stone
+  fireplace (#8), dining in a window bay (#10), white kitchen with a cobalt
+  backsplash and steel-top island (#12, #14), grey sectional (#18), two made
+  bedrooms (#20, #22, #26), casita/office (#28). Professionally lit, undistorted.
+- **Outdoor is #32–#54**: covered patio with the hot tub (#32), shed and pines
+  (#34), the fenced acre (#38), block-wall planter with Joshua trees (#50),
+  aerial (#52, #54).
+- **Exclude candidates:** #22 and #26 are beds shot from the doorway with the
+  mattress filling the foreground at waist height — the opaque-near-face category
+  from 2026-08-26. #54 carries a *"lot lines are an approximation"* overlay burned
+  into the bottom edge.
+- **No private pool.** `poolFeatures` is unset; `spaFeatures` is
+  `"Hot Tub, Private, Above Ground"` and the tub in #32 is the only water. A
+  `pool` room key will land on the patio, so that caption must be worded to the
+  patio and the hot tub, never to a pool.
+- **#28 is the Hombria/Apache trap** — one charcoal accent wall in an otherwise
+  white, wood-look-floor room. Draft the invariant (the floor, the window to the
+  hills) and make it specific at reband, per `copy-voice.md` §8.
+
+`furnished: "Unfurnished"` is the sale term, not a statement about the
+photographs — it is set on this listing and the rooms are full. Do not read that
+field as a staging disqualification.
+
+#### A note on the scratch-script list
+
+`tmp-listing-facts.js`, `tmp-one-photo-url.js`, `tmp-photo-urls.js` and
+`tmp-urls.js` already do the record read and the URL dump. This run wrote three
+replacements before finding them and deleted them again. **Grep `scripts/` for an
+existing `tmp-*` before writing one** — the list below is long enough that it is
+cheaper to search it than to re-derive it.
+
+### Blocked 2026-11-01 — the 403 is GONE. The new wall is the FREE TIER's daily image quota
+
+**No build, but the blocker changed, so the previous four entries are now
+history rather than instructions.** The unpaid-balance 403 that stopped
+2026-10-24/25/30/31 is **resolved**. `tmp-gemini-probe.ts` against a real 17
+Lugo frame returns `OK: Entrance`, and the build's selector phase ran to
+completion and classified six frames. Billing is restored. **Do not re-probe
+the 403 or re-try Vertex — both questions are closed.**
+
+The build then died on something else:
+
+```
+2. staging 6 candidates for 4 slots…
+   #8 rejected — 429 Client Error: Too Many Requests
+   #24 rejected — 429 Client Error: Too Many Requests
+   ... (all six)
+fatal: no photo survived staging
+```
+
+#### The diagnosis: the project is on the Gemini FREE TIER, and the daily image quota is spent
+
+`scripts/tmp-image-quota-probe.ts` (new, scratch) calls
+`gemini-2.5-flash-image` directly and prints the error body that
+`raise_for_status()` throws away. Three quotas are in violation, all of them
+**Free Tier**:
+
+| `quotaId` | Window |
+|---|---|
+| `GenerateContentInputTokensPerModelPerMinute-FreeTier` | per minute |
+| `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` | per minute |
+| **`GenerateRequestsPerDayPerProjectPerModel-FreeTier`** | **per day** |
+
+`quotaDimensions.model` is `gemini-2.5-flash-preview-image`, and
+`RetryInfo.retryDelay` is **`60249s`** — about 16.7 hours. If only the
+per-minute buckets were full the retry delay would be ~60s; it is the **daily**
+bucket that binds, so waiting out a minute and re-running does nothing, and
+neither does spacing the calls.
+
+**Paying the arrears restored service but did not move the project onto the paid
+tier.** Those are two different things and this is the distinction the previous
+four entries could not see, because a 403 masks the tier. The lever is now
+**enabling paid-tier billing on the AI Studio project** at
+https://aistudio.google.com/billing — still a financial action a scheduled run
+may not take, but a *different* one from "pay the outstanding balance", and the
+outstanding balance must not be re-reported as the cause.
+
+Worth noting for whoever does it: the free tier's daily allowance for the image
+model is small, and one carousel spends **4–9 image calls plus retries**. Even
+once this unblocks, the free tier cannot sustain a daily carousel — this will
+recur every day until the tier changes.
+
+#### Two code defects this exposed — flagged, not fixed
+
+Both are outside the blast radius of "build one carousel", so neither was
+touched. They are why four runs' worth of diagnosis was harder than it needed
+to be.
+
+1. **`stage_geometric.py` has no 429 backoff.** The scraper at
+   `scripts/scrape-community-websites.py:70` has exponential backoff; the stager
+   has none (its only retry, line 687, is about strict bars). Six staging calls
+   go out back-to-back, so even on the paid tier a per-minute limit would fail a
+   whole build that a few seconds of sleep would have saved.
+2. **A 429 is reported as `rejected`.** `build-pending-post.ts:225` prints
+   `#N rejected — <error>`, the same word the geometry and face gates use. The
+   error text is there, but `fatal: no photo survived staging` reads as *these
+   photographs are unusable* when it actually means *the API refused every call*.
+   A quota failure and a bad photo set should not print the same verdict.
+
+#### What is ready, and what this run established about 17 Lugo
+
+**17 Lugo Drive is still the pick** — fifth run unchanged — and the build is
+still one command behind the billing change. `lugo-drive.ts` re-linted clean
+today: all seventeen strings pass, cover body 201/260, every room caption under
+90, both CTA paragraphs under 110.
+
+Facts re-verified against the record: `poolFeatures: "Community, In Ground"`,
+`poolPrivateYN` **unset** — there is no private pool, so the `pool` caption must
+stay worded to the patio and the semi-private pool *across the street*. The
+remarks carry **no virtual-staging disclosure**, so the watermark strip check of
+§10 is not needed on this listing. `furnished: "Furnished"`, HOA $1,151/mo,
+Tesla charger, Heavenly Heat sauna, repainted interior, golf-course view, 35
+photos — all confirmed.
+
+**New and important: this listing is thin and pair-heavy.** The selector dump
+returned **only 7 stageable frames out of 35**, and they are three near-duplicate
+pairs plus one oddity:
+
+| Frames | Room | Note |
+|---|---|---|
+| #6, #8 | `living` | same sofa, same round coffee table |
+| #10, #11 | `dining` | **same table, and the dump gave both `seated_dining`** |
+| #32, #33 | `outdoor_living` | same patio bar counter |
+| #34 | `other` | polished concrete, white cabinets, the wooden sauna — the garage |
+
+`#10`/`#11` are the 80519 Avenida Santa Isadora failure exactly: one table, one
+posture, consecutive slides, which `actor-generation.md` §6 forbids and which no
+gate catches. **Expect to drop one of each pair with `tmp-drop-slide.js` rather
+than excluding up front** — and keep the frame showing a room the post does not
+otherwise have, per §4.
+
+`#34` has no caption written for `other`, so it will take
+`fallbackCaption` ("Guard-gated Sunrise Country Club, Rancho Mirage."), which is
+true of it. Watch it anyway: if the stager returns `living` for that frame, the
+living line's "painted top to bottom … comes furnished" would print over a
+garage. Reband it if so.
+
+**The dump is not the plan, again confirmed.** The build's own selector returned
+`#8 living`, `#24 primary_bedroom`, `#10 dining`, `#0 exterior`, `#34 other`,
+`#4 living` — `#24`, `#0` and `#4` were never in the dump, and `#6`, `#11`, `#32`
+and `#33` were offered by the dump and never staged. So there *is* a
+`primary_bedroom` frame and an `exterior` frame this listing can use, and the
+primary-bedroom caption is reachable after all.
+
+#### Queue and pool
+
+`awaiting_review` **0**, distinct listings **0**, nothing stale, nothing to
+relist-check. The failed build inserted **no** `PendingPost` — it dies before
+the insert, so there is no partial record and no orphaned Cloudinary asset to
+clean up. Pool is **38 broad / 30 key-matched**, up one from 10-31: 28 Oak Tree,
+Rancho Mirage ($479,900) re-arrived, and it already has `oak-tree.ts` in the
+repo, so it is a prior build and not a fresh candidate. 13 FRESH stageable rows.
+
 ## Implementation map
 
 | Piece | Where | Notes |
@@ -1944,6 +2194,16 @@ FRESH stageable rows and the six disqualifications are unchanged, so the
 `scripts/tmp-stale-queue.js`, `tmp-pool3.js`, `tmp-pool4.js`, `tmp-detail2.js`,
 `tmp-drop-slide.js`, `tmp-graft-slide.js`, `tmp-retire-duplicate.js`,
 `tmp-retext-pending-post.ts` and `tmp-selector-dump.ts` are committed.
+
+Added 2026-11-01, scratch and safe to delete: `tmp-image-quota-probe.ts` calls
+`gemini-2.5-flash-image` — the model **staging** uses — and prints the raw error
+body, including the `quotaId` and `RetryInfo.retryDelay` that
+`stage_geometric.py`'s `raise_for_status()` discards. Use it rather than
+`tmp-gemini-probe.ts` to decide whether a build can run: the two models are
+separate quota buckets, and on 2026-11-01 the text probe answered `OK` while
+every image call 429'd. A green text probe does not mean a green build.
+
+Added 2026-10-31, both scratch and both safe to delete: `tmp-vertex-probe.ts <photoUrl>` and `tmp-vertex-probe2.ts` ask whether the same Gemini models are reachable through Vertex AI on the GCP service account instead of AI Studio on `GEMINI_API_KEY`. They are kept because the answer is no and the reasoning is not obvious — see "Blocked 2026-10-31". Re-run them only if the GCP project's APIs change.
 
 Added 2026-10-25, all scratch and all safe to delete: `tmp-copy-lint.ts <slug>`
 measures a pending config's strings against the copy-voice.md §8 budgets before

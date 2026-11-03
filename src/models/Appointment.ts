@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import type { AiClassIntake } from "@/config/ai-classes";
 
 export type AppointmentType =
   | "showing"
@@ -7,6 +8,7 @@ export type AppointmentType =
   | "open-house"
   | "listing-presentation"
   | "closing"
+  | "ai-class"
   | "other";
 
 export type AppointmentStatus =
@@ -56,6 +58,9 @@ export interface IAppointment extends Document {
     phone?: string;
   };
 
+  // In-office AI class intake (type "ai-class"); shape in src/config/ai-classes.ts
+  aiClass?: AiClassIntake;
+
   // Metadata
   notes?: string;
   reminderSent?: boolean;
@@ -75,7 +80,8 @@ const AppointmentSchema = new Schema<IAppointment>(
     description: String,
     type: {
       type: String,
-      enum: ["showing", "consultation", "call", "open-house", "listing-presentation", "closing", "other"],
+      // "ai-class": a ChatRealty AI class at a brokerage office, booked from /ai-classes.
+      enum: ["showing", "consultation", "call", "open-house", "listing-presentation", "closing", "ai-class", "other"],
       default: "consultation",
     },
     status: {
@@ -101,6 +107,39 @@ const AppointmentSchema = new Schema<IAppointment>(
       name: String,
       email: String,
       phone: String,
+    },
+
+    // Declared field by field: strict mode silently drops anything undeclared.
+    aiClass: {
+      type: new Schema(
+        {
+          brokerage: String,
+          officeName: String,
+          address: String,
+          city: String,
+          county: String,
+          requesterRole: String,
+          officeAgents: Number,
+          expectedAttendees: Number,
+          aiExperience: String,
+          laptops: String,
+          pointOfContact: { name: String, phone: String, email: String },
+          roomType: String,
+          seats: Number,
+          equipment: {
+            tv: String,
+            appleTv: String,
+            projector: String,
+            hdmi: String,
+            wifi: String,
+            power: String,
+          },
+          roomNotes: String,
+          accessNotes: String,
+        },
+        { _id: false }
+      ),
+      default: undefined,
     },
 
     notes: String,

@@ -6,11 +6,16 @@
 // email-client safety. Agent-branded CRM sends keep their own templates in
 // email-resend.ts — this wrapper is for mail the PLATFORM sends as itself.
 //
-// Brand: white card on #f8fafc, ChatRealty logo header, #2563eb CTA,
+// Brand: white card on #f8fafc, CHATREALTY wordmark header, #2563eb CTA,
 // #1e40af headings, #334155 body text. See docs/agent-onboarding/README.md.
 
+// The two-weight text wordmark (CHAT thin / REALTY medium, Jost), rendered to a
+// PNG because mail clients don't load web fonts. Source of truth is
+// src/app/components/brand/Wordmark.tsx; the PNG is also committed at
+// public/images/brand/chatrealty-wordmark-email.png. Served from Cloudinary so
+// a send never depends on a deploy having shipped the file. 1065x137 → 7.77:1.
 const LOGO_URL =
-  "https://www.chatrealty.io/images/brand/chatrealty-logo-light-1436x356.png";
+  "https://res.cloudinary.com/duqgao9h8/image/upload/v1793657283/jpsrealtor/brand/chatrealty/wordmark-email.png";
 const FONT_STACK = "-apple-system, 'Segoe UI', Roboto, sans-serif";
 
 /** From line for platform transactional emails (no agent branding). */
@@ -74,7 +79,7 @@ export function renderBrandedEmail({
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
           <tr>
             <td align="center" style="padding:32px 32px 8px;">
-              <img src="${LOGO_URL}" alt="ChatRealty" width="150" height="37" style="display:block;width:150px;height:auto;border:0;">
+              <img src="${LOGO_URL}" alt="ChatRealty" width="200" height="26" style="display:block;width:200px;height:auto;border:0;">
             </td>
           </tr>
           <tr>
