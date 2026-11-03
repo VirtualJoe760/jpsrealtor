@@ -138,8 +138,8 @@ export function getDomainConfig(hostname: string): DomainSeoConfig {
         'AI-powered real estate platform. Find your dream home with intelligent search, market insights, and verified local agents.',
       defaultTitle: 'ChatRealty | AI-Powered Real Estate Platform',
       titleTemplate: '%s | ChatRealty',
-      logoUrl: '/images/brand/chatrealty-logo-light-1436x356.png',
-      ogImage: '/images/brand/chatrealty-logo-og.png',
+      logoUrl: '/images/brand/chatrealty-wordmark-email.png',
+      ogImage: '/images/brand/chatrealty-og-wordmark.png',
       twitterHandle: '@chatrealty',
     }
   }
@@ -153,8 +153,8 @@ export function getDomainConfig(hostname: string): DomainSeoConfig {
     siteDescription: 'Your trusted local real estate expert.',
     defaultTitle: 'Real Estate Agent',
     titleTemplate: '%s | Real Estate',
-    logoUrl: '/images/brand/chatrealty-logo-light-1436x356.png',
-    ogImage: '/images/brand/chatrealty-logo-og.png',
+    logoUrl: '/images/brand/chatrealty-wordmark-email.png',
+    ogImage: '/images/brand/chatrealty-og-wordmark.png',
     twitterHandle: '',
   }
 }

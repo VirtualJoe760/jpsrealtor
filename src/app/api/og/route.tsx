@@ -57,72 +57,37 @@ export async function GET(request: NextRequest) {
   const fonts = await loadWordmarkFonts(baseUrl);
 
   if (!subdomain) {
-    // The PLATFORM card (chatrealty.io itself). Same treatment the agent cards
-    // already use when they have a background photo, and for the same reason
-    // the owner gave there: full-strength image with a dark scrim over it, not
-    // a faded photo. A wordmark on flat white reads as a placeholder in a feed;
-    // a dark photographic card reads as a product.
-    const platformBg = `${baseUrl}/images/brand/chatrealty-og-bg.jpg`;
+    // The PLATFORM card (chatrealty.io itself): the two-weight text wordmark
+    // on white, the same art as the static default og:image
+    // (public/images/brand/chatrealty-og-wordmark.png). Changed 2026-11-02 at
+    // Joseph's request — the old card was the retired speech-bubble logo over
+    // a dark-scrimmed photo.
     return new ImageResponse(
-      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={platformBg}
-          alt=""
-          width={1200}
-          height={630}
-          style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover" }}
-        />
-        {/* Scrim as a FLAT fill, not a gradient. Satori rendered a multi-stop
-            rgba gradient far weaker than specified and the card came back with
-            the mark washed out over a bright sky — a plain rgba layer is the
-            one thing it composites predictably. */}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        <WordmarkRow fontSize={104} color="#0f172a" />
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: 1200,
-            height: 630,
             display: "flex",
-            backgroundColor: "rgba(9,11,16,0.82)",
-          }}
-        />
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
+            fontFamily: "Jost",
+            fontWeight: 200,
+            fontSize: 30,
+            color: "#64748b",
+            marginTop: 34,
+            letterSpacing: 6,
+            marginRight: -6,
           }}
         >
-          {/* The LOGO, not the text wordmark: the house-in-a-speech-bubble mark
-              is what makes the card recognisable at feed size, and its blue is
-              the only colour on an otherwise monochrome card. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${baseUrl}/images/brand/chatrealty-logo-light-1436x356.png`}
-            alt="chatRealty"
-            width={660}
-            height={164}
-            style={{ objectFit: "contain" }}
-          />
-          <div
-            style={{
-              display: "flex",
-              fontFamily: "Jost",
-              fontWeight: 200,
-              fontSize: 28,
-              color: "#e8eaed",
-              marginTop: 34,
-              letterSpacing: 4,
-            }}
-          >
-            AI-Powered Real Estate
-          </div>
+          AI-POWERED REAL ESTATE
         </div>
       </div>,
       { width: 1200, height: 630, ...(fonts && { fonts }) }
