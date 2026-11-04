@@ -10,6 +10,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   [ArticleCategory.ARTICLES]: 'Articles',
   [ArticleCategory.MARKET_INSIGHTS]: 'Market Insights',
   [ArticleCategory.REAL_ESTATE_TIPS]: 'Real Estate Tips',
+  [ArticleCategory.LISTING_POST]: 'Listing Posts',
   all: 'All Categories',
 };
 
@@ -27,6 +28,7 @@ export const CATEGORY_OPTIONS = [
   { value: ArticleCategory.ARTICLES, label: 'Articles' },
   { value: ArticleCategory.MARKET_INSIGHTS, label: 'Market Insights' },
   { value: ArticleCategory.REAL_ESTATE_TIPS, label: 'Real Estate Tips' },
+  { value: ArticleCategory.LISTING_POST, label: 'Listing Posts' },
 ];
 
 /**

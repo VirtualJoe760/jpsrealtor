@@ -25,6 +25,7 @@ import TipTapEditor from "@/app/components/TipTapEditor";
 import CMSModal, { type CMSModalProps } from "../cms-page/components/CMSModal";
 import LandingPageOptions, { type LandingPageConfig, DEFAULT_LANDING_PAGE_CONFIG } from "../components/LandingPageOptions";
 import ClaudeLandingPageChat from "../components/ClaudeLandingPageChat";
+import ListingPostOptions, { type ListingPostConfig, DEFAULT_LISTING_POST_CONFIG } from "../components/ListingPostOptions";
 import { previewSrc } from "@/lib/article-preview";
 
 type TabType = "generate" | "edit" | "preview";
@@ -83,6 +84,12 @@ export default function NewArticlePage() {
   // Landing page config (separate state so linter doesn't revert it)
   const [lpConfig, setLpConfig] = useState<LandingPageConfig>(DEFAULT_LANDING_PAGE_CONFIG);
 
+  // Listing blog post inputs (category "listing-post") and the listing
+  // reference the generator returned, which is what gets saved on the article.
+  const [listingPostConfig, setListingPostConfig] = useState<ListingPostConfig>(DEFAULT_LISTING_POST_CONFIG);
+  const [listingPostRef, setListingPostRef] = useState<any>(null);
+  const isListingPost = formData.category === "listing-post";
+
   // Landing-page generator mode (only meaningful when category === "landing-page").
   // Default to Groq (fast/free); Claude requires the agent to have added their key.
   const [lpGenMode, setLpGenMode] = useState<"groq" | "claude">("groq");
@@ -135,8 +142,109 @@ export default function NewArticlePage() {
     };
   }, [status]);
 
+  // Listing blog post: draft the copy from the picked listing's MLS facts.
+  const handleGenerateListingPost = async () => {
+    if (!listingPostConfig.listing) {
+      setModal({ isOpen: true, type: 'error', title: 'Address Required', message: 'Pick an active listing from the address suggestions first.' });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 65000);
+      const response = await fetch("/api/agent/listing-posts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingKey: listingPostConfig.listing.listingKey,
+          slugAddress: listingPostConfig.listing.slugAddress,
+          postType: listingPostConfig.postType,
+          openHouse: listingPostConfig.postType === "open-house" ? listingPostConfig.openHouse : undefined,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.errors?.join("\n") || data.details || data.error || "Failed to generate listing post");
+      }
+      const article = data.article;
+      setSlugId(article.slugId);
+      setListingPostRef(article.listingPost);
+      setFormData((prev) => ({
+        ...prev,
+        title: article.title,
+        excerpt: article.excerpt,
+        content: article.content,
+        category: "listing-post",
+        tags: article.tags,
+        featuredImage: article.featuredImage,
+        seo: article.seo,
+      }));
+      if (window.innerWidth < 1024) setActiveTab("edit");
+    } catch (error) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: error instanceof Error && error.name === 'AbortError' ? 'Request Timed Out' : 'Generation Failed',
+        message: 'Failed to generate the listing post',
+        details: error instanceof Error ? error.message : 'Unknown error. Try again.',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Listing posts save through the publish route (upsert by slug) so the
+  // listing reference is stored; `draft` keeps the post private for preview.
+  const saveListingPost = async (draft: boolean) => {
+    const response = await fetch("/api/articles/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slugId,
+        article: {
+          title: formData.title,
+          excerpt: formData.excerpt,
+          content: formData.content,
+          category: "listing-post",
+          tags: formData.tags,
+          visibility: formData.visibility,
+          featuredImage: formData.featuredImage,
+          seo: formData.seo,
+          listingPost: listingPostRef,
+          draft,
+        },
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.errors?.join("\n") || data.error || "Failed to save listing post");
+    }
+    return data;
+  };
+
+  // Preview a listing post on its real page (drafts render only for their author).
+  const handlePreviewListingPost = async () => {
+    if (!slugId || !listingPostRef) {
+      setModal({ isOpen: true, type: 'error', title: 'Nothing to Preview', message: 'Generate the listing post first.' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await saveListingPost(true);
+      setShowPreviewModal(true);
+      setPreviewKey((prev) => prev + 1);
+    } catch (error) {
+      setModal({ isOpen: true, type: 'error', title: 'Preview Failed', message: 'Could not save the draft for preview', details: error instanceof Error ? error.message : undefined });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Handle Groq generation
   const handleGenerate = async () => {
+    if (isListingPost) return handleGenerateListingPost();
     if (!generationTopic.trim()) {
       setModal({
         isOpen: true,
@@ -288,6 +396,14 @@ export default function NewArticlePage() {
     setIsSaving(true);
 
     try {
+      if (isListingPost) {
+        if (!slugId || !listingPostRef) throw new Error("Generate the listing post first.");
+        await saveListingPost(!publishNow);
+        setModal({ isOpen: true, type: 'success', title: 'Listing Post Saved', message: 'Saved as draft!', autoCloseMs: 2000 });
+        setTimeout(() => router.push("/agent/cms"), 2000);
+        return;
+      }
+
       const articleData = {
         ...formData,
         status: publishNow ? "published" : formData.status,
@@ -375,6 +491,7 @@ export default function NewArticlePage() {
             featuredImage: formData.featuredImage,
             seo: formData.seo,
             ...(formData.category === "landing-page" ? lpConfig : {}),
+            ...(isListingPost ? { listingPost: listingPostRef } : {}),
           },
         }),
       });
@@ -571,6 +688,10 @@ export default function NewArticlePage() {
             </button>
             <button
               onClick={() => {
+                if (isListingPost) {
+                  handlePreviewListingPost();
+                  return;
+                }
                 setShowPreviewModal(true);
                 setPreviewKey((prev) => prev + 1);
               }}
@@ -598,7 +719,7 @@ export default function NewArticlePage() {
               <div className="w-full h-full overflow-auto">
                 <iframe
                   key={previewKey}
-                  src={previewSrc({
+                  src={isListingPost ? `/insights/listing-post/${slugId}?v=${previewKey}` : previewSrc({
                     title: formData.title || "Untitled",
                     excerpt: formData.excerpt || "",
                     content: formData.content || "",
@@ -705,8 +826,8 @@ export default function NewArticlePage() {
                 </div>
               )}
 
-              {/* Topic Input (Groq mode only) */}
-              {!claudeMode && (
+              {/* Topic Input (Groq mode only; listing posts use the address instead) */}
+              {!claudeMode && !isListingPost && (
                 <div>
                   <label
                     className={`block text-sm font-semibold ${textSecondary} mb-2`}
@@ -752,6 +873,7 @@ export default function NewArticlePage() {
                   <option value="market-insights">Market Insights</option>
                   <option value="real-estate-tips">Real Estate Tips</option>
                   <option value="landing-page">Landing Page</option>
+                  <option value="listing-post">Listing Post (listing / open house)</option>
                 </select>
               </div>
 
@@ -812,11 +934,20 @@ export default function NewArticlePage() {
                 />
               )}
 
+              {/* Listing Post Options */}
+              {isListingPost && (
+                <ListingPostOptions
+                  config={listingPostConfig}
+                  onChange={setListingPostConfig}
+                  isLight={isLight}
+                />
+              )}
+
               {/* Generate Button (Groq mode only) */}
               {!claudeMode && (
                 <button
                   onClick={handleGenerate}
-                  disabled={isGenerating || !generationTopic.trim()}
+                  disabled={isGenerating || (isListingPost ? !listingPostConfig.listing : !generationTopic.trim())}
                   className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-base ${
                     isLight
                       ? "bg-blue-600 hover:bg-blue-700"
@@ -831,7 +962,7 @@ export default function NewArticlePage() {
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5" />
-                      Generate Article
+                      {isListingPost ? "Generate Listing Post" : "Generate Article"}
                     </>
                   )}
                 </button>
@@ -852,7 +983,7 @@ export default function NewArticlePage() {
               )}
 
               {/* Generation Preview - Hidden on mobile, hidden in Claude mode */}
-              {generatedPreview && !claudeMode && (
+              {generatedPreview && !claudeMode && !isListingPost && (
                 <div className="mt-6 hidden lg:block">
                   <div className="flex items-center justify-between mb-3">
                     <h3

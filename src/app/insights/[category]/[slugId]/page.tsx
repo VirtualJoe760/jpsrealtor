@@ -9,6 +9,7 @@ import ArticlePageClient from "./ArticlePageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import { getBaseUrlFromHeaders, doesDomainBelongToAgent } from "@/lib/domain-utils";
+import ListingPostPage, { listingPostMetadata } from "./listing-post/ListingPostPage";
 
 /**
  * Check if an article can be viewed on the current domain.
@@ -29,6 +30,9 @@ export async function generateMetadata({
   params: Promise<{ category: string; slugId: string }>;
 }) {
   const { category, slugId } = await params; // Destructure params directly
+
+  // Listing blog posts have their own layout and data (listing-post/).
+  if (category === "listing-post" && slugId) return listingPostMetadata(slugId);
 
   if (!slugId) {
     console.error("Missing slugId for metadata.");
@@ -79,6 +83,10 @@ export default async function PostPage({
 }) {
   const resolvedParams = await params;
   const { slugId, category } = resolvedParams;
+
+  if (category === "listing-post" && slugId) {
+    return <ListingPostPage slug={slugId} />;
+  }
 
   // These three paths used to render an apology at HTTP 200. Google reads that
   // as a real page with thin content — the "soft 404" bucket in Search Console —

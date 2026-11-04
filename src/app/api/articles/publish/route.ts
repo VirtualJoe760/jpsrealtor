@@ -64,7 +64,9 @@ export async function POST(req: Request) {
     // GBP auto-posting (non-blocking — don't fail the publish if GBP errors)
     // Passes userId so the publisher uses per-user GBP credentials if connected
     let gbpResult: { success: boolean; postName?: string; error?: string } | null = null;
-    if (!article.draft) {
+    // Listing posts are skipped: their image is another brokerage's MLS photo,
+    // licensed for display on the agent's IDX site, not for re-posting to Google.
+    if (!article.draft && article.category !== 'listing-post') {
       try {
         gbpResult = await publishArticleToGBP(
           {

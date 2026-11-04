@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-10-29
+last_verified: 2026-11-03
 related: [./multi-tenant-articles.md, ../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md, ../routing/README.md, ../mcp/tools.md, ../seo/README.md]
 supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -10,8 +10,10 @@ supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 
 ## TL;DR
 
-The CMS publishes articles (`articles` / `market-insights` / `real-estate-tips`)
-and landing pages (`landing-page`) — all one `Article` Mongo model. **The
+The CMS publishes articles (`articles` / `market-insights` / `real-estate-tips`),
+landing pages (`landing-page`) and listing blog posts (`listing-post`, an
+active listing or its open house with a registration form) — all one `Article`
+Mongo model. **The
 database is the only copy.** Publishing is validate → one upsert by slug; every
 page reads the database on request, so a publish is live the moment it returns.
 No MDX file, git commit, GitHub token or rebuild is involved (removed
@@ -26,14 +28,15 @@ is built yet — see [multi-tenant-articles.md](./multi-tenant-articles.md).
 
 | File | Purpose |
 |---|---|
-| `src/models/article.ts` | Mongoose model (file name is lowercase). `author.id` is the scoping field; `slug` is unique; `visibility` is `public`/`private` (default `private`). Schema enum includes `landing-page`; the TS type `ArticleCategory` does not. |
+| `src/models/article.ts` | Mongoose model (file name is lowercase). `author.id` is the scoping field; `slug` is unique; `visibility` is `public`/`private` (default `private`). Schema enum and the TS type `ArticleCategory` include `landing-page` and `listing-post`. `listingPost` subdoc holds the listing reference (see "Listing blog posts"). |
 | `src/lib/publishing-pipeline.ts` | `validateForPublish()`, `publishArticle()` (validate → upsert → IndexNow), `unpublishArticle()` (delete), `isArticlePublished()`. Same behaviour on localhost and Vercel. |
 | `src/lib/articles/public-articles.ts` | **The read path for public surfaces.** `listPublishedPosts({ ownerId, category })` (owner + published only; no owner → empty), `getArticlePost(slug)`, `articleToPost()`, `resolvePageOwnerId()` for server components. Neon routing for non-admins plugs in here. |
 | `src/lib/services/article.service.ts` | CRUD over the model. `convertFormDataToMongoDoc()` is where SEO keywords become `tags`. |
 | `src/app/api/articles/` | `list`, `publish`, `unpublish`, `set-draft`, `load-published` (session routes); `generate` (Groq), `regenerate-field`; public `search`, `ai-search`, `topics`; deprecated `route.ts` (use `list`). |
 | `src/app/api/skill/articles/`, `src/app/api/skill/landing-pages/` | Token-authed (`articles:*` / `landing_pages:*` scopes) routes behind the MCP tools `create_article`, `update_article`, `get_article`, `list_my_articles` and the `*_landing_page` equivalents — see [mcp/tools.md](../mcp/tools.md). |
 | `src/app/admin/cms/`, `src/app/agent/cms/` | Admin CMS (all articles) and per-agent CMS (own articles). |
-| `src/app/insights/[category]/[slugId]/page.tsx`, `src/app/lp/[slug]/page.tsx` | Article and landing-page renderers. |
+| `src/app/insights/[category]/[slugId]/page.tsx`, `src/app/lp/[slug]/page.tsx` | Article and landing-page renderers. The article route hands `category === "listing-post"` to `listing-post/ListingPostPage.tsx`. |
+| `src/lib/listings/listing-post.ts`, `src/app/api/agent/listing-posts/{search,generate}`, `src/app/api/leads/listing-post`, `src/app/agent/cms/components/ListingPostOptions.tsx` | Listing blog posts — see below. |
 | `src/app/utils/fetchPosts.ts` | `getPostBySlug()` and `getPostsBySection(section, page, limit, ownerId)` — thin wrappers over `public-articles.ts`. |
 | `src/app/api/claude/draft-landing-page/route.ts`, `src/app/agent/cms/components/ClaudeLandingPageChat.tsx` | BYOK Claude landing-page builder (SSE + tool calls). |
 | `src/app/api/claude/draft-article/route.ts` | BYOK Claude article drafter. No caller in `src/` was found. |
@@ -116,6 +119,70 @@ The Anthropic key is AES-256-GCM encrypted by `src/lib/secrets.ts`
 (`SECRETS_ENCRYPTION_KEY`) at `User.agentProfile.aiIntegrations.anthropic.apiKeyEncrypted`;
 API tokens are sha256-hashed in `aiIntegrations.apiTokens[]` and shown once. See
 [integrations/README.md](../integrations/README.md).
+
+## Listing blog posts (`listing-post`)
+
+An agent advertises one **active** listing, or its open house, as a blog post
+that captures registrations. Added 2026-11-03.
+
+**Generate (agent).** `/agent/cms/new` → Category "Listing Post". The address
+field autocompletes over Active `unified_listings` via
+`GET /api/agent/listing-posts/search` (session-only; anchored prefix on the
+indexed `slugAddress` only — an unindexed `unparsedAddress` fallback scanned the
+whole collection for ~30s on a miss and was removed). The agent ticks
+**Open house** or **General listing page**; an MLS open house on the listing
+pre-fills the date/times. `POST /api/agent/listing-posts/generate` writes the
+copy with Groq from the listing's facts only (no invented claims, no
+editorializing about another brokerage's listing) and returns form fields plus
+`listingPost`. Nothing is saved until the agent saves.
+
+**Preview / publish.** Both go through `/api/articles/publish` (upsert by
+slug): Preview saves `draft: true` and opens `/insights/listing-post/{slug}` in
+the modal — drafts render **only for their author** and are `noindex`. Publish
+is the same call without `draft`. Listing posts skip the GBP auto-post (the
+image is the listing brokerage's MLS photo) and drafts skip IndexNow.
+
+**Slug.** `{slugAddress}[-open-house-{date}]-{last 6 of author id}` —
+deterministic and per agent, because slugs are global and the publish upserts
+by slug: a title-derived slug would let a second agent posting the same address
+overwrite the first agent's post.
+
+**What is stored vs read live.** The article stores only
+`listingPost: { listingKey, slugAddress, address, postType, openHouse }` plus
+the copy. Price, facts, photos, subdivision (`subdivisions`), community
+(`cities`), map and nearby listings are read at render time by
+`loadListingPostData()`. Photos are the listing's synced MLS media, never
+rehosted or edited (the featured image is the primary photo URL with
+`publicId: "mls-listing/{listingKey}"` — not a Cloudinary asset). If the listing
+leaves Active, the page says so and keeps the form.
+
+**Page layout** (`listing-post/ListingPostView.tsx`): `CollageHero` photo
+carousel → title / price / open-house banner → property facts → post copy +
+registration form → subdivision → community → map (`ListingPostMap`,
+react-maplibre) → MLS attribution (`ListingAttribution`) → `RelatedListings`
+carousel of nearby active listings.
+
+**Registration** (`POST /api/leads/listing-post`, public in
+`PUBLIC_API_EXACT`): name, email, phone, optional "send me recently sold
+comps", required consent checkbox (email + call/text, links to
+`/terms-of-service` and `/privacy-policy`). Turnstile + 10/h per-IP rate limit,
+like the buy/sell intake forms. On submit:
+
+1. Contact upserted in the **post author's** CRM (not the domain owner's),
+   tagged `Web Generated Leads`, `Open House RSVP` or `Listing Post`, the
+   address, and `Requested Sold Comps`; consent date/IP recorded; a
+   `noteHistory` line logs the registration. The agent gets the usual lead SMS
+   (`notifyAgentLead`).
+2. A **partial User** if none exists: no password, `emailVerified: null`,
+   `roles: ["endUser"]`, `signupOrigin.method: "listing_post"`. An existing
+   account is never modified.
+3. Email via `sendListingPostRegistrationEmail()` (`renderBrandedEmail`, platform
+   sender, reply-to the agent). Partial accounts get a 7-day
+   `VerificationToken` and a "Complete registration" button to the existing
+   `/auth/welcome?token=` flow (set password or Google), on the host the visitor
+   registered on. Comps, when asked for, come from `unified_closed_listings` —
+   same subdivision (else city) and property type, ±20% price, ±1 bed/bath,
+   closed in the last 6 months.
 
 ## Newsletter (backend only)
 

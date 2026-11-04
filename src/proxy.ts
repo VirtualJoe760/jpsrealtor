@@ -134,6 +134,9 @@ const PUBLIC_API_EXACT = new Set([
   // (/api/contact skips both only for x-internal-secret server calls).
   "/api/leads/buy-intake",
   "/api/leads/sell-intake",
+  // Registration form on CMS listing blog posts (open houses / listing pages).
+  // Same guards: Turnstile + 10/h per-IP rate limit, in the route.
+  "/api/leads/listing-post",
   "/api/contact",
   // Affiliate link clicks (?ref=CODE). Visitors have no session; the route
   // only counts the click and sets the first-party cr_aff cookie. Rate-limited.

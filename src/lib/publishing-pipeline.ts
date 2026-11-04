@@ -154,7 +154,8 @@ export async function publishArticle(
   // Google does not participate in IndexNow — for Google the signal is the
   // sitemap's lastmod, from `articles.updatedAt` (lib/sitemap-sources.ts).
   // Never fails a publish.
-  await pingIndexNowForArticle(article, slugId, options.userId);
+  // A draft (e.g. a listing post saved for preview) is not public yet.
+  if (!article.draft) await pingIndexNowForArticle(article, slugId, options.userId);
 
   return { warnings };
 }

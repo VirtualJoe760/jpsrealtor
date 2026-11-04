@@ -93,6 +93,11 @@ export function convertFormDataToMongoDoc(
     ...((data as any).formRecipients && { formRecipients: (data as any).formRecipients }),
     ...((data as any).formDisclaimer && { formDisclaimer: (data as any).formDisclaimer }),
     ...((data as any).formFields && { formFields: (data as any).formFields }),
+    // Listing blog post: the listing reference + open-house details. Only set
+    // for that category, so an ordinary article can never carry one.
+    ...(data.category === 'listing-post' && (data as any).listingPost && {
+      listingPost: (data as any).listingPost,
+    }),
   };
 }
 

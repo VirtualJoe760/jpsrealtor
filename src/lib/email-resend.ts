@@ -1608,3 +1608,109 @@ export async function sendAffiliateRejectionEmail(email: string, name: string, r
     }),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Listing blog post registration (docs/cms/README.md → "Listing blog posts").
+// Platform mail (ChatRealty shell + sender) because the visitor is finishing a
+// ChatRealty account; reply-to is the agent, so questions reach them.
+// ---------------------------------------------------------------------------
+
+export interface ListingPostComparable {
+  address: string;
+  closePrice: number | null;
+  closeDate: string | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+}
+
+/**
+ * "Complete your account registration" for someone who registered on a
+ * listing post. `completeUrl` is null when they already have a finished
+ * account (then the email is just the confirmation + comps). Best-effort:
+ * returns null on failure.
+ */
+export async function sendListingPostRegistrationEmail(opts: {
+  to: string;
+  name: string;
+  address: string;
+  postUrl: string;
+  agentName: string;
+  agentEmail?: string;
+  openHouse?: { date?: string; startTime?: string; endTime?: string } | null;
+  completeUrl: string | null;
+  comparables?: ListingPostComparable[] | null;
+}) {
+  const firstName = escapeHtml((opts.name || '').trim().split(' ')[0] || 'there');
+  const address = escapeHtml(opts.address);
+  const agent = escapeHtml(opts.agentName || 'your agent');
+  const oh = opts.openHouse;
+  const ohText = oh?.date
+    ? `${escapeHtml(oh.date)}${oh.startTime ? `, ${escapeHtml(oh.startTime)}` : ''}${oh.endTime ? `–${escapeHtml(oh.endTime)}` : ''}`
+    : '';
+  const money = (n: number | null) => (n == null ? '—' : `$${n.toLocaleString('en-US')}`);
+
+  const comps = (opts.comparables || []).slice(0, 8);
+  const compsHtml = comps.length
+    ? `<p style="margin:20px 0 8px;font-weight:600;">Recently sold nearby</p>
+       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:13px;border-collapse:collapse;">
+         <tr style="color:#64748b;text-align:left;">
+           <th style="padding:6px 8px 6px 0;font-weight:600;">Address</th>
+           <th style="padding:6px 8px;font-weight:600;">Sold</th>
+           <th style="padding:6px 8px;font-weight:600;">Date</th>
+           <th style="padding:6px 0 6px 8px;font-weight:600;">Bd/Ba · Sq ft</th>
+         </tr>
+         ${comps
+           .map(
+             (c) => `<tr style="border-top:1px solid #e2e8f0;">
+           <td style="padding:6px 8px 6px 0;">${escapeHtml(c.address || '—')}</td>
+           <td style="padding:6px 8px;white-space:nowrap;">${money(c.closePrice)}</td>
+           <td style="padding:6px 8px;white-space:nowrap;">${escapeHtml(c.closeDate || '—')}</td>
+           <td style="padding:6px 0 6px 8px;white-space:nowrap;">${c.beds ?? '—'}/${c.baths ?? '—'} · ${c.sqft ? c.sqft.toLocaleString('en-US') : '—'}</td>
+         </tr>`
+           )
+           .join('')}
+       </table>
+       <p style="margin:8px 0 0;font-size:12px;color:#64748b;">MLS closed sales from the last six months with a similar price, size and location. Information deemed reliable but not guaranteed.</p>`
+    : opts.comparables
+      ? `<p style="margin:20px 0 0;">There were no closely matching sales in the last six months — ${agent} can pull a wider set for you.</p>`
+      : '';
+
+  const intro = ohText
+    ? `You're registered for the open house at <strong>${address}</strong> on <strong>${ohText}</strong>.`
+    : `Thanks for your interest in <strong>${address}</strong>. ${agent} will be in touch with details.`;
+
+  const finish = opts.completeUrl
+    ? `<p style="margin:16px 0 0;">We started a ChatRealty account for you so you can save this home, get updates and see more listings. Set a password (or sign in with Google) to finish — the link is good for 7 days.</p>`
+    : '';
+
+  const send = async () => getResendClient().emails.send({
+      from: platformFrom(),
+      to: [opts.to],
+      replyTo: opts.agentEmail || ADMIN_EMAIL,
+      subject: opts.completeUrl
+        ? `Complete your registration — ${opts.address}`
+        : `You're registered — ${opts.address}`,
+      html: renderBrandedEmail({
+        title: opts.completeUrl ? 'Complete your account registration' : "You're registered",
+        preheader: ohText ? `Open house ${ohText} at ${opts.address}` : `Details on ${opts.address}`,
+        bodyHtml: `
+          <p style="margin:0 0 12px;">Hi ${firstName},</p>
+          <p style="margin:0;">${intro}</p>
+          ${finish}
+          ${compsHtml}
+          <p style="margin:20px 0 0;font-size:13px;"><a href="${opts.postUrl}" style="color:#2563eb;">View the listing post</a> · Questions? Reply to reach ${agent}.</p>
+        `,
+        ...(opts.completeUrl ? { cta: { label: 'Complete registration', url: opts.completeUrl } } : {}),
+      }),
+    });
+
+  // getResendClient() throws synchronously without a key, so catch around the call.
+  const { data, error } = await send().catch((e: any) => ({ data: null, error: e }));
+
+  if (error) {
+    console.error('❌ Listing post registration email error:', error);
+    return null;
+  }
+  return data;
+}
