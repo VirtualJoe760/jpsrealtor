@@ -1,8 +1,8 @@
 ---
 title: Analytics
 status: current
-last_verified: 2026-10-23
-related: [sales-heatmap.md, ../../src/app/api/analytics/README.md]
+last_verified: 2026-11-03
+related: [sales-heatmap.md, visitor-activity.md, ../../src/app/api/analytics/README.md]
 ---
 
 # Analytics
@@ -30,6 +30,7 @@ libraries must not import each other.
 
 | Doc | Covers |
 |---|---|
+| [visitor-activity.md](visitor-activity.md) | Pages a lead viewed and time on each — admin Users panel + agent contact panel; Google sign-up origin backfill |
 | [sales-heatmap.md](sales-heatmap.md) | The Analytics tab: collections, caption rules, the three endpoints, and the four footguns (year types, `$box`, global `rank`, ZIP-widening) |
 
 ## Status

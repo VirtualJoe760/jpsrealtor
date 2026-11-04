@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
+import VisitorActivityCard from "@/app/components/crm/VisitorActivityCard";
 
 interface User {
   _id: string;
@@ -689,6 +690,9 @@ export default function AdminUsersPage() {
                           <Globe size={13} className={textSecondary} />
                           {selectedUser.signupOrigin.domain}
                         </p>
+                        <p className={`text-xs ${textSecondary}`}>
+                          Signed up with: <span className={textPrimary}>{selectedUser.clientOfAgent || "no agent (platform site)"}</span>
+                        </p>
                         {selectedUser.signupOrigin.method && (
                           <p className={`text-xs ${textSecondary}`}>Method: {selectedUser.signupOrigin.method}</p>
                         )}
@@ -716,6 +720,9 @@ export default function AdminUsersPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Pages viewed + time on each, across every site */}
+                  <VisitorActivityCard url={`/api/admin/users/${selectedUser._id}/activity`} isLight={isLight} showHost />
 
                   {selectedUser.profileDescription && (
                     <div>

@@ -1,7 +1,7 @@
 ---
 title: Auth
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-03
 related: [../routing/README.md, ../multi-tenant/README.md, ../admin/README.md]
 supersedes: docs/archive/features/AUTHENTICATION.md
 ---
@@ -55,7 +55,7 @@ because each apex has its own cookie that needs to be cleared independently.
 | Provider | Notes |
 |---|---|
 | **Credentials** (email/password) | bcrypt for password hashing. Per-email rate limit (10/hr). Cloudflare Turnstile CAPTCHA required. Throws on unverified email or 2FA mid-flow. |
-| **Google** | Standard NextAuth Google provider |
+| **Google** | Standard NextAuth Google provider. New users get `signupOrigin.domain: "unknown"` (no request in `signIn`); `/api/auth/receive` and the first page-view beacon backfill it — [visitor-activity](../analytics/visitor-activity.md) |
 | **Facebook** | Standard NextAuth Facebook provider |
 
 ## Cross-domain transfer flow
