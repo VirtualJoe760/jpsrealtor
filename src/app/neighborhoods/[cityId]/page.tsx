@@ -36,7 +36,7 @@ import {
   getNeighborhoodsDirectory,
   formatCountyLabel,
 } from "@/lib/neighborhoods-data";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { createSlug } from "@/lib/utils/slug";
 import CrawlableLinks from "@/app/components/seo/CrawlableLinks";
 import { getCityListingLinks, getNearbyCityLinks } from "@/lib/crawl-index";
@@ -174,7 +174,7 @@ export async function generateMetadata({
   params: Promise<{ cityId: string }>;
 }): Promise<Metadata> {
   const { cityId } = await params;
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   const pageData = await getPageData(cityId);
 
@@ -344,7 +344,7 @@ export default async function CityPage({
         }
       : null;
 
-    const baseUrl = await getBaseUrlFromHeaders();
+    const baseUrl = await getCatalogBaseUrlFromHeaders();
     const { stats, gate } = await getCitySeo(cityData.name, cityId, regionName);
     logIndexability("city", cityId, gate);
 

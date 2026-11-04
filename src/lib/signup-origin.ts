@@ -173,3 +173,65 @@ export async function linkUserToAgent(
     // Non-blocking — don't fail the signup
   }
 }
+
+/**
+ * Google/Facebook sign-ups are created inside NextAuth's signIn callback, which
+ * has no request, so they're stored with `domain: "unknown"`. On an agent's site
+ * the OAuth round trip also runs on chatrealty.io and only then hands the
+ * session back to the agent's host (/api/auth/receive). So the first request we
+ * see from the new user on a real site is the one that tells us where they
+ * signed up. Call this from there: it fills the origin once and links the user
+ * into that agent's CRM, exactly as the email/password path does at register.
+ *
+ * Only touches users whose origin is still unknown AND who were created in the
+ * last 2 hours — an old account browsing an agent site later did not "sign up"
+ * there. (2026-11-03: Becky Rees signed up with Google on an agent site and
+ * landed with no origin and no CRM contact; the comment promising this
+ * backfill had no code behind it.)
+ */
+const BACKFILL_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+export async function backfillSignupOrigin(
+  request: NextRequest | Request,
+  userId: string
+): Promise<void> {
+  try {
+    const mongoose = await import("mongoose");
+    const User = (await import("@/models/User")).default;
+    if (!mongoose.default.isValidObjectId(userId)) return;
+
+    const user: any = await User.findOne({
+      _id: userId,
+      createdAt: { $gte: new Date(Date.now() - BACKFILL_WINDOW_MS) },
+      $or: [{ "signupOrigin.domain": "unknown" }, { "signupOrigin.domain": { $exists: false } }],
+    })
+      .select("name email phone signupOrigin")
+      .lean();
+    if (!user) return;
+
+    const method = user.signupOrigin?.method || "oauth";
+    const origin = await resolveSignupOrigin(request, method);
+    if (!origin.domain || origin.domain === "unknown") return;
+
+    // Conditional update so two concurrent first requests can't both link.
+    const res = await User.updateOne(
+      { _id: userId, $or: [{ "signupOrigin.domain": "unknown" }, { "signupOrigin.domain": { $exists: false } }] },
+      {
+        $set: {
+          signupOrigin: {
+            domain: origin.domain,
+            subdomain: origin.subdomain,
+            agentId: origin.agentId ? new mongoose.Types.ObjectId(origin.agentId) : undefined,
+            method,
+            ip: origin.ip,
+          },
+        },
+      }
+    );
+    if (res.modifiedCount !== 1) return;
+
+    await linkUserToAgent(userId, user.name, user.email, user.phone, origin);
+  } catch (err) {
+    console.error("[signup-origin] backfill failed:", err);
+  }
+}

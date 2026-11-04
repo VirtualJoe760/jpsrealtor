@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Edit2, X, Check, Shield, Search, Globe, Calendar, Clock, Eye,
   Users as UsersIcon, List, LayoutGrid, ChevronDown, UserPlus, LogIn,
 } from "lucide-react";
 import { useThemeClasses } from "@/app/contexts/ThemeContext";
 import { toast } from "react-toastify";
+import VisitorActivityCard from "@/app/components/crm/VisitorActivityCard";
 
 interface User {
   _id: string;
@@ -90,16 +91,41 @@ export default function AdminUsersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [impersonateLoading, setImpersonateLoading] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
+
+  // Search runs on the server. It used to filter only the newest page the
+  // API returned (50 users), so anyone older was unfindable, including
+  // josephsardella@gmail.com itself (2026-11-03).
+  const searchRef = useRef("");
+  searchRef.current = searchTerm.trim();
+  const fetchUsers = async () => {
+    const q = new URLSearchParams({ limit: "200" });
+    if (searchRef.current) q.set("search", searchRef.current);
+    const data = await fetch(`/api/admin/users?${q}`).then((r) => (r.ok ? r.json() : null));
+    if (data) setTotalUsers(typeof data.total === "number" ? data.total : (data.users || []).length);
+    return data || { users: [] };
+  };
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/admin/users").then((r) => r.ok ? r.json() : null),
-      fetch("/api/admin/teams").then((r) => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([userData, teamData]) => {
-      if (userData) setUsers(userData.users || []);
-      if (teamData) setTeams(teamData.teams || []);
-    }).finally(() => setLoading(false));
+    fetch("/api/admin/teams")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((teamData) => teamData && setTeams(teamData.teams || []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetchUsers()
+        .then((data) => { if (!cancelled) setUsers(data.users || []); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }, searchTerm ? 300 : 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const openPanel = (user: User) => {
     setSelectedUser(user);
@@ -125,7 +151,7 @@ export default function AdminUsersPage() {
         toast.success("User updated");
         setIsEditing(false);
         // Refresh
-        const data = await fetch("/api/admin/users").then((r) => r.json());
+        const data = await fetchUsers();
         setUsers(data.users || []);
         const updated = (data.users || []).find((u: User) => u._id === selectedUser._id);
         if (updated) setSelectedUser(updated);
@@ -163,7 +189,7 @@ export default function AdminUsersPage() {
       if (res.ok) {
         const roleLabel = role === "realEstateAgent" ? "Agent" : role === "serviceProvider" ? "Partner" : "Admin";
         toast.success(`${action === "remove" ? "Removed" : "Added"} ${roleLabel} role for ${user.name || user.email}`);
-        const data = await fetch("/api/admin/users").then((r) => r.json());
+        const data = await fetchUsers();
         setUsers(data.users || []);
         const updated = (data.users || []).find((u: User) => u._id === user._id);
         if (updated) setSelectedUser(updated);
@@ -208,7 +234,7 @@ export default function AdminUsersPage() {
         toast.success(data.message);
         setSelectedIds(new Set());
         setSelectedUser(null);
-        const refreshed = await fetch("/api/admin/users").then((r) => r.json());
+        const refreshed = await fetchUsers();
         setUsers(refreshed.users || []);
       } else {
         toast.error(data.error || "Failed to delete");
@@ -231,7 +257,7 @@ export default function AdminUsersPage() {
       });
       if (res.ok) {
         toast.success(newValue ? "Site activated (admin override)" : "Site deactivated — subscription required");
-        const data = await fetch("/api/admin/users").then((r) => r.json());
+        const data = await fetchUsers();
         setUsers(data.users || []);
         const updated = (data.users || []).find((u: User) => u._id === user._id);
         if (updated) setSelectedUser(updated);
@@ -308,7 +334,7 @@ export default function AdminUsersPage() {
           <h2 className={`text-2xl font-bold ${textPrimary} flex items-center gap-2`}>
             <UsersIcon size={24} /> User Management
           </h2>
-          <p className={`text-sm mt-1 ${textSecondary}`}>{filtered.length} of {users.length} users</p>
+          <p className={`text-sm mt-1 ${textSecondary}`}>{filtered.length} of {Math.max(totalUsers, users.length)} users</p>
         </div>
         <div className={`flex gap-1 p-1 rounded-lg border ${isLight ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/10"}`}>
           <button onClick={() => setViewMode("list")}
@@ -689,6 +715,9 @@ export default function AdminUsersPage() {
                           <Globe size={13} className={textSecondary} />
                           {selectedUser.signupOrigin.domain}
                         </p>
+                        <p className={`text-xs ${textSecondary}`}>
+                          Signed up with: <span className={textPrimary}>{selectedUser.clientOfAgent || "no agent (platform site)"}</span>
+                        </p>
                         {selectedUser.signupOrigin.method && (
                           <p className={`text-xs ${textSecondary}`}>Method: {selectedUser.signupOrigin.method}</p>
                         )}
@@ -716,6 +745,9 @@ export default function AdminUsersPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Pages viewed + time on each, across every site */}
+                  <VisitorActivityCard url={`/api/admin/users/${selectedUser._id}/activity`} isLight={isLight} showHost />
 
                   {selectedUser.profileDescription && (
                     <div>

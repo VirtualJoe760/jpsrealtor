@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import JoinClient from "./JoinClient";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.chatrealty.io/join" },
   title: { absolute: "Join ChatRealty — Careers & Agents" },
   description:
     "Open roles at ChatRealty — fundraising, data engineering, real estate law and operations — and one platform for agents' websites, CRM and AI tools.",

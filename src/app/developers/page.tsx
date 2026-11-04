@@ -1,11 +1,20 @@
 // src/app/developers/page.tsx
 //
 // Overview / Getting Started for the ChatRealty developer reference.
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import CodeBlock from "@/components/developers/CodeBlock";
 import Callout from "@/components/developers/Callout";
 import { DocsHeader, DocsSection, Prose } from "@/components/developers/DocsPage";
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "ChatRealty API — Developer Overview" },
+  description: "Overview of the ChatRealty API and MCP connector: a tenant-isolated real estate backend for agent websites and AI assistants.",
+  alternates: { canonical: "https://www.chatrealty.io/developers" },
+};
 
 export default function DevelopersOverviewPage() {
   return (

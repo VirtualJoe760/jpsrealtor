@@ -423,8 +423,12 @@ means something links `/v1/` paths into the crawl graph. Flagged, not chased.
 URL Google crawled for months discards what the page earned and keeps the
 crawler returning to re-confirm it.
 
-Now two-tier, in `lib/listings/dead-listing-redirect.ts` — full rationale in
-[../listings/README.md](../listings/README.md#dead-listing-urls):
+**Now (2026-11-02): an off-market notice page** — 200 with `noindex, follow`,
+nearby active listings and the community, no data about the property (IDX).
+Not a soft-404 risk: it carries real content and is noindexed. Details in
+[../listings/README.md](../listings/README.md#dead-listing-urls).
+
+*Before that* it was two-tier, in `lib/listings/dead-listing-redirect.ts`:
 
 - **Found in `unified_closed_listings`** → it sold, which is permanent → **308**
   to the city page. 4 of 10 sampled 404s resolved this way.

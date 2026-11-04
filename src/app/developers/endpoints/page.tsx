@@ -4,6 +4,7 @@
 //   src/app/api/skill/listings/search/route.ts
 //   src/app/api/skill/listings/[listingKey]/route.ts
 //   src/app/api/skill/listings/[listingKey]/comparables/route.ts
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import CodeBlock from "@/components/developers/CodeBlock";
@@ -21,6 +22,14 @@ function EndpointBadge({ method, path }: { method: string; path: string }) {
     </div>
   );
 }
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "Endpoints — ChatRealty API" },
+  description: "Reference for the ChatRealty API endpoints: requests, parameters and responses.",
+  alternates: { canonical: "https://www.chatrealty.io/developers/endpoints" },
+};
 
 export default function EndpointsPage() {
   return (

@@ -1,11 +1,11 @@
 // src/app/mls-listings/page.tsx
 import type { Metadata } from "next";
 import MapClientWrapper from "./MapClientWrapper";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 // 🧠 SEO Metadata
 export async function generateMetadata(): Promise<Metadata> {
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   return {
     title: "Search MLS Listings | Coachella Valley Real Estate",

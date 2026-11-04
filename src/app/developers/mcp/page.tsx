@@ -3,12 +3,21 @@
 // Connecting the MCP — hosted connector URL + paste-token OAuth flow + the read
 // tools. Grounded in docs/mcp/README.md, docs/mcp/hosting.md, docs/mcp/tools.md,
 // and packages/mcp-server/src/build-guide/prompts.ts.
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import CodeBlock from "@/components/developers/CodeBlock";
 import Callout from "@/components/developers/Callout";
 import FieldTable from "@/components/developers/FieldTable";
 import { DocsHeader, DocsSection, Prose } from "@/components/developers/DocsPage";
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "MCP Connector — ChatRealty API" },
+  description: "Connect Claude and other AI assistants to ChatRealty with the MCP server: tools, scopes and setup.",
+  alternates: { canonical: "https://www.chatrealty.io/developers/mcp" },
+};
 
 export default function McpPage() {
   return (

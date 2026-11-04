@@ -22,6 +22,7 @@ import { decode, encode } from "next-auth/jwt";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { subdomainOfHost } from "@/lib/agent-host";
+import { backfillSignupOrigin } from "@/lib/signup-origin";
 
 // Mirrors /api/auth/impersonate. An impersonation hand-off is honored only if
 // its impersonator is STILL an admin when it is redeemed.
@@ -107,6 +108,9 @@ export async function GET(req: NextRequest) {
       .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain")
       .lean();
     if (!user) return NextResponse.redirect(absoluteRedirectUrl);
+    // A Google/Facebook sign-up started on this site comes back through here,
+    // and this is the first request that knows which site it was.
+    await backfillSignupOrigin(req, String(user._id));
     sessionToken = await encode({
       token: {
         id: String(user._id),
