@@ -7,17 +7,36 @@ related: [README.md, ../admin/README.md, ../auth/README.md, ../crm/README.md]
 
 # Visitor activity
 
-What a lead looked at on a site, and for how long. Shown in two places:
+What a lead looked at on a site, and for how long. Shown in three places:
 
 | Where | Endpoint | Scope |
 |---|---|---|
 | Admin → Users → **User Details** → *Site activity* | `GET /api/admin/users/[id]/activity` | Every site; each row shows its host |
 | Agent → Contacts → open a contact → *Site activity* (above Notes) | `GET /api/crm/contacts/[id]/activity` | **Only pages on sites that agent owns.** Contact must be theirs too |
+| Agent → Dashboard → **Site visitors** | `GET /api/agent/visitors?days=` (list), `GET /api/agent/visitors/[key]?days=` (timeline) | Only the agent's own sites; the agent's own browsing is excluded |
 
-Both render `src/app/components/crm/VisitorActivityCard.tsx` from
+The first two render `src/app/components/crm/VisitorActivityCard.tsx` from
 `summarizeVisitorActivity()` in `src/lib/visitor-activity.ts`: visits, pages
 viewed, total visible time, last seen, top 5 pages by time, and the last 40
 pages.
+
+## Site visitors panel
+
+`src/app/agent/dashboard/components/SiteVisitors.tsx`, backed by
+`src/lib/agent-visitors.ts`. Range 7/30/90 days. Lists signed-in visitors
+(name, email, a *Contact* badge when they're in the agent's CRM, pages,
+listings, time, last seen); anonymous visitors sit behind a "Show N anonymous"
+toggle. Expanding a row shows a per-day timeline: time of each view, the page
+or listing, and how long. Listing pages (`/mls-listings/<slugAddress>`) are
+matched to `unifiedlistings` for address, price, beds/baths and photo
+(`primaryPhoto.uri300` — synced rows rarely have `primaryPhotoUrl`). A listing
+that has left `unifiedlistings` shows "Off market".
+
+Visitor keys: `u:<userId>` signed in, `a:<anonymousId>` not.
+
+**Not captured:** a listing opened in a panel inside chat or the map counts
+only if the URL changes — the tracker records route changes, not UI panels.
+(Not yet audited which panels change the URL.)
 
 ## How it's recorded
 
