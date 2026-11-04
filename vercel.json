@@ -154,6 +154,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/highlevel-sync",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/domain-orders",
       "schedule": "*/10 * * * *"
     }

@@ -20,6 +20,7 @@ import mongoose from "mongoose";
 import dbConnect from "@/lib/mongoose";
 import Contact from "@/models/Contact";
 import AgentActivity, { type AgentActivityType } from "@/models/AgentActivity";
+import { queueHighLevelPush } from "@/lib/highlevel";
 
 export interface MirrorInput {
   /** The agent who owns the tenant site (auth.user._id on skill routes). */
@@ -94,6 +95,19 @@ export async function mirrorContactToOwner(
       // Enrich an existing record rather than duplicating it.
       contact.phone = input.phone;
       await contact.save();
+    }
+
+    // Forward to the agent's HighLevel (if connected) for new people and real
+    // lead events — not on every sign-in, which would re-push the same contact.
+    if (created || input.activityType === "lead") {
+      queueHighLevelPush({
+        agentId: String(agentObjectId),
+        name: input.name,
+        email,
+        phone: input.phone,
+        source: `ChatRealty – ${input.source || "website"}`,
+        tags: [input.activityType],
+      });
     }
 
     await logAgentActivity({

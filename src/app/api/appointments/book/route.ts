@@ -9,6 +9,7 @@ import {
   getAgentCalendarSettings,
 } from "@/lib/gcal-api";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
+import { queueHighLevelPush } from "@/lib/highlevel";
 import { aiClassTooClose } from "@/lib/ai-class-schedule";
 import { sendAiClassConfirmationEmail } from "@/lib/email-resend";
 import {
@@ -224,6 +225,16 @@ export async function POST(request: NextRequest) {
     detail: [`Booked ${type}`, brokerage, propertyAddress].filter(Boolean).join(" • "),
     leadPhone: phone,
   }).catch(() => {});
+
+  // Push to the agent's HighLevel, if connected (runs after the response).
+  queueHighLevelPush({
+    agentId: String(resolvedAgentId),
+    name,
+    email,
+    phone,
+    source: "ChatRealty – Appointment",
+    tags: ["appointment", type].filter(Boolean),
+  });
 
   // AI class: confirmation from ChatRealty (noreply@chatrealty.io). Awaited
   // because a serverless function can be frozen once the response is sent;

@@ -19,6 +19,7 @@ import { resolveSignupOrigin, linkUserToAgent } from "@/lib/signup-origin";
 import { verifyTurnstile, clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
+import { queueHighLevelPush } from "@/lib/highlevel";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,17 @@ export async function POST(request: NextRequest) {
       detail: ["Buyer", cityName].filter(Boolean).join(" • "),
       leadPhone: phone,
     }).catch(() => {});
+
+    // ---- 1c. Push to the agent's HighLevel, if connected (after response) ---
+    queueHighLevelPush({
+      agentId: agentUser._id.toString(),
+      firstName,
+      lastName,
+      email,
+      phone,
+      source: "ChatRealty – Buyer intake",
+      tags: ["buyer", cityName].filter(Boolean) as string[],
+    });
 
     // ---- 2. Notify the agent via email --------------------------------------
     try {
