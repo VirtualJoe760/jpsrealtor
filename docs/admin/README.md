@@ -96,6 +96,10 @@ Not in the sidebar:
 - **Adding `realEstateAgent`** makes the User pre-save hook mint a subdomain if
   the user has none (and register it on Vercel). **Removing it** sets the
   agent's `DomainMapping` and `DomainRegistry` records to `suspended`.
+- **Search is server-side** (name/email, literal match, debounced 300 ms); the
+  page loads up to 200 users. It used to filter only the newest 50 in the
+  browser, so older accounts — including josephsardella@gmail.com — were
+  unfindable (fixed 2026-11-03).
 - `GET /api/admin/users` also returns `siteReady` (`getSiteReadiness()` from
   `src/lib/agent-site-readiness.ts`), the subdomain, and which agent a client
   signed up under (`signupOrigin.agentId`).
