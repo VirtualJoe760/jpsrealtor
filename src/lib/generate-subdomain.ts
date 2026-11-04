@@ -32,6 +32,11 @@ const RESERVED = new Set([
   "support", "test", "www", "chatrealty", "jpsrealtor", "agent",
 ]);
 
+/** True when `label` matches the mint contract: [a-z0-9]{3,30} and not reserved. */
+export function isValidSubdomainLabel(label: string): boolean {
+  return /^[a-z0-9]{3,30}$/.test(label) && !RESERVED.has(label);
+}
+
 /**
  * Generate a unique subdomain for an agent.
  *
@@ -109,7 +114,7 @@ export async function ensureSubdomainRegistered(
   // refuse reserved labels, so nothing agent-writable can attach api/admin/
   // mail/etc. as a project domain.
   const label = String(subdomain).toLowerCase();
-  if (!/^[a-z0-9]{3,30}$/.test(label) || RESERVED.has(label)) {
+  if (!isValidSubdomainLabel(label)) {
     return { registered: false, note: `refused subdomain: ${JSON.stringify(subdomain)}` };
   }
   const domain = `${label}.chatrealty.io`;

@@ -1,7 +1,7 @@
 ---
 title: Review queue — bugs and inconsistencies awaiting Joseph's decision
 status: current
-last_verified: 2026-10-25
+last_verified: 2026-11-03
 related: [../tech-debt.md, ../AGENTS.md, ../chatrealty-api/external-site.md]
 ---
 
@@ -37,30 +37,6 @@ file:line evidence and were not independently re-run.
 Findings from these areas are under "Doc audit, remaining areas" below.
 
 ## Open
-
-### R0 · HIGH · Any signed-in account can write protected profile fields — incl. its own API keys and a custom domain *(re-checked in code)*
-`PUT /api/user/profile` (`src/app/api/user/profile/route.ts`) checks only that a
-session exists (line 137 — end users included, not just agents), then
-deep-merges whatever `agentProfile` object it receives into the user
-(lines 249–298) with no allowlist. Writable that way:
-- `aiIntegrations.apiTokens` — skill auth accepts any `crt_live_…` string
-  (`src/lib/skill-auth.ts:89`) and looks it up by hash, so a user can store the
-  sha256 of a value they chose with **any scopes** (`campaigns:send`,
-  `social:post`, …), skipping the free-tier preset limit in
-  `src/app/api/integrations/api-tokens/route.ts`.
-- `customDomain` — `resolveDomainOwner` checks `agentProfile.customDomain`
-  before the domain registry (`src/lib/resolveDomainOwner.ts:80-91`), so a user
-  can claim a domain that exists only in the registry and have it render their
-  profile.
-- `subdomain` (skips the reserved-name/format checks), `siteForceActive`.
-- Line 223 also logs the entire existing `agentProfile` (token hashes included)
-  on every save.
-**Suggested fix:** an allowlist of the editable profile keys; reject or strip
-`aiIntegrations`, `customDomain`, `subdomain`, `siteForceActive`,
-`externalSite`, `tracking` from this route (they have their own routes); drop
-the line-223 log. Then check prod for token rows with no matching mint
-(`createdAt` but no name from the UI) to see if it was ever used. Same item as
-the "profile-route lockdown" follow-up proposed 2026-10-16.
 
 ### R1 · high · The site tools are invisible to Claude keys — `connect_site`, `set_site_live`, `site_status`
 No Claude-access preset carries `site:manage` — `content_drafting`,
@@ -212,6 +188,24 @@ mitigation is committed: `scripts/tmp-dump-why.ts` prints
 `scripts/tmp-gemini-probe.ts` surfaces the swallowed error for one photo.
 
 <!-- Documentation-verification findings are appended below by area. -->
+
+### R9 · med · Two settings screens say "Saved" but persist nothing (found 2026-11-03)
+`CalendarStep` sends `calendarSettings` (booking on/off, duration, buffer,
+advance days) and `GoogleBusinessStep` sends `adAccounts.gbp` (auto-post
+articles, include image, default CTA) to `PUT /api/user/profile`. That route
+never reads either top-level key, so both saves are dropped while the UI
+toasts "Saved". (Calendar `businessHours` does save — it's under
+`agentProfile`.) Pre-existing; not changed by the R0 fix. **Suggested fix:**
+have the route accept those two objects with a field allowlist, or give them
+their own endpoints.
+
+### R10 · med · Renaming a subdomain in Settings doesn't register it with Vercel (found 2026-11-03)
+`DomainSeoStep` lets an agent edit their subdomain; the profile route saves it
+but never calls `ensureSubdomainRegistered()` (`src/lib/generate-subdomain.ts`),
+which signup and `connect_site` do. Per that file's header, an unregistered
+`*.chatrealty.io` name 404s at Vercel's router, so a renamed site likely goes
+dark. Not re-tested on prod. **Suggested fix:** await
+`ensureSubdomainRegistered(wanted)` after a validated rename.
 
 ### Multi-tenant (doc audit 2026-10-17)
 
@@ -439,6 +433,7 @@ prod) in the session that wrote this section.
 
 | Date | Item | Commit |
 |---|---|---|
+| 2026-11-03 | **R0** `PUT /api/user/profile` could write any `agentProfile` key, incl. `aiIntegrations.apiTokens` (any-scope key) and `subdomain` (no format/reserved/uniqueness check). Now an allowlist of the settings fields; subdomain renames validated (400/409); GET/PUT no longer log the profile. Tested on local dev with a throwaway user (16 checks). Prod audit: 61 stored tokens on 7 agent accounts, all mint-shaped — no sign the hole was used | this commit |
 | 2026-10-17 | A seeded agent's own MCP key read `dataSource: "none"` (Settings keys were never bound to the owner's tenant) | `f991b21c` |
 | 2026-10-17 | Revoking a key in Settings left its hash in `Tenant.tokenHashes` | `f991b21c` |
 | 2026-10-17 | `get_site_claim_code` gated on a scope no Claude preset has | `2ccb7839` |

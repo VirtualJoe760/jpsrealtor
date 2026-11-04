@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-10-26
+last_verified: 2026-11-03
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -134,7 +134,7 @@ The [full CRM dialer build plan](../crm/dialer/build-plan.md) adds a separate Tw
 - **Stripe API version is pinned** to `2025-12-15.clover`. Bumping requires re-testing all webhook handlers.
 - **Drop Cowboy has no shared lib wrapper** — the fetch + auth is inline in `src/app/api/dropcowboy/campaign/route.ts`. If we extract a helper, model it on `thanksio.ts`.
 - **Webhook auth is asymmetric across providers.** Twilio inbound/status webhooks are cryptographically verified (`X-Twilio-Signature`). DropCowboy has no signing mechanism, so its two webhooks fall back to a shared-secret gate (`DROPCOWBOY_WEBHOOK_SECRET`) — a weaker control that only works if the secret is actually set in env and configured on the DropCowboy webhook URL. If `DROPCOWBOY_WEBHOOK_SECRET` is unset, the DropCowboy webhooks reject **all** traffic (fail-closed), so delivery-status metrics silently stop updating until it's configured. **Env-var naming is inconsistent: send-side uses `DROP_COWBOY_TEAM_ID`/`DROP_COWBOY_SECRET` (underscore), the webhook secret is `DROPCOWBOY_WEBHOOK_SECRET` (no underscore) per the security-fix spec.**
-- **Never store a secret under `agentProfile`.** `/api/user/profile` GET returns the whole `agentProfile` to the browser (and `console.log`s it), and its PUT deep-merges whatever the client sends into it. That is why `User.mlsFeed` is top-level. `aiIntegrations` (Anthropic ciphertext, API-token hashes) still lives under `agentProfile` and is exposed by both — open follow-up.
+- **Never store a secret under `agentProfile`.** `/api/user/profile` GET returns the whole `agentProfile` to the browser. That is why `User.mlsFeed` is top-level. `aiIntegrations` (Anthropic ciphertext, API-token hashes) still lives under `agentProfile` and is returned to its owner by that GET — open follow-up. Since 2026-11-03 the GET no longer logs it and the PUT can't write it (allowlist).
 - **Restart the dev server after changing the `User` schema.** `src/models/User.ts` exports `mongoose.models.User || mongoose.model(...)`, so a hot reload keeps the model compiled from the OLD schema, and strict mode drops writes to the new fields without an error. Hit 2026-10-16: the association picker's first discovery "succeeded" (200) and persisted nothing until a restart.
 - **`select:false` on a nested path does not survive selecting its parent.** `User.findById(id).select("mlsFeed")` returns `mlsFeed.credentialsEncrypted` anyway (verified 2026-10-16). Select subpaths, as `getMlsFeedStatus()` does.
 - **OpenCage, Yelp, API Ninjas, FRED — no shared wrappers either.** All inline in their respective route handlers. Fine for now; revisit if usage spreads.

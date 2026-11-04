@@ -5,6 +5,33 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
+import { isValidSubdomainLabel } from "@/lib/generate-subdomain";
+
+// The only agentProfile keys this route will write — exactly what the
+// /agent/settings steps and the onboarding wizard send. Everything else is
+// dropped. This was a denylist until 2026-11-03, and the deep merge below took
+// any key a signed-in account sent, so anyone (buyers included) could plant
+// aiIntegrations.apiTokens — a crt_live_ key hash with every scope, incl.
+// campaigns:send and social:post. Keys with their own routes (aiIntegrations,
+// customDomain, externalSite, mlsMembership, siteForceActive, grandfathered…)
+// stay off this list. A new settings field must be added here or it won't save.
+const EDITABLE_AGENT_PROFILE_KEYS = new Set([
+  // Identity
+  "siteName", "cellPhone", "affiliation", "brokerage", "teamName",
+  // Branding
+  "themeMode", "navLayout", "heroStyle", "navLogo", "navLogoDark",
+  "navWordmark", "brandMark", "ogBackgroundImage",
+  // Photos & media
+  "headshot", "heroPhoto", "heroPhotoDark", "videoIntro",
+  // Content & highlights
+  "headline", "tagline", "personalStory", "valuePropositions", "testimonials",
+  // Service areas
+  "serviceAreas", "specializations", "bio",
+  // Domain & SEO (subdomain is validated separately below)
+  "subdomain", "metaTitle", "metaDescription", "metaKeywords",
+  // Social, tracking, calendar, wizard
+  "socialMedia", "tracking", "businessHours", "onboardingComplete",
+]);
 
 // Cloudinary asset fields in agentProfile that store URLs
 const CLOUDINARY_PHOTO_FIELDS = [
@@ -93,8 +120,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    console.log('🔍 [GET PROFILE] Returning agentProfile:', JSON.stringify(user.agentProfile, null, 2));
 
     return NextResponse.json({
       profile: {
@@ -220,8 +245,6 @@ export async function PUT(request: NextRequest) {
         user.agentProfile = {} as any;
       }
 
-      console.log('🔍 [PROFILE UPDATE] Existing agentProfile before merge:', JSON.stringify(user.agentProfile, null, 2));
-
       // Helper function to deeply remove undefined values
       const removeUndefined = (obj: any): any => {
         if (!obj || typeof obj !== 'object') return obj;
@@ -243,20 +266,38 @@ export async function PUT(request: NextRequest) {
       // Clean incoming profile
       const cleanedIncoming = removeUndefined(agentProfile);
 
-      // Fields only the platform or an admin may set (2026-10-28). Through this
-      // deep merge an agent could otherwise grant themselves free Basic
-      // (grandfathered), publish a site that hasn't been reviewed
-      // (siteForceActive), claim ANOTHER agent's domain (customDomain —
-      // resolveDomainOwner checks it before anything else; domains are set by
-      // src/lib/domains/point.ts after DNS + Vercel verification), or rewrite
-      // the admin's MLS outreach notes (mlsMembership has its own endpoint).
+      // Allowlist (see EDITABLE_AGENT_PROFILE_KEYS). Key names of anything
+      // dropped are logged — never the values, which may be secrets.
       if (cleanedIncoming) {
-        for (const key of ["grandfathered", "siteForceActive", "customDomain", "mlsMembership"]) {
-          delete cleanedIncoming[key];
+        const dropped = Object.keys(cleanedIncoming).filter((k) => !EDITABLE_AGENT_PROFILE_KEYS.has(k));
+        for (const key of dropped) delete cleanedIncoming[key];
+        if (dropped.length) {
+          console.warn(`[PROFILE UPDATE] dropped non-editable agentProfile keys: ${dropped.join(", ")}`);
         }
       }
 
-      console.log('🔍 [PROFILE UPDATE] Cleaned incoming:', JSON.stringify(cleanedIncoming, null, 2));
+      // Subdomain: a *.chatrealty.io address resolves to whichever agent holds
+      // it, so a change must match the mint contract and must not be another
+      // user's. It's assigned at approval; this route only renames it, so an
+      // account without one can't claim one here.
+      if (cleanedIncoming && "subdomain" in cleanedIncoming) {
+        const current = cleanedExisting?.subdomain;
+        const wanted = String(cleanedIncoming.subdomain ?? "").toLowerCase().trim();
+        if (wanted === current) {
+          delete cleanedIncoming.subdomain;
+        } else if (!current) {
+          delete cleanedIncoming.subdomain;
+        } else if (!isValidSubdomainLabel(wanted)) {
+          return NextResponse.json(
+            { error: "Subdomain must be 3–30 lowercase letters or numbers, and can't be a reserved name." },
+            { status: 400 }
+          );
+        } else if (await User.exists({ "agentProfile.subdomain": wanted, _id: { $ne: user._id } })) {
+          return NextResponse.json({ error: "That subdomain is already taken." }, { status: 409 });
+        } else {
+          cleanedIncoming.subdomain = wanted;
+        }
+      }
 
       // Deep merge function
       const deepMerge = (target: any, source: any): any => {
