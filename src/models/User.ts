@@ -339,6 +339,40 @@ export interface IUser extends Document {
     };
   };
 
+  // HighLevel (LeadConnector) CRM — new ChatRealty leads are pushed into the
+  // agent's HighLevel sub-account. See src/lib/highlevel.ts and the schema.
+  highLevel?: {
+    status?: 'connected' | 'disconnected' | 'error';
+    locationId?: string;             // HighLevel sub-account id
+    locationName?: string;
+    companyId?: string;
+    hlUserId?: string;               // the HighLevel user who approved the install
+    scopes?: string;
+    accessTokenEncrypted?: string;   // AES-256-GCM, select:false
+    refreshTokenEncrypted?: string;  // AES-256-GCM, select:false — rotates on every refresh
+    expiresAt?: Date;
+    connectedAt?: Date;
+    lastPushAt?: Date;
+    pushedCount?: number;
+    lastError?: string;
+    lastErrorAt?: Date;
+    // Contact feed state (src/lib/highlevel-sync.ts)
+    sync?: {
+      status?: 'queued' | 'running' | 'idle' | 'error';
+      cursorUpdatedAt?: Date;        // last contact.updatedAt sent
+      cursorId?: string;             // tie-break _id at that updatedAt
+      synced?: number;               // contacts sent since the last full backfill
+      skipped?: number;              // personal / no email+phone
+      failed?: number;
+      backfillTotal?: number;        // size of the book when the backfill started
+      backfillStartedAt?: Date;
+      backfillDoneAt?: Date;
+      lastRunAt?: Date;
+      leaseUntil?: Date;             // stops cron + "Sync now" running at once
+      lastError?: string;
+    };
+  };
+
   // MLS data feed (BYOD) — the agent's own replication credentials. See the
   // schema for why this is top-level and why the ciphertext is select:false.
   mlsFeed?: {
@@ -1150,6 +1184,41 @@ const UserSchema = new Schema<IUser>(
         }],
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
+    },
+
+    // HighLevel CRM connection (src/lib/highlevel.ts). Top-level for the same
+    // reason as mlsFeed below: agentProfile is returned to the browser and
+    // deep-merged from client writes. Tokens are select:false; only
+    // highlevel.ts opts in with +highLevel.accessTokenEncrypted etc.
+    highLevel: {
+      status: { type: String, enum: ['connected', 'disconnected', 'error'], default: 'disconnected' },
+      locationId: String,
+      locationName: String,
+      companyId: String,
+      hlUserId: String,
+      scopes: String,
+      accessTokenEncrypted: { type: String, select: false },
+      refreshTokenEncrypted: { type: String, select: false },
+      expiresAt: Date,
+      connectedAt: Date,
+      lastPushAt: Date,
+      pushedCount: { type: Number, default: 0 },
+      lastError: String,
+      lastErrorAt: Date,
+      sync: {
+        status: { type: String, enum: ['queued', 'running', 'idle', 'error'] },
+        cursorUpdatedAt: Date,
+        cursorId: String,
+        synced: { type: Number, default: 0 },
+        skipped: { type: Number, default: 0 },
+        failed: { type: Number, default: 0 },
+        backfillTotal: Number,
+        backfillStartedAt: Date,
+        backfillDoneAt: Date,
+        lastRunAt: Date,
+        leaseUntil: Date,
+        lastError: String,
       },
     },
 
