@@ -1,7 +1,7 @@
 ---
 title: Agent profile — from User.agentProfile to the page
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-03
 related: [README.md, ../multi-tenant/README.md, ../commerce/free-tier-gating.md, ../admin/README.md]
 supersedes: docs/archive/agent-profile/README.md
 ---
@@ -42,12 +42,18 @@ Restored 2026-10-17 from `docs/archive/agent-profile/` (six files from April
 - **Saves show up late.** The route is served `public, max-age=300,
   stale-while-revalidate=60`, and the hook keeps a module-level `cachedProfile`
   for the life of the tab. Expect up to ~5 minutes, or a reload.
-- **The PUT has no allowlist.** `src/app/api/user/profile/route.ts` deep-merges
-  whatever `agentProfile` object it receives, for any signed-in user. Declared
-  fields persist; undeclared ones are dropped by Mongoose strict mode (AGENTS.md
-  rule 5). Arrays are replaced wholesale. That also means a user can write
-  protected paths such as `subdomain`, `customDomain`, `siteForceActive` and
-  `aiIntegrations.apiTokens` — reported as a bug 2026-10-17.
+- **The PUT takes an allowlist of `agentProfile` keys** (since 2026-11-03,
+  `EDITABLE_AGENT_PROFILE_KEYS` in `src/app/api/user/profile/route.ts`): exactly
+  the fields the `/agent/settings` steps and the wizard send. Any other key is
+  dropped and its *name* logged. Allowed keys are deep-merged; arrays are
+  replaced wholesale. **A new settings field must be added to that list or its
+  Save silently does nothing.** Keys with their own routes (`aiIntegrations`,
+  `customDomain`, `externalSite`, `mlsMembership`, `siteForceActive`,
+  `grandfathered`) are not writable here.
+- **Subdomain renames are validated.** Only an account that already has a
+  subdomain can change it here; the new one must be `[a-z0-9]{3,30}`, not
+  reserved (`isValidSubdomainLabel()` in `src/lib/generate-subdomain.ts`) →
+  `400`, and not held by another user → `409`.
 - **Replacing a photo deletes the old one.** For the fields in
   `CLOUDINARY_PHOTO_FIELDS` the PUT fires a Cloudinary delete for the old URL
   (fire-and-forget).

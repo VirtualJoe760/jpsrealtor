@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
-import { getBaseUrl } from '@/lib/domain-utils'
+import { getBaseUrl, isPlatformDomain } from '@/lib/domain-utils'
 
 // Domain-specific robots.txt rules and sitemap references.
 // Each domain in the ChatRealty network gets its own robots.txt that points
@@ -20,8 +20,6 @@ import { getBaseUrl } from '@/lib/domain-utils'
 // locked down. Each agent-specific group below now repeats the FULL disallow
 // list; the duplication is the protocol working as designed, not redundancy to
 // factor out.
-
-const PLATFORM_DOMAINS = ['chatrealty.io', 'www.chatrealty.io']
 
 /**
  * Paths no crawler should spend budget on.
@@ -58,7 +56,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   // consolidation to jpsrealtor.com.
   const baseUrl = getBaseUrl(hostname)
 
-  const isPlatform = PLATFORM_DOMAINS.includes(hostname)
+  // Shared platform check, so the chatrealty.localhost preview matches prod.
+  const isPlatform = isPlatformDomain(hostname)
 
   // NO `host:` FIELD, on either branch.
   //
@@ -73,9 +72,12 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     return {
       rules: [
         {
+          // Same disallow list as agent hosts. The platform's own list lacked
+          // /chap and /map (the infinite-crawl catalog map) — site-platform-plan
+          // P1.4. `/agents` left the allow list: it 307s to sign-in.
           userAgent: '*',
-          allow: ['/', '/pricing', '/agents'],
-          disallow: ['/api/', '/admin/', '/dashboard/', '/auth/', '/private/'],
+          allow: ['/', '/pricing', '/developers', '/ai-classes'],
+          disallow: DISALLOW_ALL_CRAWLERS,
         },
       ],
       sitemap: `${baseUrl}/sitemap.xml`,

@@ -10,6 +10,7 @@ import TopToggles from "./TopToggles";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import { Providers } from "../providers";
 import MetaPixel from "../../components/MetaPixel";
+import PageViewTracker from "../../components/PageViewTracker";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -73,6 +74,7 @@ function LayoutContent({ children, navLayout = "sidebar", metaPixelId }: { child
   return (
     <>
       <MetaPixel pixelId={metaPixelId} />
+      <PageViewTracker />
 
       {/* Global Spatial Background - Persists across navigation */}
       {shouldShowSpatialBackground && (

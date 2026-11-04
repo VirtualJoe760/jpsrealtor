@@ -1,7 +1,7 @@
 ---
 title: Agent identity — affiliation, brokerage, team
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-03
 owner: platform
 related: [./agent-profile.md, ../multi-tenant/README.md, ../agent-onboarding/README.md, ../ARCHITECTURE.md]
 ---
@@ -100,6 +100,30 @@ Until 2026-10-16 the nav and the chat hero fell back to CHATREALTY instead of
 the name (`getDefaultSiteName()` returned `"chatRealty"` for every host), so an
 agent who hadn't configured branding got the platform's brand across their own
 site. Share cards (`/api/og`) have their own resolution and were not changed.
+
+### The share card (`/api/og`)
+
+The social-share image for an agent's site (`opengraph-image.tsx` /
+`twitter-image.tsx` resolve the host to a subdomain and self-fetch
+`/api/og?subdomain=…`). Its top-left mark is the agent's **brokerage logo**:
+
+```
+brokerage.logo / .logoDark → brokerLogo / brokerLogoDark (legacy)
+  → teamLogo / teamLogoDark → CHATREALTY text wordmark
+```
+
+Each slot prefers its dark-background artwork when the card has a
+Share-Card Background photo (the card goes dark), and its light artwork on
+the plain card. The logo is sized by height only (130px) so square shields
+and wide wordmarks both sit flush left. The platform card (no subdomain,
+`chatrealty.io`) always shows the wordmark.
+
+Until 2026-11-03 the card read only `teamLogo`, so a solo agent — Joseph with
+Fathom Realty — got CHATREALTY above their brokerage name. Two gaps remain:
+the brokerage *text* line still reads only top-level `User.brokerageName`
+(an agent with only `brokerage.name`, like Gene, shows no brokerage line),
+and `teamLogo` is not suppressed for a solo agent the way
+`/api/agent-branding` does.
 
 ## The rule for components
 

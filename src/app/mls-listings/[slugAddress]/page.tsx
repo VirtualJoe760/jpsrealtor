@@ -1,17 +1,17 @@
 // src/app/mls-listings/[slugAddress]/page.tsx
-import { permanentRedirect, redirect } from "next/navigation";
 import { Metadata } from "next";
+import OffMarketListing from "./OffMarketListing";
 import CollageHero from "@/app/components/mls/CollageHero";
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { SparkPhoto } from "@/types/photo";
 import UnifiedListingClient from "@/app/components/mls/ListingClient";
 import { BreadcrumbJsonLd, PropertyListingJsonLd } from "@/app/components/seo/JsonLd";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 import {
   getEnrichedListing as readListing,
   getListingPhotosFromListing,
 } from "@/lib/listings/listing-detail";
-import { resolveDeadListingTarget } from "@/lib/listings/dead-listing-redirect";
+import { resolveOffMarketContext } from "@/lib/listings/dead-listing-redirect";
 
 // Reads Mongo in-process. This used to fetch our own /api/mls-listings and
 // /api/listings/…/photos over HTTP — three invocations per render, sent with
@@ -58,7 +58,13 @@ export async function generateMetadata({
   const { slugAddress } = await params;
   const listing = await getEnrichedListing(slugAddress);
 
-  if (!listing) return { title: "Listing No Longer Available" };
+  if (!listing) {
+    // Off-market notice page: never indexed, but its nearby-listing links are followed.
+    return {
+      title: "No Longer on the Market",
+      robots: { index: false, follow: true },
+    };
+  }
 
   const address =
     listing.unparsedAddress ||
@@ -75,11 +81,11 @@ export async function generateMetadata({
 
   const image = listing.primaryPhotoUrl || "/images/no-photo.png";
 
-  // Path-preserving canonical on the PRIMARY host (getBaseUrlFromHeaders
+  // Path-preserving canonical on the PRIMARY host (getCatalogBaseUrlFromHeaders
   // aliases supplementary domains). Before 2026-07-25 these pages inherited
   // the root layout's bare-domain canonical, which told Google all ~1,924
   // listings were duplicates of the homepage.
-  const canonicalBase = await getBaseUrlFromHeaders();
+  const canonicalBase = await getCatalogBaseUrlFromHeaders();
 
   return {
     title,
@@ -123,16 +129,19 @@ export default async function ListingPage({
   const { slugAddress } = await params;
   const listing = await getEnrichedListing(slugAddress);
 
-  // A missing listing used to be `notFound()`, which left 22,676 /mls-listings/
-  // URLs sitting in Search Console's "Not found (404)" bucket since 2025-11-08.
-  // Send them to the city page instead — permanently when the property is
-  // confirmed sold, temporarily when the slug simply resolves nowhere and could
-  // still come back. See lib/listings/dead-listing-redirect.ts for why the two
-  // cases must differ.
+  // A missing listing renders an off-market notice (200, noindex/follow) with
+  // nearby ACTIVE listings, the community and a contact CTA — never the
+  // property's own data, which IDX rules forbid for expired/withdrawn listings.
+  //
+  // History: this was `notFound()` (22,676 URLs in Search Console's 404 bucket
+  // by 2026-10-24), then a 307/308 to the city page (d2aa74c2), which saved the
+  // crawl but dropped the visitor on a city index with no context. The page
+  // keeps the visitor; noindex keeps 22k thin URLs out of the index, and the
+  // nearby listings are real content, so it isn't a soft 404.
+  // See docs/listings/off-market-pages.md.
   if (!listing) {
-    const target = await resolveDeadListingTarget(slugAddress);
-    if (target.permanent) permanentRedirect(target.path);
-    redirect(target.path);
+    const context = await resolveOffMarketContext(slugAddress);
+    return <OffMarketListing context={context} />;
   }
 
   const address =
@@ -166,7 +175,7 @@ export default async function ListingPage({
 
   const media = formatPhotos(rawPhotos, listing.primaryPhotoUrl || "/images/no-photo.png");
 
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   const city = (listing as any).city || "";
   const subdivisionName = (listing as any).subdivisionName || "";

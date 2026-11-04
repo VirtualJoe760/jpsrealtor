@@ -1,54 +1,27 @@
 // src/lib/listings/dead-listing-redirect.ts
 //
-// Where a /mls-listings/<slugAddress> URL should go once the listing is no
-// longer in `unified_listings`.
+// What a /mls-listings/<slugAddress> URL needs once the listing is no longer in
+// `unified_listings`: the location context for the off-market notice page.
 //
-// Why this exists: the detail page called `notFound()` for any slug it could
-// not read, and Search Console had accumulated **22,676 "Not found (404)"**
-// URLs under /mls-listings/ by 2026-10-24, first detected 2025-11-08. A hard
-// 404 on a URL Google has crawled for months throws away whatever the page
-// earned and keeps the crawler coming back to re-confirm the same error.
+// History: the detail page called `notFound()` (22,676 "Not found (404)" URLs in
+// Search Console by 2026-10-24), then redirected to the city page (d2aa74c2:
+// 308 when sold, 307 otherwise). Since 2026-11-02 it renders an off-market page
+// instead (docs/listings/off-market-pages.md); the redirect resolver was removed
+// with its last caller. The city-from-slug parsing below is what survived — it
+// was verified 14/14 on live data.
 //
-// Two distinct cases, which must NOT be answered the same way:
-//
-//   1. The property is in `unified_closed_listings` — it sold. That is
-//      permanent, so a permanent redirect to the city page is honest and lets
-//      Google consolidate. ~4 of 10 sampled 404s resolved this way.
-//   2. The slug resolves nowhere. That is NOT proof the property is gone: the
-//      VPS pipeline runs `--purge` DISABLED since the 2026-04-06 incident
-//      (docs/listings/README.md), so rows leave Active only by status
-//      transition. A slug matching nothing is more likely a slug-format drift
-//      or a transient pipeline gap, and `readEnrichedListing` explicitly
-//      prefers an Active row "when multiple exist for the same address
-//      (relisting scenario)" — i.e. this exact slug can come back. A browser
-//      caches a 308 indefinitely, so a permanent redirect here would shadow a
-//      future relisting for anyone who ever hit the dead URL. Temporary.
-//
-// Either way the URL leaves the "Not found (404)" bucket: GSC files a redirect
-// under "Page with redirect", which is an excluded state, not an error.
+// Note on relisting: the VPS pipeline runs `--purge` DISABLED since the
+// 2026-04-06 incident, so a slug matching nothing may come back Active. The
+// off-market page is a plain 200 with the listing page's short revalidate, so a
+// relisting replaces it within minutes — nothing is cached permanently.
 import { cache } from "react";
 import dbConnect from "@/lib/mongoose";
 import { City } from "@/models/cities";
 import UnifiedClosedListing from "@/models/unified-closed-listing";
 import { createSlug } from "@/lib/utils/slug";
 
-/** Always-valid fallback: the search index is a static route, never data-gated. */
-const LISTINGS_INDEX = "/mls-listings";
-
 /** Most hyphen-tokens a California city slug is assumed to span. */
 const MAX_CITY_TOKENS = 4;
-
-export interface DeadListingTarget {
-  /** Path to send the client to. Never empty. */
-  path: string;
-  /**
-   * `true` only when the property is confirmed sold. Drives 308 vs 307 — see
-   * the header note on relisting.
-   */
-  permanent: boolean;
-  /** Machine-readable cause, stable enough to group on in logs. */
-  reason: string;
-}
 
 /**
  * A city page renders only when its `cities` row has `listingCount > 0` —
@@ -98,60 +71,92 @@ function cityCandidatesFromSlug(slugAddress: string): string[] {
   return out;
 }
 
-async function resolve(slugAddress: string): Promise<DeadListingTarget> {
-  // ── 1. Sold? The closed collection keeps `slugAddress` on every row (all
-  // 1,108,779 of them carry it), so this is an indexed single-key lookup.
-  let closedCity: string | null = null;
-  try {
-    await dbConnect();
-    const closed: any = await UnifiedClosedListing.findOne({ slugAddress })
-      .select("city")
-      .lean();
-    closedCity = closed?.city || null;
-  } catch (err) {
-    // A DB error must not turn into a redirect loop or a wrong permanent hop.
-    console.error(`[dead-listing] closed lookup failed for ${slugAddress}:`, err);
-    return { path: LISTINGS_INDEX, permanent: false, reason: "closed-lookup-error" };
-  }
-
-  if (closedCity) {
-    const slug = createSlug(closedCity);
-    const live = await liveCitySlugs([slug]);
-    if (live.has(slug)) {
-      return {
-        path: `/neighborhoods/${slug}`,
-        permanent: true,
-        reason: `sold:${slug}`,
-      };
-    }
-    // Sold, but its city page would 404. Permanent is still correct — the
-    // property is gone for good; only the destination falls back.
-    return { path: LISTINGS_INDEX, permanent: true, reason: `sold-city-not-live:${slug}` };
-  }
-
-  // ── 2. Unknown slug. Recover the city from the slug text itself; no DB row
-  // is needed for the parse, only to confirm the destination renders.
-  const candidates = cityCandidatesFromSlug(slugAddress);
-  const live = await liveCitySlugs(candidates);
-  for (const slug of candidates) {
-    // `candidates` is already longest-first.
-    if (live.has(slug)) {
-      return {
-        path: `/neighborhoods/${slug}`,
-        permanent: false,
-        reason: `unknown-slug-city:${slug}`,
-      };
-    }
-  }
-
-  return { path: LISTINGS_INDEX, permanent: false, reason: "unresolved" };
-}
-
-/**
- * Per-request memoized so `generateMetadata` and the page body — which both
- * miss the listing and both need a destination — share one pair of queries.
- */
-export const resolveDeadListingTarget = cache(resolve);
-
 /** Exported for tests: the pure slug→candidate-city parse. */
 export const __cityCandidatesFromSlug = cityCandidatesFromSlug;
+
+// ─── Off-market page context ────────────────────────────────────────────────
+//
+// Since 2026-11-02 a dead slug renders an off-market notice page instead of
+// redirecting (docs/listings/off-market-pages.md). That page shows NO data
+// about the property itself: MLS IDX rules (NAR model rules, adopted by CRMLS)
+// prohibit displaying expired and withdrawn listings, and an unmatched slug may
+// be either. The location below is used only to pick nearby ACTIVE listings
+// and the community section — it is never rendered as the property's details.
+
+export interface OffMarketContext {
+  /** City display name, when known. Drives the nearby-listings query. */
+  city: string | null;
+  /** City page slug, only when that page renders (listingCount > 0). */
+  citySlug: string | null;
+  /** The community the address sits in, when we have a page for it. */
+  subdivision: {
+    name: string;
+    cityId: string;
+    slug: string;
+    description?: string;
+    listingCount?: number;
+    medianPrice?: number;
+    photo?: string;
+  } | null;
+}
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+async function offMarketContext(slugAddress: string): Promise<OffMarketContext> {
+  const empty: OffMarketContext = { city: null, citySlug: null, subdivision: null };
+  try {
+    await dbConnect();
+
+    // Sold rows carry city + subdivision; unknown slugs only have the URL text.
+    const closed: any = await UnifiedClosedListing.findOne({ slugAddress })
+      .select("city subdivisionName")
+      .lean();
+
+    let city: string | null = closed?.city || null;
+    let citySlug: string | null = null;
+
+    if (city) {
+      const slug = createSlug(city);
+      if ((await liveCitySlugs([slug])).has(slug)) citySlug = slug;
+    } else {
+      const candidates = cityCandidatesFromSlug(slugAddress);
+      const live = await liveCitySlugs(candidates);
+      citySlug = candidates.find((c) => live.has(c)) || null;
+      if (citySlug) {
+        const row: any = await City.findOne({ slug: citySlug }).select("name").lean();
+        city = row?.name || null;
+      }
+    }
+
+    let subdivision: OffMarketContext["subdivision"] = null;
+    const subName: string | undefined = closed?.subdivisionName;
+    if (subName && city && !/^(none|n\/a|not applicable|other)$/i.test(subName.trim())) {
+      const { default: Subdivision } = await import("@/models/subdivisions");
+      const sub: any = await Subdivision.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(subName.trim())}$`, "i") },
+        city: { $regex: new RegExp(`^${escapeRegex(city)}$`, "i") },
+      })
+        .select("name slug city description listingCount medianPrice photo")
+        .lean();
+      if (sub) {
+        subdivision = {
+          name: sub.name,
+          cityId: createSlug(sub.city),
+          slug: sub.slug,
+          description: sub.description,
+          listingCount: sub.listingCount,
+          medianPrice: sub.medianPrice,
+          photo: sub.photo,
+        };
+      }
+    }
+
+    return { city, citySlug, subdivision };
+  } catch (err) {
+    console.error(`[dead-listing] off-market context failed for ${slugAddress}:`, err);
+    return empty;
+  }
+}
+
+/** Per-request memoized: metadata and the page body share the lookups. */
+export const resolveOffMarketContext = cache(offMarketContext);

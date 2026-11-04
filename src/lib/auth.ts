@@ -141,7 +141,7 @@ export const authOptions: NextAuthOptions = {
             isAdmin: false,
             lastLoginAt: new Date(),
             signupOrigin: {
-              domain: "unknown", // OAuth callbacks don't have request context; backfilled on first page load
+              domain: "unknown", // no request here; backfillSignupOrigin() fills it on the first request from the real site (auth/receive, page-view beacon)
               method: account.provider, // "google" or "facebook"
             },
           });

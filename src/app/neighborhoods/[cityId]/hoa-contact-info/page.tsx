@@ -5,12 +5,12 @@ import masterHoaData from "@/constants/hoa/master_hoa_data_verified.json";
 import { transformHoaData } from "@/utils/transformHoaData";
 import { coachellaValleyCities } from "@/constants/cities";
 import { Metadata } from "next";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 
 // Generate Metadata
 export async function generateMetadata({ params }: { params: { cityId: string } }): Promise<Metadata> {
   const { cityId } = params;
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   // Find city data
   const city = coachellaValleyCities.find((c) => c.id === cityId);

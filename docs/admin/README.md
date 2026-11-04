@@ -1,7 +1,7 @@
 ---
 title: Admin dashboard
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-03
 related: [../auth/README.md, ../agent-onboarding/README.md, ../commerce/README.md, ../multi-tenant/README.md, ../testing/loop-console.md, ../chatrealty-api/control-plane.md]
 supersedes: docs/archive/ADMIN_DASHBOARD.md
 ---
@@ -76,7 +76,7 @@ Sidebar order (`src/app/admin/layout.tsx`). All pages live under `src/app/admin/
 | Partner Applications `/admin/applications/partners` | `GET/PUT /api/admin/applications/partners`, `GET/PUT /api/admin/settings/partner-approval` | Service partners with their `servicePartnerProfile.status` (missing = approved). Approve/reject run through `src/lib/partner-moderation.ts`. The **auto-approve switch** writes `PlatformConfig` `_id:"moderation"` → `moderation.partnerAutoApprove` (default ON). When OFF, the hourly cron `/api/cron/auto-approve-partners` approves anything pending over 24h |
 | Subscriptions `/admin/subscriptions` | `GET /api/admin/subscriptions`, `POST /api/admin/credits` | Every `AgentSubscription` with its ledger balance, MRR and revenue by tier (active + trialing), cancellation reasons (`User.cancellationReason`). **Gift credits** posts a `bonus` transaction to the ledger — no Stripe involved. Read-only for plans: no tier change, cancel or refund here. Tiers: [commerce](../commerce/README.md) |
 | Domains `/admin/domains` | `GET/PATCH /api/admin/domains` (`PUT` = legacy alias), `GET /api/domains/list`, `/api/domains/registry` + `/seed`, `/check-nameservers`, `/cloudflare-provision` | Three tabs: pending requests, all `DomainMapping`s, the `DomainRegistry`. **Approve** creates the registry record and runs `provisionDomain()` (Vercel + Cloudflare zone, DNS, cache and page rules, worker routes); **reject**; **suspend** removes the domain from the Vercel project and suspends the registry record |
-| Users `/admin/users` | `GET/DELETE /api/admin/users`, `PUT /api/admin/users/[id]`, `GET /api/admin/teams`, `POST /api/auth/impersonate` | Search; filter by role and signup domain; quick Agent / Partner / Admin role toggles (with a confirmation); edit name, email, phone, roles, admin flag, team leader, team, brokerage, license, description; force a site live (`agentProfile.siteForceActive`); bulk delete (your own account is skipped); **Log in as** |
+| Users `/admin/users` | `GET/DELETE /api/admin/users`, `PUT /api/admin/users/[id]`, `GET /api/admin/users/[id]/activity`, `GET /api/admin/teams`, `POST /api/auth/impersonate` | Search; filter by role and signup domain; quick Agent / Partner / Admin role toggles (with a confirmation); edit name, email, phone, roles, admin flag, team leader, team, brokerage, license, description; force a site live (`agentProfile.siteForceActive`); bulk delete (your own account is skipped); **Log in as**. The details panel shows *Signed up with* (agent) and *Site activity* — pages viewed + time on each, see [visitor-activity](../analytics/visitor-activity.md) |
 | Loop Console `/admin/loop` | `GET/POST/PATCH /api/admin/loop`, `GET /api/admin/loop/stream` (server-sent events over Mongo change streams) | The QA feedback loop: testing toggle, Tom's mode, reports, ticket clusters, chat threads, bug reports and feedback submissions. See [testing/loop-console.md](../testing/loop-console.md) |
 
 Not in the sidebar:
@@ -96,6 +96,10 @@ Not in the sidebar:
 - **Adding `realEstateAgent`** makes the User pre-save hook mint a subdomain if
   the user has none (and register it on Vercel). **Removing it** sets the
   agent's `DomainMapping` and `DomainRegistry` records to `suspended`.
+- **Search is server-side** (name/email, literal match, debounced 300 ms); the
+  page loads up to 200 users. It used to filter only the newest 50 in the
+  browser, so older accounts — including josephsardella@gmail.com — were
+  unfindable (fixed 2026-11-03).
 - `GET /api/admin/users` also returns `siteReady` (`getSiteReadiness()` from
   `src/lib/agent-site-readiness.ts`), the subdomain, and which agent a client
   signed up under (`signupOrigin.agentId`).

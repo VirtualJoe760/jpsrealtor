@@ -25,6 +25,7 @@ import GoLiveBounties from "./components/GoLiveBounties";
 import MlsAssociationCard from "@/app/components/agent/MlsAssociationCard";
 import AgentOnboardingStatus from "@/app/components/agent/AgentOnboardingStatus";
 import RecentActivity from "./components/RecentActivity";
+import SiteVisitors from "./components/SiteVisitors";
 
 export default function AgentDashboard() {
   const { data: session, status } = useSession();
@@ -461,6 +462,11 @@ export default function AgentDashboard() {
               tenant site (fed by the tenant→owner bridge). */}
           <div className="mb-8">
             <RecentActivity isLight={isLight} />
+          </div>
+
+          {/* Who browsed the agent's sites: pages + listings, when, how long. */}
+          <div className="mb-8">
+            <SiteVisitors isLight={isLight} />
           </div>
 
 

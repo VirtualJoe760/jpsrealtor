@@ -33,7 +33,7 @@ import Subdivision from "@/models/subdivisions";
 import { notFound } from "next/navigation";
 import { BreadcrumbJsonLd, PlaceJsonLd } from "@/app/components/seo/JsonLd";
 import { createSlug } from "@/lib/utils/slug";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { buildPlaceMetadata, placeOgImageUrl } from "@/lib/seo-metadata";
 import { getMarketStats, getPlaceProfile, formatPrice } from "@/lib/market-stats";
 import { getSubdivisionIndexability, logIndexability } from "@/lib/indexability";
@@ -85,7 +85,7 @@ export async function generateMetadata({
     return { title: "Subdivision Not Found", robots: { index: false, follow: false } };
   }
 
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
   const stats = await getMarketStats({
     scope: "subdivision",
     name: subdivision.name,
@@ -159,7 +159,7 @@ export default async function SubdivisionPage({ params }: SubdivisionPageProps) 
   // Serialize subdivision to plain object for Client Component
   const serializedSubdivision = JSON.parse(JSON.stringify(subdivision));
 
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
 
   const [stats, profile, listingLinks, siblings] = await Promise.all([
     getMarketStats({ scope: "subdivision", name: subdivision.name, city: subdivision.city }),

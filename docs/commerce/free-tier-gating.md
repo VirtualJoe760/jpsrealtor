@@ -1,7 +1,7 @@
 ---
 title: Free-Tier Gating & Forced Onboarding
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-03
 related: [README.md, ../auth/README.md, ../admin/README.md]
 ---
 
@@ -35,10 +35,11 @@ nav (Dashboard, Contacts, CMS, Settings) and reduced Settings; Email, Messages, 
   `src/lib/agent-site-readiness.ts`: force-active → live; grandfathered → old
   rule (checklist complete OR active sub); everyone else → checklist complete
   AND active sub AND admin-confirmed (`agentApplication.siteApprovedAt`).
-- **`PUT /api/user/profile` can no longer write** `grandfathered`,
-  `siteForceActive`, `customDomain` or `mlsMembership` (an agent could
-  otherwise grant themselves free Basic, publish an unreviewed site, or claim
-  another agent's domain).
+- **`PUT /api/user/profile` writes only an allowlist of `agentProfile` keys**
+  (2026-11-03; a denylist of `grandfathered`, `siteForceActive`,
+  `customDomain`, `mlsMembership` from 2026-10-28 before that). An agent could
+  otherwise grant themselves free Basic, publish an unreviewed site, claim
+  another agent's domain, or plant an API token with any scope.
 
 ## The one gating rule
 
@@ -110,9 +111,10 @@ Client hiding is not enough; these routes reject free-tier agents (admins exempt
 | `integrations/api-tokens` | Not a block: free tier may only mint tokens with `FREE_TIER_SCOPES` (403 names the disallowed scopes) |
 
 > **Gap:** the API-token scope cap is enforced only when the token is minted.
-> `src/lib/skill-auth.ts` does not re-check tier on each request, and
-> `PUT /api/user/profile` will write `agentProfile.aiIntegrations.apiTokens`
-> directly (see [../agent-identity/agent-profile.md](../agent-identity/agent-profile.md)).
+> `src/lib/skill-auth.ts` does not re-check tier on each request, so a key
+> minted on a paid plan keeps its scopes after a downgrade. (Planting a token
+> through `PUT /api/user/profile` was closed 2026-11-03 — see
+> [../agent-identity/agent-profile.md](../agent-identity/agent-profile.md).)
 
 Guard pattern (matches each route's own error envelope):
 

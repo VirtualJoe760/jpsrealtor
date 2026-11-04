@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import NeighborhoodsClient from "./NeighborhoodsClient";
 import CrawlableLinks from "@/app/components/seo/CrawlableLinks";
 import { getSoCalCityLinks } from "@/lib/crawl-index";
-import { getBaseUrlFromHeaders } from "@/lib/domain-utils";
+import { getCatalogBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { buildPlaceMetadata, placeOgImageUrl } from "@/lib/seo-metadata";
 
 // These tags used to live in ./layout.tsx, where they were inherited by every
@@ -19,7 +19,7 @@ import { buildPlaceMetadata, placeOgImageUrl } from "@/lib/seo-metadata";
 // claimed to be this one Coachella Valley hub in og:title, og:description and
 // og:image. They belong to THIS url and no other. See the note in layout.tsx.
 export async function generateMetadata(): Promise<Metadata> {
-  const baseUrl = await getBaseUrlFromHeaders();
+  const baseUrl = await getCatalogBaseUrlFromHeaders();
   return buildPlaceMetadata({
     title: "California Neighborhoods | Browse Homes by City & Community",
     description:

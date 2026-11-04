@@ -6,6 +6,7 @@ import { Edit, Trash2, MessageSquare, Mail, Phone, MapPin, Briefcase, Calendar, 
 import Map, { Marker } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import ContactPropertyCarousel from './ContactPropertyCarousel';
+import VisitorActivityCard from './VisitorActivityCard';
 
 // MapTiler API Key for map styling
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
@@ -1080,6 +1081,9 @@ export default function ContactViewPanel({
                 )}
               </div>
             </div>
+
+            {/* SITE ACTIVITY — pages this contact viewed on the agent's own sites */}
+            <VisitorActivityCard url={`/api/crm/contacts/${contact._id}/activity`} isLight={isLight} />
 
             {/* NOTES */}
             <div>

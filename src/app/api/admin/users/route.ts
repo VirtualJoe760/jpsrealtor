@@ -40,16 +40,19 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const role = searchParams.get("role");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50") || 50, 1), 200);
     const skip = (page - 1) * limit;
 
     // Build query
     const query: any = {};
 
     if (search) {
+      // Literal match: "+" in an email (josephsardella+crtest@...) is a regex
+      // operator, so an unescaped search never matched those addresses.
+      const literal = search.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { name: { $regex: literal, $options: "i" } },
+        { email: { $regex: literal, $options: "i" } },
       ];
     }
 

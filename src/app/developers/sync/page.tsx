@@ -2,12 +2,21 @@
 //
 // BYOD sync setup — bring your MLS feed, run @chatrealty/sync, it writes to your
 // own database. Grounded in packages/chatrealty-sync/README.md.
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import CodeBlock from "@/components/developers/CodeBlock";
 import Callout from "@/components/developers/Callout";
 import FieldTable from "@/components/developers/FieldTable";
 import { DocsHeader, DocsSection, Prose } from "@/components/developers/DocsPage";
+
+// Own title + canonical per page (site-platform-plan P1): these are in the
+// chatrealty.io sitemap and used to share the layout's single title.
+export const metadata: Metadata = {
+  title: { absolute: "MLS Sync — ChatRealty API" },
+  description: "How MLS data syncs into your ChatRealty tenant database.",
+  alternates: { canonical: "https://www.chatrealty.io/developers/sync" },
+};
 
 export default function SyncPage() {
   return (
