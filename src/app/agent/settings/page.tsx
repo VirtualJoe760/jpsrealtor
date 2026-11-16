@@ -1,25 +1,22 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import AgentNav from "@/app/components/AgentNav";
-import SettingsWizard from "./components/SettingsWizard";
 import SettingsSidebar from "./components/SettingsSidebar";
 
+// First-run setup is the conversational /agent/setup (the form wizard that
+// used to live here was removed 2026-11-04). This page is the editor only.
 function SettingsContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
 
-  const isOnboardingParam = searchParams.get("onboarding") === "true";
-
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isWizardMode, setIsWizardMode] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -50,24 +47,8 @@ function SettingsContent() {
 
     if (status === "authenticated") {
       fetchProfile();
-      localStorage.setItem("agent_settings_visited", "true");
-
-      // Determine mode: wizard for explicit ?onboarding=true, or when the DB
-      // onboarding flag (session.user.onboardingComplete) is explicitly false
-      // and they haven't completed locally. Existing agents whose JWT predates
-      // the flag (undefined) fall through to sidebar mode — the localStorage
-      // flag is the fallback for them.
-      const notOnboarded = (session?.user as any)?.onboardingComplete === false;
-      const lsComplete = localStorage.getItem("agent_settings_completed") === "true";
-      // First-run default is the CONVERSATIONAL setup (/agent/setup); the
-      // classic form wizard remains the explicit fallback via ?onboarding=true.
-      if (notOnboarded && !lsComplete && !isOnboardingParam) {
-        window.location.assign("/agent/setup");
-        return;
-      }
-      setIsWizardMode(isOnboardingParam || (notOnboarded && !lsComplete));
     }
-  }, [status, isOnboardingParam, session]);
+  }, [status]);
 
   if (status === "loading" || isLoading) {
     return (
@@ -120,35 +101,24 @@ function SettingsContent() {
               isLight ? "text-gray-900" : "text-white"
             }`}
           >
-            {isWizardMode ? "Profile Setup" : "Agent Settings"}
+            Agent Settings
           </h1>
           <p
             className={`text-sm ${
               isLight ? "text-gray-500" : "text-gray-400"
             }`}
           >
-            {isWizardMode
-              ? "Complete your profile to personalize your website."
-              : "Manage your profile, branding, and website settings."}
+            Manage your profile, branding, and website settings.
           </p>
         </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto pb-20 md:pb-0 px-4 md:px-6">
-          {isWizardMode ? (
-            <SettingsWizard
-              initialData={profileData}
-              isOnboarding={true}
-              tier={agentTier}
-              isAdmin={isAdmin}
-            />
-          ) : (
-            <SettingsSidebar
-              initialData={profileData}
-              tier={agentTier}
-              isAdmin={isAdmin}
-            />
-          )}
+          <SettingsSidebar
+            initialData={profileData}
+            tier={agentTier}
+            isAdmin={isAdmin}
+          />
         </div>
       </div>
     </div>

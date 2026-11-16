@@ -100,7 +100,7 @@ function JoinUsPage() {
       if (user?.isAgent) {
         clearInterval(timer);
         await update(); // refresh the JWT so the portal opens without re-login
-        router.push("/agent/settings?onboarding=true");
+        router.push("/agent/setup");
       } else if (tries > 40) {
         clearInterval(timer);
         setError("Your payment went through, but setting up your account is taking longer than usual. Refresh in a minute — or reply to your receipt email and we'll sort it out.");

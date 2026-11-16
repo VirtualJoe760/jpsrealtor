@@ -4,7 +4,8 @@
 // Styled to match CHAP (src/app/components/chat/ChatWidget.tsx): emerald-
 // gradient user bubbles, neutral glass assistant bubbles with a Bot avatar,
 // large readable type, a floating rounded composer. A live profile-progress
-// card fills in as fields land. Classic form wizard remains the fallback.
+// card fills in as fields land. This is the ONLY first-run setup: the form
+// wizard was removed 2026-11-04 (edits afterwards happen in /agent/settings).
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,7 @@ type Profile = {
 };
 
 export default function AgentSetupPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -83,12 +84,25 @@ export default function AgentSetupPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
+  // Refresh the JWT before leaving: the middleware reads onboardingComplete
+  // from the token, and a stale `false` would bounce the agent straight back
+  // here from the dashboard.
   useEffect(() => {
-    if (done) {
-      const id = setTimeout(() => router.replace("/agent/dashboard"), 2500);
-      return () => clearTimeout(id);
-    }
-  }, [done, router]);
+    if (!done) return;
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      try {
+        await updateSession();
+      } catch {
+        // Non-fatal — the token re-reads the DB within a minute anyway.
+      }
+      if (!cancelled) router.replace("/agent/dashboard");
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [done, router, updateSession]);
 
   async function send(override?: string) {
     const text = (override ?? input).trim();
@@ -184,10 +198,11 @@ export default function AgentSetupPage() {
         <div className="mb-5">
           <h1 className={`text-2xl font-bold tracking-[-0.02em] ${textMain}`}>Set up your account</h1>
           <p className={`mt-0.5 text-sm ${textDim}`}>
-            Prefer forms?{" "}
-            <Link href="/agent/settings?onboarding=true" className="underline hover:text-emerald-500">
-              Use the classic setup
+            You can change any of this later in{" "}
+            <Link href="/agent/settings" className="underline hover:text-emerald-500">
+              Settings
             </Link>
+            .
           </p>
         </div>
 

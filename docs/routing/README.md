@@ -1,7 +1,7 @@
 ---
 title: Routing (src/proxy.ts)
 status: current
-last_verified: 2026-10-18
+last_verified: 2026-11-04
 related: [../auth/README.md, ../multi-tenant/README.md, ../chatrealty-api/external-site.md, ../seo/README.md]
 ---
 
@@ -135,7 +135,7 @@ portal to their own host cannot skip it:
 |---|---|
 | `/agent/subscription*` | `/agent/settings?section=billing` |
 | `/admin*` and not `isAdmin` | `/dashboard` |
-| Agent role, not admin, `onboardingComplete === false`, not already on `/agent/settings` | `/agent/settings?onboarding=true` |
+| Agent role, not admin, `onboardingComplete === false`, not on `/agent/setup` or `/agent/settings` | `/agent/setup` (the setup chat) |
 | `agentTier === "free"`, not admin, on `/agent/campaigns`, `/agent/messages`, `/agent/email`, `/agent/dashboard/domains` | `/agent/settings?section=billing` (an undefined tier is not treated as free) |
 
 ## Subdomain detection

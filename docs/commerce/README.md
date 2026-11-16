@@ -1,7 +1,7 @@
 ---
 title: Commerce (Stripe + Credits + Transactions)
 status: current
-last_verified: 2026-11-02
+last_verified: 2026-11-04
 related: [./stripe-billing.md, ./free-tier-gating.md, ../agent-onboarding/README.md, ../admin/README.md, ../multi-tenant/README.md]
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 ---
@@ -117,10 +117,10 @@ No live price exists for the consumer **Pro** plan ($9.99) or the annual
 prices, so those checkouts fail in live mode until one is created.
 
 **Feature gating by tier:** only the **Free** tier is purchasable today; paid tiers are shown
-"Coming soon". New agents are forced through the setup wizard (with a plan step) on first run, and
+"Coming soon". New agents are forced through the setup chat (`/agent/setup`) on first run, and
 free-tier agents get a reduced nav + Settings with Email / Messages / Campaigns hidden **and** blocked
 server-side. The one rule is `hidePaid = isFreeTier && !isAdmin` (admins + paid agents see everything).
-Full gating map, onboarding-wizard flow, and the server-side 403 route guards live in
+Full gating map, forced-onboarding flow, and the server-side 403 route guards live in
 [`free-tier-gating.md`](./free-tier-gating.md). Tier resolver: `src/lib/subscription-helpers.ts`.
 
 **Admin bypass:** users with `roles: ["admin"]` skip Stripe entirely. The
@@ -271,7 +271,7 @@ any new Stripe integration in this repo.
 - `./stripe-billing.md` — webhook events, idempotency, env vars, go-live runbook.
 - `./affiliates.md` — affiliate program: attribution, commission ledger, Connect payouts.
 - `./site-setup.md` — $300 one-time custom-site setup for Basic subscribers.
-- `./free-tier-gating.md` — free-tier feature gating, forced onboarding wizard, and server-side 403 guards.
+- `./free-tier-gating.md` — free-tier feature gating, forced onboarding (setup chat), and server-side 403 guards.
 - `../agent-onboarding/README.md` — agent application phases (and why Stripe Identity is parked).
 - `../admin/README.md` — admin Subscriptions page and credit gifting.
 - `../multi-tenant/README.md` — domain ownership vs. session user, relevant when scoping subscription-related UI.

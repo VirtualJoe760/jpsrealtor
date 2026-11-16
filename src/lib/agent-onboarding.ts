@@ -33,7 +33,7 @@ export async function activatePaidAgent(userId: string): Promise<boolean> {
   const subdomain = await generateSubdomain(user.name, user.email, user._id);
   if (!user.agentProfile) user.agentProfile = {} as any;
   user.agentProfile!.subdomain = subdomain;
-  user.agentProfile!.onboardingComplete = false; // forces the setup wizard
+  user.agentProfile!.onboardingComplete = false; // forces the setup chat (/agent/setup)
   user.markModified("agentProfile");
   user.markModified("agentApplication");
   await user.save();

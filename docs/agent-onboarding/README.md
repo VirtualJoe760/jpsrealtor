@@ -1,7 +1,7 @@
 ---
 title: Agent Onboarding (apply → pay → verify ID → admin confirms site)
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-04
 related:
   - ../integrations/email.md
   - ../commerce/README.md
@@ -19,7 +19,8 @@ contact details**), then pays for Basic ($125/mo) in Stripe Checkout — promo
 codes accepted (`TOASTY13125` = first month free, once per new customer). The
 Stripe webhook's plan handler calls `activatePaidAgent()`
 (`src/lib/agent-onboarding.ts`): `realEstateAgent` role, subdomain, setup
-wizard forced, welcome email to them, "new paid agent" email to the admin. The
+setup chat forced (`/agent/setup`, see [setup-chat.md](./setup-chat.md)),
+welcome email to them, "new paid agent" email to the admin. The
 agent then **verifies their ID** (Stripe Identity: photo ID + live selfie) from
 the dashboard card. Their **public site stays offline** until the admin clicks
 **Confirm & publish site** at `/admin/applications/agents`
@@ -120,5 +121,5 @@ rendered through `renderBrandedEmail()`.
 | Admin approve | applicant | Welcome to ChatRealty — your agent account is approved |
 | Admin reject | applicant | An update on your ChatRealty application (includes the admin's reason verbatim) |
 
-Approval CTA goes to `/agent/settings?onboarding=true` (middleware forces the
-same route for un-onboarded agents, so the link is always correct).
+Welcome CTA goes to `/agent/setup` (middleware forces the same route for
+un-onboarded agents, so the link is always correct).

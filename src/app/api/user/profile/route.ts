@@ -29,8 +29,10 @@ const EDITABLE_AGENT_PROFILE_KEYS = new Set([
   "serviceAreas", "specializations", "bio",
   // Domain & SEO (subdomain is validated separately below)
   "subdomain", "metaTitle", "metaDescription", "metaKeywords",
-  // Social, tracking, calendar, wizard
-  "socialMedia", "tracking", "businessHours", "onboardingComplete",
+  // Social, tracking, calendar. NOT onboardingComplete: only finish_setup in
+  // /api/agent/setup-chat may set it, after checking license + brokerage —
+  // allowing it here let any agent skip that compliance check with one PUT.
+  "socialMedia", "tracking", "businessHours",
 ]);
 
 // Cloudinary asset fields in agentProfile that store URLs

@@ -1,7 +1,7 @@
 ---
 title: Stripe Billing & Credits
 status: current
-last_verified: 2026-11-02
+last_verified: 2026-11-04
 supersedes: docs/archive/STRIPE_BILLING_SYSTEM.md
 related:
   - ../campaigns/co-marketing-adspend.md
@@ -27,7 +27,7 @@ and transfers stay off until `AFFILIATE_PAYOUTS_ENABLED=true`.
 **Only the Free plan is purchasable today.** The paid tiers (Beginner /
 Experienced / Top Agent) are built end-to-end — model, Stripe checkout,
 webhooks, credit grants — but are shown **"Coming soon" and disabled** in the
-UI. New agents pick a plan inside the forced first-run setup wizard (Free only)
+UI. New agents pay for Basic before setup (see `../agent-onboarding/README.md`)
 and manage billing under **Settings → Billing**; the standalone
 `/agent/subscription` page is retired and 302-redirects to
 `/agent/settings?section=billing`.

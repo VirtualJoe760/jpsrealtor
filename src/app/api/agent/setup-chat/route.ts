@@ -1,11 +1,12 @@
 // POST /api/agent/setup-chat — the conversational agent setup.
 //
-// Replaces the form wizard as the default first-run experience: a Groq
-// tool-calling loop that collects exactly what the classic wizard collects
-// (identity, COMPLIANCE must-haves, contact + gating preference, market,
-// specializations, brand color) and writes it to agentProfile through a
-// WHITELISTED $set — the model never writes arbitrary paths. The classic
-// wizard remains at /agent/settings?onboarding=true as the fallback.
+// The only first-run setup (the form wizard was removed 2026-11-04): a Groq
+// tool-calling loop that collects identity, COMPLIANCE must-haves, contact +
+// gating preference, market, specializations, brand color and headshot, and
+// writes them through a WHITELISTED $set — the model never writes arbitrary
+// paths. finish_setup is the only writer of agentProfile.onboardingComplete
+// (the profile PUT no longer accepts it), so the license + brokerage gate
+// below cannot be bypassed.
 //
 // Stateless per request: the client sends the whole visible transcript; we
 // return the assistant reply + a fresh profile snapshot for the progress card.
@@ -151,7 +152,7 @@ function systemPrompt(snap: ReturnType<typeof snapshot>): string {
     "Skip anything already known below — NEVER re-ask it.",
     "The contact-visibility choice (public vs gated) is itself a fact to SAVE (contactVisibility). If it is still null after their phone answer, ask that one question before moving on.",
     "When the must-haves are in, give a tight one-line summary and ask to confirm; on confirmation call finish_setup and tell them they're set — their profile drives their ChatRealty page and any site Claude builds them.",
-    "If they want forms instead, tell them the classic setup is at Settings.",
+    "If they'd rather fill things in later or use forms, tell them everything can be edited any time in Settings — but license number and brokerage are still needed here to finish.",
     `ALREADY KNOWN (do not re-ask): ${JSON.stringify(snap)}`,
   ].join("\n");
 }

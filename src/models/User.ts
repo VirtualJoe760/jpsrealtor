@@ -71,8 +71,10 @@ export interface IUser extends Document {
 
   // MULTI-TENANT: Agent Profile (comprehensive landing page data)
   agentProfile?: {
-    // Onboarding: true once the agent completes the first-run setup wizard.
-    // Drives the forced-wizard gate (src/proxy.ts) + wizard-vs-sidebar mode.
+    // Onboarding: true once the agent completes the first-run setup chat at
+    // /agent/setup. Drives the forced-setup gate (src/proxy.ts). Written only
+    // by finish_setup in /api/agent/setup-chat, after license + brokerage are
+    // saved — the profile PUT refuses it (2026-11-04).
     onboardingComplete?: boolean;
 
     // Existing agents when paid onboarding began (2026-10-28) keep Basic-level
@@ -866,7 +868,10 @@ const UserSchema = new Schema<IUser>(
 
     // MULTI-TENANT: Agent Profile
     agentProfile: {
-      // Onboarding gate (see IUser interface): set true when the setup wizard finishes.
+      // Onboarding gate (see IUser interface): set true when the setup chat
+      // finishes. NOTE the default — a saved document stores an explicit
+      // false, so "field missing" cannot identify legacy agents. That is why
+      // scripts/backfill-agent-onboarding.ts keys off license + brokerage.
       onboardingComplete: { type: Boolean, default: false },
 
       // Grandfathered free Basic access (see IUser.agentProfile.grandfathered)

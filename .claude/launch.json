@@ -15,6 +15,18 @@
       "port": 3005
     },
     {
+      "name": "platform-attach",
+      "url": "http://chatrealty.localhost:3000",
+      "port": 3000
+    },
+    {
+      "name": "dev-og-brokerage",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:\\web-clients\\joseph-sardella\\jpsrealtor-og-brokerage", "run", "dev"],
+      "env": { "PORT": "3010" },
+      "port": 3010
+    },
+    {
       "name": "dev-wordmark",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "F:\\web-clients\\joseph-sardella\\jpsrealtor-wordmark", "run", "dev"],
