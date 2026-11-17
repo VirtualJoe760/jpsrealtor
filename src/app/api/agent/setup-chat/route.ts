@@ -72,17 +72,64 @@ const TOOLS = [
   },
 ] as const;
 
+/**
+ * Cosmetic repair of the model's own run-together output.
+ *
+ * The model is told ONE topic per message, but it sometimes staples two
+ * questions together with no space at the seam — a real run produced
+ * "…(hex code like #1e3a5f)? (Optional.)Would you like to add a professional
+ * headshot now…". The bubble renders exactly what it is sent, so the agent
+ * sees the words collide. Insert the missing space after sentence-ending
+ * punctuation (incl. a closing bracket/quote) when a capital letter follows
+ * immediately. Deliberately conservative: it never touches a decimal, an
+ * ellipsis, or a hex colour, because the character before must be `.?!` and
+ * the character after must be an uppercase letter. URLs and email addresses
+ * are skipped whole — "example.Com" inside a link must not gain a space.
+ */
+function tidyReply(s: string): string {
+  return s
+    .split(/(\s+)/)
+    .map((tok) =>
+      /:\/\/|^www\.|@/.test(tok) ? tok : tok.replace(/([.?!][)\]"'”’]?)([A-Z])/g, "$1 $2")
+    )
+    .join("");
+}
+
 // Quick-reply chips keyed to the question actually being asked (matched on the
 // reply text so they never mismatch the model's freeform phrasing). CHAP-style
 // interactive answers — the visitor taps instead of typing. Optional questions
 // get a Skip chip; license/brokerage NEVER do (required). The headshot question
 // gets an Upload chip the UI turns into a file picker.
+//
+// NOT exported: a route.ts may only export route handlers and the Next config
+// values, so these stay module-local and the prompt interpolates them.
 const SKIP = "Skip for now";
+const CONFIRM_FINISH = "Yes, finish setup";
+const CONFIRM_EDIT = "No, make changes";
+
 function deriveChoices(
   reply: string,
   snap: ReturnType<typeof snapshot>
 ): { choices: string[]; multiSelect: boolean; upload?: boolean } | null {
   const r = reply.toLowerCase();
+
+  // The closing confirmation. Checked FIRST, and before the required-field
+  // guard, because the summary the model prints right before it repeats every
+  // field name ("Team/Brand:", "License #:", "Brokerage:", "Phone:") — so the
+  // matchers below would otherwise claim this turn and offer the wrong chips.
+  // There was no case for it at all until 2026-11-17, which is why the model
+  // ended every run telling the agent to "tap Yes, finish setup" underneath no
+  // buttons; the only way through was to type it.
+  if (
+    snap.licenseNumber &&
+    snap.brokerageName &&
+    /(look|looks) (correct|good|right)|shall i finish|finish (your |the )?(setup|profile)|ready to finish|everything (looks? )?(correct|good|right)|is (this|that) (all )?correct|confirm/.test(
+      r
+    )
+  ) {
+    return { choices: [CONFIRM_FINISH, CONFIRM_EDIT], multiSelect: false };
+  }
+
   // Required fields — no chips, never skippable.
   if (/license|brokerage/.test(r) && (!snap.licenseNumber || !snap.brokerageName)) return null;
 
@@ -152,6 +199,8 @@ function systemPrompt(snap: ReturnType<typeof snapshot>): string {
     "Skip anything already known below — NEVER re-ask it.",
     "The contact-visibility choice (public vs gated) is itself a fact to SAVE (contactVisibility). If it is still null after their phone answer, ask that one question before moving on.",
     "When the must-haves are in, give a tight one-line summary and ask to confirm; on confirmation call finish_setup and tell them they're set — their profile drives their ChatRealty page and any site Claude builds them.",
+    `CONFIRMING: end that summary with the exact question "Does everything look correct?" and nothing else. The UI renders the "${CONFIRM_FINISH}" / "${CONFIRM_EDIT}" buttons itself — do NOT write out button labels, quote them, or tell the agent to "tap" anything, in this or any other message. Naming a button the UI has not drawn leaves them hunting for one that is not there.`,
+    "NEVER put two questions in one message, and never run two sentences together without a space between them.",
     "If they'd rather fill things in later or use forms, tell them everything can be edited any time in Settings — but license number and brokerage are still needed here to finish.",
     `ALREADY KNOWN (do not re-ask): ${JSON.stringify(snap)}`,
   ].join("\n");
@@ -287,8 +336,9 @@ export async function POST(req: NextRequest) {
 
     // Plain text reply — we're done this turn.
     user = await User.findById(user._id);
+    const reply = tidyReply(msg.content || "…");
     return NextResponse.json(
-      { reply: msg.content || "…", profile: snapshot(user), done, ...(deriveChoices(msg.content || "", snapshot(user)) || {}) },
+      { reply, profile: snapshot(user), done, ...(deriveChoices(reply, snapshot(user)) || {}) },
       { headers: NO_STORE }
     );
   }

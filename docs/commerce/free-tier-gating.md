@@ -1,7 +1,7 @@
 ---
 title: Free-Tier Gating & Forced Onboarding
 status: current
-last_verified: 2026-11-04
+last_verified: 2026-11-17
 related: [README.md, ../auth/README.md, ../admin/README.md]
 ---
 
@@ -73,6 +73,7 @@ New agents must finish the setup chat before using the portal. Full detail:
 |---|---|---|
 | Flag | `User.agentProfile.onboardingComplete` (default `false`) | Set `true` only by `finish_setup` in `/api/agent/setup-chat`, after license + brokerage are saved |
 | JWT | `src/lib/auth.ts` | Stamps `onboardingComplete` + `agentTier` at sign-in; `trigger:"update"` re-reads them so `session.update()` refreshes without re-login |
+| Cross-host hand-off | `src/app/api/auth/receive/route.ts` | Mints the cookie on the agent's subdomain and must stamp the same fields — see the gotcha below |
 | Middleware guard | `src/proxy.ts` (`portalGates()`, applied on www **and** on agent subdomains since 2026-10-16) | A non-admin agent whose `onboardingComplete === false` is redirected to `/agent/setup` (`/agent/setup` and `/agent/settings` exempt) |
 | Setup chat | `src/app/agent/setup/page.tsx` | On finish: `session.update()`, then `/agent/dashboard` |
 
@@ -89,8 +90,28 @@ New agents must finish the setup chat before using the portal. Full detail:
 Until 2026-11-04 a client-side `localStorage` flag cushioned this on the settings page; it was removed
 with the wizard, since the wizard was the only thing it fed.
 
-**Deploy note — the backfill is REQUIRED, not advisory.** Without it an established agent signs in and
-is bounced to `/agent/setup`, unable to reach their dashboard. Run:
+**The same `=== false` test cut the other way, and silently disabled the gate (fixed 2026-11-17).**
+Agents work on their own subdomain, and every sign-in gets there through `/api/auth/transfer` →
+`/api/auth/receive`, which mints a *fresh* session cookie for that host. That cookie listed only
+`id, email, name, picture, roles, isAdmin, twoFactorEnabled, requiresTwoFactor, agentSubdomain` — so
+`onboardingComplete` and `agentTier` were both `undefined`, and neither `=== false` nor `=== "free"`
+matched. On the first page load after sign-in, on the one host the portal actually lives on, the
+forced-setup gate **and** the "being an agent requires Basic" gate were off; an un-onboarded,
+never-paid agent reached the full dashboard. It healed itself only once something hit a NextAuth
+endpoint and the 60s refresh in (3) re-stamped the cookie. `receive` now stamps `onboardingComplete`,
+`agentTier` and `permissionsCheckedAt` the way the jwt callback does.
+
+> **Keep in step:** a field added to the token in `auth.ts`'s jwt callback must also be added in
+> `src/app/api/auth/receive/route.ts`, or it will be missing for exactly as long as it takes the
+> agent to load one page. The impersonation branch of `receive` deliberately still omits them —
+> stamping `onboardingComplete` there would send an admin impersonating an un-onboarded agent into
+> that agent's setup chat.
+
+**Deploy note — run the backfill, but it is currently a no-op.** The mechanism is real: without it an
+agent who predates the flag signs in and is bounced to `/agent/setup`, unable to reach their
+dashboard. The cohort, however, is empty — a dry run on 2026-11-17 found 5 un-onboarded agents and
+**0** of them holding both a license and a brokerage, so nothing would be flipped. Run it anyway
+(it is idempotent and cheap) and read the split it prints rather than assuming either way:
 
 ```
 npx tsx scripts/backfill-agent-onboarding.ts --dry-run   # review the cohort split

@@ -1,7 +1,7 @@
 ---
 title: Agent Onboarding (apply → pay → verify ID → admin confirms site)
 status: current
-last_verified: 2026-11-04
+last_verified: 2026-11-17
 related:
   - ../integrations/email.md
   - ../commerce/README.md
@@ -86,6 +86,12 @@ everywhere.
   still says the site is "active after subscription";
   in fact it goes live when the go-live checklist is done
   (`../commerce/free-tier-gating.md`).
+- **The MLS association lives inside the go-live checklist** (2026-11-17), as
+  a row in `GoLiveBounties.tsx` rendered by `MlsAssociationCard`'s
+  `variant="checklist"` — not as its own card on the dashboard, which read as
+  a second competing checklist. It is deliberately **not** a
+  `getSiteReadiness` step and does not count toward the `{completed}/{total}`
+  score: the site publishes without it, and the row says so.
 - **The admin Overview's "Pending Applications" card never counts these** —
   it queries phase `"pending"` instead of `inquiry_pending`.
 - **Promoting from Admin → Users skips this flow.** Adding the

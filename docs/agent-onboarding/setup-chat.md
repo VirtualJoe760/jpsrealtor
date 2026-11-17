@@ -1,7 +1,7 @@
 ---
 title: Agent setup chat (first-run onboarding)
 status: current
-last_verified: 2026-11-04
+last_verified: 2026-11-17
 related:
   - ./README.md
   - ../commerce/free-tier-gating.md
@@ -55,6 +55,19 @@ brokerage can be skipped with a chip.
 - **Refresh the JWT before leaving.** The middleware reads
   `onboardingComplete` from the token; without `session.update()` a stale
   `false` bounces the agent from the dashboard straight back to setup.
+  The effect that does this runs **once**, guarded by a ref — `updateSession`
+  and `router` are new objects every render, so having them in the dep array
+  made the effect cancel its own 2.5s timer on each render and the
+  `router.replace("/agent/dashboard")` never fired. The agent sat on "taking
+  you to your dashboard…" indefinitely (found + fixed 2026-11-17).
+- **The cross-host hand-off must stamp the gate fields.**
+  `/api/auth/receive` mints the session cookie on the agent's subdomain, and
+  that is where every agent sign-in lands. Until 2026-11-17 it left
+  `onboardingComplete` and `agentTier` off the token entirely — and
+  `portalGates()` tests them with `=== false` / `=== "free"`, so **both** the
+  forced-setup gate and the Basic requirement were off for the first page
+  load after sign-in. Anything added to the token in `auth.ts`'s jwt callback
+  has to be added here too.
 - **`/agent/settings` is an escape hatch.** It stays reachable during setup so
   an agent isn't locked out if Groq is down or the key is missing (the route
   returns 503). From there they can edit their profile and reach Billing, but
@@ -62,6 +75,23 @@ brokerage can be skipped with a chip.
 - **Contact visibility has a deterministic fallback** — the model tends not to
   save that one answer, so the route parses "public"/"gated" itself when the
   previous question asked it.
+- **The UI owns the chips; the model must never name them.** `deriveChoices()`
+  matches the reply text, so a question with no case there renders no buttons.
+  The closing confirmation had no case until 2026-11-17 — the model kept
+  writing "tap 'Yes, finish setup'" under an empty row and the only way
+  through was to type it. Its case is checked **first**, before the
+  required-field guard, because the summary printed just above repeats every
+  field name ("Team/Brand:", "Brokerage:") and the later matchers would
+  otherwise claim the turn. The prompt now also forbids writing button labels
+  at all.
+- **Replies are rendered as markdown** (`react-markdown` + `remark-gfm`, as in
+  CHAP). The summary is a bold-labelled list and used to print as raw
+  `- **License #:**`. `whitespace-pre-wrap` is on user bubbles only — with
+  markdown it doubles every gap.
+- **`tidyReply()` repairs run-together sentences.** The model occasionally
+  staples two questions together with no space ("(Optional.)Would you like…").
+  It inserts a space after `.?!` when a capital follows, skipping URL and
+  email tokens.
 - **Existing agents need the backfill before this ships.**
   `scripts/backfill-agent-onboarding.ts` — the `=== false` check in the gate
   does NOT spare agents who predate the flag (the schema default, the `!!`
