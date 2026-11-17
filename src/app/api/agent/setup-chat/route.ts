@@ -123,7 +123,11 @@ function deriveChoices(
   if (
     snap.licenseNumber &&
     snap.brokerageName &&
-    /(look|looks) (correct|good|right)|shall i finish|finish (your |the )?(setup|profile)|ready to finish|everything (looks? )?(correct|good|right)|is (this|that) (all )?correct|confirm/.test(
+    // Deliberately no bare "confirm": once license and brokerage are set, an
+    // ordinary mid-flow line like "Just to confirm, you serve Palm Desert?"
+    // would otherwise put finish/edit buttons under a question that is not
+    // the summary.
+    /(look|looks) (correct|good|right)|shall i finish|finish (your |the )?(setup|profile)|ready to finish|everything (looks? )?(correct|good|right)|is (this|that) (all )?correct/.test(
       r
     )
   ) {
