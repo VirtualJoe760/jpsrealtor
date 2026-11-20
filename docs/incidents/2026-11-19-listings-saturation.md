@@ -215,3 +215,107 @@ because it fronts 13 production paths including the ChatRealty product API.
 - Vercel timing out and MongoDB still working is a silent amplifier. Timeouts
   must be set on **both** sides or load only ever ratchets up.
 
+
+## 9. 2026-11-20 — the crawl, the block, and the covering index
+
+### 9a. What was actually generating the load
+
+Vercel CDN analytics, 12 h, by bot:
+
+| Bot | Requests | Cached |
+|---|---|---|
+| meta-webindexer | 20K | 3.2% |
+| meta-externalagent | 10K | 2.3% |
+| applebot | 4.8K | 2.7% |
+| semrush | 4.5K | 0% |
+| ahrefsbot | 3.5K | 2.1% |
+| **googlebot** | **820** | 1.6% |
+
+Meta alone was 30,000 requests in 12 hours against Googlebot's 820. They walk
+`/mls-listings/[slugAddress]` — **53K requests, 0% cached**, because
+`getCatalogBaseUrlFromHeaders()` calls `headers()` and forces dynamic rendering.
+With 84,564 listing pages a crawler never repeats a URL, so no CDN cache helps a
+single-pass sweep; every hit is a fresh ~39 KB document read.
+
+Vercel web analytics over 7 days made the nature of it plain: 23,016 "visitors",
+**99% bounce, 1.015 pages per visit, 100% desktop**, and a grand total of
+**14 referrals** from search engines. The platform was counting crawlers as people.
+
+### 9b. Why it broke *now* when nothing had deployed
+
+`main` had not moved since 2026-11-04. DigitalOcean metrics show CPU rising from
+occasional spikes to continuous saturation from ~Oct 29, but the thing that
+changed in the final week was **load average: under 30 → 100–120**. On one vCPU
+that is ~100 operations queued. Utilisation climbed linearly for three weeks;
+wait time went vertical only when it reached the ceiling. "It was fine a few days
+ago" and "nothing changed" were both true.
+
+### 9c. The Cloudflare rule that could never have worked
+
+A rule already existed — "Challenge non-search bots on listing pages":
+
+```
+starts_with(http.request.uri.path, "/mls-listings/") and not cf.client.bot and ...
+```
+
+`cf.client.bot` means **verified** bot, and Meta's crawlers are verified. The
+rule explicitly exempted the exact traffic saturating the database.
+
+Replaced by a Block rule at order 1 matching the user agents directly.
+Cloudflare's own historical preview: **532,180 requests, 29.5% of all traffic,
+last 30 days**. Verified after deploy — meta-externalagent, meta-webindexer,
+ClaudeBot, GPTBot, Amazonbot, SemrushBot, AhrefsBot all 403; Googlebot, bingbot,
+`facebookexternalhit` (share previews) and browsers all 200.
+
+### 9d. The second FETCH nobody had found
+
+With the count hinted, map-clusters still took ~10 s. The remainder was the
+zoom 10–11 city-stats aggregation: its `$group` needs `city`, `listPrice`,
+`propertyType`, `mlsSource` and lat/long together, and **no index carried that
+combination**, so it fetched every listing in the viewport.
+
+Two fixes:
+
+1. **Skip it when the viewport is sparse.** The route ran the aggregation and
+   then discarded it whenever the viewport held ≤ 300 listings. The hinted count
+   already knew that, for free.
+2. **`idx_map_query_covering`** `{standardStatus, propertyType, latitude,
+   longitude, listPrice, city, mlsSource}`. `explain` now gives
+   `GROUP ← PROJECTION_COVERED ← IXSCAN`, **no FETCH**.
+
+`unified_listings` was at **MongoDB's hard cap of 64 indexes**, so this required
+dropping one. `idx_geo_status_type` had **0 recorded uses over 2.1 days** (38 of
+the 64 had none) and its fields are a subset of the new index's. Undo, if ever
+needed:
+
+```js
+db.unified_listings.createIndex(
+  { latitude: 1, longitude: 1, standardStatus: 1, propertyType: 1 },
+  { name: "idx_geo_status_type" }
+)
+```
+
+`idx_map_query_optimized` was deliberately **kept**, because the deployed route
+hints it by name and dropping it would make that hint throw.
+
+### 9e. Measured
+
+| Stage | `/api/map-clusters`, cold viewport |
+|---|---|
+| Before anything | **18.7 – 22.4 s** |
+| After the hinted count + bot block | 9.5 – 11.8 s |
+| After `idx_map_query_covering` | **1.0 – 2.1 s** |
+
+Database CPU went from pinned at 80–100% to 10–20%; load average from 100–120 to
+under 2.
+
+### 9f. Still open
+
+- `/mls-listings/[slugAddress]` is still **0% cached**. Fixing it means dealing
+  with `headers()` forcing dynamic render *and* the fact that output varies by
+  host — cache it wrong and one agent's branding is served on another's domain
+  (see `78295f27`). Needs a deliberate design pass, not a bolted-on header.
+- **`media` still duplicates `photos`** — 74% of all bytes. Dropping it halves
+  document size and doubles effective cache. Biggest remaining durable win.
+- **38 of 64 indexes have 0 recorded uses**, while every write maintains all 64.
+- The collection lives in the **`admin`** database (`admin.unified_listings`).
