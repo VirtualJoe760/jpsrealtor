@@ -17,6 +17,28 @@ import { CITY_BOUNDARIES } from "@/data/city-boundaries";
 // Debug logging flag - set to true to enable verbose clustering logs
 const DEBUG_CLUSTERING = false;
 
+// Why this hint exists (2026-11-19 outage):
+// The viewport count below filters on standardStatus + propertyType + lat/long
+// + listPrice. Left to itself the planner picks `idx_geo_status_type`
+// {latitude, longitude, standardStatus, propertyType} because the lat/long
+// range looks most selective — but that index does NOT contain listPrice, so
+// the plan becomes COUNT <- FETCH <- IXSCAN and Mongo loads every matching
+// document (avg 46.6 KB) off disk purely to evaluate `listPrice > 0`. One
+// Palm Desert viewport took 22.4s that way.
+//
+// `idx_map_query_optimized` {standardStatus, propertyType, latitude, longitude,
+// listPrice} has equality on both leading fields and carries listPrice, so the
+// same count is answered from index keys alone. Both leading fields are set
+// unconditionally above, so this hint is always applicable.
+//
+// IXSCAN alone never meant cheap here; the FETCH stage was the cost.
+const MAP_INDEX_HINT = "idx_map_query_optimized";
+
+// No query against the live cluster may run unbounded: Vercel killing the
+// function at 300s does NOT cancel the query, so abandoned ops stack up on one
+// vCPU (observed climbing 34 -> 83 during the same outage). See AGENTS.md #10.
+const MAP_QUERY_MAX_MS = 15000;
+
 // AI Context for intent-aware clustering
 interface MapRequestContext {
   source?: 'ai' | 'manual' | 'initial';
@@ -320,8 +342,26 @@ export async function GET(req: NextRequest) {
     let listingCount = 0;
 
     if (zoom >= 7) {
-      // Count listings when we might need to decide between boundaries and individual listings
-      listingCount = await UnifiedListing.countDocuments(matchStage);
+      // Count listings when we might need to decide between boundaries and individual listings.
+      // Hinted + time-bounded: see MAP_INDEX_HINT above. The count stays exact
+      // (it is shown to the user as the viewport total), it just stops fetching
+      // whole documents to read one field.
+      try {
+        listingCount = await UnifiedListing.countDocuments(matchStage)
+          .hint(MAP_INDEX_HINT)
+          .maxTimeMS(MAP_QUERY_MAX_MS);
+      } catch (hintErr: any) {
+        // A hint naming an index that no longer exists THROWS (it does not fall
+        // back), which would turn a slow map into a blank one. 42 of the 64
+        // indexes on this collection are unused, so an index cleanup could
+        // plausibly drop ours. Degrade to the unhinted count instead — slower,
+        // but the map still renders — and make the cause loud in the logs.
+        console.error(
+          `[map-clusters] hinted count failed on "${MAP_INDEX_HINT}" (${hintErr?.message}); ` +
+            `falling back to the unhinted count. Recreate the index to restore fast counts.`
+        );
+        listingCount = await UnifiedListing.countDocuments(matchStage).maxTimeMS(MAP_QUERY_MAX_MS);
+      }
       // DEBUG: console.log(`📊 Listing count at zoom ${zoom}: ${listingCount} listings in viewport`);
     }
 
@@ -1322,6 +1362,7 @@ export async function GET(req: NextRequest) {
             primaryPhotoUrl: 1,
           })
           .limit(limit)
+          .maxTimeMS(MAP_QUERY_MAX_MS)
           .lean();
 
         console.log(`📍 Returning ${listings.length} listings (total in area: ${listingCount})`);
