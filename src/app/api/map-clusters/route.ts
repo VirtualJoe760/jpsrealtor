@@ -818,7 +818,30 @@ export async function GET(req: NextRequest) {
         // to a ~$1.1K monthly rent. Grouping the filtered listings by city is the
         // same correct pattern the grid-clustering path below uses.
         // See docs/archive/map/MAPPING_SYSTEM_ARCHITECTURE.md (City Clustering).
-        const cityStats = await UnifiedListing.aggregate([
+        // The hinted viewport count computed above already tells us whether this
+        // viewport is sparse, and the block further down throws the aggregation
+        // away when it is (<= 300 listings → fetch the listings directly).
+        //
+        // That waste used to be ruinous: this $group needs city, listPrice,
+        // propertyType, mlsSource AND lat/long, and NO index carried that
+        // combination, so Mongo FETCHed every matching document off disk at avg
+        // 38,976 bytes. It was the most expensive operation on this route.
+        //
+        // 2026-11-20: `idx_map_query_covering`
+        // {standardStatus, propertyType, latitude, longitude, listPrice, city,
+        // mlsSource} now covers it — explain gives
+        // GROUP <- PROJECTION_COVERED <- IXSCAN with no FETCH. The collection
+        // was at Mongo's hard cap of 64 indexes, so it was made room for by
+        // dropping `idx_geo_status_type` (0 recorded uses over 2.1 days).
+        //
+        // The skip is still worth keeping: not doing the work beats doing it
+        // cheaply, and it keeps this path correct if that index is ever lost.
+        //
+        // cityStats' total is a sum over the same matchStage as the count above,
+        // so deciding from the count is equivalent — it just costs nothing.
+        const sparseViewport = zoom >= 11 && listingCount > 0 && listingCount <= 300;
+
+        const cityStats = sparseViewport ? [] : await UnifiedListing.aggregate([
           { $match: matchStage },
           {
             $group: {
@@ -850,10 +873,18 @@ export async function GET(req: NextRequest) {
           cityDocs.map((c: any) => [c.name, c.coordinates])
         );
 
-        console.log(`📍 Found ${cityStats.length} cities with ${listingType} listings in viewport (zoom ${zoom})`);
+        if (sparseViewport) {
+          console.log(`📍 Sparse viewport (${listingCount} listings) — skipped the city aggregation`);
+        } else {
+          console.log(`📍 Found ${cityStats.length} cities with ${listingType} listings in viewport (zoom ${zoom})`);
+        }
 
-        // Total = filtered (property-type-correct) listing count across cities
-        listingCount = cityStats.reduce((sum, c: any) => sum + (c.count || 0), 0);
+        // Total = filtered (property-type-correct) listing count across cities.
+        // When the aggregation was skipped the hinted count already holds that
+        // same number, so don't overwrite it with a sum over an empty array.
+        if (!sparseViewport) {
+          listingCount = cityStats.reduce((sum, c: any) => sum + (c.count || 0), 0);
+        }
 
         // At zoom 11, if there are very few listings, skip city boundaries and show listings directly
         if (zoom >= 11 && listingCount > 0 && listingCount <= 300) {
