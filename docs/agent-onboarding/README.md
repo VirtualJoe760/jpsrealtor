@@ -1,7 +1,7 @@
 ---
 title: Agent Onboarding (apply → pay → verify ID → admin confirms site)
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-17
 related:
   - ../integrations/email.md
   - ../commerce/README.md
@@ -19,7 +19,8 @@ contact details**), then pays for Basic ($125/mo) in Stripe Checkout — promo
 codes accepted (`TOASTY13125` = first month free, once per new customer). The
 Stripe webhook's plan handler calls `activatePaidAgent()`
 (`src/lib/agent-onboarding.ts`): `realEstateAgent` role, subdomain, setup
-wizard forced, welcome email to them, "new paid agent" email to the admin. The
+setup chat forced (`/agent/setup`, see [setup-chat.md](./setup-chat.md)),
+welcome email to them, "new paid agent" email to the admin. The
 agent then **verifies their ID** (Stripe Identity: photo ID + live selfie) from
 the dashboard card. Their **public site stays offline** until the admin clicks
 **Confirm & publish site** at `/admin/applications/agents`
@@ -85,6 +86,12 @@ everywhere.
   still says the site is "active after subscription";
   in fact it goes live when the go-live checklist is done
   (`../commerce/free-tier-gating.md`).
+- **The MLS association lives inside the go-live checklist** (2026-11-17), as
+  a row in `GoLiveBounties.tsx` rendered by `MlsAssociationCard`'s
+  `variant="checklist"` — not as its own card on the dashboard, which read as
+  a second competing checklist. It is deliberately **not** a
+  `getSiteReadiness` step and does not count toward the `{completed}/{total}`
+  score: the site publishes without it, and the row says so.
 - **The admin Overview's "Pending Applications" card never counts these** —
   it queries phase `"pending"` instead of `inquiry_pending`.
 - **Promoting from Admin → Users skips this flow.** Adding the
@@ -120,5 +127,5 @@ rendered through `renderBrandedEmail()`.
 | Admin approve | applicant | Welcome to ChatRealty — your agent account is approved |
 | Admin reject | applicant | An update on your ChatRealty application (includes the admin's reason verbatim) |
 
-Approval CTA goes to `/agent/settings?onboarding=true` (middleware forces the
-same route for un-onboarded agents, so the link is always correct).
+Welcome CTA goes to `/agent/setup` (middleware forces the same route for
+un-onboarded agents, so the link is always correct).

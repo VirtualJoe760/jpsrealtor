@@ -107,6 +107,11 @@ export interface IContact extends Document {
   fubSyncedAt?: Date;  // Last sync timestamp from FUB
   fubData?: any;  // Raw FUB person object for debugging
 
+  // HighLevel contact feed (src/lib/highlevel-sync.ts) — written with
+  // timestamps:false so recording a sync doesn't bump updatedAt and re-queue it.
+  highLevelContactId?: string;
+  highLevelSyncedAt?: Date;
+
   // Prospect Discovery - Duplicate Tracking
   duplicateOf?: mongoose.Types.ObjectId;  // If this contact was merged
   relatedContacts?: mongoose.Types.ObjectId[];  // Associated contacts
@@ -378,6 +383,10 @@ const ContactSchema: Schema = new Schema(
     fubSyncedAt: Date,
     fubData: mongoose.Schema.Types.Mixed,
 
+    // HighLevel contact feed — see src/lib/highlevel-sync.ts
+    highLevelContactId: String,
+    highLevelSyncedAt: Date,
+
     // Prospect Discovery - Duplicate Tracking
     duplicateOf: {
       type: mongoose.Schema.Types.ObjectId,
@@ -563,6 +572,8 @@ ContactSchema.index({ userId: 1, createdAt: -1 });
 ContactSchema.index({ assignedAgent: 1 });
 ContactSchema.index({ firstName: 1, lastName: 1 });
 ContactSchema.index({ userId: 1, fubId: 1 }, { unique: true, sparse: true });
+// HighLevel feed cursor: walks one agent's book in (updatedAt, _id) order.
+ContactSchema.index({ userId: 1, updatedAt: 1, _id: 1 });
 ContactSchema.index({ userId: 1, source: 1 });
 
 // Text search index

@@ -1,7 +1,7 @@
 ---
 title: Multi-tenancy — one deployment, many sites, one database per agent
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-04
 related:
   - ./domain-owner-scoping.md
   - ./custom-domains.md
@@ -12,6 +12,7 @@ related:
   - ../chatrealty-api/control-plane.md
   - ../chatrealty-api/connection-resolver.md
   - ../chatrealty-api/data-tiers.md
+  - ./site-platform-plan.md
 supersedes: docs/multi-tenant/index.md
 ---
 
@@ -30,6 +31,10 @@ in. **Listing data** for the product API is bring-your-own-data: each agent's
 MLS feed lives in their own Neon Postgres database, found through a control
 plane (`Tenant`) keyed by API-token hash. Two different isolation models — know
 which one a route uses.
+
+**Direction (decided 2026-11-02, not built):** ChatRealty will host Claude-built
+custom sites too, and SEO + Search Console setup becomes automatic on domain
+link — see [site-platform-plan.md](./site-platform-plan.md).
 
 ## The host matrix (as `src/proxy.ts` runs it today)
 
@@ -102,7 +107,7 @@ deployment.
   redemption is bound to the agent's own host; the admin's www session is
   untouched. An admin on an agent subdomain's portal without impersonating is
   sent to `/auth/admin-access`.
-- **Portal gates** (`portalGates()` — billing redirect, onboarding wizard,
+- **Portal gates** (`portalGates()` — billing redirect, onboarding (setup chat),
   free-tier page blocks) run on agent subdomains as well as www.
 
 More: [../auth/README.md](../auth/README.md).

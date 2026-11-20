@@ -1,11 +1,17 @@
 ---
 title: External sites — MCP-built deployments on the multi-tenant edge
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-02
 related: [./architecture.md, ../ARCHITECTURE.md, ../multi-tenant/README.md, ./create-site-scaffolder.md]
 ---
 
 # External sites — "Option A: point, don't host"
+
+> **Direction change (decided 2026-11-02, not built).** ChatRealty will host
+> custom sites itself — a `deploy_site` tool pushing to a separate ChatRealty
+> Vercel team — and supply their robots/sitemap/canonicals from the platform.
+> Everything below is still how the code works today. Plan:
+> [../multi-tenant/site-platform-plan.md](../multi-tenant/site-platform-plan.md) (P3).
 
 How an MCP-built site, deployed to the customer's own Vercel account, becomes
 `{subdomain}.chatrealty.io` — the primary tenancy path going forward. This file

@@ -1,7 +1,7 @@
 ---
 title: Building an agent website with the MCP — the flow as shipped
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-02
 related: [./tools.md, ./scopes-and-safety.md, ./hosting.md, ../chatrealty-api/create-site-scaffolder.md, ../chatrealty-api/external-site.md, ../chatrealty-api/data-tiers.md, ../testing/mcp/web-design/README.md]
 ---
 
@@ -14,8 +14,8 @@ related: [./tools.md, ./scopes-and-safety.md, ./hosting.md, ../chatrealty-api/cr
 > `npx create-chatrealty-site@latest my-site --test-data` → for a seeded agent,
 > `get_site_claim_code` swaps sample data for the agent's own database → design
 > and build → deploy (never on test data) → `connect_site` (private preview) →
-> `set_site_live` (license-gated). Two known defects bite this flow today; they
-> are listed under Gotchas.
+> `set_site_live` (license-gated). One known gap bites this flow today
+> (`site:manage` in no Claude-access preset); see Gotchas.
 
 ## The nine guide steps
 
@@ -85,14 +85,16 @@ via `GET /api/skill/me`.
    **profile's** license number (an `AGENT_LICENSE` env override shows on the
    site but does not unblock go-live).
 
+**Planned (2026-11-02):** step 9's "deploy to the agent's Vercel" is replaced
+by a `deploy_site` tool that hosts the build on ChatRealty, and the template
+takes robots/sitemap/canonicals from the platform. Not built — see
+[../multi-tenant/site-platform-plan.md](../multi-tenant/site-platform-plan.md) (P3).
+
 ## Gotchas
 
-- **`whoami` drops `database` (bug).** `/api/skill/me` returns a `database`
-  summary for tenants, but `packages/mcp-server/src/tools/whoami.ts:30-40`
-  rebuilds the result without it. Step 1 and `get_site_claim_code`'s
-  description both tell Claude to read `whoami.database`; it never arrives. The
-  claim-code response does carry `database`, so Claude only sees the inventory
-  summary after claiming.
+- **`whoami` rebuilds its result field by field.** It used to drop the
+  `database` summary (fixed in `c8ee639b`); any new field `/api/skill/me` adds
+  must also be listed in `packages/mcp-server/src/tools/whoami.ts`.
 - **No Claude-access preset includes `site:manage` (gap).** Of the presets in
   `src/lib/skill-scopes.ts`, only `website` carries it; `content_drafting`,
   `lead_aware`, `full_workspace` and `client_research` do not. On the hosted

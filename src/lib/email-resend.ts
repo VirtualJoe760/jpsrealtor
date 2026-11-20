@@ -1161,7 +1161,7 @@ export async function sendAgentApprovalEmail(
         `,
         cta: {
           label: 'Set up your profile',
-          url: `${baseUrl}/agent/settings?onboarding=true`,
+          url: `${baseUrl}/agent/setup`,
         },
       }),
     });

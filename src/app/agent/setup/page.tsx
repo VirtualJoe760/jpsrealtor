@@ -4,7 +4,8 @@
 // Styled to match CHAP (src/app/components/chat/ChatWidget.tsx): emerald-
 // gradient user bubbles, neutral glass assistant bubbles with a Bot avatar,
 // large readable type, a floating rounded composer. A live profile-progress
-// card fills in as fields land. Classic form wizard remains the fallback.
+// card fills in as fields land. This is the ONLY first-run setup: the form
+// wizard was removed 2026-11-04 (edits afterwards happen in /agent/settings).
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import TypingAnimation from "@/app/components/chat/TypingAnimation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Bot, CheckCircle2, Circle, Send } from "lucide-react";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -31,7 +34,7 @@ type Profile = {
 };
 
 export default function AgentSetupPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -83,12 +86,32 @@ export default function AgentSetupPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
+  // Refresh the JWT before leaving: the middleware reads onboardingComplete
+  // from the token, and a stale `false` would bounce the agent straight back
+  // here from the dashboard.
+  //
+  // Runs ONCE per finish, guarded by a ref rather than by the dep array.
+  // `updateSession` and `router` are fresh objects on every render, so having
+  // them as deps re-ran this effect on each render: the cleanup cancelled the
+  // pending timer and started a new one, and calling updateSession() itself
+  // caused a re-render, so the 2.5s timer kept being torn down and the
+  // router.replace never fired. The agent sat on "taking you to your
+  // dashboard…" indefinitely. (2026-11-17)
+  const leavingRef = useRef(false);
   useEffect(() => {
-    if (done) {
-      const id = setTimeout(() => router.replace("/agent/dashboard"), 2500);
-      return () => clearTimeout(id);
-    }
-  }, [done, router]);
+    if (!done || leavingRef.current) return;
+    leavingRef.current = true;
+    const id = setTimeout(async () => {
+      try {
+        await updateSession();
+      } catch {
+        // Non-fatal — the token re-reads the DB within a minute anyway.
+      }
+      router.replace("/agent/dashboard");
+    }, 2500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
 
   async function send(override?: string) {
     const text = (override ?? input).trim();
@@ -184,10 +207,11 @@ export default function AgentSetupPage() {
         <div className="mb-5">
           <h1 className={`text-2xl font-bold tracking-[-0.02em] ${textMain}`}>Set up your account</h1>
           <p className={`mt-0.5 text-sm ${textDim}`}>
-            Prefer forms?{" "}
-            <Link href="/agent/settings?onboarding=true" className="underline hover:text-emerald-500">
-              Use the classic setup
+            You can change any of this later in{" "}
+            <Link href="/agent/settings" className="underline hover:text-emerald-500">
+              Settings
             </Link>
+            .
           </p>
         </div>
 
@@ -207,7 +231,9 @@ export default function AgentSetupPage() {
                 </div>
               )}
               <div
-                className={`max-w-[85%] select-text whitespace-pre-wrap rounded-2xl px-5 py-4 text-base leading-relaxed tracking-[-0.01em] sm:text-[19px] ${
+                className={`max-w-[85%] select-text rounded-2xl px-5 py-4 text-base leading-relaxed tracking-[-0.01em] sm:text-[19px] ${
+                  m.role === "user" ? "whitespace-pre-wrap" : ""
+                } ${
                   m.role === "user"
                     ? isLight
                       ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20"
@@ -217,7 +243,47 @@ export default function AgentSetupPage() {
                       : "border border-neutral-700/50 bg-neutral-900/80 text-neutral-50 shadow-lg backdrop-blur-sm"
                 }`}
               >
-                {m.content}
+                {/* The assistant writes markdown — the confirmation summary is
+                    a bold-labelled bullet list. Until 2026-11-17 the bubble
+                    printed the raw source, so agents read "- **License #:**".
+                    react-markdown + remark-gfm are already project deps and
+                    are what CHAP uses. Only the handful of elements this chat
+                    actually emits are styled; `whitespace-pre-wrap` is left to
+                    user bubbles, since markdown handles its own line breaks
+                    and the two together double every gap. */}
+                {m.role === "assistant" ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ node, ...props }: any) => <p className="mb-3 last:mb-0" {...props} />,
+                      ul: ({ node, ...props }: any) => (
+                        <ul className="mb-3 list-disc space-y-1 pl-5 last:mb-0" {...props} />
+                      ),
+                      ol: ({ node, ...props }: any) => (
+                        <ol className="mb-3 list-decimal space-y-1 pl-5 last:mb-0" {...props} />
+                      ),
+                      li: ({ node, ...props }: any) => <li className="leading-snug" {...props} />,
+                      strong: ({ node, ...props }: any) => (
+                        <strong className="font-semibold" {...props} />
+                      ),
+                      a: ({ node, ...props }: any) => (
+                        <a className="underline underline-offset-2" {...props} />
+                      ),
+                      code: ({ node, ...props }: any) => (
+                        <code
+                          className={`rounded px-1.5 py-0.5 text-[0.9em] ${
+                            isLight ? "bg-gray-100" : "bg-neutral-800"
+                          }`}
+                          {...props}
+                        />
+                      ),
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                ) : (
+                  m.content
+                )}
               </div>
             </div>
           ))}

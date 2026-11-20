@@ -1,7 +1,7 @@
 ---
 title: Agent profile — from User.agentProfile to the page
 status: current
-last_verified: 2026-11-03
+last_verified: 2026-11-04
 related: [README.md, ../multi-tenant/README.md, ../commerce/free-tier-gating.md, ../admin/README.md]
 supersedes: docs/archive/agent-profile/README.md
 ---
@@ -44,12 +44,14 @@ Restored 2026-10-17 from `docs/archive/agent-profile/` (six files from April
   for the life of the tab. Expect up to ~5 minutes, or a reload.
 - **The PUT takes an allowlist of `agentProfile` keys** (since 2026-11-03,
   `EDITABLE_AGENT_PROFILE_KEYS` in `src/app/api/user/profile/route.ts`): exactly
-  the fields the `/agent/settings` steps and the wizard send. Any other key is
+  the fields the `/agent/settings` steps send. Any other key is
   dropped and its *name* logged. Allowed keys are deep-merged; arrays are
   replaced wholesale. **A new settings field must be added to that list or its
   Save silently does nothing.** Keys with their own routes (`aiIntegrations`,
   `customDomain`, `externalSite`, `mlsMembership`, `siteForceActive`,
-  `grandfathered`) are not writable here.
+  `grandfathered`) are not writable here. Neither is `onboardingComplete`
+  (since 2026-11-04): only the setup chat's `finish_setup` sets it, after the
+  license + brokerage check (`../agent-onboarding/setup-chat.md`).
 - **Subdomain renames are validated.** Only an account that already has a
   subdomain can change it here; the new one must be `[a-z0-9]{3,30}`, not
   reserved (`isValidSubdomainLabel()` in `src/lib/generate-subdomain.ts`) →

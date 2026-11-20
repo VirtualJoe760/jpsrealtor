@@ -23,6 +23,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { subdomainOfHost } from "@/lib/agent-host";
 import { backfillSignupOrigin } from "@/lib/signup-origin";
+import { getAgentTier } from "@/lib/subscription-helpers";
 
 // Mirrors /api/auth/impersonate. An impersonation hand-off is honored only if
 // its impersonator is STILL an admin when it is redeemed.
@@ -105,7 +106,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(absoluteRedirectUrl);
     }
     const user: any = await User.findOne({ email: String(decoded.email).toLowerCase() })
-      .select("_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain")
+      .select(
+        "_id name email image roles isAdmin twoFactorEnabled agentProfile.subdomain agentProfile.onboardingComplete"
+      )
       .lean();
     if (!user) return NextResponse.redirect(absoluteRedirectUrl);
     // A Google/Facebook sign-up started on this site comes back through here,
@@ -122,6 +125,19 @@ export async function GET(req: NextRequest) {
         twoFactorEnabled: user.twoFactorEnabled || false,
         requiresTwoFactor: false,
         agentSubdomain: user.agentProfile?.subdomain || undefined,
+        // Stamp the gate fields the way the jwt callback does (src/lib/auth.ts).
+        // Leaving them off minted a cookie where onboardingComplete and
+        // agentTier were BOTH undefined, and portalGates() tests them with
+        // `=== false` / `=== "free"` — so on the agent's own subdomain, which
+        // is where their portal lives and where every sign-in lands via this
+        // hand-off, the forced-setup gate and the "being an agent requires
+        // Basic" gate were silently off on the first page load. They only
+        // started working once something hit a NextAuth endpoint and the 60s
+        // silent refresh re-stamped the cookie. permissionsCheckedAt is set
+        // too, so that refresh doesn't fire immediately on arrival.
+        onboardingComplete: !!user.agentProfile?.onboardingComplete,
+        agentTier: await getAgentTier(String(user._id)),
+        permissionsCheckedAt: Date.now(),
         iat: now,
         exp: now + THIRTY_DAYS,
       },

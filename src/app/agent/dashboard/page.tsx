@@ -22,7 +22,6 @@ import PointsSection from "./components/PointsSection";
 import PartnershipsSection from "./components/PartnershipsSection";
 import { useImpersonation } from "@/lib/hooks/useImpersonation";
 import GoLiveBounties from "./components/GoLiveBounties";
-import MlsAssociationCard from "@/app/components/agent/MlsAssociationCard";
 import AgentOnboardingStatus from "@/app/components/agent/AgentOnboardingStatus";
 import RecentActivity from "./components/RecentActivity";
 import SiteVisitors from "./components/SiteVisitors";
@@ -436,10 +435,9 @@ export default function AgentDashboard() {
             </Suspense>
           </div>
 
-          {/* MLS association — asked of every agent until it's on file. */}
-          <div className="mb-6">
-            <MlsAssociationCard isLight={isLight} variant="prompt" />
-          </div>
+          {/* MLS association now renders as a row inside GoLiveBounties
+              (2026-11-17) rather than as its own card here — two stacked
+              checklists competed for the same attention. */}
 
           {/* Go-live bounty board — the settings the agent must finish before
               their public {slug}.chatrealty.io site publishes. Drives off the

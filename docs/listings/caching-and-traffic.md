@@ -1,7 +1,7 @@
 ---
 title: Listing caching, self-fetches and bot traffic
 status: current
-last_verified: 2026-10-25
+last_verified: 2026-11-05
 related: [README.md, ../routing/README.md, ../multi-tenant/README.md, ../tech-debt.md]
 ---
 
@@ -160,11 +160,47 @@ Items 1, 4 and 5 below are still **not applied**.
    agent sites built with `create-chatrealty-site`, and the VPS scripts all
    call `/api/skill/*` with Node).
 
-**Fluid Compute** is a separate lever. It reuses one function instance for
-concurrent requests, which cuts GB-hours (billed duration while waiting on
-Mongo). It does **not** reduce the invocation count. Turn it on under
-Settings → Functions → Fluid Compute after the invocation numbers settle, so
-the two effects can be told apart.
+**Fluid Compute — ON since 2026-11-05.** Deferring it was the mistake: the
+2026-10-25 fix cut invocations, but invocations were never the money. Function
+Duration (GB-hours, billed for wall-clock time spent waiting on Mongo) was 87%
+of the Oct 12 – Nov 12 cycle (~$252 vs a ~$40 norm; mid-cycle charges $100.02
+on Oct 24 and $120.61 on Nov 5). Fluid bills active CPU plus cheap provisioned
+memory instead. Enabling it switched the project to Standard CPU (1 vCPU /
+2 GB; Basic isn't offered with Fluid) and raised the default max duration from
+15 s to 300 s; the 15 s restore was blocked by the permission layer and is
+still pending. Routes with their own `export const maxDuration` are unaffected.
+
+## Cloudflare proxy (since 2026-11-05)
+
+DNS for jpsrealtor.com and chatrealty.io was already on Cloudflare but every
+record was DNS-only (grey cloud), so bots went straight to Vercel. Now proxied
+(orange): `jpsrealtor.com`, `www.jpsrealtor.com`, `chatrealty.io`,
+`www.chatrealty.io`. SSL mode is Full (strict) on both zones. Deliberately left
+DNS-only: `api.chatrealty.io`, `*.chatrealty.io` and the named agent
+subdomains. Verified after the switch: same status codes and redirects as
+before, Stripe webhook still reaches the app (400 without a signature,
+identical to direct-to-Vercel).
+
+- Vercel's own firewall now sees Cloudflare edge IPs; its per-IP rate-limit
+  rule only matches AhrefsBot / Meta-ExternalAgent UAs, so that's acceptable.
+- **Don't enable Cloudflare Bot Fight Mode** — on the free plan it can't be
+  scoped by path and would challenge webhooks, the MCP bridge and VPS scripts
+  that all call `/api/*` with non-browser UAs.
+- **WAF custom rule "Challenge non-search bots on listing pages" — active on
+  both zones since 2026-11-05** (added in the dashboard; the app's
+  `CLOUDFLARE_API_TOKEN` has DNS/zone-settings rights but not rulesets):
+  `starts_with(http.request.uri.path, "/mls-listings/") and not cf.client.bot
+  and not http.request.uri.path contains "opengraph-image"` → Managed Challenge.
+  Verified: python-requests, `node` and a spoofed Googlebot UA get the 403
+  challenge page; the OG image, homepage, /neighborhoods, the Stripe webhook
+  and `/api/mls-listings/*` pass; a real Chrome visit renders the listing.
+  It only covers the four proxied hostnames, not agent subdomains.
+- Rollback: disable the rule, or set the four records back to DNS-only.
+
+**Spend cap:** Vercel Spend Management budget $275 with Pause ON for the
+Oct 12 – Nov 12 cycle (already $222 spent, so $75 would have paused at once);
+a scheduled task lowers it to $75 on Nov 12. Pause takes down **every project
+on the team**, client sites included.
 
 ## Measuring before / after
 

@@ -2,9 +2,11 @@
 
 // src/app/agent/settings/components/steps/IntegrationsStep.tsx
 //
-// Three cards:
+// Cards:
 //   1. MLS Data Feed — the agent's own MLS replication key, tested then stored
 //      encrypted (MlsFeedCard → POST /api/integrations/mls-feed).
+//   1b. HighLevel CRM — OAuth connect; new leads pushed one-way into the
+//      agent's HighLevel sub-account (HighLevelCard → /api/integrations/crm).
 //   2. Anthropic API key — bring-your-own-key for the in-CMS Claude chat builder
 //      (POST /api/integrations/anthropic).
 //   3. ChatRealty Desktop Skill — mint API tokens for the Claude Code / Claude
@@ -12,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import MlsFeedCard from "./MlsFeedCard";
+import HighLevelCard from "./HighLevelCard";
 import {
   Loader2,
   Key,
@@ -304,6 +307,8 @@ export default function IntegrationsStep({ isLight }: StepProps) {
   return (
     <div className="space-y-6">
       <MlsFeedCard isLight={isLight} />
+
+      <HighLevelCard isLight={isLight} />
 
       {/* ============================================================ */}
       {/* Anthropic API Key */}

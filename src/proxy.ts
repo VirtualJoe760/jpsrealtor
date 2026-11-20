@@ -703,11 +703,13 @@ function portalGates(request: NextRequest, pathname: string, token: any): NextRe
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Force newly-approved agents through the first-run setup wizard before
-  // they can use the rest of the /agent portal. Admins are exempt (they see
-  // everything). The wizard lives at /agent/settings, so exclude that path to
-  // avoid a redirect loop. Existing agents get backfilled to
-  // onboardingComplete=true (see docs/commerce/README.md).
+  // Force newly-paid agents through the conversational setup (/agent/setup)
+  // before they can use the rest of the /agent portal. Admins are exempt.
+  // /agent/setup is excluded to avoid a redirect loop. /agent/settings stays
+  // reachable as an escape hatch — if the setup chat is down (no Groq key,
+  // outage) an agent can still edit their profile and reach Billing.
+  // (Until 2026-11-04 this sent agents to the old form wizard at
+  // /agent/settings?onboarding=true, which made /agent/setup unreachable.)
   if (
     isAgent &&
     isAuth &&
@@ -715,11 +717,10 @@ function portalGates(request: NextRequest, pathname: string, token: any): NextRe
     Array.isArray((token as any)?.roles) &&
     (token as any).roles.includes("realEstateAgent") &&
     (token as any)?.onboardingComplete === false &&
+    !pathname.startsWith("/agent/setup") &&
     !pathname.startsWith("/agent/settings")
   ) {
-    const onboardingUrl = new URL("/agent/settings", request.url);
-    onboardingUrl.searchParams.set("onboarding", "true");
-    return NextResponse.redirect(onboardingUrl);
+    return NextResponse.redirect(new URL("/agent/setup", request.url));
   }
 
   // Being an agent requires Basic (2026-10-28). A non-admin agent whose tier

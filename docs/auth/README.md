@@ -1,7 +1,7 @@
 ---
 title: Auth
 status: current
-last_verified: 2026-11-03
+last_verified: 2026-11-04
 related: [../routing/README.md, ../multi-tenant/README.md, ../admin/README.md]
 supersedes: docs/archive/features/AUTHENTICATION.md
 ---
@@ -144,7 +144,7 @@ stays on the agent's site. Rule + hosts: `src/lib/agent-host.ts`
 sign-in and on the 60s permission refresh). Admins keep www.
 
 On agent subdomains the proxy now runs the **same portal gates** as www
-(`portalGates()`: onboarding wizard, retired subscription page, free-tier page
+(`portalGates()`: onboarding (setup chat), retired subscription page, free-tier page
 blocks). That branch used to skip them — harmless while agents worked on www,
 a silent bypass once their portal moved.
 

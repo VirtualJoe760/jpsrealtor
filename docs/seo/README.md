@@ -1,8 +1,8 @@
 ---
 title: SEO — canonicals, sitemaps, structured data
 status: current
-last_verified: 2026-10-31
-related: [../multi-tenant/README.md, ../routing/README.md, ../cms/README.md, ../listings/README.md]
+last_verified: 2026-11-02
+related: [../multi-tenant/README.md, ../multi-tenant/site-platform-plan.md, ../routing/README.md, ../cms/README.md, ../listings/README.md]
 ---
 
 # SEO
@@ -497,6 +497,30 @@ where the crawl budget goes do not overlap.
   canonical/sitemap/og → 301 at the edge → new domain property + sitemap →
   Change of Address → GBP website field last.
 
+## 2026-11-02 — why chatrealty.io gets no traffic
+
+Not blocked — robots allows, apex→www is a 308, the homepage is `index,
+follow` with a correct canonical. It has almost nothing of its own to index:
+
+- **The sitemap declares 6 URLs and 4 are weak.** `/about` 308s to `/`,
+  `/agents` 307s to sign-in (declared redirects), and the two legal pages
+  reuse the homepage's title/description with no canonical.
+- **The homepage is ~109 server-rendered words** of buyer-facing copy, while
+  the product's customers are agents.
+- **Its catalog duplicates jpsrealtor.com.** `/neighborhoods/*` is served on
+  chatrealty.io with a self-canonical; the Indio page's text is a 100% match
+  for jpsrealtor.com's (3,056 words). Google keeps the older copy. The same
+  duplication applies to every agent host that serves the shared catalog.
+- `/developers` is live and undeclared; `/book-appointment` there is titled
+  "Joseph Sardella"; platform robots do not disallow `/chap`; the 404 page
+  emits both `noindex` and `index, follow`.
+
+Not confirmed against Google's own data (the GSC MCP had no token; DataForSEO
+returned 402). Decided direction — chatrealty.io ranks as an agent-facing IDX
+product site, its catalog pages canonical to jpsrealtor.com — and the fix list
+are in [../multi-tenant/site-platform-plan.md](../multi-tenant/site-platform-plan.md)
+(P1), along with auto-SEO on domain link (P2).
+
 ## Tracking & retargeting tags
 
 Per-tenant measurement IDs live at `agentProfile.tracking` (User model), are
@@ -591,7 +615,8 @@ platform's own traffic view.
 External state — not checkable against the repo; dates are when each was last
 confirmed.
 
-- Vercel: chatrealty.io→www and www.josephsardella.com→apex are 307; switch to
+- Vercel: chatrealty.io→www is a **308** (checked 2026-11-02, resolved).
+  www.josephsardella.com→apex was 307 (last checked before 2026-11-02); switch to
   permanent (jpsrealtor's www→apex 308 is the model).
 - GSC: verify sc-domain:josephsardella.com (no property exists), then
   URL-inspect listing pages post-deploy.

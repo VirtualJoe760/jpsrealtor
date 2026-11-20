@@ -205,7 +205,7 @@ export async function sendAgentPaidWelcomeEmail(params: { name: string; email: s
           <li>Finish your profile. Once we've confirmed your license and MLS details, we'll publish your site and let you know.</li>
         </ol>
       `,
-      cta: { label: "Set up your account", url: `${baseUrl()}/agent/settings?onboarding=true` },
+      cta: { label: "Set up your account", url: `${baseUrl()}/agent/setup` },
     }),
   });
 }

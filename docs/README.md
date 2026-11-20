@@ -21,6 +21,7 @@ then drill into the relevant area folder.
 | Admin dashboard, user management, "Log in as", moderation | [`admin/README.md`](./admin/README.md) |
 | Agent profile data flow (`/api/agent/public`, `useAgentProfile`) | [`agent-identity/agent-profile.md`](./agent-identity/agent-profile.md) |
 | Custom domains, domain registry, agent directory | [`multi-tenant/custom-domains.md`](./multi-tenant/custom-domains.md), [`domain-owner-scoping.md`](./multi-tenant/domain-owner-scoping.md), [`agent-directory.md`](./multi-tenant/agent-directory.md) |
+| Site platform direction — hosted custom sites, auto-SEO on domain link, chatrealty.io positioning, $300 setup (plan) | [`multi-tenant/site-platform-plan.md`](./multi-tenant/site-platform-plan.md) |
 | Articles, blog, insights, publishing pipeline | [`cms/README.md`](./cms/README.md) |
 | MLS listings, photos, VPS cron, subdivisions | [`listings/README.md`](./listings/README.md) |
 | Sales heat map, Analytics tab, the precompute read surface | [`analytics/README.md`](./analytics/README.md), [`analytics/sales-heatmap.md`](./analytics/sales-heatmap.md) |

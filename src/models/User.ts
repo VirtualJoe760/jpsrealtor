@@ -71,8 +71,10 @@ export interface IUser extends Document {
 
   // MULTI-TENANT: Agent Profile (comprehensive landing page data)
   agentProfile?: {
-    // Onboarding: true once the agent completes the first-run setup wizard.
-    // Drives the forced-wizard gate (src/proxy.ts) + wizard-vs-sidebar mode.
+    // Onboarding: true once the agent completes the first-run setup chat at
+    // /agent/setup. Drives the forced-setup gate (src/proxy.ts). Written only
+    // by finish_setup in /api/agent/setup-chat, after license + brokerage are
+    // saved — the profile PUT refuses it (2026-11-04).
     onboardingComplete?: boolean;
 
     // Existing agents when paid onboarding began (2026-10-28) keep Basic-level
@@ -336,6 +338,40 @@ export interface IUser extends Document {
       availablePages?: Array<{ id: string; name: string }>;
       connectedAt?: Date;
       status?: 'connected' | 'disconnected' | 'pending';
+    };
+  };
+
+  // HighLevel (LeadConnector) CRM — new ChatRealty leads are pushed into the
+  // agent's HighLevel sub-account. See src/lib/highlevel.ts and the schema.
+  highLevel?: {
+    status?: 'connected' | 'disconnected' | 'error';
+    locationId?: string;             // HighLevel sub-account id
+    locationName?: string;
+    companyId?: string;
+    hlUserId?: string;               // the HighLevel user who approved the install
+    scopes?: string;
+    accessTokenEncrypted?: string;   // AES-256-GCM, select:false
+    refreshTokenEncrypted?: string;  // AES-256-GCM, select:false — rotates on every refresh
+    expiresAt?: Date;
+    connectedAt?: Date;
+    lastPushAt?: Date;
+    pushedCount?: number;
+    lastError?: string;
+    lastErrorAt?: Date;
+    // Contact feed state (src/lib/highlevel-sync.ts)
+    sync?: {
+      status?: 'queued' | 'running' | 'idle' | 'error';
+      cursorUpdatedAt?: Date;        // last contact.updatedAt sent
+      cursorId?: string;             // tie-break _id at that updatedAt
+      synced?: number;               // contacts sent since the last full backfill
+      skipped?: number;              // personal / no email+phone
+      failed?: number;
+      backfillTotal?: number;        // size of the book when the backfill started
+      backfillStartedAt?: Date;
+      backfillDoneAt?: Date;
+      lastRunAt?: Date;
+      leaseUntil?: Date;             // stops cron + "Sync now" running at once
+      lastError?: string;
     };
   };
 
@@ -832,7 +868,10 @@ const UserSchema = new Schema<IUser>(
 
     // MULTI-TENANT: Agent Profile
     agentProfile: {
-      // Onboarding gate (see IUser interface): set true when the setup wizard finishes.
+      // Onboarding gate (see IUser interface): set true when the setup chat
+      // finishes. NOTE the default — a saved document stores an explicit
+      // false, so "field missing" cannot identify legacy agents. That is why
+      // scripts/backfill-agent-onboarding.ts keys off license + brokerage.
       onboardingComplete: { type: Boolean, default: false },
 
       // Grandfathered free Basic access (see IUser.agentProfile.grandfathered)
@@ -1150,6 +1189,41 @@ const UserSchema = new Schema<IUser>(
         }],
         connectedAt: Date,
         status: { type: String, enum: ['connected', 'disconnected', 'pending'] },
+      },
+    },
+
+    // HighLevel CRM connection (src/lib/highlevel.ts). Top-level for the same
+    // reason as mlsFeed below: agentProfile is returned to the browser and
+    // deep-merged from client writes. Tokens are select:false; only
+    // highlevel.ts opts in with +highLevel.accessTokenEncrypted etc.
+    highLevel: {
+      status: { type: String, enum: ['connected', 'disconnected', 'error'], default: 'disconnected' },
+      locationId: String,
+      locationName: String,
+      companyId: String,
+      hlUserId: String,
+      scopes: String,
+      accessTokenEncrypted: { type: String, select: false },
+      refreshTokenEncrypted: { type: String, select: false },
+      expiresAt: Date,
+      connectedAt: Date,
+      lastPushAt: Date,
+      pushedCount: { type: Number, default: 0 },
+      lastError: String,
+      lastErrorAt: Date,
+      sync: {
+        status: { type: String, enum: ['queued', 'running', 'idle', 'error'] },
+        cursorUpdatedAt: Date,
+        cursorId: String,
+        synced: { type: Number, default: 0 },
+        skipped: { type: Number, default: 0 },
+        failed: { type: Number, default: 0 },
+        backfillTotal: Number,
+        backfillStartedAt: Date,
+        backfillDoneAt: Date,
+        lastRunAt: Date,
+        leaseUntil: Date,
+        lastError: String,
       },
     },
 

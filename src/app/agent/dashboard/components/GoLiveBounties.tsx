@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getSiteReadiness } from "@/lib/agent-site-readiness";
+import MlsAssociationCard from "@/app/components/agent/MlsAssociationCard";
 
 /**
  * GoLiveBounties
@@ -50,46 +51,51 @@ export default function GoLiveBounties({ name, phone, agentProfile, isLight }: G
   // ---- Live state ----
   if (complete) {
     return (
-      <div
-        className={`rounded-xl p-5 mb-8 flex items-center justify-between gap-4 ${
-          isLight ? "bg-green-50 border-2 border-green-200" : "bg-green-900/20 border-2 border-green-800"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isLight ? "bg-green-100" : "bg-green-900/40"}`}>
-            <Globe className={`w-6 h-6 ${isLight ? "text-green-600" : "text-green-400"}`} />
+      <div className="mb-8 space-y-3">
+        <div
+          className={`rounded-xl p-5 flex items-center justify-between gap-4 ${
+            isLight ? "bg-green-50 border-2 border-green-200" : "bg-green-900/20 border-2 border-green-800"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isLight ? "bg-green-100" : "bg-green-900/40"}`}>
+              <Globe className={`w-6 h-6 ${isLight ? "text-green-600" : "text-green-400"}`} />
+            </div>
+            <div>
+              <h3 className={`text-base font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
+                Your site is live
+              </h3>
+              <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+                Every bounty is complete — you&apos;re published on the ChatRealty network.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className={`text-base font-bold ${isLight ? "text-gray-900" : "text-white"}`}>
-              Your site is live
-            </h3>
-            <p className={`text-sm ${isLight ? "text-gray-600" : "text-gray-400"}`}>
-              Every bounty is complete — you&apos;re published on the ChatRealty network.
-            </p>
+          <div className="flex flex-shrink-0 gap-2">
+            <Link
+              href="/agent/setup"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isLight
+                  ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                  : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
+              }`}
+            >
+              Redo setup
+            </Link>
+            <Link
+              href="/agent/settings"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isLight
+                  ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
+                  : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
+              }`}
+            >
+              Edit site
+            </Link>
           </div>
         </div>
-        <div className="flex flex-shrink-0 gap-2">
-          <Link
-            href="/agent/setup"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isLight
-                ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-                : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
-            }`}
-          >
-            Redo setup
-          </Link>
-          <Link
-            href="/agent/settings"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isLight
-                ? "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-                : "bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700"
-            }`}
-          >
-            Edit site
-          </Link>
-        </div>
+        {/* Stays visible once the site is live: the association is still
+            outstanding data-access info, not a go-live bounty. */}
+        <MlsAssociationCard isLight={isLight} variant="checklist" />
       </div>
     );
   }
@@ -217,6 +223,14 @@ export default function GoLiveBounties({ name, phone, agentProfile, isLight }: G
             </li>
           );
         })}
+        {/* MLS association, grouped in with the bounties (2026-11-17) — it
+            used to sit in its own card above this board, which read as a
+            second, competing checklist. It is NOT a getSiteReadiness step and
+            does not count toward {completed}/{total}: the site publishes
+            without it. The row says so. */}
+        <li>
+          <MlsAssociationCard isLight={isLight} variant="checklist" />
+        </li>
       </ul>
     </div>
   );

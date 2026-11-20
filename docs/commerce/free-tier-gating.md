@@ -1,7 +1,7 @@
 ---
 title: Free-Tier Gating & Forced Onboarding
 status: current
-last_verified: 2026-11-03
+last_verified: 2026-11-17
 related: [README.md, ../auth/README.md, ../admin/README.md]
 ---
 
@@ -11,8 +11,9 @@ related: [README.md, ../auth/README.md, ../admin/README.md]
 
 Every real-estate agent has a **subscription tier** that decides which portal features they can use.
 Only the **Free** tier is purchasable today; paid tiers (Beginner / Experienced / Top Agent) are built
-but shown "Coming soon". When a user first becomes an agent they are **forced through the setup wizard**
-(which includes a plan step) before they can use the rest of the portal. Free-tier agents get a reduced
+but shown "Coming soon". *(Superseded — see the 2026-10-28 update below: agents now pay for Basic.)*
+When a user first becomes an agent they are **forced through the setup chat** (`/agent/setup`)
+before they can use the rest of the portal. Free-tier agents get a reduced
 nav (Dashboard, Contacts, CMS, Settings) and reduced Settings; Email, Messages, and Campaigns are hidden
 **and** blocked server-side. **Admins and any paid-tier agent see everything.**
 
@@ -62,25 +63,64 @@ Admins always see/do everything. Paid-tier agents see/do everything their tier a
 > ⚠️ **Stale data trap:** `PricingCard.tsx`'s local `TIERS` array ($49/$99/$299) is legacy/wrong.
 > Source prices from `TIER_DETAILS` in `src/config/stripe-prices.ts` only.
 
-## Forced onboarding wizard
+## Forced onboarding (setup chat)
 
-New agents must complete the setup wizard before using the portal.
+New agents must finish the setup chat before using the portal. Full detail:
+[../agent-onboarding/setup-chat.md](../agent-onboarding/setup-chat.md). (The form wizard,
+`SettingsWizard.tsx`, was removed 2026-11-04.)
 
 | Piece | File | Behavior |
 |---|---|---|
-| Flag | `User.agentProfile.onboardingComplete` (default `false`) | Set `true` when the wizard is finished/skipped |
+| Flag | `User.agentProfile.onboardingComplete` (default `false`) | Set `true` only by `finish_setup` in `/api/agent/setup-chat`, after license + brokerage are saved |
 | JWT | `src/lib/auth.ts` | Stamps `onboardingComplete` + `agentTier` at sign-in; `trigger:"update"` re-reads them so `session.update()` refreshes without re-login |
-| Middleware guard | `src/proxy.ts` (`portalGates()`, applied on www **and** on agent subdomains since 2026-10-16) | A non-admin agent whose `onboardingComplete === false` is redirected to `/agent/settings?onboarding=true` (except when already there) |
-| Wizard | `src/app/agent/settings/components/SettingsWizard.tsx` | On Finish/Skip: PUTs `onboardingComplete:true`, calls `session.update()`, lands on the sidebar view |
+| Cross-host hand-off | `src/app/api/auth/receive/route.ts` | Mints the cookie on the agent's subdomain and must stamp the same fields — see the gotcha below |
+| Middleware guard | `src/proxy.ts` (`portalGates()`, applied on www **and** on agent subdomains since 2026-10-16) | A non-admin agent whose `onboardingComplete === false` is redirected to `/agent/setup` (`/agent/setup` and `/agent/settings` exempt) |
+| Setup chat | `src/app/agent/setup/page.tsx` | On finish: `session.update()`, then `/agent/dashboard` |
 
-**Gotcha — JWT staleness:** the guard checks `onboardingComplete === false` **explicitly** (not falsy).
-Existing agents whose JWT predates the field carry `undefined` and are NOT trapped in the wizard.
-A client-side `localStorage` flag is a secondary fallback.
+**Gotcha — the `=== false` check protects nobody.** The guard compares explicitly (not falsy), which
+*looks* like it spares agents carrying `undefined` — and this doc claimed exactly that until
+2026-11-04. It does not. Three things collapse `undefined` to a hard `false`:
 
-**Deploy note — existing-agent backfill:** if a cohort of agents predates this feature, run a one-off
-`onboardingComplete=true` backfill so they aren't sent through the wizard. (The July 2026 note that
-"only the admin and one test agent exist" no longer holds; the explicit `=== false` check above is
-what protects agents whose record has no value.)
+1. The schema declares `onboardingComplete: { default: false }` (`src/models/User.ts`), so every user
+   document saved through Mongoose since already stores an explicit `false` — not a missing field.
+2. `src/lib/auth.ts` stamps the token with `!!agentProfile?.onboardingComplete` at sign-in.
+3. The silent permission refresh in the same file re-stamps every live session **once a minute**, so
+   even an old JWT holding `undefined` flips to `false` within 60s.
+
+Until 2026-11-04 a client-side `localStorage` flag cushioned this on the settings page; it was removed
+with the wizard, since the wizard was the only thing it fed.
+
+**The same `=== false` test cut the other way, and silently disabled the gate (fixed 2026-11-17).**
+Agents work on their own subdomain, and every sign-in gets there through `/api/auth/transfer` →
+`/api/auth/receive`, which mints a *fresh* session cookie for that host. That cookie listed only
+`id, email, name, picture, roles, isAdmin, twoFactorEnabled, requiresTwoFactor, agentSubdomain` — so
+`onboardingComplete` and `agentTier` were both `undefined`, and neither `=== false` nor `=== "free"`
+matched. On the first page load after sign-in, on the one host the portal actually lives on, the
+forced-setup gate **and** the "being an agent requires Basic" gate were off; an un-onboarded,
+never-paid agent reached the full dashboard. It healed itself only once something hit a NextAuth
+endpoint and the 60s refresh in (3) re-stamped the cookie. `receive` now stamps `onboardingComplete`,
+`agentTier` and `permissionsCheckedAt` the way the jwt callback does.
+
+> **Keep in step:** a field added to the token in `auth.ts`'s jwt callback must also be added in
+> `src/app/api/auth/receive/route.ts`, or it will be missing for exactly as long as it takes the
+> agent to load one page. The impersonation branch of `receive` deliberately still omits them —
+> stamping `onboardingComplete` there would send an admin impersonating an un-onboarded agent into
+> that agent's setup chat.
+
+**Deploy note — run the backfill, but it is currently a no-op.** The mechanism is real: without it an
+agent who predates the flag signs in and is bounced to `/agent/setup`, unable to reach their
+dashboard. The cohort, however, is empty — a dry run on 2026-11-17 found 5 un-onboarded agents and
+**0** of them holding both a license and a brokerage, so nothing would be flipped. Run it anyway
+(it is idempotent and cheap) and read the split it prints rather than assuming either way:
+
+```
+npx tsx scripts/backfill-agent-onboarding.ts --dry-run   # review the cohort split
+npx tsx scripts/backfill-agent-onboarding.ts             # apply
+```
+
+It flips agents who have **both** `licenseNumber` and `brokerageName` — the same bar `finish_setup`
+enforces — and deliberately leaves anyone missing either one gated, because for them setup *is* the
+compliance gate. Idempotent. Live sessions pick the change up within ~60s via the refresh in (3).
 
 ## Gating map
 
@@ -176,7 +216,6 @@ layered on top of it to decide *whether* that owner's site renders.
   actually publishes.
 - **Admins and paid agents are exempt everywhere.** If a paid agent can't see a paid feature, the JWT
   `agentTier` is likely stale — `session.update()` refreshes it.
-- **The Settings STEPS registry is shared** by the wizard and the sidebar. Adding a `paidOnly` step
-  hides it in both for free agents automatically — add new paid steps there, not ad-hoc.
-- **The Billing panel is one component** used in both the wizard's plan step and Settings → Billing.
-  Only Free is selectable until paid checkout is wired up (see README for the Stripe checkout flow).
+- **The Settings STEPS registry** (`SettingsStepIndicator.tsx`) drives the settings sidebar. Adding a
+  `paidOnly` step hides it for free agents automatically — add new paid steps there, not ad-hoc.
+- **The Billing panel** (`BillingSettings`) lives in Settings → Billing.
