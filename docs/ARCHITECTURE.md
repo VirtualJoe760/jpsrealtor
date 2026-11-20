@@ -46,6 +46,7 @@ until 2026-10-10. Cloudinary holds all images.
 | API productization — headless backend, BYOD Neon DB per tenant (built: provisioning, hosted seeding, claim codes; open items in ship-strategy) | `src/app/api/skill/*` + `src/models/control/Tenant.ts` + `src/lib/mls-seed.ts` | [chatrealty-api/](./chatrealty-api/) |
 | Testing / judge loop — Tom (judge), Test Claude (builder), the repairer, tickets, `/admin/loop` | `src/app/api/skill/testing/route.ts` + `src/models/AgentTesting.ts` + `src/models/LoopTicket.ts` + `src/app/admin/loop/page.tsx` | [testing/](./testing/) — operational reference: [testing/mcp/web-design/](./testing/mcp/web-design/) |
 | Review queue — bugs awaiting a decision | — | [review/](./review/) |
+| Site management — edge, firewall, crawler control across every tenant host | Vercel Firewall (project-wide) + Cloudflare WAF (per zone) | [site-management/](./site-management/) — which layer covers which hostnames, and why a Cloudflare rule protects one tenant rather than the estate |
 
 ## Cross-cutting invariants
 

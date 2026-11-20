@@ -315,7 +315,29 @@ under 2.
   with `headers()` forcing dynamic render *and* the fact that output varies by
   host — cache it wrong and one agent's branding is served on another's domain
   (see `78295f27`). Needs a deliberate design pass, not a bolted-on header.
-- **`media` still duplicates `photos`** — 74% of all bytes. Dropping it halves
-  document size and doubles effective cache. Biggest remaining durable win.
+- **CORRECTION (2026-11-20): there is no `media` / `photos` duplicate.** An
+  earlier revision of this section said `media` duplicated `photos`, was 74% of
+  all bytes, and that dropping it was "the biggest remaining durable win". That
+  was wrong, and wrong in a dangerous direction — `unified_listings.media[]` is
+  the **primary photo store** ([../listings/README.md](../listings/README.md),
+  Photos). The duplicate it referred to was a separate `photos` *collection*,
+  and it was eliminated a year ago by `810b27f4` ("MIGRATION: Photos collection
+  to unified_listings.media", 2025-12-06); the `Photo` model is gone from
+  `src/models/`.
+
+  The 38,976-byte average needs no duplicate to explain it: `media[]` carries
+  **nine URI size variants per photo** (`Uri300`…`Uri2048`, `UriThumb`,
+  `UriLarge`), so ~27 photos is tens of KB of legitimate data. Deleting it
+  would have broken photos on every listing, and broken them *permanently* for
+  off-market listings, which is exactly the case DB-first storage exists to
+  serve.
+
+  How the claim survived: it was carried across a context compaction as settled
+  fact and repeated without re-deriving it, while `docs/listings/README.md` —
+  which AGENTS.md rule 4 says to read first — stated the opposite in one line.
+
+  The legitimate version of that optimisation is narrower: **stop projecting
+  `media[]` into endpoints that never render photos.** `map-clusters` already
+  excludes it; other listing endpoints have not been audited.
 - **38 of 64 indexes have 0 recorded uses**, while every write maintains all 64.
 - The collection lives in the **`admin`** database (`admin.unified_listings`).
