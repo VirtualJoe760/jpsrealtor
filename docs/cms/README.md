@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-11-03
+last_verified: 2026-11-21
 related: [./multi-tenant-articles.md, ../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md, ../routing/README.md, ../mcp/tools.md, ../seo/README.md]
 supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -148,7 +148,7 @@ by slug: a title-derived slug would let a second agent posting the same address
 overwrite the first agent's post.
 
 **What is stored vs read live.** The article stores only
-`listingPost: { listingKey, slugAddress, address, postType, openHouse }` plus
+`listingPost: { listingKey, slugAddress, address, postType, openHouse, videoUrl, gate }` plus
 the copy. Price, facts, photos, subdivision (`subdivisions`), community
 (`cities`), map and nearby listings are read at render time by
 `loadListingPostData()`. Photos are the listing's synced MLS media, never
@@ -156,11 +156,52 @@ rehosted or edited (the featured image is the primary photo URL with
 `publicId: "mls-listing/{listingKey}"` — not a Cloudinary asset). If the listing
 leaves Active, the page says so and keeps the form.
 
-**Page layout** (`listing-post/ListingPostView.tsx`): `CollageHero` photo
-carousel → title / price / open-house banner → property facts → post copy +
-registration form → subdivision → community → map (`ListingPostMap`,
-react-maplibre) → MLS attribution (`ListingAttribution`) → `RelatedListings`
-carousel of nearby active listings.
+**Page layout** (`listing-post/ListingPostView.tsx`): `CollageHero` carousel
+(the walkthrough video from `listingPost.videoUrl` first, then photos) → title /
+price / open-house banner → property facts → post copy + registration form or
+gate → subdivision → community → map (`ListingPostMap`, react-maplibre) → MLS
+attribution (`ListingAttribution`) → `RelatedListings` carousel of nearby active
+listings.
+
+### The registration gate
+
+**The server, not the overlay, is what keeps gated data private.**
+`ListingPostPage` resolves the gate, checks access, then projects the record
+through `toTeaser()` or `toGated()` (`listing-post-teaser.ts`). An unregistered
+visitor is only ever *sent* the teaser, so a 0-second gate and a 60-second gate
+ship identical HTML and removing the overlay from the DOM reveals nothing. If a
+field is not named in `TeaserListing`, they do not get it. Public by design, so
+the gate does not cost the SEO that fills it: address, price, the core facts,
+the open-house date, the first 5 photos, and the MLS attribution — which is
+never gated, registered or not.
+
+A server projection is not enough on its own. `RelatedListings` fetches nearby
+homes **client-side** from `listing.city`, which the teaser legitimately
+carries, so it needs its own `unlocked &&` guard. Any future client-fetching
+section does too.
+
+**Config** resolves most-specific-wins in `lead-gate.ts`:
+`PLATFORM_DEFAULT_LEAD_GATE` → `agentProfile.leadGate` → `listingPost.gate`.
+The post layer applies only when it says `inherit: false`; an absent `inherit`
+reads as inherit, so posts written before the field existed do not start
+overriding. When the CMS leaves "use my setting" ticked it stores **only**
+`{ inherit: true }` — never a snapshot of the agent's settings, which would
+freeze each post on the day it was written and make the setting look broken.
+
+Resolution reads the **post author's** profile, never the domain owner's — same
+rule as the CRM the registration lands in. `mode` is `off | immediate | delay |
+scroll`; the platform default is a 20-second delay (not `immediate`: a wall
+before the visitor has seen anything reads as a paywall). `allowReturning`
+scopes the grant to the agent rather than the one post.
+
+**Access** (`listing-post-access.ts`): an HMAC-signed, httpOnly `lp_access`
+cookie (90 days), or a signed-in visitor who is already a Contact of the author.
+Unlike `oauth-state.ts` there is **no `'fallback-secret'` default** — a
+predictable key would mint access to every agent's gated content, so a missing
+`NEXTAUTH_SECRET` fails closed.
+
+**UI:** `/agent/settings` → Lead Capture (`LeadGateStep.tsx`) for the tenant
+default; `ListingPostOptions.tsx` for the per-post override.
 
 **Registration** (`POST /api/leads/listing-post`, public in
 `PUBLIC_API_EXACT`): name, email, phone, optional "send me recently sold

@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import mongoose from "mongoose";
+import { setAccessCookie } from "@/lib/listings/listing-post-access";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 import User from "@/models/User";
@@ -105,6 +106,12 @@ export async function POST(req: NextRequest) {
     });
     if (contact) {
       contact.tags = Array.from(new Set([...(contact.tags || []), ...tags]));
+      // Registering makes them this agent's client. Only ever promote: someone
+      // already "qualified" or "client" must not be knocked back down by an
+      // open-house RSVP, and "inactive" is a deliberate state the agent set.
+      if (contact.status === "uncontacted" || contact.status === "contacted") {
+        contact.status = "client";
+      }
       if (!contact.phones?.length && phone) {
         contact.phones = [{ number: phone, label: "mobile", isPrimary: true, isValid: true }];
         contact.phone = phone;
@@ -128,7 +135,10 @@ export async function POST(req: NextRequest) {
         emails: [{ address: email, label: "personal", isPrimary: true, isValid: true }],
         phones: phone ? [{ number: phone, label: "mobile", isPrimary: true, isValid: true }] : [],
         source: "website",
-        status: "uncontacted",
+        // They handed over their details and agreed to be contacted about a
+        // specific home — that is a client of this agent, not an untouched
+        // lead sitting in the uncontacted bucket.
+        status: "client",
         tags,
         interests: { buying: true, locations: [lp.address].filter(Boolean) },
         preferences: { emailOptIn: true, smsOptIn: !!phone, callOptIn: !!phone, preferredContactMethod: "email" },
@@ -196,10 +206,15 @@ export async function POST(req: NextRequest) {
       leadPhone: phone || undefined,
     }).catch(() => {});
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       { success: true, emailSent: !!sent, accountPending: needsCompletion },
       { headers: NO_STORE }
     );
+    // Unlock the gated half for this visitor. Scoped to the post's author, so
+    // it opens that agent's posts and nobody else's; httpOnly, so page scripts
+    // can neither read nor forge one. See listing-post-access.ts.
+    setAccessCookie(res, String(agent._id), String(contact._id), post.slug);
+    return res;
   } catch (err) {
     console.error("[leads/listing-post] Error:", err);
     return bad("Registration failed. Please try again.", 500);

@@ -6,7 +6,7 @@
 // → MLS attribution. Reuses the /mls-listings/[slugAddress] pieces
 // (CollageHero, RelatedListings, ListingAttribution).
 
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Bed, Bath, Square, Calendar, TreePine, Home as HomeIcon, ArrowRight, CalendarClock } from "lucide-react";
@@ -15,7 +15,10 @@ import CollageHero from "@/app/components/mls/CollageHero";
 import RelatedListings from "@/app/components/mls/RelatedListings";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
 import type { ListingPostCity, ListingPostPhoto, ListingPostSubdivision } from "@/lib/listings/listing-post";
+import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
 import ListingPostRegisterForm from "./ListingPostRegisterForm";
+import ListingPostGate from "./ListingPostGate";
+import { trackViewContent } from "@/lib/meta-pixel";
 
 const ListingPostMap = dynamic(() => import("./ListingPostMap"), { ssr: false });
 
@@ -32,6 +35,18 @@ export interface ListingPostViewProps {
   subdivision: ListingPostSubdivision | null;
   city: ListingPostCity | null;
   preview?: boolean;
+  /**
+   * False when the visitor has not registered. The server has ALREADY stripped
+   * the gated half in that case (listing-post-teaser.ts) — this flag only stops
+   * us rendering empty shells for sections whose data is gone.
+   */
+  unlocked?: boolean;
+  /** null when there is no gate to run (unlocked, or the agent turned it off). */
+  gateConfig?: LeadGateClientConfig | null;
+  /** Total photo count, so the wall can say how many are behind it. */
+  lockedPhotoCount?: number;
+  /** Walkthrough video, gated with the rest of the media. */
+  videoUrl?: string | null;
 }
 
 function money(n?: number | null) {
@@ -57,6 +72,9 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const isLight = currentTheme === "lightgradient";
   const { listing, subdivision, city } = props;
   const isOpenHouse = props.postType === "open-house";
+  // Default true so any caller that predates the gate keeps its old behaviour
+  // rather than silently rendering a locked page.
+  const unlocked = props.unlocked !== false;
 
   const card = `rounded-2xl p-6 backdrop-blur-xl ${
     isLight ? "bg-white/85 border border-gray-200 shadow-lg" : "bg-black/40 border border-neutral-800/60"
@@ -72,6 +90,31 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const lat = Number(listing?.latitude);
   const lng = Number(listing?.longitude);
   const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+
+  // Meta Pixel ViewContent. These pages fired NOTHING before, so none of this
+  // traffic was retargetable — the audience worth having is "viewed a listing
+  // post, did not register", and it does not exist until this runs.
+  //
+  // Fires on the teaser too, deliberately: a visitor who bounces at the wall is
+  // exactly who the agent wants to chase. The pixel id is the tenant's own,
+  // resolved in the root layout from agentProfile.tracking.
+  //
+  // `preview` is excluded so an agent proofing their own draft does not pollute
+  // their own audience.
+  useEffect(() => {
+    if (props.preview || !listing?.listingKey) return;
+    trackViewContent({
+      listingKey: String(listing.listingKey),
+      address: address || undefined,
+      price: typeof listing.listPrice === "number" ? listing.listPrice : undefined,
+      bedrooms: typeof beds === "number" ? beds : undefined,
+      bathrooms: typeof baths === "number" ? baths : undefined,
+      city: listing.city || undefined,
+      subdivision: listing.subdivisionName || undefined,
+    });
+    // Once per post view; re-firing on a theme toggle would double-count.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.listingKey, props.preview]);
 
   const citySlug = city?.slug || (listing?.city ? String(listing.city).toLowerCase().replace(/\s+/g, "-") : "");
   const subUrl = subdivision?.slug && citySlug ? `/neighborhoods/${citySlug}/${subdivision.slug}` : null;
@@ -94,8 +137,18 @@ export default function ListingPostView(props: ListingPostViewProps) {
         </div>
       )}
 
-      {/* 1. Photo carousel — the listing's synced MLS photos, unaltered */}
-      {props.photos.length > 0 && <CollageHero media={props.photos} />}
+      {/* 1. Carousel — the listing's synced MLS photos, unaltered, with the
+          walkthrough video first when there is one. CollageHero's MediaItem
+          already accepts type "video"; a locked visitor gets neither the video
+          nor the photos past the teaser slice. */}
+      {(props.photos.length > 0 || props.videoUrl) && (
+        <CollageHero
+          media={[
+            ...(props.videoUrl ? [{ type: "video" as const, src: props.videoUrl, alt: `${address} walkthrough video` }] : []),
+            ...props.photos,
+          ]}
+        />
+      )}
 
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 md:px-8">
         {/* 2. Title, price, open-house banner */}
@@ -161,16 +214,37 @@ export default function ListingPostView(props: ListingPostViewProps) {
             <div className={`prose max-w-none ${isLight ? "prose-gray" : "prose-invert"}`}>{props.content}</div>
           </article>
           <aside className="lg:col-span-2">
-            <div id="register" className={`${card} lg:sticky lg:top-6`}>
-              <h2 className={h2}>{isOpenHouse ? "Register for the open house" : "Get details on this home"}</h2>
-              <ListingPostRegisterForm
-                slug={props.slug}
-                isOpenHouse={isOpenHouse}
-                agentName={props.agentName}
-                isLight={isLight}
-                preview={props.preview}
-              />
-            </div>
+            {unlocked ? (
+              <div id="register" className={`${card} lg:sticky lg:top-6`}>
+                <h2 className={h2}>{isOpenHouse ? "Register for the open house" : "Get details on this home"}</h2>
+                <ListingPostRegisterForm
+                  slug={props.slug}
+                  isOpenHouse={isOpenHouse}
+                  agentName={props.agentName}
+                  isLight={isLight}
+                  preview={props.preview}
+                />
+              </div>
+            ) : (
+              <div className="lg:sticky lg:top-6">
+                <ListingPostGate
+                  config={props.gateConfig ?? null}
+                  isOpenHouse={isOpenHouse}
+                  isLight={isLight}
+                  lockedPhotoCount={props.lockedPhotoCount ?? 0}
+                  slug={props.slug}
+                  preview={props.preview}
+                >
+                  <ListingPostRegisterForm
+                    slug={props.slug}
+                    isOpenHouse={isOpenHouse}
+                    agentName={props.agentName}
+                    isLight={isLight}
+                    preview={props.preview}
+                  />
+                </ListingPostGate>
+              </div>
+            )}
           </aside>
         </div>
 
@@ -228,8 +302,12 @@ export default function ListingPostView(props: ListingPostViewProps) {
         )}
       </div>
 
-      {/* 8. Sliding carousel of nearby active listings */}
-      {listing?.city && (
+      {/* 8. Sliding carousel of nearby active listings.
+          Gated: the teaser carries `city`, so without this guard a locked
+          visitor would get the nearby-homes rail we just promised them behind
+          the wall — and RelatedListings fetches it client-side, so the server
+          projection alone would not have stopped it. */}
+      {unlocked && listing?.city && (
         <RelatedListings
           city={listing.city}
           subdivisionName={listing.subdivisionName}

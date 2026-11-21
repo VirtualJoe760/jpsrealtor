@@ -270,6 +270,21 @@ export interface IUser extends Document {
       enabled?: boolean; // master switch; false renders no tags at all
     };
 
+    // Registration gate on this agent's listing posts (open house + listing
+    // landing pages). The tenant-level default; a post may override it via
+    // article.listingPost.gate. Resolved in src/lib/listings/lead-gate.ts.
+    //
+    // `mode` is how AGGRESSIVE the gate is, not how private the data is: the
+    // server sends an unregistered visitor the teaser payload whatever the
+    // mode, so this only decides when the overlay drops.
+    leadGate?: {
+      enabled?: boolean;
+      mode?: "off" | "immediate" | "delay" | "scroll";
+      delaySeconds?: number;  // mode "delay", 0–300
+      scrollPercent?: number; // mode "scroll", 5–95
+      allowReturning?: boolean; // known contacts skip the gate
+    };
+
     // AI Integrations (per-agent bring-your-own-key + API tokens for desktop skill)
     aiIntegrations?: {
       // Agent's own Anthropic API key — used for in-CMS Claude chat builder
@@ -1067,6 +1082,18 @@ const UserSchema = new Schema<IUser>(
         googleAdsId: String,
         googleAdsConversionLabel: String,
         enabled: { type: Boolean, default: true },
+      },
+
+      // Registration gate on this agent's listing posts. Same strict-mode
+      // caveat as tracking above: declared here or the settings PUT persists
+      // nothing. No defaults — an absent field means "use the platform
+      // default" (lead-gate.ts), which keeps one source of truth for it.
+      leadGate: {
+        enabled: Boolean,
+        mode: { type: String, enum: ["off", "immediate", "delay", "scroll"] },
+        delaySeconds: Number,
+        scrollPercent: Number,
+        allowReturning: Boolean,
       },
 
       // SEO & Marketing

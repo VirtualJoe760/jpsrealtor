@@ -137,6 +137,13 @@ const PUBLIC_API_EXACT = new Set([
   // Registration form on CMS listing blog posts (open houses / listing pages).
   // Same guards: Turnstile + 10/h per-IP rate limit, in the route.
   "/api/leads/listing-post",
+  // Step 1 of registering at the gate with Google/Facebook: parks the consent
+  // and the open-house choice in a signed 15-minute cookie before the provider
+  // redirect. PUBLIC_API_EXACT is an exact match, not a prefix, so this needs
+  // its own line — the visitor has no session yet, which is the whole point.
+  // (/api/leads/listing-post/complete is deliberately NOT here: it runs after
+  // the provider hands back a session, so the default-deny gate IS its auth.)
+  "/api/leads/listing-post/pending",
   "/api/contact",
   // Affiliate link clicks (?ref=CODE). Visitors have no session; the route
   // only counts the click and sets the first-party cr_aff cookie. Rate-limited.

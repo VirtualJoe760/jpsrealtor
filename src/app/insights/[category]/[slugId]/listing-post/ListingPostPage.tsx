@@ -5,18 +5,40 @@
 // is the CMS "Preview" — and are always noindex.
 
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import type { Metadata } from "next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
+import User from "@/models/User";
 import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { loadListingPostData } from "@/lib/listings/listing-post";
+import { toTeaser, toGated } from "@/lib/listings/listing-post-teaser";
+import { resolveLeadGate, toClientConfig } from "@/lib/listings/lead-gate";
+import { hasListingPostAccess } from "@/lib/listings/listing-post-access";
 import { rehypeUnwrapNestedP } from "@/lib/mdx/rehype-unwrap-nested-p";
 import MDXLink from "@/app/components/mdx/Link";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import ListingPostView from "./ListingPostView";
+
+/**
+ * Is this visitor already a contact of the post's author?
+ *
+ * Kept here rather than in listing-post-access.ts so that module stays free of
+ * a Mongoose import and can be unit-tested without a database.
+ */
+async function findContactId(agentId: string, email: string): Promise<string | null> {
+  const { default: Contact } = await import("@/models/Contact");
+  const c: any = await Contact.findOne({
+    userId: agentId,
+    $or: [{ "emails.address": email }, { email }],
+  })
+    .select("_id")
+    .lean();
+  return c?._id ? String(c._id) : null;
+}
 
 async function loadPost(slug: string): Promise<{ post: any; preview: boolean } | null> {
   await dbConnect();
@@ -65,6 +87,39 @@ export default async function ListingPostPage({ slug }: { slug: string }) {
     return null;
   });
 
+  // ---- Registration gate -------------------------------------------------
+  //
+  // Resolved from the POST AUTHOR's settings, never the domain owner's: a post
+  // by another agent, read on this domain, follows THAT agent's gate, the same
+  // way its registration lands in THAT agent's CRM.
+  const authorId = String(post.author?.id || "");
+  const author: any = authorId
+    ? await User.findById(authorId).select("agentProfile.leadGate").lean().catch(() => null)
+    : null;
+
+  const gate = resolveLeadGate(author?.agentProfile?.leadGate, lp.gate);
+
+  const session = await getServerSession(authOptions);
+  const access = gate.enabled
+    ? await hasListingPostAccess({
+        req: { cookies: await cookies() },
+        agentId: authorId,
+        slug,
+        allowReturning: gate.allowReturning,
+        sessionEmail: session?.user?.email || null,
+        lookupContact: findContactId,
+      })
+    : { granted: true as const };
+
+  // The author previewing their own draft is never gated by their own wall.
+  const unlocked = preview || !gate.enabled || access.granted;
+
+  // THE boundary. When locked, the gated half is projected away here, on the
+  // server — it never reaches the client component, so removing the overlay
+  // from the DOM reveals the teaser and nothing more.
+  const teaser = data ? toTeaser(data, lp.videoUrl) : null;
+  const full = unlocked && data ? toGated(data) : null;
+
   const baseUrl = await getBaseUrlFromHeaders();
   const url = `${baseUrl}/insights/listing-post/${slug}`;
 
@@ -91,11 +146,18 @@ export default async function ListingPostPage({ slug }: { slug: string }) {
         postType={lp.postType === "open-house" ? "open-house" : "listing"}
         openHouse={lp.openHouse || null}
         agentName={post.author?.name || "the listing agent"}
-        listing={data?.listing || null}
-        photos={data?.photos || (post.featuredImage?.url ? [{ type: "photo", src: post.featuredImage.url, alt: post.title }] : [])}
-        subdivision={data?.subdivision || null}
-        city={data?.city || null}
+        listing={full?.listing || teaser?.listing || null}
+        photos={
+          (full?.photos || teaser?.photos) ??
+          (post.featuredImage?.url ? [{ type: "photo", src: post.featuredImage.url, alt: post.title }] : [])
+        }
+        subdivision={full?.subdivision || null}
+        city={full?.city || null}
         preview={preview}
+        unlocked={unlocked}
+        gateConfig={unlocked ? null : toClientConfig(gate)}
+        lockedPhotoCount={teaser?.photoCount ?? 0}
+        videoUrl={unlocked ? lp.videoUrl || null : null}
       />
     </>
   );

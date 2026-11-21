@@ -16,6 +16,7 @@ import {
   Plug,
   CreditCard,
   Target,
+  Lock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -32,6 +33,7 @@ export type SettingsStep =
   | "gbp"
   | "integrations"
   | "tracking"
+  | "leadgate"
   | "billing";
 
 export interface SettingsStepDef {
@@ -63,6 +65,7 @@ const STEPS: SettingsStepDef[] = [
   { id: "gbp", label: "Google Business", icon: Building2 },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "tracking", label: "Tracking & Ads", icon: Target },
+  { id: "leadgate", label: "Lead Capture", icon: Lock },
   { id: "billing", label: "Billing", icon: CreditCard },
 ];
 

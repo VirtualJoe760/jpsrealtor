@@ -24,12 +24,30 @@ export interface ListingPostConfig {
   listing: ListingPostHit | null;
   postType: "open-house" | "listing";
   openHouse: { date: string; startTime: string; endTime: string; notes: string };
+  videoUrl: string;
+  /**
+   * Per-post override of the agent's Lead Capture setting. `inherit: true`
+   * means every other key here is ignored and the post follows
+   * /agent/settings — so a change there moves this post too. Resolved in
+   * lib/listings/lead-gate.ts.
+   */
+  gate: {
+    inherit: boolean;
+    enabled: boolean;
+    mode: "off" | "immediate" | "delay" | "scroll";
+    delaySeconds: number;
+    scrollPercent: number;
+  };
 }
 
 export const DEFAULT_LISTING_POST_CONFIG: ListingPostConfig = {
   listing: null,
   postType: "listing",
   openHouse: { date: "", startTime: "", endTime: "", notes: "" },
+  videoUrl: "",
+  // Inherit by default — the agent's setting is meant to be the one place most
+  // posts are controlled from.
+  gate: { inherit: true, enabled: true, mode: "delay", delaySeconds: 20, scrollPercent: 50 },
 };
 
 /** MLS open-house dates arrive as "MM/DD/YYYY" or ISO; the form wants YYYY-MM-DD. */
@@ -273,6 +291,93 @@ export default function ListingPostOptions({
           </div>
         </div>
       )}
+
+      {/* Walkthrough video — goes first in the hero carousel, gated with the
+          rest of the media. */}
+      <div>
+        <label className={label}>Video tour (optional)</label>
+        <input
+          type="url"
+          placeholder="https://www.youtube.com/watch?v=…"
+          value={config.videoUrl}
+          onChange={(e) => onChange({ ...config, videoUrl: e.target.value })}
+          className={field}
+        />
+        <p className={`mt-1 text-xs ${muted}`}>Shows first in the photo carousel.</p>
+      </div>
+
+      {/* Per-post gate override */}
+      <div className={`rounded-lg border p-4 ${isLight ? "border-slate-200 bg-slate-50" : "border-gray-800 bg-gray-900/40"}`}>
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={config.gate.inherit}
+            onChange={(e) => onChange({ ...config, gate: { ...config.gate, inherit: e.target.checked } })}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+          />
+          <span>
+            <span className={`block text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>
+              Use my Lead Capture setting
+            </span>
+            <span className={`mt-0.5 block text-xs ${muted}`}>
+              Follows <a href="/agent/settings?step=leadgate" className="underline">Settings → Lead Capture</a>, so
+              changing it there moves this post too. Untick to set this post on its own.
+            </span>
+          </span>
+        </label>
+
+        {!config.gate.inherit && (
+          <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: isLight ? "#e2e8f0" : "#1f2937" }}>
+            <div>
+              <label className={label}>When should the wall appear?</label>
+              <select
+                value={config.gate.mode}
+                onChange={(e) =>
+                  onChange({
+                    ...config,
+                    gate: { ...config.gate, mode: e.target.value as ListingPostConfig["gate"]["mode"], enabled: e.target.value !== "off" },
+                  })
+                }
+                className={field}
+              >
+                <option value="immediate">Right away</option>
+                <option value="delay">After a few seconds</option>
+                <option value="scroll">After they scroll</option>
+                <option value="off">No wall on this post</option>
+              </select>
+            </div>
+
+            {config.gate.mode === "delay" && (
+              <div>
+                <label className={label}>Seconds of reading first</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={300}
+                  value={config.gate.delaySeconds}
+                  onChange={(e) => onChange({ ...config, gate: { ...config.gate, delaySeconds: Number(e.target.value) } })}
+                  className={field}
+                />
+              </div>
+            )}
+
+            {config.gate.mode === "scroll" && (
+              <div>
+                <label className={label}>How far down the page (%)</label>
+                <input
+                  type="number"
+                  min={5}
+                  max={95}
+                  step={5}
+                  value={config.gate.scrollPercent}
+                  onChange={(e) => onChange({ ...config, gate: { ...config.gate, scrollPercent: Number(e.target.value) } })}
+                  className={field}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <p className={`text-xs ${muted}`}>
         Photos, price, community info, the map and nearby listings come live from the MLS feed. The post&apos;s

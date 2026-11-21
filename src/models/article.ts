@@ -23,6 +23,27 @@ export interface IListingPost {
     endTime?: string;   // "4:00 PM"
     notes?: string;
   };
+  /**
+   * Walkthrough video for the hero carousel. The MLS
+   * `virtualTourURLUnbranded` when the listing carries one, otherwise whatever
+   * the agent pastes in the CMS. Gated like the rest of the media.
+   */
+  videoUrl?: string;
+  /**
+   * Per-post override of the author's registration gate
+   * (agentProfile.leadGate). `inherit: true`, the default, ignores every other
+   * key here and follows the agent's setting — so changing the setting moves
+   * every post that has not deliberately opted out.
+   * Resolution lives in src/lib/listings/lead-gate.ts.
+   */
+  gate?: {
+    inherit?: boolean;
+    enabled?: boolean;
+    mode?: "off" | "immediate" | "delay" | "scroll";
+    delaySeconds?: number;
+    scrollPercent?: number;
+    allowReturning?: boolean;
+  };
 }
 
 export interface IArticle extends Document {
@@ -292,6 +313,18 @@ const ArticleSchema = new Schema<IArticle>(
             startTime: String,
             endTime: String,
             notes: String,
+          },
+          videoUrl: String,
+          // Per-post gate override. Declared here because strict mode drops
+          // undeclared fields silently — the CMS would report a successful
+          // save and persist nothing.
+          gate: {
+            inherit: { type: Boolean, default: true },
+            enabled: Boolean,
+            mode: { type: String, enum: ["off", "immediate", "delay", "scroll"] },
+            delaySeconds: Number,
+            scrollPercent: Number,
+            allowReturning: Boolean,
           },
         },
         { _id: false }

@@ -160,6 +160,10 @@ export default function NewArticlePage() {
           slugAddress: listingPostConfig.listing.slugAddress,
           postType: listingPostConfig.postType,
           openHouse: listingPostConfig.postType === "open-house" ? listingPostConfig.openHouse : undefined,
+          videoUrl: listingPostConfig.videoUrl?.trim() || undefined,
+          // Only send an override when the agent actually opted out; otherwise
+          // the post stays on their Lead Capture setting.
+          gate: listingPostConfig.gate.inherit ? { inherit: true } : { ...listingPostConfig.gate, inherit: false },
         }),
         signal: controller.signal,
       });

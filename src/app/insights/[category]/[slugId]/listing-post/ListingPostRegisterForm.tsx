@@ -7,6 +7,7 @@
 import { useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { trackLead } from "@/lib/meta-pixel";
 
 export default function ListingPostRegisterForm({
   slug,
@@ -55,6 +56,12 @@ export default function ListingPostRegisterForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Registration failed");
+      // Conversion, fired only on a confirmed 2xx — not on submit, which would
+      // count every validation bounce and Turnstile failure as a lead.
+      trackLead({
+        address: slug,
+        contactType: isOpenHouse ? "open_house_rsvp" : "listing_post",
+      });
       setDone(true);
     } catch (err: any) {
       setError(err?.message || "Something went wrong");

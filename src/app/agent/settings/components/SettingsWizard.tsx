@@ -22,6 +22,7 @@ import CalendarStep from "./steps/CalendarStep";
 import GoogleBusinessStep from "./steps/GoogleBusinessStep";
 import IntegrationsStep from "./steps/IntegrationsStep";
 import TrackingStep from "./steps/TrackingStep";
+import LeadGateStep from "./steps/LeadGateStep";
 import BillingSettings from "./steps/BillingSettings";
 
 interface SettingsWizardProps {
@@ -165,6 +166,8 @@ export default function SettingsWizard({
         return <IntegrationsStep {...stepProps} />;
       case "tracking":
         return <TrackingStep {...stepProps} />;
+      case "leadgate":
+        return <LeadGateStep {...stepProps} />;
       case "billing":
         return <BillingSettings {...stepProps} />;
     }

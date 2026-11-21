@@ -31,6 +31,10 @@ const EDITABLE_AGENT_PROFILE_KEYS = new Set([
   "subdomain", "metaTitle", "metaDescription", "metaKeywords",
   // Social, tracking, calendar, wizard
   "socialMedia", "tracking", "businessHours", "onboardingComplete",
+  // Registration gate on listing posts (/agent/settings → Lead capture).
+  // Sanitized and clamped in lead-gate.ts before it reaches a page, so a
+  // hand-crafted PUT can set a nonsense delay but never a dangerous one.
+  "leadGate",
 ]);
 
 // Cloudinary asset fields in agentProfile that store URLs

@@ -17,6 +17,7 @@ import { authOptions } from "@/lib/auth";
 import { createChatCompletion, GROQ_MODELS, GroqTool } from "@/lib/groq";
 import { digestAIResponse } from "@/lib/article-digester";
 import { loadListingPostData } from "@/lib/listings/listing-post";
+import { sanitizeLeadGate } from "@/lib/listings/lead-gate";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -47,6 +48,19 @@ export async function POST(req: Request) {
             notes: String(oh.notes || "").slice(0, 300),
           }
         : undefined;
+
+    // Video tour. http(s) only: a javascript: or data: URL here would end up in
+    // the hero carousel of a public page.
+    const rawVideo = String(body.videoUrl || "").trim().slice(0, 500);
+    const videoUrl = /^https?:\/\//i.test(rawVideo) ? rawVideo : "";
+
+    // Per-post gate override. When the agent left "use my setting" ticked we
+    // store only `inherit: true`, so the post carries no stale copy of their
+    // settings to drift out of sync with /agent/settings.
+    const gate =
+      body.gate?.inherit === false
+        ? { inherit: false, ...sanitizeLeadGate(body.gate) }
+        : { inherit: true };
 
     if (!listingKey) {
       return NextResponse.json({ error: "Pick a listing address first." }, { status: 400, headers: NO_STORE });
@@ -205,6 +219,11 @@ RULES:
             address,
             postType,
             ...(openHouse ? { openHouse } : {}),
+            // Walkthrough video, and the per-post gate override. The gate is
+            // sanitized and clamped again in lead-gate.ts before it reaches a
+            // page, so what lands here is a preference, never a trusted value.
+            ...(videoUrl ? { videoUrl } : {}),
+            gate,
           },
         },
       },
