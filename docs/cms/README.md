@@ -145,6 +145,9 @@ normalized before filtering. The ad displays every event from
 the current Pacific calendar date forward, and the registration gate lets
 visitors choose an event. The saved CMS date remains a historical reference
 for attendance feedback.
+The public schedule uses horizontally scrollable event cards. Cards with
+complete hours open a prefilled Google Calendar event in Pacific time and
+include the property address.
 
 **Preview / publish.** Both go through `/api/articles/publish` (upsert by
 slug): Preview saves `draft: true` and opens `/insights/listing-post/{slug}` in

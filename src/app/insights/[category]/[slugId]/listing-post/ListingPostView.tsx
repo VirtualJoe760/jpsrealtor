@@ -72,6 +72,47 @@ export function formatOpenHouseDate(date?: string) {
   return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
+const OPEN_HOUSE_TIME_ZONE = "America/Los_Angeles";
+const pacificOffset = new Intl.DateTimeFormat("en-US", {
+  timeZone: OPEN_HOUSE_TIME_ZONE,
+  timeZoneName: "shortOffset",
+});
+
+function calendarTime(date: string, time: string) {
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(time.trim());
+  if (!match) return null;
+  const [, rawHour, minute, second = "00", meridiem] = match;
+  let hour = Number(rawHour);
+  if (meridiem) {
+    if (hour < 1 || hour > 12) return null;
+    hour = hour % 12 + (meridiem.toLowerCase() === "pm" ? 12 : 0);
+  }
+  if (hour > 23 || Number(minute) > 59 || Number(second) > 59) return null;
+  const wallTime = Date.parse(`${date}T${String(hour).padStart(2, "0")}:${minute}:${second}Z`);
+  if (!Number.isFinite(wallTime)) return null;
+  let instant = wallTime;
+  // Recheck the offset at the resulting UTC instant for DST transition dates.
+  for (let pass = 0; pass < 2; pass++) {
+    const offset = pacificOffset.formatToParts(new Date(instant))
+      .find((part) => part.type === "timeZoneName")?.value;
+    const offsetHours = /^GMT([+-]\d{1,2})$/.exec(offset ?? "");
+    if (!offsetHours) return null;
+    instant = wallTime - Number(offsetHours[1]) * 3600000;
+  }
+  return new Date(instant).toISOString().replace(/[-:]/g, "").replace(".000Z", "Z");
+}
+
+function openHouseCalendarUrl(event: ListingOpenHouse, title: string, address: string) {
+  const start = calendarTime(event.date, event.startTime);
+  const end = calendarTime(event.date, event.endTime);
+  if (!start || !end || end <= start) return null;
+  const params = new URLSearchParams({
+    action: "TEMPLATE", text: `Open House · ${title}`, dates: `${start}/${end}`,
+    stz: OPEN_HOUSE_TIME_ZONE, etz: OPEN_HOUSE_TIME_ZONE, location: address,
+  });
+  return `https://calendar.google.com/calendar/r/eventedit?${params}`;
+}
+
 export default function ListingPostView(props: ListingPostViewProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -185,19 +226,37 @@ export default function ListingPostView(props: ListingPostViewProps) {
             </p>
           )}
           {hasOpenHouse && (
-            <section aria-label="Open house schedule" className={`flex items-start gap-3 rounded-xl px-4 py-3 ${isLight ? "bg-blue-50 border border-blue-200" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
-              <CalendarClock className={`h-6 w-6 shrink-0 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
-              <div>
-                <h2 className="font-semibold">Upcoming open houses</h2>
-                <ul className={`mt-1 space-y-1 text-sm ${text}`}>
-                  {props.openHouses.map(({ date, startTime, endTime }) => (
-                    <li key={JSON.stringify([date, startTime, endTime])}>
-                      {formatOpenHouseDate(date)}
-                      {(startTime || endTime) && ` · ${[startTime, endTime].filter(Boolean).join(" – ")}`}
+            <section aria-label="Open house schedule" className="min-w-0">
+              <h2 className="font-semibold">Upcoming open houses</h2>
+              <ul className="mt-2 flex snap-x snap-proximity gap-3 overflow-x-auto overscroll-x-contain p-1 pb-3">
+                {props.openHouses.map((event) => {
+                  const { date, startTime, endTime } = event;
+                  const href = openHouseCalendarUrl(event, props.title, address || props.title);
+                  const className = `flex h-full items-start gap-3 rounded-xl border px-4 py-3 ${
+                    isLight ? "border-blue-200 bg-blue-50" : "border-emerald-500/30 bg-emerald-500/10"
+                  }`;
+                  const summary = (
+                    <>
+                      <CalendarClock aria-hidden="true" className={`h-6 w-6 shrink-0 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
+                      <span>
+                        <span className="block font-semibold">{formatOpenHouseDate(date)}</span>
+                        <span className={`block text-sm ${text}`}>{[startTime, endTime].filter(Boolean).join(" – ")}</span>
+                        {href && <span className={`mt-1 block text-xs font-medium ${isLight ? "text-blue-700" : "text-emerald-300"}`}>Add to Google Calendar</span>}
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li key={JSON.stringify([date, startTime, endTime])} className="w-64 max-w-[85%] shrink-0 snap-start">
+                      {href ? (
+                        <a href={href} target="_blank" rel="noopener noreferrer"
+                          className={`${className} transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${isLight ? "hover:bg-blue-100" : "hover:bg-emerald-500/20"}`}>
+                          {summary}
+                        </a>
+                      ) : <div className={className}>{summary}</div>}
                     </li>
-                  ))}
-                </ul>
-              </div>
+                  );
+                })}
+              </ul>
             </section>
           )}
         </header>
