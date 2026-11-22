@@ -138,7 +138,10 @@ editorializing about another brokerage's listing) and returns form fields plus
 
 The public ad reads scheduled events from the MLS `openhouses` collection,
 joined by `listingId` as in `/api/mls-listings`, with the listing's embedded
-MLS events used when the collection has no rows for that listing. It displays every event from
+MLS events used when the collection has no rows for that listing. When stored
+data has no upcoming dates, the ad and RSVP routes check Spark by listing key
+with a five-minute cache. Both ISO dates and Spark's month/day/year dates are
+normalized before filtering. The ad displays every event from
 the current Pacific calendar date forward, and the registration gate lets
 visitors choose an event. The saved CMS date remains a historical reference
 for attendance feedback.

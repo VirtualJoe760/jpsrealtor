@@ -12,6 +12,7 @@ export async function fetchListingOpenHouses(listingId: string) {
       Accept: "application/json",
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(3000),
   });
 
   if (!res.ok) {
