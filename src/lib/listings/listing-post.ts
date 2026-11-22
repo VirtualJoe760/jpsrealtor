@@ -16,6 +16,7 @@ import UnifiedClosedListing from "@/models/unified-closed-listing";
 import Subdivision from "@/models/subdivisions";
 import { City } from "@/models/cities";
 import { getEnrichedListing, getListingPhotosFromListing } from "@/lib/listings/listing-detail";
+import { classifyTier, getSqftRange } from "@/lib/cma/tiers";
 
 export interface ListingSearchHit {
   listingKey: string;
@@ -202,6 +203,172 @@ export async function loadListingPostData(ref: { slugAddress?: string; listingKe
         : null,
     })
   );
+}
+
+export interface ListingPostMapPin {
+  key: string;
+  status: "Active" | "Closed";
+  latitude: number;
+  longitude: number;
+  address: string;
+  price: number | null;
+  closeDate: string | null;
+  office: string;
+  agent: string;
+}
+
+export interface ListingPostMapData {
+  pins: ListingPostMapPin[];
+  unavailable: ListingPostMapPin["status"][];
+}
+
+export async function loadListingPostMapPins(subject: {
+  listingKey?: string;
+  propertyType?: string;
+  propertySubType?: string;
+  subdivisionName?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  listPrice?: number;
+  livingArea?: number;
+  bedroomsTotal?: number;
+  bedsTotal?: number;
+  bathroomsTotalInteger?: number;
+  bathsTotal?: number;
+  landType?: string;
+  seniorCommunityYN?: boolean;
+  seniorCommunityYn?: boolean;
+}): Promise<ListingPostMapData> {
+  const { listingKey, propertyType, propertySubType, latitude, longitude } = subject;
+  if (!listingKey || !propertyType || !latitude || !longitude ||
+      !Number.isFinite(latitude) || !Number.isFinite(longitude)) return { pins: [], unavailable: [] };
+
+  const livingArea = subject.livingArea;
+  const sqft = livingArea && livingArea > 0 ? getSqftRange(livingArea, classifyTier(subject.listPrice ?? 0, livingArea)) : null;
+  const beds = subject.bedroomsTotal ?? subject.bedsTotal;
+  const baths = subject.bathroomsTotalInteger ?? subject.bathsTotal;
+  const senior = subject.seniorCommunityYN ?? subject.seniorCommunityYn;
+  const matchingAttributes = [];
+  if (beds != null) {
+    const range = { $gte: Math.max(0, beds - 1), $lte: beds + 1 };
+    matchingAttributes.push({ $or: [{ bedroomsTotal: range }, { bedsTotal: range }] });
+  }
+  if (baths != null) {
+    const range = { $gte: Math.max(0, baths - 1), $lte: baths + 1 };
+    matchingAttributes.push({ $or: [{ bathroomsTotalInteger: range }, { bathsTotal: range }] });
+  }
+  if (senior === true) matchingAttributes.push({ $or: [{ seniorCommunityYN: true }, { seniorCommunityYn: true }] });
+  if (senior === false) matchingAttributes.push({ $nor: [{ seniorCommunityYN: true }, { seniorCommunityYn: true }] });
+
+  const likeKind = {
+    listingKey: { $ne: listingKey },
+    propertyType,
+    ...(propertySubType && { propertySubType }),
+    ...(sqft && { livingArea: { $gte: sqft.min, $lte: sqft.max } }),
+    // Some MLS feeds omit tenure on otherwise valid comps. Exclude a known
+    // mismatch while leaving an unreported value unknown.
+    ...(subject.landType && { landType: { $in: [subject.landType, null, ""] } }),
+    ...(matchingAttributes.length > 0 && { $and: matchingAttributes }),
+  };
+  // Some sales lack GeoJSON points. The scalar bounds narrow the indexed read;
+  // the haversine comparison removes the corners of that bounding box.
+  const mileInRadians = 1 / 3958.76;
+  const radiansPerDegree = Math.PI / 180;
+  const cosLatitude = Math.cos(latitude * radiansPerDegree);
+  const latDelta = mileInRadians / radiansPerDegree;
+  const lngDelta = Math.asin(Math.min(1, Math.sin(mileInRadians) / cosLatitude)) / radiansPerDegree;
+  const radiusFilter = {
+    latitude: { $gte: latitude - latDelta, $lte: latitude + latDelta },
+    longitude: { $gte: longitude - lngDelta, $lte: longitude + lngDelta },
+    $expr: {
+      $lte: [{
+        $add: [
+          { $pow: [{ $sin: { $multiply: [{ $subtract: ["$latitude", latitude] }, radiansPerDegree / 2] } }, 2] },
+          { $multiply: [
+            cosLatitude,
+            { $cos: { $degreesToRadians: "$latitude" } },
+            { $pow: [{ $sin: { $multiply: [{ $subtract: ["$longitude", longitude] }, radiansPerDegree / 2] } }, 2] },
+          ] },
+        ],
+      }, Math.sin(mileInRadians / 2) ** 2],
+    },
+  };
+  const since = new Date();
+  since.setUTCFullYear(since.getUTCFullYear() - 1);
+  const options = {
+    projection: {
+      _id: 0, listingKey: 1, latitude: 1, longitude: 1, unparsedAddress: 1,
+      unparsedFirstLineAddress: 1, listPrice: 1, closePrice: 1, closeDate: 1, listOfficeName: 1, listAgentName: 1,
+    },
+    maxTimeMS: 2000,
+    limit: 20,
+  };
+  const recentSalesFilter = {
+    ...likeKind,
+    $or: [{ closeDate: { $gte: since } }, { closeDate: { $gte: since.toISOString().slice(0, 10) } }],
+  };
+  async function findRecentMapSales() {
+    if (subject.subdivisionName && subject.subdivisionName.toLowerCase() !== "other") {
+      const inSubdivision = await UnifiedClosedListing.collection
+        .find({
+          ...recentSalesFilter,
+          subdivisionName: subject.subdivisionName,
+          ...(subject.city ? { city: subject.city } : {}),
+          latitude: { $gte: -90, $lte: 90, $ne: 0 },
+          longitude: { $gte: -180, $lte: 180, $ne: 0 },
+        }, options)
+        .hint({ subdivisionName: 1, closeDate: 1 })
+        .sort({ closeDate: -1 })
+        .toArray();
+      if (inSubdivision.length > 0) return inSubdivision;
+    }
+    return UnifiedClosedListing.collection.find({ ...recentSalesFilter, ...radiusFilter }, options)
+      .hint({ latitude: 1, longitude: 1, closeDate: 1, propertyType: 1 })
+      .sort({ closeDate: -1 })
+      .toArray();
+  }
+  // The page has already connected. A timeout in either dataset should leave
+  // the subject and any pins from the other dataset visible.
+  const results = await Promise.allSettled([
+    UnifiedListing.collection.find({ ...likeKind, ...radiusFilter, standardStatus: "Active" }, options)
+      // Matches the viewport query: equality on status and type before the
+      // coordinate bounds. A fixed plan avoids spending the budget in trials.
+      .hint("idx_map_query_optimized")
+      .toArray(),
+    findRecentMapSales(),
+  ]);
+
+  const unavailable: ListingPostMapData["unavailable"] = [];
+  const pins = results.flatMap((result, index) => {
+    const status = index === 0 ? "Active" : "Closed";
+    if (result.status === "rejected") {
+      unavailable.push(status);
+      if (result.reason?.code === 50) {
+        console.warn(`[listing-post] ${status} map pins exceeded the query time limit`);
+      } else {
+        console.error(`[listing-post] ${status} map pins failed:`, result.reason);
+      }
+      return [];
+    }
+    return result.value.flatMap<ListingPostMapPin>((row) => {
+      const address = row.unparsedAddress || row.unparsedFirstLineAddress;
+      if (!row.listingKey || !address) return [];
+      const closeDate = status === "Closed" && row.closeDate ? new Date(row.closeDate) : null;
+      return [{
+        key: row.listingKey,
+        status,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        address,
+        price: (status === "Closed" ? row.closePrice : row.listPrice) ?? null,
+        closeDate: closeDate && Number.isFinite(closeDate.getTime()) ? closeDate.toISOString().slice(0, 10) : null,
+        office: row.listOfficeName || "",
+        agent: row.listAgentName || "",
+      }];
+    });
+  });
+  return { pins, unavailable };
 }
 
 export interface SoldComparable {

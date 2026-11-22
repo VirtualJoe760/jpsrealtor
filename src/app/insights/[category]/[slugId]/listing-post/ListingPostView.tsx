@@ -2,9 +2,9 @@
 
 // Public layout for every CMS listing blog post (category "listing-post"):
 // photo carousel → title + open-house banner → property facts → post copy +
-// registration form → subdivision → community → map → nearby active listings
+// registration form → subdivision → community → map with nearby comparables
 // → MLS attribution. Reuses the /mls-listings/[slugAddress] pieces
-// (CollageHero, RelatedListings, ListingAttribution).
+// (CollageHero, ListingAttribution).
 
 import { useEffect, type ReactNode } from "react";
 import dynamic from "next/dynamic";
@@ -12,11 +12,12 @@ import Link from "next/link";
 import { Bed, Bath, Square, Calendar, TreePine, Home as HomeIcon, ArrowRight, CalendarClock } from "lucide-react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import CollageHero from "@/app/components/mls/CollageHero";
-import RelatedListings from "@/app/components/mls/RelatedListings";
 import ListingAttribution from "@/app/components/mls/ListingAttribution";
-import type { ListingPostCity, ListingPostPhoto, ListingPostSubdivision } from "@/lib/listings/listing-post";
+import ListingPropertyDetails from "@/app/components/mls/ListingPropertyDetails";
+import ListingCMASection from "@/app/components/mls/ListingCMASection";
+import MortgageCalculator, { getListingMortgageCosts } from "@/app/components/mls/map/MortgageCalculator";
+import type { ListingPostCity, ListingPostMapData, ListingPostPhoto, ListingPostSubdivision } from "@/lib/listings/listing-post";
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
-import ListingPostRegisterForm from "./ListingPostRegisterForm";
 import ListingPostGate from "./ListingPostGate";
 import { trackViewContent } from "@/lib/meta-pixel";
 
@@ -25,15 +26,15 @@ const ListingPostMap = dynamic(() => import("./ListingPostMap"), { ssr: false })
 export interface ListingPostViewProps {
   slug: string;
   title: string;
-  excerpt: string;
+  description: string;
   content: ReactNode;
-  postType: "open-house" | "listing";
   openHouse?: { date?: string; startTime?: string; endTime?: string; notes?: string } | null;
   agentName: string;
   listing: any | null;
   photos: ListingPostPhoto[];
   subdivision: ListingPostSubdivision | null;
   city: ListingPostCity | null;
+  mapData: ListingPostMapData | null;
   preview?: boolean;
   /**
    * False when the visitor has not registered. The server has ALREADY stripped
@@ -43,8 +44,6 @@ export interface ListingPostViewProps {
   unlocked?: boolean;
   /** null when there is no gate to run (unlocked, or the agent turned it off). */
   gateConfig?: LeadGateClientConfig | null;
-  /** Total photo count, so the wall can say how many are behind it. */
-  lockedPhotoCount?: number;
   /** Walkthrough video, gated with the rest of the media. */
   videoUrl?: string | null;
 }
@@ -71,7 +70,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const { listing, subdivision, city } = props;
-  const isOpenHouse = props.postType === "open-house";
+  const hasOpenHouse = Boolean(props.openHouse?.date);
   // Default true so any caller that predates the gate keeps its old behaviour
   // rather than silently rendering a locked page.
   const unlocked = props.unlocked !== false;
@@ -86,6 +85,9 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const address = listing?.unparsedAddress || listing?.unparsedFirstLineAddress || listing?.address || "";
   const beds = listing?.bedroomsTotal ?? listing?.bedsTotal;
   const baths = listing?.bathroomsTotalInteger ?? listing?.bathsTotal;
+  const lotSize = listing?.lotSizeArea || listing?.lotSizeSqft;
+  const hoaFee = listing?.associationFee ?? listing?.hoaFee;
+  const hoaFrequency = listing?.associationFeeFrequency || listing?.hoaFeeFrequency;
   const isActive = listing?.standardStatus === "Active";
   const lat = Number(listing?.latitude);
   const lng = Number(listing?.longitude);
@@ -124,10 +126,13 @@ export default function ListingPostView(props: ListingPostViewProps) {
     { icon: Bed, label: "Beds", value: beds ?? "—" },
     { icon: Bath, label: "Baths", value: baths ?? "—" },
     { icon: Square, label: "Sq Ft", value: listing?.livingArea ? Number(listing.livingArea).toLocaleString("en-US") : "—" },
-    { icon: TreePine, label: "Lot", value: listing?.lotSizeSqft ? `${Number(listing.lotSizeSqft).toLocaleString("en-US")} sf` : "—" },
+    { icon: TreePine, label: "Lot", value: lotSize ? `${Number(lotSize).toLocaleString("en-US")} sf` : "—" },
     { icon: Calendar, label: "Built", value: listing?.yearBuilt ?? "—" },
     { icon: HomeIcon, label: "Type", value: listing?.propertySubType || listing?.propertyTypeName || "—" },
   ];
+  const salePrice = Number(listing?.listPrice);
+  const showMortgage = unlocked && isActive && Number.isFinite(salePrice) && salePrice > 0 &&
+    (listing?.propertyType === "A" || listing?.propertyType === "C");
 
   return (
     <main className={`min-h-screen w-full ${isLight ? "text-gray-900" : "text-white"}`}>
@@ -154,7 +159,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
         {/* 2. Title, price, open-house banner */}
         <header className="space-y-3">
           <p className={`text-xs font-semibold uppercase tracking-widest ${isLight ? "text-blue-600" : "text-emerald-400"}`}>
-            {isOpenHouse ? "Open House" : "Featured Listing"}
+            Featured Listing
           </p>
           <h1 className="text-3xl font-bold md:text-4xl">{props.title}</h1>
           {address && (
@@ -165,10 +170,10 @@ export default function ListingPostView(props: ListingPostViewProps) {
           )}
           {listing && !isActive && (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm">
-              This home is no longer an active listing{listing.standardStatus ? ` (${listing.standardStatus})` : ""}. You can still register below for similar homes.
+              This home is no longer an active listing{listing.standardStatus ? ` (${listing.standardStatus})` : ""}.
             </p>
           )}
-          {isOpenHouse && props.openHouse?.date && (
+          {hasOpenHouse && props.openHouse?.date && (
             <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${isLight ? "bg-blue-50 border border-blue-200" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
               <CalendarClock className={`h-6 w-6 shrink-0 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
               <div>
@@ -198,55 +203,42 @@ export default function ListingPostView(props: ListingPostViewProps) {
                 </div>
               ))}
             </div>
-            {listing.hoaFee ? (
+            {hoaFee ? (
               <p className={`mt-4 text-sm ${text}`}>
-                HOA {money(listing.hoaFee)}
-                {listing.hoaFeeFrequency ? ` ${String(listing.hoaFeeFrequency).toLowerCase()}` : ""}
+                HOA {money(hoaFee)}
+                {hoaFrequency ? ` ${String(hoaFrequency).toLowerCase()}` : ""}
               </p>
             ) : null}
           </section>
         )}
 
-        {/* 4. Post copy + registration form */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-          <article className={`lg:col-span-3 ${card}`}>
-            {props.excerpt && <p className={`mb-6 text-lg ${text}`}>{props.excerpt}</p>}
-            <div className={`prose max-w-none ${isLight ? "prose-gray" : "prose-invert"}`}>{props.content}</div>
-          </article>
-          <aside className="lg:col-span-2">
-            {unlocked ? (
-              <div id="register" className={`${card} lg:sticky lg:top-6`}>
-                <h2 className={h2}>{isOpenHouse ? "Register for the open house" : "Get details on this home"}</h2>
-                <ListingPostRegisterForm
-                  slug={props.slug}
-                  isOpenHouse={isOpenHouse}
-                  agentName={props.agentName}
-                  isLight={isLight}
-                  preview={props.preview}
-                />
-              </div>
-            ) : (
-              <div className="lg:sticky lg:top-6">
-                <ListingPostGate
-                  config={props.gateConfig ?? null}
-                  isOpenHouse={isOpenHouse}
-                  isLight={isLight}
-                  lockedPhotoCount={props.lockedPhotoCount ?? 0}
-                  slug={props.slug}
-                  preview={props.preview}
-                >
-                  <ListingPostRegisterForm
-                    slug={props.slug}
-                    isOpenHouse={isOpenHouse}
-                    agentName={props.agentName}
-                    isLight={isLight}
-                    preview={props.preview}
-                  />
-                </ListingPostGate>
-              </div>
+        <div className={`grid gap-6 ${showMortgage ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
+          <div className="min-w-0 space-y-6">
+            {(props.description || props.content) && (
+              <article className={card}>
+                <h2 className={h2}>Property Description</h2>
+                {props.description && <p className={`whitespace-pre-line text-lg leading-relaxed ${text}`}>{props.description}</p>}
+                {props.content && (
+                  <div className={`prose mt-6 max-w-none ${isLight ? "prose-gray" : "prose-invert"}`}>{props.content}</div>
+                )}
+              </article>
             )}
-          </aside>
+            {unlocked && listing && (
+              <ListingPropertyDetails listing={listing} subdivisionUrl={subUrl} isLight={isLight} />
+            )}
+          </div>
+          {showMortgage && (
+            <aside className={`min-w-0 self-start ${card}`}>
+              <h2 className={h2}>Mortgage Calculator</h2>
+              <MortgageCalculator price={salePrice} downPayment={Math.round(salePrice * 0.2)}
+                {...getListingMortgageCosts(listing)} />
+            </aside>
+          )}
         </div>
+        {!unlocked && props.gateConfig && (
+          <ListingPostGate config={props.gateConfig} hasOpenHouse={hasOpenHouse} agentName={props.agentName}
+            isLight={isLight} slug={props.slug} preview={props.preview} />
+        )}
 
         {/* 5. Subdivision info */}
         {subdivision && (
@@ -287,12 +279,13 @@ export default function ListingPostView(props: ListingPostViewProps) {
         )}
 
         {/* 7. Map */}
-        {hasCoords && (
+        {unlocked && hasCoords && props.mapData && (
           <section className={card} aria-label="Map">
             <h2 className={h2}>Location</h2>
-            <ListingPostMap latitude={lat} longitude={lng} address={address} isLight={isLight} />
+            <ListingPostMap latitude={lat} longitude={lng} address={address} data={props.mapData} isLight={isLight} />
           </section>
         )}
+        {unlocked && listing && <ListingCMASection listing={listing} prebuiltOnly />}
 
         {/* MLS attribution — required on any page showing another brokerage's listing */}
         {listing && (
@@ -302,19 +295,6 @@ export default function ListingPostView(props: ListingPostViewProps) {
         )}
       </div>
 
-      {/* 8. Sliding carousel of nearby active listings.
-          Gated: the teaser carries `city`, so without this guard a locked
-          visitor would get the nearby-homes rail we just promised them behind
-          the wall — and RelatedListings fetches it client-side, so the server
-          projection alone would not have stopped it. */}
-      {unlocked && listing?.city && (
-        <RelatedListings
-          city={listing.city}
-          subdivisionName={listing.subdivisionName}
-          excludeListingKey={listing.listingKey || ""}
-          listPrice={listing.listPrice}
-        />
-      )}
     </main>
   );
 }

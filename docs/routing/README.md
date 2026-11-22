@@ -1,7 +1,7 @@
 ---
 title: Routing (src/proxy.ts)
 status: current
-last_verified: 2026-10-18
+last_verified: 2026-11-21
 related: [../auth/README.md, ../multi-tenant/README.md, ../chatrealty-api/external-site.md, ../seo/README.md]
 ---
 
@@ -12,7 +12,9 @@ related: [../auth/README.md, ../multi-tenant/README.md, ../chatrealty-api/extern
 `src/proxy.ts` is the Next.js 16 "proxy" file (the convention formerly called
 middleware). It runs on every request the matcher lets through and decides by
 **path first, then Host header**: `/api/*` goes through the deny-by-default API
-gate (after an external-site check on agent subdomains); pages are routed per
+gate (after an external-site check on agent subdomains). The public listing
+calculator reads the national averages via the exact `/api/mortgage-rates`
+allowlist entry. Pages are routed per
 host — owner domains, the admin-only `agent.` host, agent subdomains (which may
 be reverse-proxied to the agent's own deployment), the platform root, and
 everything else. `src/lib/agent-host.ts` is the shared, edge-safe rulebook for

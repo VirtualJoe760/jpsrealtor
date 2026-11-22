@@ -1,7 +1,7 @@
 ---
 title: External Integrations
 status: current
-last_verified: 2026-11-03
+last_verified: 2026-11-21
 related: [../auth/README.md, ../crm/README.md, ../multi-tenant/README.md, ../cms/README.md]
 ---
 
@@ -90,7 +90,7 @@ Every external API the platform talks to is wrapped in a single file under `src/
 
 | Name | File | Purpose | Env vars | Used in | Quirks |
 |---|---|---|---|---|---|
-| **API Ninjas** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\mortgage-rates\route.ts` | Live mortgage rate quotes | `API_NINJAS_KEY` | Insights / mortgage calculator | |
+| **API Ninjas** | `src/lib/listings/mortgage-rate.ts` via public `GET /api/mortgage-rates` | Weekly national mortgage-rate averages | `API_NINJA_KEY` or `API_NINJAS_KEY` | Insights / mortgage calculator | Six-hour provider cache |
 | **FRED (St. Louis Fed)** | inline at `F:\web-clients\joseph-sardella\jpsrealtor\src\app\api\market-stats\route.ts`, `src\app\api\stats\market\route.ts` | Macro / economic data series (mortgage rates, CPI, etc.) | `FRED_API_KEY` | Market stats widgets, insights page | No shared wrapper. |
 
 ### ChatRealty-issued (outbound integrations from agents)

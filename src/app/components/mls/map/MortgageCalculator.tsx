@@ -12,7 +12,31 @@ type MortgageCalculatorProps = {
   downPayment?: number;
   interestRate?: number; // Annual interest rate in %
   loanTerm?: number; // In years
+  annualPropertyTaxRate?: number;
+  annualCondoInsurance?: number;
+  monthlyHoa?: number;
 };
+
+export function getListingMortgageCosts(listing: {
+  stateOrProvince?: string;
+  propertySubType?: string;
+  associationFee?: number;
+  associationFeeFrequency?: string;
+  hoaFee?: number;
+  hoaFeeFrequency?: string;
+}) {
+  const california = /^(CA|California)$/i.test(listing.stateOrProvince?.trim() || "");
+  const condo = /^condominium$/i.test(listing.propertySubType?.trim() || "");
+  const fee = listing.associationFee ?? listing.hoaFee;
+  const frequency = (listing.associationFeeFrequency || listing.hoaFeeFrequency || "").trim().toLowerCase();
+  const monthsPerBill: Record<string, number> = { monthly: 1, quarterly: 3, "semi-annually": 6, semiannual: 6, annually: 12, annual: 12, yearly: 12 };
+  const months = monthsPerBill[frequency];
+  return {
+    annualPropertyTaxRate: california ? 0.0125 : undefined,
+    annualCondoInsurance: california && condo ? 722 : undefined,
+    monthlyHoa: typeof fee === "number" && Number.isFinite(fee) && fee >= 0 && months ? fee / months : undefined,
+  };
+}
 
 interface MortgageRateData {
   frm_30?: number;
@@ -25,6 +49,9 @@ export default function MortgageCalculator({
   downPayment = 100000,
   interestRate = 6.5,
   loanTerm = 30,
+  annualPropertyTaxRate,
+  annualCondoInsurance,
+  monthlyHoa,
 }: MortgageCalculatorProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
@@ -36,6 +63,10 @@ export default function MortgageCalculator({
   const [mortgageRates, setMortgageRates] = useState<MortgageRateData | null>(null);
   const [isLoadingRates, setIsLoadingRates] = useState(true);
   const [isFallbackRate, setIsFallbackRate] = useState(false);
+  const [taxInput, setTaxInput] = useState<string>();
+  const [insuranceInput, setInsuranceInput] = useState<string>();
+  const [mortgageInsuranceInput, setMortgageInsuranceInput] = useState("");
+  const [hoaInput, setHoaInput] = useState<string>();
 
   useEffect(() => {
     setPriceState(price);
@@ -46,6 +77,11 @@ export default function MortgageCalculator({
     setIsLoadingRates(true);
     try {
       const response = await fetch("/api/mortgage-rates");
+      if (!response.ok) {
+        setMortgageRates(null);
+        setIsFallbackRate(true);
+        return;
+      }
       const result = await response.json();
 
       if (result.success) {
@@ -65,7 +101,8 @@ export default function MortgageCalculator({
         setIsFallbackRate(true);
       }
     } catch (error) {
-      console.error("Failed to fetch mortgage rates:", error);
+      console.warn("Failed to fetch mortgage rates:", error);
+      setMortgageRates(null);
       setIsFallbackRate(true);
     } finally {
       setIsLoadingRates(false);
@@ -87,14 +124,27 @@ export default function MortgageCalculator({
     }
   }, [loanTermState, mortgageRates]);
 
-  const loanAmount = priceState - downPaymentState;
+  const loanAmount = Math.max(0, priceState - downPaymentState);
   const monthlyRate = interestRateState / 100 / 12;
   const numberOfPayments = loanTermState * 12;
 
   const monthlyPayment =
-    loanAmount > 0
+    monthlyRate > 0
       ? (loanAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -numberOfPayments))
-      : 0;
+      : loanAmount / numberOfPayments;
+
+  const tax = taxInput ?? (annualPropertyTaxRate ? String(Math.round(priceState * annualPropertyTaxRate / 12)) : "");
+  const insurance = insuranceInput ?? (annualCondoInsurance ? (annualCondoInsurance / 12).toFixed(2) : "");
+  const hoa = hoaInput ?? (monthlyHoa != null ? monthlyHoa.toFixed(2) : "");
+  const costInputs = [
+    { label: "Property tax", value: tax, update: setTaxInput },
+    { label: "Homeowners insurance", value: insurance, update: setInsuranceInput },
+    { label: "Mortgage insurance", value: mortgageInsuranceInput, update: setMortgageInsuranceInput },
+    { label: "HOA dues", value: hoa, update: setHoaInput },
+  ];
+  const ownershipPayment = monthlyPayment + costInputs.reduce((sum, cost) => sum + Number(cost.value), 0);
+  const pmiMayApply = loanAmount > 0 && downPaymentState < priceState * 0.2 && Number(mortgageInsuranceInput) === 0;
+  const formatPayment = (amount: number) => amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
   const totalPayment = monthlyPayment * numberOfPayments;
   const totalInterest = totalPayment - loanAmount;
@@ -125,7 +175,7 @@ export default function MortgageCalculator({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <TrendingDown className={`w-4 h-4 ${isLight ? 'text-blue-500' : 'text-emerald-400'}`} />
-            <h4 className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>Current Rates</h4>
+            <h4 className={`text-sm font-semibold ${isLight ? 'text-gray-900' : 'text-white'}`}>National Mortgage Rates</h4>
           </div>
           <button
             onClick={fetchMortgageRates}
@@ -143,7 +193,7 @@ export default function MortgageCalculator({
           <div className="flex items-center justify-center py-4">
             <Loader2 className={`w-5 h-5 animate-spin ${isLight ? 'text-blue-500' : 'text-emerald-400'}`} />
           </div>
-        ) : (
+        ) : mortgageRates ? (
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => useTodaysRate(30)}
@@ -179,15 +229,17 @@ export default function MortgageCalculator({
               </div>
             </button>
           </div>
-        )}
+        ) : null}
 
-        {mortgageRates?.date && (
+        {!isLoadingRates && (
           <div className={`mt-3 text-xs flex items-center gap-1.5 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>
             <Info className="w-3 h-3" />
-            {isFallbackRate ? (
+            {!mortgageRates ? (
+              <span>Rate feed unavailable. Enter a rate below to update the estimate.</span>
+            ) : isFallbackRate ? (
               <span>Showing estimated rates</span>
             ) : (
-              <span>Updated: {new Date(mortgageRates.date).toLocaleDateString()}</span>
+              <span>Weekly U.S. averages</span>
             )}
           </div>
         )}
@@ -305,6 +357,23 @@ export default function MortgageCalculator({
         </div>
       </div>
 
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm font-semibold">Monthly taxes, insurance and dues</legend>
+        <div className="grid grid-cols-2 gap-3">
+          {costInputs.map((cost) => (
+            <label key={cost.label} className="space-y-1 text-xs">
+              <span className="block">{cost.label}</span>
+              <input type="number" inputMode="decimal" min={0} step="0.01" placeholder="Enter amount"
+                className={`w-full rounded-lg border px-2 py-2 ${isLight ? "border-gray-300 bg-white" : "border-neutral-700 bg-neutral-900"}`}
+                value={cost.value} onChange={(event) => cost.update(event.target.valueAsNumber < 0 ? "0" : event.target.value)} />
+            </label>
+          ))}
+        </div>
+        {annualPropertyTaxRate && taxInput == null && <p className="text-xs opacity-75">Property tax estimate uses 1.25% of the purchase price per year.</p>}
+        {annualCondoInsurance && insuranceInput == null && <p className="text-xs opacity-75">Insurance estimate uses the California condo average of $722 per year (NAIC, 2023 data).</p>}
+        {pmiMayApply && <p className="text-xs font-medium">Mortgage insurance may apply. Enter the monthly amount from your lender.</p>}
+      </fieldset>
+
       {/* Results */}
       <motion.div
         layout
@@ -315,9 +384,9 @@ export default function MortgageCalculator({
         }`}
       >
         <div>
-          <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Monthly Payment</div>
+          <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Estimated Monthly Housing Cost</div>
           <motion.div
-            key={monthlyPayment}
+            key={ownershipPayment}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className={`text-4xl font-extrabold text-transparent bg-clip-text ${
@@ -326,9 +395,17 @@ export default function MortgageCalculator({
                 : 'bg-gradient-to-r from-emerald-400 to-cyan-400'
             }`}
           >
-            ${monthlyPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatPayment(ownershipPayment)}
           </motion.div>
-          <div className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-neutral-500'}`}>Principal & Interest</div>
+          <dl className="mt-3 space-y-1 text-sm">
+            {[{ label: "Principal & Interest", value: monthlyPayment }, ...costInputs.map((cost) => ({
+              label: cost.label, value: cost.value === "" ? null : Number(cost.value),
+            }))].map((line) => (
+              <div key={line.label} className="flex justify-between gap-2">
+                <dt>{line.label}</dt><dd>{line.value == null ? "—" : formatPayment(line.value)}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
 
         <div className={`grid grid-cols-2 gap-4 pt-4 border-t ${isLight ? 'border-gray-300/50' : 'border-neutral-700/30'}`}>
@@ -347,7 +424,7 @@ export default function MortgageCalculator({
         </div>
 
         <div className={`pt-4 border-t ${isLight ? 'border-gray-300/50' : 'border-neutral-700/30'}`}>
-          <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Total Payment Over {loanTermState} Years</div>
+          <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Principal & Interest Over {loanTermState} Years</div>
           <div className={`text-xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
             ${totalPayment.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
@@ -362,7 +439,7 @@ export default function MortgageCalculator({
       }`}>
         <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
         <span>
-          This calculator provides estimates only. Actual mortgage payments may include taxes, insurance, HOA fees, and PMI. Contact a lender for accurate quotes.
+          Estimates include the costs shown above. Blank amounts are excluded. Actual taxes, insurance and dues can vary. Closing costs, utilities and maintenance are separate.
         </span>
       </div>
     </div>

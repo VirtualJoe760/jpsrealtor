@@ -136,16 +136,6 @@ export default function ListingPostOptions({
   }`;
   const label = `block text-sm font-semibold mb-2 ${isLight ? "text-gray-700" : "text-gray-300"}`;
   const muted = isLight ? "text-gray-500" : "text-gray-400";
-  const choice = (active: boolean) =>
-    `flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold cursor-pointer border-2 transition-all ${
-      active
-        ? isLight
-          ? "bg-blue-50 border-blue-400 text-blue-800"
-          : "bg-emerald-900/30 border-emerald-500 text-emerald-200"
-        : isLight
-          ? "bg-white border-slate-300 text-gray-600"
-          : "bg-gray-800 border-gray-700 text-gray-400"
-    }`;
 
   return (
     <div className="space-y-5">
@@ -225,72 +215,48 @@ export default function ListingPostOptions({
         )}
       </div>
 
-      <div>
-        <label className={label}>Post type</label>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className={choice(config.postType === "open-house")}>
-            <input
-              type="checkbox"
-              checked={config.postType === "open-house"}
-              onChange={() => onChange({ ...config, postType: "open-house" })}
-            />
-            Open house
-          </label>
-          <label className={choice(config.postType === "listing")}>
-            <input
-              type="checkbox"
-              checked={config.postType === "listing"}
-              onChange={() => onChange({ ...config, postType: "listing" })}
-            />
-            General listing page
-          </label>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-3">
+          <label className={label}>Open house date (optional)</label>
+          <input
+            type="date"
+            value={config.openHouse.date}
+            onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, date: e.target.value } })}
+            className={field}
+          />
+        </div>
+        <div className="sm:col-span-1">
+          <label className={label}>Starts</label>
+          <input
+            type="text"
+            placeholder="1:00 PM"
+            value={config.openHouse.startTime}
+            onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, startTime: e.target.value } })}
+            className={field}
+          />
+        </div>
+        <div className="sm:col-span-1">
+          <label className={label}>Ends</label>
+          <input
+            type="text"
+            placeholder="4:00 PM"
+            value={config.openHouse.endTime}
+            onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, endTime: e.target.value } })}
+            className={field}
+          />
+        </div>
+        <div className="sm:col-span-3">
+          <label className={label}>Notes (optional)</label>
+          <input
+            type="text"
+            placeholder="Refreshments served, gate code at the guard house…"
+            maxLength={300}
+            value={config.openHouse.notes}
+            onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, notes: e.target.value } })}
+            className={field}
+          />
         </div>
       </div>
-
-      {config.postType === "open-house" && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-3">
-            <label className={label}>Open house date</label>
-            <input
-              type="date"
-              value={config.openHouse.date}
-              onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, date: e.target.value } })}
-              className={field}
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <label className={label}>Starts</label>
-            <input
-              type="text"
-              placeholder="1:00 PM"
-              value={config.openHouse.startTime}
-              onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, startTime: e.target.value } })}
-              className={field}
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <label className={label}>Ends</label>
-            <input
-              type="text"
-              placeholder="4:00 PM"
-              value={config.openHouse.endTime}
-              onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, endTime: e.target.value } })}
-              className={field}
-            />
-          </div>
-          <div className="sm:col-span-3">
-            <label className={label}>Notes (optional)</label>
-            <input
-              type="text"
-              placeholder="Refreshments served, gate code at the guard house…"
-              maxLength={300}
-              value={config.openHouse.notes}
-              onChange={(e) => onChange({ ...config, openHouse: { ...config.openHouse, notes: e.target.value } })}
-              className={field}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Walkthrough video — goes first in the hero carousel, gated with the
           rest of the media. */}

@@ -9,13 +9,13 @@ import { motion } from "framer-motion";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
 import CollageHero from "@/app/components/mls/CollageHero";
-import MortgageCalculator from "@/app/components/mls/map/MortgageCalculator";
+import ListingPropertyDetails, { getPropertyTypeLabel } from "@/app/components/mls/ListingPropertyDetails";
+import MortgageCalculator, { getListingMortgageCosts } from "@/app/components/mls/map/MortgageCalculator";
 import UnifiedListingAttribution from "@/app/components/mls/ListingAttribution";
 import SpaticalBackground from "@/app/components/backgrounds/SpaticalBackground";
 import RelatedListings from "@/app/components/mls/RelatedListings";
 import NearbyListingsMap from "@/app/components/mls/NearbyListingsMap";
-import CMAReport from "@/app/components/cma/CMAReport";
-import { adaptPrebuiltCmaStats } from "@/lib/cma/adapt-prebuilt-stats";
+import ListingCMASection from "@/app/components/mls/ListingCMASection";
 
 import type { IUnifiedListing } from "@/models/unified-listing";
 import { trackViewContent, trackEvent } from "@/lib/meta-pixel";
@@ -109,42 +109,6 @@ function CommunityAside({ subdivisionName, cityName, subdivisionUrl, isLight }: 
   );
 }
 
-// CMA section — uses pre-computed cmaStats from the listing document when
-// available (sub-50ms render), falls back to on-demand /api/cma/generate
-// otherwise (1-20s). cmaStats is written by build-listing-cma.py on a
-// twice-weekly VPS cron — see docs/cma/LISTING_CMA_BACKEND_BUILDER.md.
-//
-// Shape note: the Python script writes a flat shape (subject.pool: bool)
-// for storage compactness, but the TS components were built around the
-// on-demand engine's ResolvedAttribute shape (subject.resolved.pool).
-// adaptPrebuiltCmaStats() bridges the two without forcing a Python rewrite.
-function CMASection({
-  listing,
-  isLight,
-}: {
-  listing: IUnifiedListing;
-  isLight: boolean;
-}) {
-  const listingKey = listing.listingKey || "";
-  if (!listingKey) return null;
-
-  // Prefer the pre-computed stats; null when the cron hasn't covered this
-  // listing yet, in which case CMAReport falls through to its existing
-  // /api/cma/subdivision/{slug} → /api/cma/generate flow.
-  const cmaStats = (listing as any).cmaStats;
-  const preloaded = cmaStats ? adaptPrebuiltCmaStats(cmaStats, listing) : null;
-
-  return (
-    <section className="py-8 px-4 md:px-8">
-      <CMAReport
-        listingKey={listingKey}
-        subdivisionName={listing.subdivisionName}
-        result={preloaded || undefined}
-      />
-    </section>
-  );
-}
-
 function calculateDaysOnMarket(listing: { daysOnMarket?: number; onMarketDate?: string | Date; listingContractDate?: string | Date }) {
   // Prefer MLS-provided DOM (accurate for relisted properties)
   if (listing.daysOnMarket != null && listing.daysOnMarket >= 0) return listing.daysOnMarket;
@@ -156,25 +120,6 @@ function calculateDaysOnMarket(listing: { daysOnMarket?: number; onMarketDate?: 
   const diffTime = today.getTime() - listedDate.getTime();
   const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return days >= 0 ? days : null;
-}
-
-// Map property type codes to human-readable names
-function getPropertyTypeLabel(code?: string): string {
-  if (!code) return "";
-
-  const mapping: Record<string, string> = {
-    'A': 'Residential',
-    'B': 'Residential Lease',
-    'C': 'Residential Income',
-    'D': 'Land',
-    'E': 'Manufactured In Park',
-    'F': 'Commercial Sale',
-    'G': 'Commercial Lease',
-    'H': 'Business Opportunity',
-    'I': 'Vacation Rental',
-  };
-
-  return mapping[code.toUpperCase()] || code;
 }
 
 // Animation variants
@@ -803,235 +748,7 @@ export default function ListingClient({
                 </motion.div>
               )}
 
-              {/* Features Panel */}
-              <motion.div
-                variants={itemVariants}
-                className={`backdrop-blur-xl rounded-2xl p-6 shadow-2xl ${
-                  isLight
-                    ? 'bg-white/80 border-2 border-gray-300'
-                    : 'bg-black/40 border border-neutral-800/50'
-                }`}
-                style={isLight ? {
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                } : undefined}
-              >
-                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}>
-                  <div className={`w-1 h-6 rounded-full ${
-                    isLight
-                      ? 'bg-gradient-to-b from-purple-500 to-pink-500'
-                      : 'bg-gradient-to-b from-purple-400 to-pink-400'
-                  }`} />
-                  Features & Amenities
-                </h2>
-
-                <div className="flex flex-wrap gap-2">
-                  {listing.subdivisionName && listing.subdivisionName.toLowerCase() !== "other" && (
-                    subdivisionUrl ? (
-                      <Link
-                        href={subdivisionUrl}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 ${
-                          isLight
-                            ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300 hover:bg-emerald-200 hover:border-emerald-400'
-                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:border-emerald-500/50'
-                        }`}
-                      >
-                        {listing.subdivisionName}
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                    ) : (
-                      <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                        isLight
-                          ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                          : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      }`}>
-                        {listing.subdivisionName}
-                      </span>
-                    )
-                  )}
-                  {listing.landType && (
-                    <span className={`px-4 py-2 rounded-full text-sm ${
-                      isLight
-                        ? 'bg-gray-100 text-gray-900 border-2 border-gray-300'
-                        : 'bg-neutral-800/70 text-white border border-neutral-700/30'
-                    }`}>
-                      {listing.landType}
-                    </span>
-                  )}
-                  {listing.terms && listing.terms.length > 0 && (
-                    <span className={`px-4 py-2 rounded-full text-sm ${
-                      isLight
-                        ? 'bg-gray-100 text-gray-900 border-2 border-gray-300'
-                        : 'bg-neutral-800/70 text-white border border-neutral-700/30'
-                    }`}>
-                      {listing.terms.join(", ")}
-                    </span>
-                  )}
-                  {listing.yearBuilt && (
-                    <span className={`px-4 py-2 rounded-full text-sm ${
-                      isLight
-                        ? 'bg-gray-100 text-gray-900 border-2 border-gray-300'
-                        : 'bg-neutral-800/70 text-white border border-neutral-700/30'
-                    }`}>
-                      Built {listing.yearBuilt}
-                    </span>
-                  )}
-                  {listing.poolYn && (
-                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      isLight
-                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                        : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    }`}>
-                      🏊 Pool
-                    </span>
-                  )}
-                  {listing.spaYn && (
-                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      isLight
-                        ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                        : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                    }`}>
-                      🧖 Spa
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Property Details Panel */}
-              <motion.div
-                variants={itemVariants}
-                className={`backdrop-blur-xl rounded-2xl p-6 shadow-2xl ${
-                  isLight
-                    ? 'bg-white/80 border-2 border-gray-300'
-                    : 'bg-black/40 border border-neutral-800/50'
-                }`}
-                style={isLight ? {
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                } : undefined}
-              >
-                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${
-                  isLight ? 'text-gray-900' : 'text-white'
-                }`}>
-                  <div className={`w-1 h-6 rounded-full ${
-                    isLight
-                      ? 'bg-gradient-to-b from-cyan-500 to-blue-500'
-                      : 'bg-gradient-to-b from-cyan-400 to-blue-400'
-                  }`} />
-                  Property Details
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {listing.subdivisionName && (
-                    <div className={`rounded-xl p-4 ${
-                      isLight
-                        ? 'bg-gray-50 border-2 border-gray-200'
-                        : 'bg-neutral-900/30 border border-neutral-700/20'
-                    }`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Subdivision</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.subdivisionName}</div>
-                    </div>
-                  )}
-                  {listing.landType && (
-                    <div className={`rounded-xl p-4 ${
-                      isLight
-                        ? 'bg-gray-50 border-2 border-gray-200'
-                        : 'bg-neutral-900/30 border border-neutral-700/20'
-                    }`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Land Type</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.landType}</div>
-                    </div>
-                  )}
-                  {listing.yearBuilt && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Year Built</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.yearBuilt}</div>
-                    </div>
-                  )}
-                  {listing.propertyType && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Property Type</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{getPropertyTypeLabel(listing.propertyType)}</div>
-                    </div>
-                  )}
-                  {listing.propertySubType && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Property Subtype</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.propertySubType}</div>
-                    </div>
-                  )}
-                  {listing.stories !== undefined && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Stories</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.stories}</div>
-                    </div>
-                  )}
-                  {listing.parkingTotal !== undefined && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Parking Spaces</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.parkingTotal}</div>
-                    </div>
-                  )}
-                  {listing.garageSpaces !== undefined && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Garage Spaces</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.garageSpaces}</div>
-                    </div>
-                  )}
-                  {listing.heating && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Heating</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.heating}</div>
-                    </div>
-                  )}
-                  {listing.cooling && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Cooling</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.cooling}</div>
-                    </div>
-                  )}
-                  {listing.view && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>View</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.view}</div>
-                    </div>
-                  )}
-                  {listing.flooring && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Flooring</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.flooring}</div>
-                    </div>
-                  )}
-                  {listing.roof && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Roof</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.roof}</div>
-                    </div>
-                  )}
-                  {listing.city && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>City</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.city}</div>
-                    </div>
-                  )}
-                  {listing.postalCode && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>Zip Code</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.postalCode}</div>
-                    </div>
-                  )}
-                  {listing.countyOrParish && (
-                    <div className={`rounded-xl p-4 ${isLight ? 'bg-gray-50 border-2 border-gray-200' : 'bg-neutral-900/30 border border-neutral-700/20'}`}>
-                      <div className={`text-xs mb-1 ${isLight ? 'text-gray-600' : 'text-neutral-400'}`}>County</div>
-                      <div className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{listing.countyOrParish}</div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              <ListingPropertyDetails listing={listing} subdivisionUrl={subdivisionUrl} isLight={isLight} variants={itemVariants} />
 
               {/* Attribution Panel */}
               <motion.div
@@ -1080,6 +797,7 @@ export default function ListingClient({
                 <MortgageCalculator
                   price={listing.listPrice || 500000}
                   downPayment={listing.listPrice ? Math.round(listing.listPrice * 0.20) : 100000}
+                  {...(listing.listPrice ? getListingMortgageCosts(listing) : {})}
                 />
               </motion.div>
 
@@ -1121,7 +839,7 @@ export default function ListingClient({
             when present (sub-50ms), falls back to on-demand /api/cma/generate
             otherwise. Was previously hidden because the on-demand path took
             1-20s and stalled the page. */}
-        <CMASection listing={listing} isLight={isLight} />
+        <ListingCMASection listing={listing} />
       </div>
     </SpaticalBackground>
   );

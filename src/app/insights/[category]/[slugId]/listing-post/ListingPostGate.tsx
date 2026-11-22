@@ -1,62 +1,39 @@
 "use client";
 
-// The registration wall on a listing post.
-//
-// Two surfaces, and the difference matters:
-//
-//   - the CARD is always rendered at the end of the teaser. It is the honest
-//     end of the page: there is nothing below it, because the server did not
-//     send anything below it.
-//   - the OVERLAY is the aggressive one. `mode` decides when it takes the
-//     viewport: on first paint, after N seconds, or after N% of the teaser has
-//     been scrolled. That is the dial the agent controls in /agent/settings and
-//     can override per post in the CMS.
-//
-// Removing the overlay from the DOM reveals the teaser, not the gated content —
-// see listing-post-teaser.ts. That is deliberate: the timing is a conversion
-// lever, so it can be tuned freely without any of the settings being a security
-// decision.
-
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import ListingPostRegisterForm from "./ListingPostRegisterForm";
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
+import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 import ListingPostSocialRegister from "./ListingPostSocialRegister";
 
 interface ListingPostGateProps {
-  /** null = no gate (agent turned it off, or the visitor already registered). */
-  config: LeadGateClientConfig | null;
-  isOpenHouse: boolean;
+  config: LeadGateClientConfig;
+  hasOpenHouse: boolean;
+  agentName: string;
   isLight: boolean;
-  lockedPhotoCount: number;
   /** Post slug, for the social-registration round trip. */
   slug: string;
   /** Preview mode disables the social redirect. */
   preview?: boolean;
-  /** The registration form, rendered inside both surfaces. */
-  children: ReactNode;
-  /** Fired once when the overlay first appears, for the pixel. */
-  onGateShown?: () => void;
 }
 
 export default function ListingPostGate({
   config,
-  isOpenHouse,
+  hasOpenHouse,
+  agentName,
   isLight,
-  lockedPhotoCount,
   slug,
   preview,
-  children,
-  onGateShown,
 }: ListingPostGateProps) {
   const [overlayUp, setOverlayUp] = useState(false);
-  const firedRef = useRef(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [registerForOpenHouse, setRegisterForOpenHouse] = useState(false);
+  const [attendance, setAttendance] = useState<OpenHouseAttendance>({ attendedDate: "", feedback: "" });
 
   // One effect for both triggers so there is a single place that can raise the
   // overlay, and a single cleanup. Re-runs only when the resolved config
   // changes, which in practice is never within a page view.
   useEffect(() => {
-    if (!config) return;
-
     if (config.mode === "immediate") {
       setOverlayUp(true);
       return;
@@ -87,18 +64,12 @@ export default function ListingPostGate({
     }
   }, [config]);
 
-  // Report once, after the overlay is actually up — not when the timer is set.
-  useEffect(() => {
-    if (overlayUp && !firedRef.current) {
-      firedRef.current = true;
-      onGateShown?.();
-    }
-  }, [overlayUp, onGateShown]);
-
   // The page scrolls behind a full-viewport overlay otherwise, which on iOS
   // leaves the visitor stranded mid-document when they dismiss nothing.
   useEffect(() => {
     if (!overlayUp) return;
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -111,58 +82,47 @@ export default function ListingPostGate({
   }`;
   const heading = isLight ? "text-gray-900" : "text-white";
   const muted = isLight ? "text-gray-600" : "text-neutral-400";
+  const field = `mt-1 w-full rounded-lg border px-3 py-2 text-sm ${
+    isLight ? "border-gray-300 bg-white" : "border-neutral-700 bg-neutral-900 [color-scheme:dark]"
+  }`;
 
-  const title = isOpenHouse ? "Register for the open house" : "Get the full details on this home";
-  const perks = [
-    lockedPhotoCount > 0 ? `All ${lockedPhotoCount} photos and the video tour` : "The full photo set and video tour",
-    isOpenHouse ? "Gate code and parking instructions" : "Full property detail and features",
-    "Map and exact location in the community",
-    "Recently sold comps nearby",
-  ];
-
-  const body = (
-    <>
-      <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-extrabold tracking-widest ${
-        isLight ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-      }`}>
-        <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-        REGISTER TO CONTINUE
-      </div>
-      <h2 className={`mb-2 text-2xl font-bold tracking-tight ${heading}`}>{title}</h2>
-      <p className={`mb-5 text-sm leading-relaxed ${muted}`}>
-        It takes about 20 seconds{isOpenHouse ? " and reserves your spot" : ""}. Everything below unlocks right away.
-      </p>
-      <ul className={`mb-6 grid gap-2 text-sm sm:grid-cols-2 ${isLight ? "text-gray-700" : "text-neutral-300"}`}>
-        {perks.map((p) => (
-          <li key={p} className="flex items-start gap-2">
-            <span aria-hidden="true" className={isLight ? "text-blue-600" : "text-emerald-400"}>✓</span>
-            <span>{p}</span>
-          </li>
-        ))}
-      </ul>
-      <ListingPostSocialRegister slug={slug} isLight={isLight} preview={preview} />
-      {children}
-    </>
-  );
+  if (!overlayUp) return null;
 
   return (
-    <>
-      {/* Always-present card: the real end of the teaser. */}
-      <section id="register" className={`${card} p-6 md:p-8`} aria-label={title}>
-        {body}
-      </section>
-
-      {/* Aggressive overlay, raised on the agent's schedule. */}
-      {overlayUp && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-10 backdrop-blur-sm sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-        >
-          <div className={`${card} w-full max-w-xl p-6 md:p-8`}>{body}</div>
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="listing-post-gate-title"
+      onCancel={(event) => event.preventDefault()}
+      className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto p-6 backdrop:bg-black/70 backdrop:backdrop-blur-sm md:p-8 ${card} ${heading}`}
+    >
+      <h2 id="listing-post-gate-title" className="mb-2 text-2xl font-bold tracking-tight">Unlock the full listing</h2>
+      <p className={`mb-5 text-sm ${muted}`}>Continue to see more photos, the property map, and nearby sales.</p>
+      {hasOpenHouse && (
+        <label className="mb-5 flex items-center gap-3 text-sm font-semibold">
+          <input type="checkbox" className="h-4 w-4" checked={registerForOpenHouse}
+            onChange={(event) => setRegisterForOpenHouse(event.target.checked)} />
+          Register for Open House
+        </label>
+      )}
+      {registerForOpenHouse && (
+        <div className="mb-5 grid gap-3">
+          <label className="text-sm">
+            Date attended (optional)
+            <input type="date" className={field} value={attendance.attendedDate}
+              onChange={(event) => setAttendance({ ...attendance, attendedDate: event.target.value })} />
+          </label>
+          <label className="text-sm">
+            Give feedback (optional)
+            <textarea className={field} rows={2} maxLength={250} value={attendance.feedback}
+              onChange={(event) => setAttendance({ ...attendance, feedback: event.target.value })} />
+          </label>
         </div>
       )}
-    </>
+      <ListingPostSocialRegister slug={slug} isLight={isLight} registerForOpenHouse={registerForOpenHouse}
+        openHouseAttendance={registerForOpenHouse ? attendance : undefined} preview={preview} />
+      <ListingPostRegisterForm slug={slug} agentName={agentName} isLight={isLight}
+        registerForOpenHouse={registerForOpenHouse} openHouseAttendance={registerForOpenHouse ? attendance : undefined}
+        preview={preview} />
+    </dialog>
   );
 }

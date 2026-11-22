@@ -129,18 +129,25 @@ that captures registrations. Added 2026-11-03.
 field autocompletes over Active `unified_listings` via
 `GET /api/agent/listing-posts/search` (session-only; anchored prefix on the
 indexed `slugAddress` only — an unindexed `unparsedAddress` fallback scanned the
-whole collection for ~30s on a miss and was removed). The agent ticks
-**Open house** or **General listing page**; an MLS open house on the listing
-pre-fills the date/times. `POST /api/agent/listing-posts/generate` writes the
+whole collection for ~30s on a miss and was removed). The agent can add an
+optional open-house date and times to the listing ad. An MLS open house on the
+listing pre-fills these fields. `POST /api/agent/listing-posts/generate` writes the
 copy with Groq from the listing's facts only (no invented claims, no
 editorializing about another brokerage's listing) and returns form fields plus
 `listingPost`. Nothing is saved until the agent saves.
 
 **Preview / publish.** Both go through `/api/articles/publish` (upsert by
 slug): Preview saves `draft: true` and opens `/insights/listing-post/{slug}` in
-the modal — drafts render **only for their author** and are `noindex`. Publish
+the modal — drafts render **only for their author** and are `noindex`. Add
+`?previewGate=1` to a draft URL to see its visitor gate with submissions
+disabled. Publish
 is the same call without `draft`. Listing posts skip the GBP auto-post (the
 image is the listing brokerage's MLS photo) and drafts skip IndexNow.
+
+The original Catalina open-house link under `/lp/` forwards to the Catalina
+listing post once the replacement is published on the author's domain.
+The author can also follow the link in a signed-in draft preview.
+Campaign query parameters carry through the redirect.
 
 **Slug.** `{slugAddress}[-open-house-{date}]-{last 6 of author id}` —
 deterministic and per agent, because slugs are global and the publish upserts
@@ -154,14 +161,23 @@ the copy. Price, facts, photos, subdivision (`subdivisions`), community
 `loadListingPostData()`. Photos are the listing's synced MLS media, never
 rehosted or edited (the featured image is the primary photo URL with
 `publicId: "mls-listing/{listingKey}"` — not a Cloudinary asset). If the listing
-leaves Active, the page says so and keeps the form.
+leaves Active, the page says so.
 
-**Page layout** (`listing-post/ListingPostView.tsx`): `CollageHero` carousel
+**Page layout** (`listing-post/ListingPostView.tsx`): shared `CollageHero` carousel
 (the walkthrough video from `listingPost.videoUrl` first, then photos) → title /
-price / open-house banner → property facts → post copy + registration form or
-gate → subdivision → community → map (`ListingPostMap`, react-maplibre) → MLS
-attribution (`ListingAttribution`) → `RelatedListings` carousel of nearby active
-listings.
+price / optional open-house banner → property facts → MLS description →
+subdivision → community → map (`ListingPostMap`, react-maplibre) → MLS
+attribution (`ListingAttribution`). The map centers the subject and shows nearby
+active listings and sales closed in the past year. Pins match the subject's
+MLS property type and subtype, apply the CMA tier's living-area range and
+allow one bed and bath of variation when those facts are available. Known land
+tenure and senior-community status also inform eligibility. Recent
+sales come from the subject subdivision when matching mapped sales exist.
+Nearby active listings and fallback closed sales use a one-mile radius.
+The Location section lists
+up to four properties of each status below the map. Selecting a row centers
+its pin and opens the listing details popup. Unlocked ads show the MLS page’s
+CMA report when the subject has precomputed `cmaStats`.
 
 ### The registration gate
 
@@ -175,10 +191,13 @@ the gate does not cost the SEO that fills it: address, price, the core facts,
 the open-house date, the first 5 photos, and the MLS attribution — which is
 never gated, registered or not.
 
-A server projection is not enough on its own. `RelatedListings` fetches nearby
-homes **client-side** from `listing.city`, which the teaser legitimately
-carries, so it needs its own `unlocked &&` guard. Any future client-fetching
-section does too.
+The headline uses the listing's street address when available. The server
+sends a short MLS description in the teaser and the full public remarks,
+event notes, and map pins to unlocked views, including the default author
+preview. Saved post copy serves as a fallback when MLS remarks are unavailable.
+Unlocked listing ads reuse the MLS detail page's Features & Amenities and
+Property Details panels, and show its mortgage calculator for active
+residential sale and residential income listings.
 
 **Config** resolves most-specific-wins in `lead-gate.ts`:
 `PLATFORM_DEFAULT_LEAD_GATE` → `agentProfile.leadGate` → `listingPost.gate`.
@@ -201,11 +220,17 @@ predictable key would mint access to every agent's gated content, so a missing
 `NEXTAUTH_SECRET` fails closed.
 
 **UI:** `/agent/settings` → Lead Capture (`LeadGateStep.tsx`) for the tenant
-default; `ListingPostOptions.tsx` for the per-post override.
+default and `ListingPostOptions.tsx` for the per-post override. Registration
+appears only in the gate dialog. Visitors can continue with Google, Facebook,
+or the contact form. A scheduled event adds an unchecked **Register for Open
+House** option shared by all three paths. Checking it reveals an optional
+attendance date and feedback, both saved in the agent's CRM note. Social
+registration carries those fields in the signed pending cookie and records
+email consent.
 
 **Registration** (`POST /api/leads/listing-post`, public in
 `PUBLIC_API_EXACT`): name, email, phone, optional "send me recently sold
-comps", required consent checkbox (email + call/text, links to
+comps", optional open-house RSVP, and required consent checkbox (email + call/text, links to
 `/terms-of-service` and `/privacy-policy`). Turnstile + 10/h per-IP rate limit,
 like the buy/sell intake forms. On submit:
 

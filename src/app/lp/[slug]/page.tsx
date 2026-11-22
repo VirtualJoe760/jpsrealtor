@@ -11,9 +11,29 @@ import { rehypeUnwrapNestedP } from "@/lib/mdx/rehype-unwrap-nested-p";
 import LandingPageClient from "./LandingPageClient";
 import { ArticleJsonLd } from "@/app/components/seo/ArticleJsonLd";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
-import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { Post } from "@/types/post";
+import dbConnect from "@/lib/mongoose";
+import Article from "@/models/article";
+
+const CATALINA_LEGACY_SLUG = "open-house-74229-catalina-way-palm-desert-portola-del-sol";
+const CATALINA_LISTING_SLUG = "74229-catalina-way-palm-desert-ca-92260-open-house-2026-11-21-f67b4c";
+
+async function canForwardCatalinaLink() {
+  await dbConnect();
+  const replacement = await Article.findOne({ slug: CATALINA_LISTING_SLUG, category: "listing-post" })
+    .select("author.id status listingPost.listingKey")
+    .maxTimeMS(2000)
+    .lean();
+  const authorId = replacement?.author?.id?.toString();
+  if (!replacement?.listingPost?.listingKey || !authorId) return false;
+  if (replacement.status === "published") return doesDomainBelongToAgent(authorId);
+  const session = await getServerSession(authOptions);
+  return session?.user?.id === authorId;
+}
 
 export async function generateMetadata({
   params,
@@ -59,8 +79,10 @@ export async function generateMetadata({
 
 export default async function LandingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
 
@@ -73,6 +95,17 @@ export default async function LandingPage({
         </a>
       </div>
     );
+  }
+
+  if (slug === CATALINA_LEGACY_SLUG && await canForwardCatalinaLink().catch(() => false)) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(await searchParams)) {
+      for (const item of Array.isArray(value) ? value : [value]) {
+        if (item !== undefined) query.append(key, item);
+      }
+    }
+    const suffix = query.size ? `?${query}` : "";
+    redirect(`/insights/listing-post/${CATALINA_LISTING_SLUG}${suffix}`);
   }
 
   try {

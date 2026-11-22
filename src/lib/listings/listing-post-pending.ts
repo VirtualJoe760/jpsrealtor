@@ -27,6 +27,30 @@ export const LP_PENDING_COOKIE = "lp_pending";
 /** 15 minutes — long enough for a provider round trip, short enough to be useless later. */
 const TTL_MS = 15 * 60 * 1000;
 
+export interface OpenHouseAttendance {
+  attendedDate: string;
+  feedback: string;
+}
+
+export function readOpenHouseAttendance(value: unknown): OpenHouseAttendance | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const fields = value as Record<string, unknown>;
+  const date = typeof fields.attendedDate === "string" ? fields.attendedDate : "";
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date) : null;
+  const attendedDate = parsed && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : "";
+  const feedback = typeof fields.feedback === "string" ? fields.feedback.trim().slice(0, 250) : "";
+  return attendedDate || feedback ? { attendedDate, feedback } : undefined;
+}
+
+export function openHouseAttendanceNote(attendance?: OpenHouseAttendance): string {
+  if (!attendance) return "";
+  const { attendedDate, feedback } = attendance;
+  return [
+    attendedDate ? `\nOpen house attended: ${attendedDate}` : "",
+    feedback ? `\nOpen house feedback: ${feedback}` : "",
+  ].join("");
+}
+
 export interface PendingRegistration {
   /** Post the visitor was reading. */
   slug: string;
@@ -34,6 +58,7 @@ export interface PendingRegistration {
   agentId: string;
   /** Selected open-house slot, when the post is an open house. */
   openHouseChoice?: string;
+  openHouseAttendance?: OpenHouseAttendance;
   wantsComps?: boolean;
   /** Exact consent string shown, stored verbatim on the contact. */
   consentText: string;

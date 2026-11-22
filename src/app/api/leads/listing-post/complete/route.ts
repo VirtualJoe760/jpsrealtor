@@ -27,6 +27,7 @@ import Contact from "@/models/Contact";
 import { notifyAgentLead } from "@/lib/messaging/notify-agent";
 import {
   LP_PENDING_COOKIE,
+  openHouseAttendanceNote,
   verifyPending,
 } from "@/lib/listings/listing-post-pending";
 import { setAccessCookie } from "@/lib/listings/listing-post-access";
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    const post: any = await Article.findOne({ slug: pending.slug, category: "listing-post" })
+    const post: any = await Article.findOne({ slug: pending.slug, category: "listing-post", status: "published" })
       .select("slug title author.id listingPost")
       .lean();
     // The signed cookie already proves which agent this was for; re-reading the
@@ -60,7 +61,8 @@ export async function GET(req: NextRequest) {
 
     const lp = post.listingPost || {};
     const postUrl = new URL(`/insights/listing-post/${post.slug}`, req.url);
-    const isOpenHouse = lp.postType === "open-house";
+    const event = lp.openHouse;
+    const isOpenHouse = !!event?.date && pending.openHouseChoice === JSON.stringify([event.date, event.startTime || ""]);
     const now = new Date();
 
     const user: any = await User.findOne({ email }).select("_id name").lean();
@@ -77,8 +79,9 @@ export async function GET(req: NextRequest) {
     const noteLine =
       `${now.toISOString().slice(0, 10)}: ${isOpenHouse ? "Open house registration" : "Listing post registration"} ` +
       `— ${lp.address || lp.listingKey} via social sign-in` +
-      `${pending.openHouseChoice ? ` (${pending.openHouseChoice})` : ""}. ` +
-      `${pending.consentText} From ${pending.consentIp}.`;
+      `${isOpenHouse ? ` (open house ${event.date} ${event.startTime || ""})` : ""}. ` +
+      `${pending.consentText} From ${pending.consentIp}.` +
+      (isOpenHouse ? openHouseAttendanceNote(pending.openHouseAttendance) : "");
 
     let contact: any = await Contact.findOne({
       userId: post.author.id,

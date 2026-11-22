@@ -14,7 +14,7 @@ import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 import User from "@/models/User";
 import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
-import { loadListingPostData } from "@/lib/listings/listing-post";
+import { loadListingPostData, loadListingPostMapPins } from "@/lib/listings/listing-post";
 import { toTeaser, toGated } from "@/lib/listings/listing-post-teaser";
 import { resolveLeadGate, toClientConfig } from "@/lib/listings/lead-gate";
 import { hasListingPostAccess } from "@/lib/listings/listing-post-access";
@@ -76,7 +76,7 @@ export async function listingPostMetadata(slug: string): Promise<Metadata> {
   };
 }
 
-export default async function ListingPostPage({ slug }: { slug: string }) {
+export default async function ListingPostPage({ slug, previewGate }: { slug: string; previewGate?: boolean }) {
   const found = await loadPost(slug);
   if (!found) notFound();
   const { post, preview } = found;
@@ -111,14 +111,21 @@ export default async function ListingPostPage({ slug }: { slug: string }) {
       })
     : { granted: true as const };
 
-  // The author previewing their own draft is never gated by their own wall.
-  const unlocked = preview || !gate.enabled || access.granted;
+  // Authors can opt into the timed visitor preview without publishing.
+  const unlocked = preview ? !previewGate || !gate.enabled : !gate.enabled || access.granted;
 
   // THE boundary. When locked, the gated half is projected away here, on the
   // server — it never reaches the client component, so removing the overlay
   // from the DOM reveals the teaser and nothing more.
   const teaser = data ? toTeaser(data, lp.videoUrl) : null;
   const full = unlocked && data ? toGated(data) : null;
+  const mapData = full ? await loadListingPostMapPins(full.listing) : null;
+  const listing = full?.listing || teaser?.listing || null;
+  const streetAddress = teaser?.listing.unparsedFirstLineAddress || teaser?.listing.unparsedAddress.split(",")[0];
+  const title = streetAddress?.trim() || post.title;
+  const fullRemarks = typeof full?.listing.publicRemarks === "string" ? full.listing.publicRemarks.trim() : "";
+  const previewRemarks = teaser?.listing.remarksTeaser;
+  const remarks = unlocked ? fullRemarks : previewRemarks && `${previewRemarks}${teaser?.listing.remarksTruncated ? "…" : ""}`;
 
   const baseUrl = await getBaseUrlFromHeaders();
   const url = `${baseUrl}/insights/listing-post/${slug}`;
@@ -129,34 +136,38 @@ export default async function ListingPostPage({ slug }: { slug: string }) {
         items={[
           { name: "Home", url: baseUrl },
           { name: "Insights", url: `${baseUrl}/insights` },
-          { name: post.title, url },
+          { name: title, url },
         ]}
       />
       <ListingPostView
         slug={slug}
-        title={post.title}
-        excerpt={post.excerpt}
-        content={
+        title={title}
+        description={remarks || post.excerpt}
+        content={unlocked && !remarks ? (
           <MDXRemote
             source={post.content || ""}
             components={{ MDXLink }}
             options={{ mdxOptions: { rehypePlugins: [rehypeUnwrapNestedP] } }}
           />
-        }
-        postType={lp.postType === "open-house" ? "open-house" : "listing"}
-        openHouse={lp.openHouse || null}
+        ) : null}
+        openHouse={lp.openHouse?.date ? {
+          date: lp.openHouse.date,
+          startTime: lp.openHouse.startTime,
+          endTime: lp.openHouse.endTime,
+          notes: unlocked ? lp.openHouse.notes : undefined,
+        } : null}
         agentName={post.author?.name || "the listing agent"}
-        listing={full?.listing || teaser?.listing || null}
+        listing={listing}
         photos={
           (full?.photos || teaser?.photos) ??
           (post.featuredImage?.url ? [{ type: "photo", src: post.featuredImage.url, alt: post.title }] : [])
         }
         subdivision={full?.subdivision || null}
         city={full?.city || null}
+        mapData={mapData}
         preview={preview}
         unlocked={unlocked}
         gateConfig={unlocked ? null : toClientConfig(gate)}
-        lockedPhotoCount={teaser?.photoCount ?? 0}
         videoUrl={unlocked ? lp.videoUrl || null : null}
       />
     </>

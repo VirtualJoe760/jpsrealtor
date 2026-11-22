@@ -1,7 +1,7 @@
 ---
 title: Listings / MLS
 status: partial
-last_verified: 2026-11-02
+last_verified: 2026-11-21
 related: [caching-and-traffic.md, ../multi-tenant/README.md, ../chat/README.md, ../chatrealty-api/data-tiers.md, ../mcp/tools.md]
 ---
 
@@ -35,6 +35,11 @@ from Settings — see [Hosted MLS seeding](#hosted-mls-seeding-tenant-databases)
 | `src/app/api/mls-listings/route.ts` | Canonical public search: `listingType`→`propertyType`, price/beds/baths/sqft/lot/year/amenity/HOA/city/subdivision/`mlsSource`/`excludeKeys` filters, radius overrides the bounding box, `openhouses` `$lookup`, `s-maxage=3600, stale-while-revalidate=604800` |
 | `src/app/api/mls-listings/[slugAddress]/route.ts` | Single-listing JSON for browser callers (map, chat cards); CDN `s-maxage=600` |
 | `src/lib/listings/listing-detail.ts` | Shared in-process reads (`getEnrichedListing`, `getListingPhotos`) used by the detail page, its OG image and both API routes — see [caching-and-traffic.md](caching-and-traffic.md) |
+| `src/app/components/mls/CollageHero.tsx` | Shared hero carousel for listing detail pages and CMS listing posts. Photos retain their full aspect ratio within the fixed frame and stay the same size on hover. Blurred reflections fill the space around the inline photo. |
+| `src/app/components/mls/ListingPropertyDetails.tsx` | Features & Amenities and Property Details panels shared by MLS detail pages and unlocked CMS listing posts. |
+| `src/app/components/mls/map/MortgageCalculator.tsx` | Shared monthly housing cost estimate, with editable property taxes, homeowners insurance, mortgage insurance, and HOA dues. For California listings, defaults to a 1.25% annual property tax assumption and, for condos, the [NAIC California HO-6 average for 2023](https://content.naic.org/sites/default/files/publication-hmr-zu-homeowners-report.pdf#page=144). HOA dues use the MLS fee when its billing frequency is available. |
+| `src/app/components/mls/ListingCMASection.tsx` | Shared listing CMA report. CMS listing posts render it after unlock when the listing has precomputed comps. |
+| `src/lib/listings/listing-post.ts` | Listing-post map reads up to 20 like-kind active listings within one mile and 20 recent closed sales from the subdivision or one-mile fallback. Each read has an explicit index hint and a two-second query limit. Uses scalar coordinates because some closed sales lack GeoJSON points. |
 | `src/lib/listings/dead-listing-redirect.ts` | Location context (city, subdivision) for the off-market notice page when a listing has left `unified_listings` — see [Dead listing URLs](#dead-listing-urls) |
 | `src/app/api/unified-listings/route.ts` | Lookup by `listingKey`/`slugAddress`, true `$near` radius (meters) |
 | `src/app/api/listings/[listingKey]/photos/route.ts` | Per-listing photos, DB-first (siblings: `listings/{nearby,related,quick-search}`) |

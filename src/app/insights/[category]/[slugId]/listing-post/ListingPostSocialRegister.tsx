@@ -14,12 +14,14 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 
 interface Props {
   slug: string;
   isLight: boolean;
-  /** Chosen open-house slot, carried across the redirect. */
-  openHouseChoice?: string;
+  /** Optional RSVP, carried across the redirect. */
+  registerForOpenHouse: boolean;
+  openHouseAttendance?: OpenHouseAttendance;
   wantsComps?: boolean;
   /** Preview mode: render the buttons but never actually leave the page. */
   preview?: boolean;
@@ -28,7 +30,8 @@ interface Props {
 export default function ListingPostSocialRegister({
   slug,
   isLight,
-  openHouseChoice,
+  registerForOpenHouse,
+  openHouseAttendance,
   wantsComps,
   preview,
 }: Props) {
@@ -54,7 +57,7 @@ export default function ListingPostSocialRegister({
       const res = await fetch("/api/leads/listing-post/pending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, openHouseChoice, wantsComps, consent: true }),
+        body: JSON.stringify({ slug, registerForOpenHouse, openHouseAttendance, wantsComps, consent: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
@@ -123,7 +126,7 @@ export default function ListingPostSocialRegister({
       )}
 
       <p className={`mt-2.5 text-[11px] ${isLight ? "text-gray-500" : "text-neutral-500"}`}>
-        Signing in this way does not share your phone number — add it below if you want the gate code by text.
+        Use the form below if you’d like to include your phone number.
       </p>
 
       <div className="my-4 flex items-center gap-3" aria-hidden="true">

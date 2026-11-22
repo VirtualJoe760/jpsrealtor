@@ -27,6 +27,7 @@ import {
   LP_PENDING_COOKIE,
   mintPending,
   pendingCookieOptions,
+  readOpenHouseAttendance,
 } from "@/lib/listings/listing-post-pending";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
@@ -54,15 +55,18 @@ export async function POST(req: NextRequest) {
     if (body.consent !== true) return bad("Please agree to be contacted before continuing.");
 
     await dbConnect();
-    const post: any = await Article.findOne({ slug: String(body.slug), category: "listing-post" })
-      .select("slug author.id listingPost.postType")
+    const post: any = await Article.findOne({ slug: String(body.slug), category: "listing-post", status: "published" })
+      .select("slug author.id listingPost.openHouse.date listingPost.openHouse.startTime")
       .lean();
     if (!post?.author?.id) return bad("Post not found.", 404);
+    const event = post.listingPost?.openHouse;
+    if (body.registerForOpenHouse === true && !event?.date) return bad("This listing has no scheduled open house.");
 
     const token = mintPending({
       slug: String(post.slug),
       agentId: String(post.author.id),
-      openHouseChoice: body.openHouseChoice ? String(body.openHouseChoice).slice(0, 120) : undefined,
+      openHouseChoice: body.registerForOpenHouse === true ? JSON.stringify([event.date, event.startTime || ""]) : undefined,
+      openHouseAttendance: body.registerForOpenHouse === true ? readOpenHouseAttendance(body.openHouseAttendance) : undefined,
       wantsComps: body.wantsComps === true,
       consentText: SOCIAL_CONSENT_TEXT,
       consentIp: ip,

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const postType: "open-house" | "listing" = body.postType === "open-house" ? "open-house" : "listing";
     const oh = body.openHouse || {};
     const openHouse =
-      postType === "open-house"
+      postType === "open-house" || oh.date
         ? {
             date: String(oh.date || "").slice(0, 10),
             startTime: String(oh.startTime || "").slice(0, 20),
@@ -65,8 +65,8 @@ export async function POST(req: Request) {
     if (!listingKey) {
       return NextResponse.json({ error: "Pick a listing address first." }, { status: 400, headers: NO_STORE });
     }
-    if (postType === "open-house" && (!openHouse?.date || !openHouse.startTime)) {
-      return NextResponse.json({ error: "An open-house post needs a date and start time." }, { status: 400, headers: NO_STORE });
+    if (openHouse && (!openHouse.date || !openHouse.startTime)) {
+      return NextResponse.json({ error: "An open house needs a date and start time." }, { status: 400, headers: NO_STORE });
     }
 
     const data = await loadListingPostData({ listingKey, slugAddress: body.slugAddress });
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       .join("\n");
 
     const ohLine =
-      postType === "open-house" && openHouse
+      openHouse
         ? `OPEN HOUSE: ${openHouse.date}, ${openHouse.startTime}${openHouse.endTime ? `–${openHouse.endTime}` : ""}${openHouse.notes ? ` (${openHouse.notes})` : ""}`
         : "";
 
@@ -136,7 +136,7 @@ RULES:
 - Present facts neutrally and professionally. No hype words like "stunning" or "must-see", and never comment on the price, days on market, or the listing agent.
 - Do not include phone numbers, emails, links, or calls to "contact" anyone — the page adds its own registration form.
 - Do not use HTML, JSX, or angle brackets. Plain Markdown only.
-- Sections to include: an opening paragraph, "## The Home", "## The Community"${postType === "open-house" ? ', "## Open House Details" (restate the date and time exactly as given)' : ""}, and a short closing paragraph inviting readers to register below${postType === "open-house" ? " for the open house" : " for more details"}.`;
+- Sections to include: an opening paragraph, "## The Home", "## The Community"${openHouse ? ', "## Open House Details" (restate the date and time exactly as given)' : ""}. Keep the focus on the listing and describe the optional RSVP without promising text reminders.`;
 
     const userPrompt = `${ohLine ? ohLine + "\n\n" : ""}LISTING FACTS:\n${facts}\n\nUse the generate_listing_post tool.`;
 

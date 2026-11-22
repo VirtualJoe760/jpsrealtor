@@ -8,16 +8,19 @@ import { useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import TurnstileWidget, { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import { trackLead } from "@/lib/meta-pixel";
+import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 
 export default function ListingPostRegisterForm({
   slug,
-  isOpenHouse,
+  registerForOpenHouse,
+  openHouseAttendance,
   agentName,
   isLight,
   preview,
 }: {
   slug: string;
-  isOpenHouse: boolean;
+  registerForOpenHouse: boolean;
+  openHouseAttendance?: OpenHouseAttendance;
   agentName: string;
   isLight: boolean;
   preview?: boolean;
@@ -52,7 +55,7 @@ export default function ListingPostRegisterForm({
       const res = await fetch("/api/leads/listing-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, ...form, turnstileToken: token }),
+        body: JSON.stringify({ slug, ...form, registerForOpenHouse, openHouseAttendance, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Registration failed");
@@ -60,9 +63,10 @@ export default function ListingPostRegisterForm({
       // count every validation bounce and Turnstile failure as a lead.
       trackLead({
         address: slug,
-        contactType: isOpenHouse ? "open_house_rsvp" : "listing_post",
+        contactType: registerForOpenHouse ? "open_house_rsvp" : "listing_post",
       });
       setDone(true);
+      window.location.reload();
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
       turnstileRef.current?.reset();
@@ -137,7 +141,7 @@ export default function ListingPostRegisterForm({
         }`}
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isOpenHouse ? "Register for the open house" : "Register for details"}
+        Unlock listing
       </button>
     </form>
   );

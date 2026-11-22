@@ -1,7 +1,7 @@
 ---
 title: Architecture Index
 status: current
-last_verified: 2026-10-29
+last_verified: 2026-11-21
 ---
 
 # Architecture Index
@@ -33,7 +33,7 @@ until 2026-10-10. Cloudinary holds all images.
 | Agent identity (affiliation / brokerage / team) | `src/models/User.ts` (`agentProfile.brokerage`) + `src/app/api/agent-branding/route.ts` | [agent-identity/](./agent-identity/) |
 | Agent onboarding — signup → manual approval → subdomain | `src/app/api/admin/applications/agents/route.ts` + `src/lib/generate-subdomain.ts` | [agent-onboarding/](./agent-onboarding/) |
 | SEO — canonicals, sitemaps, structured data | `src/lib/domain-utils.ts` (`getBaseUrl`) + `src/lib/sitemap-generator.ts` | [seo/](./seo/) |
-| CMS / articles | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
+| CMS / articles and gated listing posts | `src/lib/publishing-pipeline.ts` | [cms/](./cms/) |
 | CRM | `src/models/Contact.ts` | [crm/](./crm/) — [dialer build plan](./crm/dialer/build-plan.md) |
 | Listings / MLS | `src/models/unified-listing.ts` (collection `unified_listings`; closed history is `unified-closed-listing.ts`) | [listings/](./listings/) |
 | Chat / CHAP | `src/lib/chat-search/` | [chat/](./chat/) — tool index in [chat/TOOLS_INDEX.md](./chat/TOOLS_INDEX.md) |

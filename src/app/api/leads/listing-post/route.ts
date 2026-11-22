@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import mongoose from "mongoose";
 import { setAccessCookie } from "@/lib/listings/listing-post-access";
+import { openHouseAttendanceNote, readOpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 import User from "@/models/User";
@@ -84,7 +85,8 @@ export async function POST(req: NextRequest) {
     if (!agent) return bad("This listing post is not available", 404);
 
     const lp = post.listingPost;
-    const isOpenHouse = lp.postType === "open-house";
+    if (body.registerForOpenHouse === true && !lp.openHouse?.date) return bad("This listing has no scheduled open house.");
+    const isOpenHouse = body.registerForOpenHouse === true;
     const now = new Date();
     const fullName = `${firstName} ${lastName}`.trim();
     const consentText = isOpenHouse ? "Open house registration" : "Listing post registration";
@@ -98,7 +100,8 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean) as string[];
     const noteLine = `${now.toISOString().slice(0, 10)}: ${consentText} — ${lp.address || lp.listingKey}${
       isOpenHouse && lp.openHouse?.date ? ` (open house ${lp.openHouse.date} ${lp.openHouse.startTime || ""})` : ""
-    }${wantsComps ? " · asked for recently sold comps" : ""}. Agreed to communication terms from ${ip}.`;
+    }${wantsComps ? " · asked for recently sold comps" : ""}. Agreed to communication terms from ${ip}.` +
+      (isOpenHouse ? openHouseAttendanceNote(readOpenHouseAttendance(body.openHouseAttendance)) : "");
 
     let contact: any = await Contact.findOne({
       userId: agent._id,

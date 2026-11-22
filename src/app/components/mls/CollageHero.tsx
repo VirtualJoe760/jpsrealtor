@@ -22,6 +22,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [isHoveringMain, setIsHoveringMain] = useState(false);
+  const [loadedPhoto, setLoadedPhoto] = useState<{ source: string; url: string; ratio: number } | null>(null);
   const thumbScrollRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
   const { currentTheme } = useTheme();
@@ -32,6 +33,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
     src: "/images/no-photo.png",
     alt: "Main image not available",
   };
+  const reflection = loadedPhoto?.source === current.src ? loadedPhoto : null;
 
   useEffect(() => {
     const el = thumbRefs.current[currentIndex];
@@ -100,7 +102,7 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className={`relative w-full h-[38vh] md:aspect-[16/9] md:h-auto md:max-h-[600px] md:rounded-2xl overflow-hidden backdrop-blur-xl md:border shadow-2xl group ${
+          className={`relative isolate w-full h-[38vh] md:aspect-[16/9] md:h-auto md:max-h-[600px] md:rounded-2xl overflow-hidden backdrop-blur-xl md:border shadow-2xl ${
             isLight
               ? "bg-gray-100 md:border-gray-200"
               : "bg-black/40 md:border-neutral-800/50"
@@ -108,6 +110,32 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
           onMouseEnter={() => setIsHoveringMain(true)}
           onMouseLeave={() => setIsHoveringMain(false)}
         >
+          {reflection && (
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden [container-type:size]">
+              <div
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 blur-xl"
+                style={{
+                  width: `min(100cqw, 100cqh * ${reflection.ratio})`,
+                  height: `min(100cqh, 100cqw / ${reflection.ratio})`,
+                }}
+              >
+                {[
+                  "right-full top-0 -scale-x-100",
+                  "left-full top-0 -scale-x-100",
+                  "bottom-full left-0 -scale-y-100",
+                  "top-full left-0 -scale-y-100",
+                  "inset-0",
+                ].map((position) => (
+                  <div
+                    key={position}
+                    className={`absolute h-full w-full bg-[length:100%_100%] ${position}`}
+                    style={{ backgroundImage: `url("${reflection.url}")` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Main Image */}
           <Image
             src={current.src}
@@ -119,7 +147,12 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
             sizes="(max-width: 1280px) 100vw, 1280px"
             priority
             unoptimized={current.src.includes('media.crmls.org')}
-            className="object-cover cursor-pointer transition-transform duration-500 group-hover:scale-105"
+            className="object-contain cursor-pointer"
+            onLoad={({ currentTarget: image }) => {
+              if (image.naturalWidth && image.naturalHeight) {
+                setLoadedPhoto({ source: current.src, url: image.currentSrc, ratio: image.naturalWidth / image.naturalHeight });
+              }
+            }}
             onClick={() => openModal(currentIndex)}
           />
 
@@ -237,9 +270,9 @@ const CollageHero: React.FC<CollageHeroProps> = ({ media }) => {
 
             {/* Main Image Container */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               className="relative w-[90vw] h-[90vh] max-w-7xl"
               onClick={(e) => e.stopPropagation()}

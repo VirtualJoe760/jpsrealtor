@@ -78,14 +78,16 @@ const components = {
 
 export default async function PostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string; slugId: string }>;
+  searchParams: Promise<{ previewGate?: string }>;
 }) {
   const resolvedParams = await params;
   const { slugId, category } = resolvedParams;
 
   if (category === "listing-post" && slugId) {
-    return <ListingPostPage slug={slugId} />;
+    return <ListingPostPage slug={slugId} previewGate={(await searchParams).previewGate === "1"} />;
   }
 
   // These three paths used to render an apology at HTTP 200. Google reads that

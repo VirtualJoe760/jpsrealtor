@@ -122,6 +122,7 @@ const PUBLIC_API_EXACT = new Set([
   "/api/articles/search",
   "/api/articles/ai-search",
   "/api/articles/topics",
+  "/api/mortgage-rates", // National averages used by the public listing calculator.
   "/api/service-partner/directory",
   "/api/newsletter/subscribe",
   "/api/newsletter/unsubscribe",
