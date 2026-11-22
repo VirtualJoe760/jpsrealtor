@@ -1,7 +1,7 @@
 ---
 title: Chat / CHAP
 status: current
-last_verified: 2026-10-28
+last_verified: 2026-11-22
 related: [./TOOLS_INDEX.md, ../listings/README.md, ../multi-tenant/README.md, ../routing/README.md, ../chatrealty-api/chap-search-pg.md]
 supersedes: docs/archive/chat-production/CHAT_V3.md
 ---
@@ -96,6 +96,7 @@ plus `ListingOptionsViewer` (Panel / List / Map toggle over
 `ListingOptionsCarousel` + `ListingOptionsList`), `AppreciationContainer`,
 `CMAReport`, `SubdivisionCmaSection`, or `ArticleResults`. In-message buttons talk
 back to `ChatWidget` through `chatv3:*` window events (see TOOLS_INDEX).
+Chat renderers enable the CMA report's action row with `showChatActions`.
 
 ### Layer 3 — Agent-loop fallback
 

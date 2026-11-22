@@ -732,6 +732,7 @@ export default function ChatResultsContainer({
       {hasCmaReport && components.cmaReport && (
         <div className="w-full">
           <CMAReport
+            showChatActions
             listingKey={components.cmaReport.listingKey}
             subdivisionName={components.cmaReport.subdivisionName}
           />

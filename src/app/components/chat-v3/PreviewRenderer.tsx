@@ -310,6 +310,7 @@ export default function PreviewRenderer({
             </div>
           )}
           <CMAReport
+            showChatActions
             listingKey={preview.listingKey}
             subdivisionName={preview.subdivisionName}
             result={preview.cma || undefined}

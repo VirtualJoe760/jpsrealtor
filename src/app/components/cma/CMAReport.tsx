@@ -49,9 +49,16 @@ function RevealSection({ children, className = "" }: { children: React.ReactNode
 interface CMAReportProps {
   result?: CMAResult;
   listingKey?: string;
+  subdivisionName?: string;
+  showChatActions?: boolean;
 }
 
-export default function CMAReport({ result: preloadedResult, listingKey, subdivisionName }: CMAReportProps & { subdivisionName?: string }) {
+export default function CMAReport({
+  result: preloadedResult,
+  listingKey,
+  subdivisionName,
+  showChatActions = false,
+}: CMAReportProps) {
   const [result, setResult] = useState<CMAResult | null>(preloadedResult || null);
   const [loading, setLoading] = useState(!preloadedResult);
   const [error, setError] = useState<string | null>(null);
@@ -315,7 +322,7 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
           subdivision/city, View opens the production
           ListingBottomPanel via the chatv3:open-listing-panel
           window event ChatWidget already listens for. */}
-      <RevealSection>
+      {showChatActions && <RevealSection>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => {
@@ -424,7 +431,7 @@ export default function CMAReport({ result: preloadedResult, listingKey, subdivi
             View in Panel
           </button>
         </div>
-      </RevealSection>
+      </RevealSection>}
 
       {/* AI disclaimer + agent contact CTA */}
       <RevealSection>

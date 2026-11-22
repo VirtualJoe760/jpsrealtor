@@ -193,7 +193,8 @@ Nearby active listings and fallback closed sales use a one-mile radius.
 The Location section lists
 up to four properties of each status below the map. Selecting a row centers
 its pin and opens the listing details popup. Unlocked ads show the MLS page’s
-CMA report when the subject has precomputed `cmaStats`.
+CMA report when the subject has precomputed `cmaStats`. The CMA action row
+appears only in Chap, where its buttons can open chat tools and the listing panel.
 
 ### The registration gate
 
