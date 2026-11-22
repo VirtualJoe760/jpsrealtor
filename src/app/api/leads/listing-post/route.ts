@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import mongoose from "mongoose";
 import { setAccessCookie } from "@/lib/listings/listing-post-access";
+import { findUpcomingOpenHouse } from "@/lib/listings/listing-post-open-houses";
 import { openHouseAttendanceNote, readOpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
@@ -85,8 +86,9 @@ export async function POST(req: NextRequest) {
     if (!agent) return bad("This listing post is not available", 404);
 
     const lp = post.listingPost;
-    if (body.registerForOpenHouse === true && !lp.openHouse?.date) return bad("This listing has no scheduled open house.");
     const isOpenHouse = body.registerForOpenHouse === true;
+    const event = isOpenHouse ? await findUpcomingOpenHouse(lp.listingKey, body.openHouseChoice) : undefined;
+    if (isOpenHouse && !event) return bad("This open house is no longer scheduled. Refresh the listing to see current dates.");
     const now = new Date();
     const fullName = `${firstName} ${lastName}`.trim();
     const consentText = isOpenHouse ? "Open house registration" : "Listing post registration";
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest) {
       wantsComps ? "Requested Sold Comps" : null,
     ].filter(Boolean) as string[];
     const noteLine = `${now.toISOString().slice(0, 10)}: ${consentText} — ${lp.address || lp.listingKey}${
-      isOpenHouse && lp.openHouse?.date ? ` (open house ${lp.openHouse.date} ${lp.openHouse.startTime || ""})` : ""
+      event ? ` (open house ${event.date} ${event.startTime})` : ""
     }${wantsComps ? " · asked for recently sold comps" : ""}. Agreed to communication terms from ${ip}.` +
       (isOpenHouse ? openHouseAttendanceNote(readOpenHouseAttendance(body.openHouseAttendance)) : "");
 
@@ -196,7 +198,7 @@ export async function POST(req: NextRequest) {
       postUrl: `${origin}/insights/listing-post/${post.slug}`,
       agentName: agent.name,
       agentEmail: agent.email,
-      openHouse: isOpenHouse ? lp.openHouse : null,
+      openHouse: event || null,
       completeUrl,
       comparables,
     });

@@ -21,6 +21,7 @@ interface Props {
   isLight: boolean;
   /** Optional RSVP, carried across the redirect. */
   registerForOpenHouse: boolean;
+  openHouseChoice?: string;
   openHouseAttendance?: OpenHouseAttendance;
   wantsComps?: boolean;
   /** Preview mode: render the buttons but never actually leave the page. */
@@ -31,6 +32,7 @@ export default function ListingPostSocialRegister({
   slug,
   isLight,
   registerForOpenHouse,
+  openHouseChoice,
   openHouseAttendance,
   wantsComps,
   preview,
@@ -57,7 +59,7 @@ export default function ListingPostSocialRegister({
       const res = await fetch("/api/leads/listing-post/pending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, registerForOpenHouse, openHouseAttendance, wantsComps, consent: true }),
+        body: JSON.stringify({ slug, registerForOpenHouse, openHouseChoice, openHouseAttendance, wantsComps, consent: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {

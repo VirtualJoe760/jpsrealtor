@@ -23,6 +23,7 @@ import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 import { clientIp } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { findUpcomingOpenHouse, openHouseChoice } from "@/lib/listings/listing-post-open-houses";
 import {
   LP_PENDING_COOKIE,
   mintPending,
@@ -56,16 +57,18 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
     const post: any = await Article.findOne({ slug: String(body.slug), category: "listing-post", status: "published" })
-      .select("slug author.id listingPost.openHouse.date listingPost.openHouse.startTime")
+      .select("slug author.id listingPost.listingKey")
       .lean();
-    if (!post?.author?.id) return bad("Post not found.", 404);
-    const event = post.listingPost?.openHouse;
-    if (body.registerForOpenHouse === true && !event?.date) return bad("This listing has no scheduled open house.");
+    if (!post?.author?.id || !post.listingPost?.listingKey) return bad("Post not found.", 404);
+    const event = body.registerForOpenHouse === true
+      ? await findUpcomingOpenHouse(post.listingPost.listingKey, body.openHouseChoice)
+      : undefined;
+    if (body.registerForOpenHouse === true && !event) return bad("This open house is no longer scheduled. Refresh the listing to see current dates.");
 
     const token = mintPending({
       slug: String(post.slug),
       agentId: String(post.author.id),
-      openHouseChoice: body.registerForOpenHouse === true ? JSON.stringify([event.date, event.startTime || ""]) : undefined,
+      openHouseChoice: event ? openHouseChoice(event) : undefined,
       openHouseAttendance: body.registerForOpenHouse === true ? readOpenHouseAttendance(body.openHouseAttendance) : undefined,
       wantsComps: body.wantsComps === true,
       consentText: SOCIAL_CONSENT_TEXT,

@@ -13,6 +13,7 @@ import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
 export default function ListingPostRegisterForm({
   slug,
   registerForOpenHouse,
+  openHouseChoice,
   openHouseAttendance,
   agentName,
   isLight,
@@ -20,6 +21,7 @@ export default function ListingPostRegisterForm({
 }: {
   slug: string;
   registerForOpenHouse: boolean;
+  openHouseChoice?: string;
   openHouseAttendance?: OpenHouseAttendance;
   agentName: string;
   isLight: boolean;
@@ -55,7 +57,7 @@ export default function ListingPostRegisterForm({
       const res = await fetch("/api/leads/listing-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, ...form, registerForOpenHouse, openHouseAttendance, turnstileToken: token }),
+        body: JSON.stringify({ slug, ...form, registerForOpenHouse, openHouseChoice, openHouseAttendance, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Registration failed");

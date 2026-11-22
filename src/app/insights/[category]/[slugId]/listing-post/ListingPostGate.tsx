@@ -5,11 +5,12 @@ import Image from "next/image";
 import ListingPostRegisterForm from "./ListingPostRegisterForm";
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
 import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
+import type { ListingOpenHouse } from "@/lib/listings/listing-post-open-houses";
 import ListingPostSocialRegister from "./ListingPostSocialRegister";
 
 interface ListingPostGateProps {
   config: LeadGateClientConfig;
-  hasOpenHouse: boolean;
+  openHouses: ListingOpenHouse[];
   agentName: string;
   isLight: boolean;
   /** Post slug, for the social-registration round trip. */
@@ -21,7 +22,7 @@ interface ListingPostGateProps {
 
 export default function ListingPostGate({
   config,
-  hasOpenHouse,
+  openHouses,
   agentName,
   isLight,
   slug,
@@ -31,6 +32,12 @@ export default function ListingPostGate({
   const [overlayUp, setOverlayUp] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [registerForOpenHouse, setRegisterForOpenHouse] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState("");
+  const eventOptions = openHouses.map((event) => ({
+    key: JSON.stringify([event.date, event.startTime]),
+    label: [event.date, [event.startTime, event.endTime].filter(Boolean).join(" – ")].filter(Boolean).join(" · "),
+  }));
+  const openHouseChoice = registerForOpenHouse ? selectedEvent || eventOptions[0]?.key : undefined;
   const [attendance, setAttendance] = useState<OpenHouseAttendance>({ attendedDate: "", feedback: "" });
 
   // One effect for both triggers so there is a single place that can raise the
@@ -112,7 +119,7 @@ export default function ListingPostGate({
       )}
       <h2 id="listing-post-gate-title" className="mb-2 text-2xl font-bold tracking-tight">Unlock the full listing</h2>
       <p className={`mb-5 text-sm ${muted}`}>Continue to see more photos, the property map, and nearby sales.</p>
-      {hasOpenHouse && (
+      {openHouses.length > 0 && (
         <label className="mb-5 flex items-center gap-3 text-sm font-semibold">
           <input type="checkbox" className="h-4 w-4" checked={registerForOpenHouse}
             onChange={(event) => setRegisterForOpenHouse(event.target.checked)} />
@@ -121,6 +128,12 @@ export default function ListingPostGate({
       )}
       {registerForOpenHouse && (
         <div className="mb-5 grid gap-3">
+          <label className="text-sm">
+            Open house
+            <select className={field} value={openHouseChoice} onChange={(event) => setSelectedEvent(event.target.value)}>
+              {eventOptions.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
           <label className="text-sm">
             Date attended (optional)
             <input type="date" className={field} value={attendance.attendedDate}
@@ -134,9 +147,9 @@ export default function ListingPostGate({
         </div>
       )}
       <ListingPostSocialRegister slug={slug} isLight={isLight} registerForOpenHouse={registerForOpenHouse}
-        openHouseAttendance={registerForOpenHouse ? attendance : undefined} preview={preview} />
+        openHouseChoice={openHouseChoice} openHouseAttendance={registerForOpenHouse ? attendance : undefined} preview={preview} />
       <ListingPostRegisterForm slug={slug} agentName={agentName} isLight={isLight}
-        registerForOpenHouse={registerForOpenHouse} openHouseAttendance={registerForOpenHouse ? attendance : undefined}
+        registerForOpenHouse={registerForOpenHouse} openHouseChoice={openHouseChoice} openHouseAttendance={registerForOpenHouse ? attendance : undefined}
         preview={preview} />
     </dialog>
   );

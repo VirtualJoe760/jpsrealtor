@@ -136,6 +136,13 @@ copy with Groq from the listing's facts only (no invented claims, no
 editorializing about another brokerage's listing) and returns form fields plus
 `listingPost`. Nothing is saved until the agent saves.
 
+The public ad reads scheduled events from the MLS `openhouses` collection,
+joined by `listingId` as in `/api/mls-listings`, with the listing's embedded
+MLS events used when the collection has no rows for that listing. It displays every event from
+the current Pacific calendar date forward, and the registration gate lets
+visitors choose an event. The saved CMS date remains a historical reference
+for attendance feedback.
+
 **Preview / publish.** Both go through `/api/articles/publish` (upsert by
 slug): Preview saves `draft: true` and opens `/insights/listing-post/{slug}` in
 the modal — drafts render **only for their author** and are `noindex`. Add
@@ -234,8 +241,8 @@ attendance date and feedback, both saved in the agent's CRM note. Social
 registration carries those fields in the signed pending cookie and records
 email consent.
 
-On or after a published listing's scheduled open house date, a dismissible
-prompt asks signed-in visitors whether they attended. The visitor can share an
+When a published listing has a current or past open house date, a dismissible
+prompt asks signed-in visitors about the most recent eligible event. The visitor can share an
 optional date and feedback. Submitting saves a note in the post author's CRM
 without changing marketing consent. The prompt uses the browser's calendar
 date and never requests location permission.

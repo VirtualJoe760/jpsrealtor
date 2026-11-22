@@ -20,6 +20,7 @@ import type { ListingPostCity, ListingPostMapData, ListingPostPhoto, ListingPost
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
 import ListingPostGate from "./ListingPostGate";
 import OpenHouseAttendancePrompt from "./OpenHouseAttendancePrompt";
+import type { ListingOpenHouse } from "@/lib/listings/listing-post-open-houses";
 import { trackViewContent } from "@/lib/meta-pixel";
 
 const ListingPostMap = dynamic(() => import("./ListingPostMap"), { ssr: false });
@@ -29,7 +30,8 @@ export interface ListingPostViewProps {
   title: string;
   description: string;
   content: ReactNode;
-  openHouse?: { date?: string; startTime?: string; endTime?: string; notes?: string } | null;
+  openHouses: ListingOpenHouse[];
+  attendanceDate?: string;
   agentName: string;
   listing: any | null;
   photos: ListingPostPhoto[];
@@ -74,7 +76,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const { currentTheme } = useTheme();
   const isLight = currentTheme === "lightgradient";
   const { listing, subdivision, city } = props;
-  const hasOpenHouse = Boolean(props.openHouse?.date);
+  const hasOpenHouse = props.openHouses.length > 0;
   // Default true so any caller that predates the gate keeps its old behaviour
   // rather than silently rendering a locked page.
   const unlocked = props.unlocked !== false;
@@ -182,18 +184,21 @@ export default function ListingPostView(props: ListingPostViewProps) {
               This home is no longer an active listing{listing.standardStatus ? ` (${listing.standardStatus})` : ""}.
             </p>
           )}
-          {hasOpenHouse && props.openHouse?.date && (
-            <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${isLight ? "bg-blue-50 border border-blue-200" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
+          {hasOpenHouse && (
+            <section aria-label="Open house schedule" className={`flex items-start gap-3 rounded-xl px-4 py-3 ${isLight ? "bg-blue-50 border border-blue-200" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
               <CalendarClock className={`h-6 w-6 shrink-0 ${isLight ? "text-blue-600" : "text-emerald-400"}`} />
               <div>
-                <p className="font-semibold">{formatOpenHouseDate(props.openHouse.date)}</p>
-                <p className={`text-sm ${text}`}>
-                  {props.openHouse.startTime}
-                  {props.openHouse.endTime ? ` – ${props.openHouse.endTime}` : ""}
-                  {props.openHouse.notes ? ` · ${props.openHouse.notes}` : ""}
-                </p>
+                <h2 className="font-semibold">Upcoming open houses</h2>
+                <ul className={`mt-1 space-y-1 text-sm ${text}`}>
+                  {props.openHouses.map(({ date, startTime, endTime }) => (
+                    <li key={JSON.stringify([date, startTime, endTime])}>
+                      {formatOpenHouseDate(date)}
+                      {(startTime || endTime) && ` · ${[startTime, endTime].filter(Boolean).join(" – ")}`}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
+            </section>
           )}
         </header>
 
@@ -245,12 +250,12 @@ export default function ListingPostView(props: ListingPostViewProps) {
           )}
         </div>
         {!unlocked && props.gateConfig && (
-          <ListingPostGate config={props.gateConfig} hasOpenHouse={hasOpenHouse} agentName={props.agentName}
+          <ListingPostGate config={props.gateConfig} openHouses={props.openHouses} agentName={props.agentName}
             isLight={isLight} slug={props.slug} bannerUrl={props.gateBannerUrl} preview={props.preview} />
         )}
-        {props.promptForAttendance && props.openHouse?.date && (
-          <OpenHouseAttendancePrompt key={`${props.slug}:${props.openHouse.date}`}
-            slug={props.slug} eventDate={props.openHouse.date} isLight={isLight} />
+        {props.promptForAttendance && props.attendanceDate && (
+          <OpenHouseAttendancePrompt key={`${props.slug}:${props.attendanceDate}`}
+            slug={props.slug} eventDate={props.attendanceDate} isLight={isLight} />
         )}
 
         {/* 5. Subdivision info */}

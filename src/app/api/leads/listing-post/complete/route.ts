@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { findUpcomingOpenHouse } from "@/lib/listings/listing-post-open-houses";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
 import User from "@/models/User";
@@ -61,8 +62,10 @@ export async function GET(req: NextRequest) {
 
     const lp = post.listingPost || {};
     const postUrl = new URL(`/insights/listing-post/${post.slug}`, req.url);
-    const event = lp.openHouse;
-    const isOpenHouse = !!event?.date && pending.openHouseChoice === JSON.stringify([event.date, event.startTime || ""]);
+    const event = pending.openHouseChoice && lp.listingKey
+      ? await findUpcomingOpenHouse(lp.listingKey, pending.openHouseChoice)
+      : undefined;
+    const isOpenHouse = !!event;
     const now = new Date();
 
     const user: any = await User.findOne({ email }).select("_id name").lean();

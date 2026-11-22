@@ -15,6 +15,7 @@ import Article from "@/models/article";
 import User from "@/models/User";
 import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { loadListingPostData, loadListingPostMapPins } from "@/lib/listings/listing-post";
+import { listingCalendarDate, loadListingOpenHouses, upcomingOpenHouses } from "@/lib/listings/listing-post-open-houses";
 import { toTeaser, toGated } from "@/lib/listings/listing-post-teaser";
 import { getLeadGateBannerUrl, resolveLeadGate, toClientConfig } from "@/lib/listings/lead-gate";
 import { hasListingPostAccess } from "@/lib/listings/listing-post-access";
@@ -108,6 +109,15 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   const full = unlocked && data ? toGated(data) : null;
   const mapData = full ? await loadListingPostMapPins(full.listing) : null;
   const listing = full?.listing || teaser?.listing || null;
+  const mlsEvents = data?.listing.standardStatus === "Active"
+    ? await loadListingOpenHouses(lp.listingKey, data.listing).catch((error) => {
+        console.error("[listing-post] open house schedule failed:", error);
+        return [];
+      })
+    : [];
+  const today = listingCalendarDate();
+  const attendanceDate = [lp.openHouse?.date, ...mlsEvents.map((event) => event.date)]
+    .filter((date): date is string => typeof date === "string" && date <= today).sort().at(-1);
   const streetAddress = teaser?.listing.unparsedFirstLineAddress || teaser?.listing.unparsedAddress.split(",")[0];
   const title = streetAddress?.trim() || post.title;
   const fullRemarks = typeof full?.listing.publicRemarks === "string" ? full.listing.publicRemarks.trim() : "";
@@ -137,12 +147,8 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
             options={{ mdxOptions: { rehypePlugins: [rehypeUnwrapNestedP] } }}
           />
         ) : null}
-        openHouse={lp.openHouse?.date ? {
-          date: lp.openHouse.date,
-          startTime: lp.openHouse.startTime,
-          endTime: lp.openHouse.endTime,
-          notes: unlocked ? lp.openHouse.notes : undefined,
-        } : null}
+        openHouses={upcomingOpenHouses(mlsEvents)}
+        attendanceDate={attendanceDate}
         agentName={post.author?.name || "the listing agent"}
         listing={listing}
         photos={
