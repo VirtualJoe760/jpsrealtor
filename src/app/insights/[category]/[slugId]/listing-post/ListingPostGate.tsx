@@ -99,14 +99,16 @@ export default function ListingPostGate({
       className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto p-6 backdrop:bg-black/70 backdrop:backdrop-blur-sm md:p-8 ${card} ${heading}`}
     >
       {bannerUrl && (
-        <Image
-          src={bannerUrl}
-          alt={`Registration banner for ${agentName}`}
-          width={640}
-          height={360}
-          sizes="(max-width: 400px) 82vw, 320px"
-          className="mx-auto mb-4 h-auto w-full max-w-xs rounded-xl"
-        />
+        <div className="-mx-6 -mt-6 mb-5 overflow-hidden rounded-t-2xl md:-mx-8 md:-mt-8">
+          <Image
+            src={bannerUrl}
+            alt={`Registration banner for ${agentName}`}
+            width={640}
+            height={360}
+            sizes="(max-width: 608px) calc(100vw - 2rem), 576px"
+            className="block h-auto w-full"
+          />
+        </div>
       )}
       <h2 id="listing-post-gate-title" className="mb-2 text-2xl font-bold tracking-tight">Unlock the full listing</h2>
       <p className={`mb-5 text-sm ${muted}`}>Continue to see more photos, the property map, and nearby sales.</p>

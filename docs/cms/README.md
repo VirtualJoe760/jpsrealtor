@@ -225,7 +225,8 @@ predictable key would mint access to every agent's gated content, so a missing
 **UI:** `/agent/settings` → Lead Capture (`LeadGateStep.tsx`) for the tenant
 default and `ListingPostOptions.tsx` for the per-post override. Registration
 appears only in the gate dialog. Agents can upload or remove one banner in
-Lead Capture settings and save it for all of their listing gates. Visitors can continue with Google, Facebook,
+Lead Capture settings and save it for all of their listing gates. The image
+spans the dialog header and keeps its original aspect ratio. Visitors can continue with Google, Facebook,
 or the contact form. A scheduled event adds an unchecked **Register for Open
 House** option shared by all three paths. Checking it reveals an optional
 attendance date and feedback, both saved in the agent's CRM note. Social
