@@ -54,7 +54,7 @@ async function loadPost(slug: string): Promise<{ post: any; preview: boolean } |
   return { post, preview: false };
 }
 
-export async function listingPostMetadata(slug: string): Promise<Metadata> {
+export async function listingPostMetadata(slug: string, authorPreview = false): Promise<Metadata> {
   const found = await loadPost(slug).catch(() => null);
   if (!found) return { title: "Post Not Found", robots: { index: false, follow: false } };
   const { post, preview } = found;
@@ -65,7 +65,7 @@ export async function listingPostMetadata(slug: string): Promise<Metadata> {
     title: post.seo?.title || post.title,
     description,
     alternates: { canonical: url },
-    ...(preview && { robots: { index: false, follow: false } }),
+    ...((preview || authorPreview) && { robots: { index: false, follow: false } }),
     openGraph: {
       title: post.title,
       description,
@@ -76,7 +76,11 @@ export async function listingPostMetadata(slug: string): Promise<Metadata> {
   };
 }
 
-export default async function ListingPostPage({ slug, previewGate }: { slug: string; previewGate?: boolean }) {
+export default async function ListingPostPage({ slug, previewGate, authorPreview }: {
+  slug: string;
+  previewGate?: boolean;
+  authorPreview?: boolean;
+}) {
   const found = await loadPost(slug);
   if (!found) notFound();
   const { post, preview } = found;
@@ -100,7 +104,8 @@ export default async function ListingPostPage({ slug, previewGate }: { slug: str
   const gate = resolveLeadGate(author?.agentProfile?.leadGate, lp.gate);
 
   const session = await getServerSession(authOptions);
-  const access = gate.enabled
+  const reviewingPublishedPost = !!authorPreview && !preview && !!authorId && String(session?.user?.id) === authorId;
+  const access = gate.enabled && !reviewingPublishedPost
     ? await hasListingPostAccess({
         req: { cookies: await cookies() },
         agentId: authorId,
@@ -166,6 +171,7 @@ export default async function ListingPostPage({ slug, previewGate }: { slug: str
         city={full?.city || null}
         mapData={mapData}
         preview={preview}
+        reviewingPublishedPost={reviewingPublishedPost}
         unlocked={unlocked}
         gateConfig={unlocked ? null : toClientConfig(gate)}
         videoUrl={unlocked ? lp.videoUrl || null : null}

@@ -26,13 +26,15 @@ async function canViewArticle(post: Post): Promise<boolean> {
 // Dynamic metadata generation
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string; slugId: string }>;
+  searchParams: Promise<{ authorPreview?: string }>;
 }) {
   const { category, slugId } = await params; // Destructure params directly
 
   // Listing blog posts have their own layout and data (listing-post/).
-  if (category === "listing-post" && slugId) return listingPostMetadata(slugId);
+  if (category === "listing-post" && slugId) return listingPostMetadata(slugId, (await searchParams).authorPreview === "1");
 
   if (!slugId) {
     console.error("Missing slugId for metadata.");
@@ -81,13 +83,14 @@ export default async function PostPage({
   searchParams,
 }: {
   params: Promise<{ category: string; slugId: string }>;
-  searchParams: Promise<{ previewGate?: string }>;
+  searchParams: Promise<{ previewGate?: string; authorPreview?: string }>;
 }) {
   const resolvedParams = await params;
   const { slugId, category } = resolvedParams;
 
   if (category === "listing-post" && slugId) {
-    return <ListingPostPage slug={slugId} previewGate={(await searchParams).previewGate === "1"} />;
+    const query = await searchParams;
+    return <ListingPostPage slug={slugId} previewGate={query.previewGate === "1"} authorPreview={query.authorPreview === "1"} />;
   }
 
   // These three paths used to render an apology at HTTP 200. Google reads that

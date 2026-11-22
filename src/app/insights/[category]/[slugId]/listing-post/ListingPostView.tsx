@@ -36,6 +36,7 @@ export interface ListingPostViewProps {
   city: ListingPostCity | null;
   mapData: ListingPostMapData | null;
   preview?: boolean;
+  reviewingPublishedPost?: boolean;
   /**
    * False when the visitor has not registered. The server has ALREADY stripped
    * the gated half in that case (listing-post-teaser.ts) — this flag only stops
@@ -104,7 +105,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
   // `preview` is excluded so an agent proofing their own draft does not pollute
   // their own audience.
   useEffect(() => {
-    if (props.preview || !listing?.listingKey) return;
+    if (props.preview || props.reviewingPublishedPost || !listing?.listingKey) return;
     trackViewContent({
       listingKey: String(listing.listingKey),
       address: address || undefined,
@@ -116,7 +117,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
     });
     // Once per post view; re-firing on a theme toggle would double-count.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listing?.listingKey, props.preview]);
+  }, [listing?.listingKey, props.preview, props.reviewingPublishedPost]);
 
   const citySlug = city?.slug || (listing?.city ? String(listing.city).toLowerCase().replace(/\s+/g, "-") : "");
   const subUrl = subdivision?.slug && citySlug ? `/neighborhoods/${citySlug}/${subdivision.slug}` : null;
@@ -139,6 +140,11 @@ export default function ListingPostView(props: ListingPostViewProps) {
       {props.preview && (
         <div className="sticky top-0 z-40 bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-black">
           Preview — this post is a draft and is not public yet.
+        </div>
+      )}
+      {props.reviewingPublishedPost && (
+        <div className="sticky top-0 z-40 bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-black">
+          Author preview · Full listing details
         </div>
       )}
 

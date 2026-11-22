@@ -143,6 +143,9 @@ the modal — drafts render **only for their author** and are `noindex`. Add
 disabled. Publish
 is the same call without `draft`. Listing posts skip the GBP auto-post (the
 image is the listing brokerage's MLS photo) and drafts skip IndexNow.
+The signed-in author can append `?authorPreview=1` to a published listing
+post to review its full layout. The preview is noindex and skips the listing
+view conversion event. Other visitors follow the normal access checks.
 
 The original Catalina open-house link under `/lp/` forwards to the Catalina
 listing post once the replacement is published on the author's domain.
