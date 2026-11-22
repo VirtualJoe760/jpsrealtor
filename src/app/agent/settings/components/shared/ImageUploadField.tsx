@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useId, useState, useRef } from "react";
 import Image from "next/image";
 import { Upload, X, Loader2 } from "lucide-react";
 import { uploadToCloudinary } from "@/app/utils/cloudinaryUpload";
@@ -14,6 +14,7 @@ interface ImageUploadFieldProps {
   isLight: boolean;
   aspectRatio?: string;
   maxSizeMB?: number;
+  saveOnUpload?: boolean;
   onUploaded: (url: string) => void;
 }
 
@@ -26,11 +27,13 @@ export default function ImageUploadField({
   isLight,
   aspectRatio = "aspect-video",
   maxSizeMB = 5,
+  saveOnUpload = true,
   onUploaded,
 }: ImageUploadFieldProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,8 +55,7 @@ export default function ImageUploadField({
       const urls = await uploadToCloudinary([file], folder);
       const url = urls[0];
 
-      // Save immediately to profile
-      await fetch("/api/user/profile", {
+      if (saveOnUpload) await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -76,6 +78,7 @@ export default function ImageUploadField({
   return (
     <div>
       <label
+        htmlFor={inputId}
         className={`block text-sm font-medium mb-2 ${
           isLight ? "text-gray-700" : "text-gray-300"
         }`}
@@ -99,8 +102,10 @@ export default function ImageUploadField({
               className="object-contain"
             />
             <button
+              type="button"
+              aria-label={`Remove ${label}`}
               onClick={() => onUploaded("")}
-              className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+              className="absolute top-2 right-2 z-10 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -133,6 +138,7 @@ export default function ImageUploadField({
         )}
 
         <input
+          id={inputId}
           ref={fileRef}
           type="file"
           accept="image/*"

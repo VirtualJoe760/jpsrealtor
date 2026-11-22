@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import ListingPostRegisterForm from "./ListingPostRegisterForm";
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
 import type { OpenHouseAttendance } from "@/lib/listings/listing-post-pending";
@@ -13,6 +14,7 @@ interface ListingPostGateProps {
   isLight: boolean;
   /** Post slug, for the social-registration round trip. */
   slug: string;
+  bannerUrl?: string;
   /** Preview mode disables the social redirect. */
   preview?: boolean;
 }
@@ -23,6 +25,7 @@ export default function ListingPostGate({
   agentName,
   isLight,
   slug,
+  bannerUrl,
   preview,
 }: ListingPostGateProps) {
   const [overlayUp, setOverlayUp] = useState(false);
@@ -95,6 +98,16 @@ export default function ListingPostGate({
       onCancel={(event) => event.preventDefault()}
       className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto p-6 backdrop:bg-black/70 backdrop:backdrop-blur-sm md:p-8 ${card} ${heading}`}
     >
+      {bannerUrl && (
+        <Image
+          src={bannerUrl}
+          alt={`Registration banner for ${agentName}`}
+          width={640}
+          height={360}
+          sizes="(max-width: 400px) 82vw, 320px"
+          className="mx-auto mb-4 h-auto w-full max-w-xs rounded-xl"
+        />
+      )}
       <h2 id="listing-post-gate-title" className="mb-2 text-2xl font-bold tracking-tight">Unlock the full listing</h2>
       <p className={`mb-5 text-sm ${muted}`}>Continue to see more photos, the property map, and nearby sales.</p>
       {hasOpenHouse && (

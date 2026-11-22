@@ -6,6 +6,7 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import Team from "@/models/Team";
 import { isValidSubdomainLabel } from "@/lib/generate-subdomain";
+import { getLeadGateBannerUrl } from "@/lib/listings/lead-gate";
 
 // The only agentProfile keys this route will write — exactly what the
 // /agent/settings steps and the onboarding wizard send. Everything else is
@@ -34,7 +35,7 @@ const EDITABLE_AGENT_PROFILE_KEYS = new Set([
   // Registration gate on listing posts (/agent/settings → Lead capture).
   // Sanitized and clamped in lead-gate.ts before it reaches a page, so a
   // hand-crafted PUT can set a nonsense delay but never a dangerous one.
-  "leadGate",
+  "leadGate", "leadGateBannerUrl",
 ]);
 
 // Cloudinary asset fields in agentProfile that store URLs
@@ -278,6 +279,12 @@ export async function PUT(request: NextRequest) {
         if (dropped.length) {
           console.warn(`[PROFILE UPDATE] dropped non-editable agentProfile keys: ${dropped.join(", ")}`);
         }
+      }
+
+      if (cleanedIncoming && "leadGateBannerUrl" in cleanedIncoming && cleanedIncoming.leadGateBannerUrl !== "") {
+        const bannerUrl = getLeadGateBannerUrl(cleanedIncoming.leadGateBannerUrl);
+        if (!bannerUrl) return NextResponse.json({ error: "Upload a valid banner image." }, { status: 400 });
+        cleanedIncoming.leadGateBannerUrl = bannerUrl;
       }
 
       // Subdomain: a *.chatrealty.io address resolves to whichever agent holds

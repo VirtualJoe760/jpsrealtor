@@ -96,6 +96,7 @@ export interface IUser extends Document {
 
     // Photos & Media
     headshot?: string; // Primary profile photo (Cloudinary URL)
+    leadGateBannerUrl?: string;
     headshotTransparent?: string; // Transparent background headshot for OG images (Cloudinary URL)
     heroPhoto?: string; // Landing page hero background (Cloudinary URL)
     teamPhoto?: string; // Team group photo (Cloudinary URL)
@@ -872,6 +873,7 @@ const UserSchema = new Schema<IUser>(
 
       // Photos & Media
       headshot: String,
+      leadGateBannerUrl: String,
       headshotTransparent: String,
       heroPhoto: String,
       heroPhotoDark: String,

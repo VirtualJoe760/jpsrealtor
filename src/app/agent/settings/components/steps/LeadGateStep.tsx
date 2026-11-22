@@ -15,6 +15,7 @@
 
 import { Save, Loader2, Lock, Zap, Clock, MousePointerClick, Unlock } from "lucide-react";
 import { PLATFORM_DEFAULT_LEAD_GATE, type LeadGateMode } from "@/lib/listings/lead-gate";
+import ImageUploadField from "../shared/ImageUploadField";
 
 interface StepProps {
   formData: any;
@@ -71,6 +72,7 @@ export default function LeadGateStep({ formData, updateField, isLight, onSave, i
     ? Number(gate.scrollPercent)
     : PLATFORM_DEFAULT_LEAD_GATE.scrollPercent;
   const allowReturning = gate.allowReturning !== false;
+  const bannerUrl = formData.agentProfile?.leadGateBannerUrl || "";
 
   const card = `rounded-xl border p-5 ${
     isLight ? "bg-white border-gray-200" : "bg-neutral-900/60 border-neutral-800"
@@ -90,6 +92,7 @@ export default function LeadGateStep({ formData, updateField, isLight, onSave, i
     onSave({
       agentProfile: {
         leadGate: { enabled, mode, delaySeconds, scrollPercent, allowReturning },
+        leadGateBannerUrl: bannerUrl,
       },
     });
   };
@@ -102,6 +105,19 @@ export default function LeadGateStep({ formData, updateField, isLight, onSave, i
           How soon visitors to your open house and listing pages have to register before they can see the rest —
           the photos, the map, recent sales nearby, and the gate code for an open house.
         </p>
+      </div>
+
+      <div className={card}>
+        <ImageUploadField
+          label="Registration gate banner"
+          fieldPath="agentProfile.leadGateBannerUrl"
+          folder="jpsrealtor/lead-gate-banners"
+          value={bannerUrl}
+          isLight={isLight}
+          saveOnUpload={false}
+          helpText="Optional. Shown on all your listing registration gates. Save changes to apply."
+          onUploaded={(url) => updateField("agentProfile.leadGateBannerUrl", url)}
+        />
       </div>
 
       {/* Master switch */}

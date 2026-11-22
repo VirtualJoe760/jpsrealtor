@@ -45,6 +45,7 @@ export interface ListingPostViewProps {
   unlocked?: boolean;
   /** null when there is no gate to run (unlocked, or the agent turned it off). */
   gateConfig?: LeadGateClientConfig | null;
+  gateBannerUrl?: string;
   /** Walkthrough video, gated with the rest of the media. */
   videoUrl?: string | null;
 }
@@ -243,7 +244,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
         </div>
         {!unlocked && props.gateConfig && (
           <ListingPostGate config={props.gateConfig} hasOpenHouse={hasOpenHouse} agentName={props.agentName}
-            isLight={isLight} slug={props.slug} preview={props.preview} />
+            isLight={isLight} slug={props.slug} bannerUrl={props.gateBannerUrl} preview={props.preview} />
         )}
 
         {/* 5. Subdivision info */}

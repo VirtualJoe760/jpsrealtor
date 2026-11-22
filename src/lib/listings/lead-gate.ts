@@ -21,6 +21,17 @@
 
 export type LeadGateMode = "off" | "immediate" | "delay" | "scroll";
 
+export function getLeadGateBannerUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 2048) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.origin === "https://res.cloudinary.com" && !url.username && !url.password &&
+        /^\/[^/]+\/image\/upload\//.test(url.pathname)) return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface LeadGateConfig {
   /** Master switch. False = never gate this agent's posts. */
   enabled: boolean;

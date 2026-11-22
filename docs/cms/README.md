@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-11-21
+last_verified: 2026-11-22
 related: [./multi-tenant-articles.md, ../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md, ../routing/README.md, ../mcp/tools.md, ../seo/README.md]
 supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -224,7 +224,8 @@ predictable key would mint access to every agent's gated content, so a missing
 
 **UI:** `/agent/settings` → Lead Capture (`LeadGateStep.tsx`) for the tenant
 default and `ListingPostOptions.tsx` for the per-post override. Registration
-appears only in the gate dialog. Visitors can continue with Google, Facebook,
+appears only in the gate dialog. Agents can upload or remove one banner in
+Lead Capture settings and save it for all of their listing gates. Visitors can continue with Google, Facebook,
 or the contact form. A scheduled event adds an unchecked **Register for Open
 House** option shared by all three paths. Checking it reveals an optional
 attendance date and feedback, both saved in the agent's CRM note. Social

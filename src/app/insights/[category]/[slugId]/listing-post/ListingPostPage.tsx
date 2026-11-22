@@ -16,7 +16,7 @@ import User from "@/models/User";
 import { doesDomainBelongToAgent, getBaseUrlFromHeaders } from "@/lib/domain-utils";
 import { loadListingPostData, loadListingPostMapPins } from "@/lib/listings/listing-post";
 import { toTeaser, toGated } from "@/lib/listings/listing-post-teaser";
-import { resolveLeadGate, toClientConfig } from "@/lib/listings/lead-gate";
+import { getLeadGateBannerUrl, resolveLeadGate, toClientConfig } from "@/lib/listings/lead-gate";
 import { hasListingPostAccess } from "@/lib/listings/listing-post-access";
 import { rehypeUnwrapNestedP } from "@/lib/mdx/rehype-unwrap-nested-p";
 import MDXLink from "@/app/components/mdx/Link";
@@ -98,7 +98,7 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   // way its registration lands in THAT agent's CRM.
   const authorId = String(post.author?.id || "");
   const author: any = authorId
-    ? await User.findById(authorId).select("agentProfile.leadGate").lean().catch(() => null)
+    ? await User.findById(authorId).select("agentProfile.leadGate agentProfile.leadGateBannerUrl").maxTimeMS(2000).lean().catch(() => null)
     : null;
 
   const gate = resolveLeadGate(author?.agentProfile?.leadGate, lp.gate);
@@ -174,6 +174,7 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
         reviewingPublishedPost={reviewingPublishedPost}
         unlocked={unlocked}
         gateConfig={unlocked ? null : toClientConfig(gate)}
+        gateBannerUrl={unlocked ? undefined : getLeadGateBannerUrl(author?.agentProfile?.leadGateBannerUrl)}
         videoUrl={unlocked ? lp.videoUrl || null : null}
       />
     </>
