@@ -148,6 +148,8 @@ for attendance feedback.
 The public schedule uses horizontally scrollable event cards. Cards with
 complete hours open a prefilled Google Calendar event in Pacific time and
 include the property address.
+Using a mouse wheel over the row scrolls the cards sideways until the row
+reaches either end, then resumes scrolling the page.
 
 **Preview / publish.** Both go through `/api/articles/publish` (upsert by
 slug): Preview saves `draft: true` and opens `/insights/listing-post/{slug}` in

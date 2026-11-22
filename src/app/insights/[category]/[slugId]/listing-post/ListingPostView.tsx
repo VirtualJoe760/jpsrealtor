@@ -6,7 +6,7 @@
 // → MLS attribution. Reuses the /mls-listings/[slugAddress] pieces
 // (CollageHero, ListingAttribution).
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Bed, Bath, Square, Calendar, TreePine, Home as HomeIcon, ArrowRight, CalendarClock } from "lucide-react";
@@ -118,6 +118,30 @@ export default function ListingPostView(props: ListingPostViewProps) {
   const isLight = currentTheme === "lightgradient";
   const { listing, subdivision, city } = props;
   const hasOpenHouse = props.openHouses.length > 0;
+  const openHouseRow = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    const row = openHouseRow.current;
+    if (!row) return;
+
+    function scrollCalendar(event: WheelEvent) {
+      if (!row || !event.cancelable || event.ctrlKey || event.shiftKey ||
+          Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? row.clientWidth : 1;
+      const available = row.scrollWidth - row.clientWidth;
+      const next = Math.round(Math.max(0, Math.min(available, row.scrollLeft + event.deltaY * unit)));
+      // Let the page scroll when the calendar has reached either end.
+      if (Math.abs(next - row.scrollLeft) < 1) return;
+      event.preventDefault();
+      row.scrollLeft = next;
+    }
+
+    row.addEventListener("wheel", scrollCalendar, { passive: false });
+    return () => row.removeEventListener("wheel", scrollCalendar);
+  }, [hasOpenHouse]);
+
   // Default true so any caller that predates the gate keeps its old behaviour
   // rather than silently rendering a locked page.
   const unlocked = props.unlocked !== false;
@@ -228,7 +252,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
           {hasOpenHouse && (
             <section aria-label="Open house schedule" className="min-w-0">
               <h2 className="font-semibold">Upcoming open houses</h2>
-              <ul className="mt-2 flex snap-x snap-proximity gap-3 overflow-x-auto overscroll-x-contain p-1 pb-3">
+              <ul ref={openHouseRow} className="mt-2 flex gap-3 overflow-x-auto overscroll-x-contain p-1 pb-3">
                 {props.openHouses.map((event) => {
                   const { date, startTime, endTime } = event;
                   const href = openHouseCalendarUrl(event, props.title, address || props.title);
@@ -246,7 +270,7 @@ export default function ListingPostView(props: ListingPostViewProps) {
                     </>
                   );
                   return (
-                    <li key={JSON.stringify([date, startTime, endTime])} className="w-64 max-w-[85%] shrink-0 snap-start">
+                    <li key={JSON.stringify([date, startTime, endTime])} className="w-64 max-w-[85%] shrink-0">
                       {href ? (
                         <a href={href} target="_blank" rel="noopener noreferrer"
                           className={`${className} transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${isLight ? "hover:bg-blue-100" : "hover:bg-emerald-500/20"}`}>
