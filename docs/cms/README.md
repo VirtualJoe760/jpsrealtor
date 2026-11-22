@@ -217,7 +217,8 @@ before the visitor has seen anything reads as a paywall). `allowReturning`
 scopes the grant to the agent rather than the one post.
 
 **Access** (`listing-post-access.ts`): an HMAC-signed, httpOnly `lp_access`
-cookie (90 days), or a signed-in visitor who is already a Contact of the author.
+cookie (90 days) for signed-out visitors. Visitors with an authenticated session
+can open the full listing immediately.
 Unlike `oauth-state.ts` there is **no `'fallback-secret'` default** — a
 predictable key would mint access to every agent's gated content, so a missing
 `NEXTAUTH_SECRET` fails closed.
@@ -232,6 +233,12 @@ House** option shared by all three paths. Checking it reveals an optional
 attendance date and feedback, both saved in the agent's CRM note. Social
 registration carries those fields in the signed pending cookie and records
 email consent.
+
+On or after a published listing's scheduled open house date, a dismissible
+prompt asks signed-in visitors whether they attended. The visitor can share an
+optional date and feedback. Submitting saves a note in the post author's CRM
+without changing marketing consent. The prompt uses the browser's calendar
+date and never requests location permission.
 
 **Registration** (`POST /api/leads/listing-post`, public in
 `PUBLIC_API_EXACT`): name, email, phone, optional "send me recently sold

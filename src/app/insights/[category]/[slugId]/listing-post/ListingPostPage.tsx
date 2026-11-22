@@ -23,23 +23,6 @@ import MDXLink from "@/app/components/mdx/Link";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import ListingPostView from "./ListingPostView";
 
-/**
- * Is this visitor already a contact of the post's author?
- *
- * Kept here rather than in listing-post-access.ts so that module stays free of
- * a Mongoose import and can be unit-tested without a database.
- */
-async function findContactId(agentId: string, email: string): Promise<string | null> {
-  const { default: Contact } = await import("@/models/Contact");
-  const c: any = await Contact.findOne({
-    userId: agentId,
-    $or: [{ "emails.address": email }, { email }],
-  })
-    .select("_id")
-    .lean();
-  return c?._id ? String(c._id) : null;
-}
-
 async function loadPost(slug: string): Promise<{ post: any; preview: boolean } | null> {
   await dbConnect();
   const post: any = await Article.findOne({ slug, category: "listing-post" }).lean();
@@ -104,15 +87,14 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   const gate = resolveLeadGate(author?.agentProfile?.leadGate, lp.gate);
 
   const session = await getServerSession(authOptions);
+  const signedIn = !!session?.user?.id;
   const reviewingPublishedPost = !!authorPreview && !preview && !!authorId && String(session?.user?.id) === authorId;
-  const access = gate.enabled && !reviewingPublishedPost
+  const access = gate.enabled && !signedIn
     ? await hasListingPostAccess({
         req: { cookies: await cookies() },
         agentId: authorId,
         slug,
         allowReturning: gate.allowReturning,
-        sessionEmail: session?.user?.email || null,
-        lookupContact: findContactId,
       })
     : { granted: true as const };
 
@@ -172,6 +154,7 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
         mapData={mapData}
         preview={preview}
         reviewingPublishedPost={reviewingPublishedPost}
+        promptForAttendance={signedIn && !!session?.user?.email && !preview && !reviewingPublishedPost}
         unlocked={unlocked}
         gateConfig={unlocked ? null : toClientConfig(gate)}
         gateBannerUrl={unlocked ? undefined : getLeadGateBannerUrl(author?.agentProfile?.leadGateBannerUrl)}

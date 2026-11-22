@@ -19,6 +19,7 @@ import MortgageCalculator, { getListingMortgageCosts } from "@/app/components/ml
 import type { ListingPostCity, ListingPostMapData, ListingPostPhoto, ListingPostSubdivision } from "@/lib/listings/listing-post";
 import type { LeadGateClientConfig } from "@/lib/listings/lead-gate";
 import ListingPostGate from "./ListingPostGate";
+import OpenHouseAttendancePrompt from "./OpenHouseAttendancePrompt";
 import { trackViewContent } from "@/lib/meta-pixel";
 
 const ListingPostMap = dynamic(() => import("./ListingPostMap"), { ssr: false });
@@ -37,6 +38,7 @@ export interface ListingPostViewProps {
   mapData: ListingPostMapData | null;
   preview?: boolean;
   reviewingPublishedPost?: boolean;
+  promptForAttendance?: boolean;
   /**
    * False when the visitor has not registered. The server has ALREADY stripped
    * the gated half in that case (listing-post-teaser.ts) — this flag only stops
@@ -245,6 +247,10 @@ export default function ListingPostView(props: ListingPostViewProps) {
         {!unlocked && props.gateConfig && (
           <ListingPostGate config={props.gateConfig} hasOpenHouse={hasOpenHouse} agentName={props.agentName}
             isLight={isLight} slug={props.slug} bannerUrl={props.gateBannerUrl} preview={props.preview} />
+        )}
+        {props.promptForAttendance && props.openHouse?.date && (
+          <OpenHouseAttendancePrompt key={`${props.slug}:${props.openHouse.date}`}
+            slug={props.slug} eventDate={props.openHouse.date} isLight={isLight} />
         )}
 
         {/* 5. Subdivision info */}
