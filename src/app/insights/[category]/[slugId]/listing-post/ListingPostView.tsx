@@ -6,7 +6,7 @@
 // → MLS attribution. Reuses the /mls-listings/[slugAddress] pieces
 // (CollageHero, ListingAttribution).
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { Suspense, use, useEffect, useRef, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Bed, Bath, Square, Calendar, TreePine, Home as HomeIcon, ArrowRight, CalendarClock } from "lucide-react";
@@ -37,7 +37,7 @@ export interface ListingPostViewProps {
   photos: ListingPostPhoto[];
   subdivision: ListingPostSubdivision | null;
   city: ListingPostCity | null;
-  mapData: ListingPostMapData | null;
+  mapData: Promise<ListingPostMapData | null> | null;
   preview?: boolean;
   reviewingPublishedPost?: boolean;
   promptForAttendance?: boolean;
@@ -73,6 +73,18 @@ export function formatOpenHouseDate(date?: string) {
 }
 
 const OPEN_HOUSE_TIME_ZONE = "America/Los_Angeles";
+
+function DeferredListingMap({ data, latitude, longitude, address, isLight }: {
+  data: Promise<ListingPostMapData | null>;
+  latitude: number;
+  longitude: number;
+  address: string;
+  isLight: boolean;
+}) {
+  const map = use(data);
+  if (!map) return null;
+  return <ListingPostMap latitude={latitude} longitude={longitude} address={address} data={map} isLight={isLight} />;
+}
 const pacificOffset = new Intl.DateTimeFormat("en-US", {
   timeZone: OPEN_HOUSE_TIME_ZONE,
   timeZoneName: "shortOffset",
@@ -383,7 +395,9 @@ export default function ListingPostView(props: ListingPostViewProps) {
         {unlocked && hasCoords && props.mapData && (
           <section className={card} aria-label="Map">
             <h2 className={h2}>Location</h2>
-            <ListingPostMap latitude={lat} longitude={lng} address={address} data={props.mapData} isLight={isLight} />
+            <Suspense fallback={<p className={`text-sm ${muted}`}>Loading nearby listings…</p>}>
+              <DeferredListingMap latitude={lat} longitude={lng} address={address} data={props.mapData} isLight={isLight} />
+            </Suspense>
           </section>
         )}
         {unlocked && listing && <ListingCMASection listing={listing} prebuiltOnly />}

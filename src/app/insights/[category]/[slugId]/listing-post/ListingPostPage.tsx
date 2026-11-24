@@ -9,6 +9,7 @@ import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import Article from "@/models/article";
@@ -24,9 +25,9 @@ import MDXLink from "@/app/components/mdx/Link";
 import { BreadcrumbJsonLd } from "@/app/components/seo/JsonLd";
 import ListingPostView from "./ListingPostView";
 
-async function loadPost(slug: string): Promise<{ post: any; preview: boolean } | null> {
+const loadPost = cache(async (slug: string): Promise<{ post: any; preview: boolean } | null> => {
   await dbConnect();
-  const post: any = await Article.findOne({ slug, category: "listing-post" }).lean();
+  const post: any = await Article.findOne({ slug, category: "listing-post" }).maxTimeMS(2000).lean();
   if (!post?.listingPost?.listingKey) return null;
 
   if (post.status !== "published") {
@@ -36,7 +37,7 @@ async function loadPost(slug: string): Promise<{ post: any; preview: boolean } |
   }
   if (post.visibility === "private" && !(await doesDomainBelongToAgent(String(post.author?.id)))) return null;
   return { post, preview: false };
-}
+});
 
 export async function listingPostMetadata(slug: string, authorPreview = false): Promise<Metadata> {
   const found = await loadPost(slug).catch(() => null);
@@ -70,24 +71,26 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   const { post, preview } = found;
   const lp = post.listingPost;
 
-  const data = await loadListingPostData({ listingKey: lp.listingKey, slugAddress: lp.slugAddress }).catch((err) => {
-    console.error("[listing-post] load failed:", err);
-    return null;
-  });
-
   // ---- Registration gate -------------------------------------------------
   //
   // Resolved from the POST AUTHOR's settings, never the domain owner's: a post
   // by another agent, read on this domain, follows THAT agent's gate, the same
   // way its registration lands in THAT agent's CRM.
   const authorId = String(post.author?.id || "");
-  const author: any = authorId
-    ? await User.findById(authorId).select("agentProfile.leadGate agentProfile.leadGateBannerUrl").maxTimeMS(2000).lean().catch(() => null)
-    : null;
+  const [data, author, session, baseUrl] = await Promise.all([
+    loadListingPostData({ listingKey: lp.listingKey, slugAddress: lp.slugAddress }).catch((err) => {
+      console.error("[listing-post] load failed:", err);
+      return null;
+    }),
+    authorId
+      ? User.findById(authorId).select("agentProfile.leadGate agentProfile.leadGateBannerUrl").maxTimeMS(2000).lean().catch(() => null)
+      : null,
+    getServerSession(authOptions),
+    getBaseUrlFromHeaders(),
+  ]);
 
   const gate = resolveLeadGate(author?.agentProfile?.leadGate, lp.gate);
 
-  const session = await getServerSession(authOptions);
   const signedIn = !!session?.user?.id;
   const reviewingPublishedPost = !!authorPreview && !preview && !!authorId && String(session?.user?.id) === authorId;
   const access = gate.enabled && !signedIn
@@ -107,7 +110,10 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   // from the DOM reveals the teaser and nothing more.
   const teaser = data ? toTeaser(data, lp.videoUrl) : null;
   const full = unlocked && data ? toGated(data) : null;
-  const mapData = full ? await loadListingPostMapPins(full.listing) : null;
+  const mapData = full ? loadListingPostMapPins(full.listing).catch((error) => {
+    console.error("[listing-post] map failed:", error);
+    return null;
+  }) : null;
   const listing = full?.listing || teaser?.listing || null;
   const mlsEvents = data?.listing.standardStatus === "Active"
     ? await loadListingOpenHouses(lp.listingKey, data.listing).catch((error) => {
@@ -123,8 +129,6 @@ export default async function ListingPostPage({ slug, previewGate, authorPreview
   const fullRemarks = typeof full?.listing.publicRemarks === "string" ? full.listing.publicRemarks.trim() : "";
   const previewRemarks = teaser?.listing.remarksTeaser;
   const remarks = unlocked ? fullRemarks : previewRemarks && `${previewRemarks}${teaser?.listing.remarksTruncated ? "…" : ""}`;
-
-  const baseUrl = await getBaseUrlFromHeaders();
   const url = `${baseUrl}/insights/listing-post/${slug}`;
 
   return (

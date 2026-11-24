@@ -1,7 +1,7 @@
 ---
 title: CMS / Articles
 status: current
-last_verified: 2026-11-22
+last_verified: 2026-11-24
 related: [./multi-tenant-articles.md, ../multi-tenant/README.md, ../auth/README.md, ../integrations/README.md, ../routing/README.md, ../mcp/tools.md, ../seo/README.md]
 supersedes: docs/archive/cms/CMS_AND_INSIGHTS_COMPLETE.md
 ---
@@ -214,6 +214,9 @@ The headline uses the listing's street address when available. The server
 sends a short MLS description in the teaser and the full public remarks,
 event notes, and map pins to unlocked views, including the default author
 preview. Saved post copy serves as a fallback when MLS remarks are unavailable.
+Listing data loads alongside the session and author gate settings. The unlocked
+map streams separately from the main listing so comparable queries do not delay
+the photo, property details, or attendance prompt.
 Unlocked listing ads reuse the MLS detail page's Features & Amenities and
 Property Details panels, and show its mortgage calculator for active
 residential sale and residential income listings.

@@ -143,34 +143,31 @@ export async function loadListingPostData(ref: { slugAddress?: string; listingKe
   if (!listing) return null;
 
   const fallback = listing.primaryPhotoUrl || "/images/no-photo.png";
-  let photos: ListingPostPhoto[] = [];
-  try {
-    const res = await getListingPhotosFromListing(listing);
-    photos = (res.photos || [])
-      .map((p: any) => ({
-        type: "photo" as const,
-        src: p.uri2048 || p.uri1600 || p.uri1280 || p.uri1024 || p.uri800 || p.uriLarge || p.uriThumb || "",
-        alt: p.caption || p.shortDescription || "Listing photo",
-      }))
-      .filter((p) => p.src);
-  } catch (err) {
-    console.error(`[listing-post] photos failed for ${listing.listingKey}:`, err);
-  }
-  if (photos.length === 0) photos = [{ type: "photo", src: fallback, alt: "Listing photo" }];
-
   await dbConnect();
-  const [sub, city]: [any, any] = await Promise.all([
+  const [photoResult, sub, city] = await Promise.all([
+    getListingPhotosFromListing(listing).catch((error) => {
+      console.error(`[listing-post] photos failed for ${listing.listingKey}:`, error);
+      return null;
+    }),
     listing.subdivisionName
       ? Subdivision.findOne({ name: listing.subdivisionName, ...(listing.city ? { city: listing.city } : {}) })
           .select("name slug description listingCount medianPrice priceRange features communityFacts.communityType communityFacts.hoaMonthlyMin communityFacts.hoaMonthlyMax")
-          .lean()
+          .maxTimeMS(2000).lean().catch(() => null)
       : null,
     listing.city
       ? City.findOne({ name: listing.city })
           .select("name slug description listingCount medianPrice subdivisionCount region")
-          .lean()
+          .maxTimeMS(2000).lean().catch(() => null)
       : null,
   ]);
+  const photos: ListingPostPhoto[] = (photoResult?.photos ?? [])
+    .map((p) => ({
+      type: "photo" as const,
+      src: p.uri2048 || p.uri1600 || p.uri1280 || p.uri1024 || p.uri800 || p.uriLarge || p.uriThumb || "",
+      alt: p.caption || p.shortDescription || "Listing photo",
+    }))
+    .filter((p) => p.src);
+  if (photos.length === 0) photos.push({ type: "photo", src: fallback, alt: "Listing photo" });
 
   return JSON.parse(
     JSON.stringify({
