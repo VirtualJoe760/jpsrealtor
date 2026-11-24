@@ -1,7 +1,7 @@
 ---
 title: Campaigns & Multi-Tenant Advertising
 status: current
-last_verified: 2026-10-17
+last_verified: 2026-11-24
 related:
   - ../archive/campaigns/CAMPAIGNS_CURRENT_STATE.md
   - ../archive/multi-tenant/advertising/campaign-multi-tenant.md
@@ -23,6 +23,16 @@ The launch entry point is `src/app/api/campaigns/[id]/launch-ads/route.ts`. Ad
 API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
 
 ## Gotchas
+
+- **Thanks.io scan alerts for dashboard orders.** `/api/webhooks/thanksio/scan`
+  accepts the provider's `scans.scan_update` event. Configure the callback token
+  with `THANKSIO_SCAN_WEBHOOK_SECRET`, the destination with
+  `THANKSIO_SCAN_ALERT_EMAIL`, and the authorized order IDs with the
+  comma-separated `THANKSIO_SCAN_ALERT_ORDER_IDS`. The handler verifies the
+  exact piece and scan count against the account's order items before sending
+  a ChatRealty email. Resend deduplicates retries by order, piece, and scan count
+  within its idempotency window. The alert identifies the mailed recipient,
+  and cannot establish who held the camera.
 
 - **Every `campaigns/[id]/*` route must owner-scope the campaign load.** These
   routes are session-gated by middleware, but that only proves *a* user is logged

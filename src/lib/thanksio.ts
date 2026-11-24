@@ -49,6 +49,23 @@ async function thanksioFetch(
 // Types
 // ---------------------------------------------------------------------------
 
+export async function getScannedMailPiece(orderId: number, itemId: number, scans: number) {
+  const { data } = await thanksioFetch(`/orders/${orderId}/items?per_page=100`, {
+    signal: AbortSignal.timeout(8000),
+    cache: 'no-store',
+  });
+  if (!Array.isArray(data)) throw new Error('Unexpected Thanks.io order-items response');
+  const item = data.find(piece => piece.id === itemId);
+  if (!item || !['In Transit', 'Delivered', 'Returned', 'Shipped'].includes(item.status)) return null;
+  if (Number(item.scans) < scans) throw new Error('Thanks.io has not recorded the scan count yet');
+  const recipient = item.recipient;
+  return {
+    name: recipient?.name || 'Unnamed recipient',
+    address: [recipient?.address, recipient?.address2, recipient?.city, recipient?.province, recipient?.postal_code]
+      .filter(Boolean).join(', '),
+  };
+}
+
 export type MailType = 'postcard_4x6' | 'postcard_6x9' | 'postcard_6x11' | 'letter' | 'notecard';
 
 export interface Recipient {

@@ -5,6 +5,27 @@ import { Resend } from 'resend';
 import { renderBrandedEmail, escapeHtml } from '@/lib/email-brand';
 import { AI_CLASS_LENGTH_LABEL, type AiClassIntake } from '@/config/ai-classes';
 
+export async function sendPostcardScanAlert(
+  email: string,
+  orderId: number,
+  itemId: number,
+  scans: number,
+  piece: { name: string; address: string },
+) {
+  const { error } = await getResendClient().emails.send({
+    from: platformFrom(),
+    to: email,
+    subject: 'Thanks.io postcard QR code scanned',
+    html: renderBrandedEmail({
+      title: 'Postcard QR code scanned',
+      bodyHtml: `<p>Thanks.io confirmed a scan for the postcard mailed to <strong>${escapeHtml(piece.name)}</strong>${piece.address ? ` at ${escapeHtml(piece.address)}` : ''}.</p>
+        <p>Order #${orderId} · Mail piece #${itemId} · Scan #${scans}</p>
+        <p>The recipient details identify the mailed piece. Anyone with the QR code can scan it.</p>`,
+    }),
+  }, { idempotencyKey: `thanksio-scan/${orderId}/${itemId}/${scans}` });
+  if (error) throw new Error('Resend did not accept the scan alert');
+}
+
 // Lazy initialization to avoid errors during build when API key might not be set
 let resendInstance: Resend | null = null;
 
