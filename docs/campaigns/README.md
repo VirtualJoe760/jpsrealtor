@@ -31,8 +31,9 @@ API clients are `src/lib/google-ads-api.ts` and `src/lib/meta-ads-api.ts`.
   comma-separated `THANKSIO_SCAN_ALERT_ORDER_IDS`. The handler verifies the
   exact piece and scan count against the account's order items before sending
   a ChatRealty email. Resend deduplicates retries by order, piece, and scan count
-  within its idempotency window. The alert identifies the mailed recipient,
-  and cannot establish who held the camera.
+  within its idempotency window. Alerts show the provider's scan time in Pacific
+  time and the piece's current mail status. The webhook supplies the recipient's
+  mailing address and has no scanner geolocation field.
 
 - **Every `campaigns/[id]/*` route must owner-scope the campaign load.** These
   routes are session-gated by middleware, but that only proves *a* user is logged

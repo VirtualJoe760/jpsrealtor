@@ -10,17 +10,27 @@ export async function sendPostcardScanAlert(
   orderId: number,
   itemId: number,
   scans: number,
-  piece: { name: string; address: string },
+  piece: { name: string; address: string; status: string },
+  scannedAt?: Date,
 ) {
+  const scanTime = scannedAt?.toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
+  });
   const { error } = await getResendClient().emails.send({
     from: platformFrom(),
     to: email,
     subject: 'Thanks.io postcard QR code scanned',
     html: renderBrandedEmail({
       title: 'Postcard QR code scanned',
-      bodyHtml: `<p>Thanks.io confirmed a scan for the postcard mailed to <strong>${escapeHtml(piece.name)}</strong>${piece.address ? ` at ${escapeHtml(piece.address)}` : ''}.</p>
+      bodyHtml: `<p>Thanks.io confirmed a postcard QR scan.</p>
+        <p><strong>Scan time</strong> ${scanTime ?? 'Unavailable'}<br>
+        <strong>Scan location</strong> Unavailable from Thanks.io<br>
+        <strong>Mailed to</strong> ${escapeHtml(piece.name)}${piece.address ? `, ${escapeHtml(piece.address)}` : ''}<br>
+        <strong>Current mail status</strong> ${escapeHtml(piece.status)}</p>
         <p>Order #${orderId} · Mail piece #${itemId} · Scan #${scans}</p>
-        <p>The recipient details identify the mailed piece. Anyone with the QR code can scan it.</p>`,
+        <p>Anyone with the QR code can scan it.</p>`,
     }),
   }, { idempotencyKey: `thanksio-scan/${orderId}/${itemId}/${scans}` });
   if (error) throw new Error('Resend did not accept the scan alert');

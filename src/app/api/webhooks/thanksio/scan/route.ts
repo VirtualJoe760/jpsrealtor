@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
   try {
     const piece = await getScannedMailPiece(orderId, itemId, scans);
     if (!piece) return new NextResponse(null, { status: 204 });
-    await sendPostcardScanAlert(email, orderId, itemId, scans, piece);
+    const timestamp = event?.timestamp;
+    const scannedAt = Number.isSafeInteger(timestamp) && timestamp > 0 && timestamp < 8.64e12
+      ? new Date(timestamp * 1000)
+      : undefined;
+    await sendPostcardScanAlert(email, orderId, itemId, scans, piece, scannedAt);
     return new NextResponse(null, { status: 204 });
   } catch {
     console.error('[thanksio scan] Could not verify or send scan alert', { orderId, itemId, scans });

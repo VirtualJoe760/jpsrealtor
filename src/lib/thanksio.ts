@@ -63,6 +63,7 @@ export async function getScannedMailPiece(orderId: number, itemId: number, scans
     name: recipient?.name || 'Unnamed recipient',
     address: [recipient?.address, recipient?.address2, recipient?.city, recipient?.province, recipient?.postal_code]
       .filter(Boolean).join(', '),
+    status: item.status as string,
   };
 }
 
